@@ -4,9 +4,9 @@ services:
     env: python
     region: oregon
     plan: free
-    branch: claude/excel-distribution-template-creator-011CV3e6JaohqsZyk8DRq9nW
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

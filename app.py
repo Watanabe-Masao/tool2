@@ -34,7 +34,7 @@ import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.0.6"
+APP_VERSION = "2.0.7"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -169,6 +169,19 @@ class TemplateResponse(BaseModel):
     message: str
     download_url: Optional[str] = None
     filename: Optional[str] = None
+
+
+@app.get("/api/health")
+async def health_check():
+    """
+    ヘルスチェックエンドポイント
+    Renderがサーバーの状態を確認するために使用
+    """
+    return {
+        "status": "healthy",
+        "version": APP_VERSION,
+        "service": "haibun-template-creator"
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
