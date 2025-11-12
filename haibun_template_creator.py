@@ -829,8 +829,11 @@ class HaibunTemplateCreator:
         # ページ設定
         self.ws.page_setup.orientation = self.ws.ORIENTATION_LANDSCAPE  # 横向き
         self.ws.page_setup.paperSize = self.ws.PAPERSIZE_A4  # A4サイズ
-        self.ws.page_setup.fitToWidth = 1  # 幅を1ページに収める
-        self.ws.page_setup.fitToHeight = False  # 高さは自動
+
+        # ページに合わせる設定を有効化
+        self.ws.page_setup.fitToPage = True
+        self.ws.page_setup.fitToWidth = 1   # 幅を1ページに収める
+        self.ws.page_setup.fitToHeight = 0  # 高さは自動（0=制限なし）
 
         # 余白設定（単位：インチ）
         self.ws.page_margins = PageMargins(
