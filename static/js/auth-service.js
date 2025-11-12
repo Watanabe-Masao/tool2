@@ -1,13 +1,24 @@
 // Authentication Service
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, db, doc, setDoc, getDoc } from './firebase-config.js';
+import { firebaseInitPromise, auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, db, doc, setDoc, getDoc } from './firebase-config.js';
 
 class AuthService {
   constructor() {
     this.currentUser = null;
     this.onAuthStateChangedCallbacks = [];
+    this.initialized = false;
 
-    // 認証状態の監視
-    onAuthStateChanged(auth, async (user) => {
+    // Firebase初期化を待ってから認証状態を監視
+    this.init();
+  }
+
+  async init() {
+    try {
+      // Firebase初期化を待つ
+      await firebaseInitPromise;
+      this.initialized = true;
+
+      // 認証状態の監視
+      onAuthStateChanged(auth, async (user) => {
       if (user) {
         // ログイン中
         this.currentUser = user;
@@ -25,9 +36,13 @@ class AuthService {
         console.log('User logged out');
       }
 
-      // コールバック実行
-      this.onAuthStateChangedCallbacks.forEach(callback => callback(this.currentUser));
-    });
+        // コールバック実行
+        this.onAuthStateChangedCallbacks.forEach(callback => callback(this.currentUser));
+      });
+    } catch (error) {
+      console.error('AuthService initialization error:', error);
+      this.initialized = false;
+    }
   }
 
   /**

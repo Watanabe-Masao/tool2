@@ -421,6 +421,27 @@ async def get_version():
     }
 
 
+@app.get("/api/firebase-config")
+async def get_firebase_config():
+    """
+    Firebaseの設定を環境変数から取得して返す
+    セキュリティ向上のため、クライアント側にハードコードしない
+
+    注意: Firebase Web SDKの仕様上、これらの設定は公開されても問題ありません。
+    セキュリティはFirestore Security Rulesで制御します。
+    """
+    firebase_config = {
+        "apiKey": os.getenv("FIREBASE_API_KEY", "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc"),
+        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", "haibun-distribution.firebaseapp.com"),
+        "projectId": os.getenv("FIREBASE_PROJECT_ID", "haibun-distribution"),
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", "haibun-distribution.firebasestorage.app"),
+        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", "742220611313"),
+        "appId": os.getenv("FIREBASE_APP_ID", "1:742220611313:web:bec0f006c4c648adcbb350")
+    }
+
+    return firebase_config
+
+
 @app.head("/")
 async def root_head():
     """
