@@ -15,6 +15,7 @@
 
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict, Union
+from datetime import datetime
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -22,6 +23,21 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook import Workbook
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.page import PageMargins
+
+
+@dataclass
+class ProductData:
+    """商品データクラス"""
+    delivery_date: Optional[str] = None
+    origin: Optional[str] = None
+    standard: Optional[str] = None
+    product_name: Optional[str] = None
+    store_cost: Optional[float] = None
+    price: Optional[float] = None
+    quantity: Optional[int] = None
+    total_delivery: Optional[int] = None
+    delivery_dest: Optional[str] = None
+    store_quantities: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -177,12 +193,15 @@ class HaibunTemplateCreator:
         self.ws: Worksheet = self.wb.active
         self.ws.title = '配分書'
 
-    def create_template(self, output_path: Optional[str] = None, buyer_name: Optional[str] = None) -> str:
+    def create_template(self, output_path: Optional[str] = None, buyer_name: Optional[str] = None,
+                       period: Optional[str] = None, products: Optional[List[ProductData]] = None) -> str:
         """テンプレートを作成
 
         Args:
             output_path: 出力ファイルパス（省略時は設定のデフォルト値）
             buyer_name: 担当バイヤー名（省略可）
+            period: 期間（省略可）
+            products: 商品データリスト（省略可）
 
         Returns:
             str: 作成したファイルのパス
@@ -202,13 +221,13 @@ class HaibunTemplateCreator:
             self._setup_rows()
 
             # 2. タイトルエリア（1～6行）
-            self._setup_header_area(buyer_name=buyer_name)
+            self._setup_header_area(buyer_name=buyer_name, period=period)
 
             # 3. ヘッダーエリア（7～8行）
             self._setup_column_headers()
 
             # 4. データエリア（9～17行: 3商品ブロック）
-            self._setup_data_rows()
+            self._setup_data_rows(products=products)
 
             # 5. 罫線設定
             self._setup_borders()
@@ -292,11 +311,12 @@ class HaibunTemplateCreator:
         self.ws.row_dimensions[2].hidden = True
 
     # ----------------- タイトル/ヘッダー -----------------
-    def _setup_header_area(self, buyer_name: Optional[str] = None) -> None:
+    def _setup_header_area(self, buyer_name: Optional[str] = None, period: Optional[str] = None) -> None:
         """タイトルエリア（1～6行）
 
         Args:
             buyer_name: 担当バイヤー名（省略可）
+            period: 期間（省略可）
         """
         # タイトル（G1:Y1）
         self.ws.merge_cells('G1:Y1')
@@ -349,9 +369,15 @@ class HaibunTemplateCreator:
         )
         self.ws.merge_cells('H5:H6')
 
-        # I5:Z6結合 - 細線枠
+        # I5:Z6結合 - 細線枠（期間を入力）
         self.ws.merge_cells('I5:Z6')
         self.ws['I5'].border = BorderFactory.create('thin', 'thin', 'thin', 'thin')
+        if period:
+            self._set_cell(
+                'I5', period,
+                font=Font(size=11, bold=True),
+                alignment=Alignment(horizontal='center', vertical='center')
+            )
 
     def _setup_row4_medium_border(self) -> None:
         """行4の中太線設定（AB～AT）"""
@@ -443,77 +469,135 @@ class HaibunTemplateCreator:
                        border=BorderFactory.create('thin', 'thin', 'thin', 'thin'))
 
     # ----------------- データ行 -----------------
-    def _setup_data_rows(self) -> None:
-        """データ行（9-17行）の設定"""
+    def _setup_data_rows(self, products: Optional[List[ProductData]] = None) -> None:
+        """データ行（9-17行）の設定
+
+        Args:
+            products: 商品データリスト（省略可）
+        """
         cfg = self.config
         block_start_rows = [
             cfg.data_area_start + (i * cfg.block_size)
             for i in range(cfg.num_blocks)
         ]
 
-        for data_row in block_start_rows:
+        for idx, data_row in enumerate(block_start_rows):
             detail_row = data_row + 1
             blank_row = data_row + 2
 
-            self._setup_input_fields(data_row, detail_row)
+            # 該当する商品データを取得（存在する場合）
+            product_data = products[idx] if products and idx < len(products) else None
+
+            self._setup_input_fields(data_row, detail_row, product_data)
             self._setup_formulas(data_row, detail_row, blank_row)
             self._setup_cell_merges(data_row, detail_row, blank_row)
             self._merge_store_columns(detail_row, blank_row)
 
-    def _setup_input_fields(self, data_row: int, detail_row: int) -> None:
-        """入力欄のフォント/体裁
+    def _setup_input_fields(self, data_row: int, detail_row: int, product_data: Optional[ProductData] = None) -> None:
+        """入力欄のフォント/体裁とデータ入力
 
         Args:
             data_row: 商品情報行番号
             detail_row: 詳細情報行番号
+            product_data: 商品データ（省略可）
         """
         cfg = self.config
 
         # 納品日（B列）
+        delivery_date_value = None
+        if product_data and product_data.delivery_date:
+            try:
+                # YYYY-MM-DD形式の文字列をdatetimeオブジェクトに変換
+                delivery_date_value = datetime.strptime(product_data.delivery_date, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                pass  # 日付変換に失敗した場合は空欄にする
+
         self.ws[f'B{data_row}'].number_format = 'm/d(aaa)'
-        self._set_cell(f'B{data_row}', None,
+        self._set_cell(f'B{data_row}', delivery_date_value,
                        font=Font(size=14, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 産地（D列 data_row）
-        self._set_cell(f'D{data_row}', None,
+        origin_value = product_data.origin if product_data else None
+        self._set_cell(f'D{data_row}', origin_value,
                        font=Font(size=11, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 規格（E列 data_row）
-        self._set_cell(f'E{data_row}', None,
+        standard_value = product_data.standard if product_data else None
+        self._set_cell(f'E{data_row}', standard_value,
                        font=Font(size=11, bold=True, color=cfg.color_red),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 品名（D列 detail_row）
-        self._set_cell(f'D{detail_row}', None,
+        product_name_value = product_data.product_name if product_data else None
+        self._set_cell(f'D{detail_row}', product_name_value,
                        font=Font(size=11, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店着原価（G列 data_row）
-        self._set_cell(f'G{data_row}', None,
+        store_cost_value = product_data.store_cost if product_data else None
+        self._set_cell(f'G{data_row}', store_cost_value,
                        font=Font(size=16, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 税抜売価（H列 data_row）
-        self._set_cell(f'H{data_row}', None,
+        price_value = product_data.price if product_data else None
+        self._set_cell(f'H{data_row}', price_value,
                        font=Font(size=12, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 入数（I列 detail_row, blank_row結合セル）
-        self._set_cell(f'I{detail_row}', None,
+        quantity_value = product_data.quantity if product_data else None
+        self._set_cell(f'I{detail_row}', quantity_value,
                        font=Font(size=14, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 納品数（AU列 data_row）
-        self._set_cell(f'AU{data_row}', None,
+        total_delivery_value = product_data.total_delivery if product_data else None
+        self._set_cell(f'AU{data_row}', total_delivery_value,
                        font=Font(size=12, color=cfg.color_blue),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 取引先（AV列 data_row）
-        self._set_cell(f'AV{data_row}', None,
+        delivery_dest_value = product_data.delivery_dest if product_data else None
+        self._set_cell(f'AV{data_row}', delivery_dest_value,
                        font=Font(size=12, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
+
+        # 店舗配分数（J～AS列 detail_row）
+        if product_data and product_data.store_quantities:
+            self._populate_store_quantities(detail_row, product_data.store_quantities)
+
+    def _populate_store_quantities(self, detail_row: int, store_quantities: Dict[str, int]) -> None:
+        """店舗配分数をセルに入力
+
+        Args:
+            detail_row: 詳細情報行番号
+            store_quantities: 店舗コードと配分数の辞書
+        """
+        # 店舗コードと列の対応マップ
+        store_code_to_column = {
+            '01': 'J', '02': 'K', '03': 'L', '05': 'M',
+            '06': 'N', '07': 'O', '08': 'P', '23': 'Q',
+            '24': 'R', '26': 'S', '28': 'T', '30': 'U',
+            '32': 'V', '34': 'W', '36': 'X', '37': 'Y',
+            '39': 'Z', '40': 'AA', '41': 'AB', '43': 'AC',
+            '45': 'AD', '47': 'AE', '48': 'AF', '305': 'AG',
+            '307': 'AH', '308': 'AI', '311': 'AJ', '313': 'AK',
+            '314': 'AL', '317': 'AM', '318': 'AN', '341': 'AO',
+            '342': 'AP', '343': 'AQ', '344': 'AR', '911': 'AS',
+        }
+
+        # 各店舗の配分数を入力
+        for store_code, quantity in store_quantities.items():
+            column = store_code_to_column.get(store_code)
+            if column and quantity:
+                self._set_cell(
+                    f'{column}{detail_row}', quantity,
+                    font=Font(size=11, bold=True),
+                    alignment=Alignment(horizontal='center', vertical='center')
+                )
 
     def _setup_formulas(self, data_row: int, detail_row: int, blank_row: int) -> None:
         """数式設定

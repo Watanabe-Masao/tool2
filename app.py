@@ -20,11 +20,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi import Request
 from pydantic import BaseModel, Field
+from typing import Dict, List
 
 from haibun_template_creator import (
     HaibunTemplateCreator,
     TemplateConfig,
-    StoreData
+    StoreData,
+    ProductData
 )
 
 
@@ -45,6 +47,20 @@ TEMP_DIR.mkdir(exist_ok=True)
 
 
 # リクエストモデル
+class ProductDataRequest(BaseModel):
+    """商品データリクエスト"""
+    delivery_date: Optional[str] = Field(default=None, description="納品日（YYYY-MM-DD形式）")
+    origin: Optional[str] = Field(default=None, max_length=30, description="産地")
+    standard: Optional[str] = Field(default=None, max_length=20, description="規格")
+    product_name: Optional[str] = Field(default=None, max_length=50, description="品名")
+    store_cost: Optional[float] = Field(default=None, description="店着原価")
+    price: Optional[float] = Field(default=None, description="税抜売価")
+    quantity: Optional[int] = Field(default=None, description="入数")
+    total_delivery: Optional[int] = Field(default=None, description="総納品数")
+    delivery_dest: Optional[str] = Field(default=None, max_length=30, description="納品先")
+    store_quantities: Dict[str, int] = Field(default_factory=dict, description="店舗配分数")
+
+
 class TemplateRequest(BaseModel):
     """テンプレート生成リクエスト"""
     num_blocks: int = Field(default=1, ge=1, le=100, description="商品ブロック数（1-100）")
@@ -57,8 +73,14 @@ class TemplateRequest(BaseModel):
         max_length=20,
         description="担当バイヤー名（最大20文字）"
     )
+    period: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="期間"
+    )
     pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
     pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
+    products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
 
 
 # レスポンスモデル
@@ -111,9 +133,30 @@ async def generate_template(req: TemplateRequest):
             default_output_path=str(temp_path)
         )
 
+        # 商品データをProductDataオブジェクトに変換
+        products = []
+        for product_req in req.products:
+            product_data = ProductData(
+                delivery_date=product_req.delivery_date,
+                origin=product_req.origin,
+                standard=product_req.standard,
+                product_name=product_req.product_name,
+                store_cost=product_req.store_cost,
+                price=product_req.price,
+                quantity=product_req.quantity,
+                total_delivery=product_req.total_delivery,
+                delivery_dest=product_req.delivery_dest,
+                store_quantities=product_req.store_quantities
+            )
+            products.append(product_data)
+
         # テンプレート生成
         creator = HaibunTemplateCreator(config=config)
-        output_path = creator.create_template(buyer_name=req.buyer_name)
+        output_path = creator.create_template(
+            buyer_name=req.buyer_name,
+            period=req.period,
+            products=products
+        )
 
         # ダウンロードURL生成
         download_url = f"/api/download/{file_id}?filename={filename}"

@@ -4,6 +4,19 @@
 let downloadUrl = null;
 let downloadFilename = null;
 
+// 店舗データ
+const STORES = [
+    {code: '01', name: '朝倉'}, {code: '02', name: '伊野'}, {code: '03', name: '高須'}, {code: '05', name: '愛宕'},
+    {code: '06', name: '神田'}, {code: '07', name: '毎日屋土佐道路'}, {code: '08', name: '山手'}, {code: '23', name: '桟橋'},
+    {code: '24', name: '大橋通'}, {code: '26', name: 'アクシス南国'}, {code: '28', name: '瀬戸'}, {code: '30', name: '清水'},
+    {code: '32', name: '四万十'}, {code: '34', name: 'アクシスいの'}, {code: '36', name: '土佐道路東'}, {code: '37', name: 'とさのさと御座'},
+    {code: '39', name: '六泉寺'}, {code: '40', name: '薊野'}, {code: '41', name: '中万々'}, {code: '43', name: '高岡'},
+    {code: '45', name: '久米'}, {code: '47', name: '森松'}, {code: '48', name: '束本'}, {code: '305', name: '仁井田'},
+    {code: '307', name: '窪川'}, {code: '308', name: 'さが'}, {code: '311', name: '丸味'}, {code: '313', name: 'サングリーン'},
+    {code: '314', name: '大月'}, {code: '317', name: '西土佐'}, {code: '318', name: '十和'}, {code: '341', name: '吾川'},
+    {code: '342', name: '池川'}, {code: '343', name: '上八川'}, {code: '344', name: '下八川'}, {code: '911', name: '惣菜'}
+];
+
 // =====================================
 // DOM要素の取得
 // =====================================
@@ -15,6 +28,7 @@ const resultSection = document.getElementById('resultSection');
 const errorSection = document.getElementById('errorSection');
 const messageText = document.getElementById('messageText');
 const errorText = document.getElementById('errorText');
+const productsContainer = document.getElementById('productsContainer');
 
 // =====================================
 // イベントリスナー設定
@@ -29,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 入力値の検証
     const numBlocksInput = document.getElementById('numBlocks');
     numBlocksInput.addEventListener('input', validateNumBlocks);
+
+    // 商品ブロック数の変更に応じてフォームを生成
+    numBlocksInput.addEventListener('change', generateProductForms);
+
+    // 初期表示（1商品分）
+    generateProductForms();
 });
 
 // =====================================
@@ -82,12 +102,95 @@ async function handleFormSubmit(event) {
 }
 
 // =====================================
+// 商品フォーム動的生成
+// =====================================
+function generateProductForms() {
+    const numBlocks = parseInt(document.getElementById('numBlocks').value) || 1;
+    productsContainer.innerHTML = '';
+
+    for (let i = 0; i < numBlocks; i++) {
+        const productBlock = createProductBlock(i);
+        productsContainer.appendChild(productBlock);
+    }
+}
+
+function createProductBlock(index) {
+    const div = document.createElement('div');
+    div.className = 'product-block';
+    div.innerHTML = `
+        <div class="product-block-header">
+            <h4>商品 ${index + 1}</h4>
+        </div>
+        <div class="product-grid">
+            <div class="form-group">
+                <label for="delivery_date_${index}">納品日</label>
+                <input type="date" id="delivery_date_${index}" name="product_${index}_delivery_date">
+            </div>
+            <div class="form-group">
+                <label for="origin_${index}">産地</label>
+                <input type="text" id="origin_${index}" name="product_${index}_origin" placeholder="例: 高知県" maxlength="30">
+            </div>
+            <div class="form-group">
+                <label for="standard_${index}">規格</label>
+                <input type="text" id="standard_${index}" name="product_${index}_standard" placeholder="例: L" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label for="product_name_${index}">品名</label>
+                <input type="text" id="product_name_${index}" name="product_${index}_name" placeholder="例: トマト" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label for="store_cost_${index}">店着原価</label>
+                <input type="number" id="store_cost_${index}" name="product_${index}_store_cost" placeholder="例: 120" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="price_${index}">税抜売価</label>
+                <input type="number" id="price_${index}" name="product_${index}_price" placeholder="例: 198" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="quantity_${index}">入数</label>
+                <input type="number" id="quantity_${index}" name="product_${index}_quantity" placeholder="例: 10" min="1">
+            </div>
+            <div class="form-group">
+                <label for="total_delivery_${index}">総納品数</label>
+                <input type="number" id="total_delivery_${index}" name="product_${index}_total_delivery" placeholder="例: 100" min="0">
+            </div>
+            <div class="form-group">
+                <label for="delivery_dest_${index}">納品先</label>
+                <input type="text" id="delivery_dest_${index}" name="product_${index}_delivery_dest" placeholder="例: 本社" maxlength="30">
+            </div>
+        </div>
+        <details open>
+            <summary>店舗配分数</summary>
+            <div class="stores-grid" id="stores_${index}">
+                ${createStoresInputs(index)}
+            </div>
+        </details>
+    `;
+    return div;
+}
+
+function createStoresInputs(productIndex) {
+    return STORES.map(store => `
+        <div class="form-group">
+            <label for="store_${store.code}_${productIndex}">${store.name}</label>
+            <input type="number"
+                   id="store_${store.code}_${productIndex}"
+                   name="product_${productIndex}_store_${store.code}"
+                   placeholder="0"
+                   min="0"
+                   step="1">
+        </div>
+    `).join('');
+}
+
+// =====================================
 // フォームデータ取得
 // =====================================
 function getFormData() {
     const numBlocks = parseInt(document.getElementById('numBlocks').value);
     const outputFilename = document.getElementById('outputFilename').value.trim();
     const buyerName = document.getElementById('buyerName').value.trim();
+    const period = document.getElementById('period').value.trim();
     const pixel100 = parseFloat(document.getElementById('pixel100').value);
     const pixel50 = parseFloat(document.getElementById('pixel50').value);
 
@@ -104,6 +207,37 @@ function getFormData() {
 
     if (buyerName) {
         data.buyer_name = buyerName;
+    }
+
+    if (period) {
+        data.period = period;
+    }
+
+    // 商品データを収集
+    data.products = [];
+    for (let i = 0; i < numBlocks; i++) {
+        const product = {
+            delivery_date: document.getElementById(`delivery_date_${i}`)?.value || null,
+            origin: document.getElementById(`origin_${i}`)?.value?.trim() || null,
+            standard: document.getElementById(`standard_${i}`)?.value?.trim() || null,
+            product_name: document.getElementById(`product_name_${i}`)?.value?.trim() || null,
+            store_cost: parseFloat(document.getElementById(`store_cost_${i}`)?.value) || null,
+            price: parseFloat(document.getElementById(`price_${i}`)?.value) || null,
+            quantity: parseInt(document.getElementById(`quantity_${i}`)?.value) || null,
+            total_delivery: parseInt(document.getElementById(`total_delivery_${i}`)?.value) || null,
+            delivery_dest: document.getElementById(`delivery_dest_${i}`)?.value?.trim() || null,
+            store_quantities: {}
+        };
+
+        // 店舗配分数を収集
+        STORES.forEach(store => {
+            const value = parseInt(document.getElementById(`store_${store.code}_${i}`)?.value);
+            if (value && value > 0) {
+                product.store_quantities[store.code] = value;
+            }
+        });
+
+        data.products.push(product);
     }
 
     return data;
