@@ -285,6 +285,10 @@ class HaibunTemplateCreator:
             # 7. 印刷設定
             self._setup_print_settings()
 
+            # 8. ファイル保存前の最適化（PDF変換対策）
+            # - calc_mode: 数式計算モード（auto: 自動計算）
+            self.wb.calculation.calcMode = 'auto'
+
             # ファイル保存
             self.wb.save(output_path)
             print(f"✓ ファイルを作成しました: {output_path}")
@@ -510,6 +514,7 @@ class HaibunTemplateCreator:
             # 該当する商品データを取得（存在する場合）
             product_data = products[idx] if products and idx < len(products) else None
 
+            # データ書き込み後に結合（openpyxlの仕様上、MergedCell回避のため）
             self._setup_input_fields(data_row, detail_row, product_data)
             self._setup_formulas(data_row, detail_row, blank_row)
             self._setup_cell_merges(data_row, detail_row, blank_row)
