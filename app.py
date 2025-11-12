@@ -34,7 +34,7 @@ from weasyprint import HTML
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.1.2"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -75,7 +75,7 @@ TEMP_DIR.mkdir(exist_ok=True)
 
 def excel_to_html(excel_path: Path) -> str:
     """
-    ExcelファイルをHTMLに変換
+    ExcelファイルをHTMLに変換（書式を保持）
 
     Args:
         excel_path: Excelファイルのパス
@@ -86,55 +86,86 @@ def excel_to_html(excel_path: Path) -> str:
     wb = openpyxl.load_workbook(excel_path)
     ws = wb.active
 
-    html = """
+    # 列幅情報を収集
+    col_widths = {}
+    for col_idx in range(1, ws.max_column + 1):
+        col_letter = openpyxl.utils.get_column_letter(col_idx)
+        width = ws.column_dimensions[col_letter].width
+        if width:
+            # Excel列幅 → ピクセル変換（より正確な計算）
+            col_widths[col_idx] = int(width * 7.5)
+        else:
+            col_widths[col_idx] = 64  # デフォルト幅
+
+    # 行高情報を収集
+    row_heights = {}
+    for row_idx in range(1, ws.max_row + 1):
+        height = ws.row_dimensions[row_idx].height
+        if height:
+            # Excel行高 → ピクセル変換
+            row_heights[row_idx] = int(height * 1.33)
+        else:
+            row_heights[row_idx] = 20  # デフォルト高
+
+    # テーブルの合計幅を計算
+    table_width = sum(col_widths.values())
+
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <style>
-            @page {
+            @page {{
                 size: A4 landscape;
                 margin: 10mm;
-            }
-            body {
-                font-family: 'Meiryo', 'MS PGothic', sans-serif;
-                font-size: 9pt;
-            }
-            table {
+            }}
+            body {{
+                font-family: 'Meiryo', 'MS Gothic', sans-serif;
+                margin: 0;
+                padding: 10px;
+            }}
+            table {{
                 border-collapse: collapse;
-                width: 100%;
-                page-break-inside: avoid;
-            }
-            td, th {
-                border: 1px solid #000;
+                width: {table_width}px;
+                table-layout: fixed;
+                font-size: 9pt;
+            }}
+            td {{
+                border: 1px solid #000000;
                 padding: 2px 4px;
-                text-align: center;
-                font-size: 8pt;
-                white-space: nowrap;
-            }
-            .merged {
-                background-color: #f0f0f0;
-            }
+                overflow: hidden;
+                text-overflow: ellipsis;
+                vertical-align: middle;
+            }}
         </style>
     </head>
     <body>
         <table>
     """
 
+    # 列幅を定義
+    html += "<colgroup>"
+    for col_idx in range(1, ws.max_column + 1):
+        html += f'<col style="width: {col_widths[col_idx]}px;">'
+    html += "</colgroup>\n"
+
     # 結合セルの情報を取得
     merged_ranges = list(ws.merged_cells.ranges)
 
     # 各行を処理
-    for row_idx, row in enumerate(ws.iter_rows(), start=1):
-        html += "<tr>"
-        for col_idx, cell in enumerate(row, start=1):
+    for row_idx in range(1, ws.max_row + 1):
+        row_height = row_heights[row_idx]
+        html += f'<tr style="height: {row_height}px;">'
+
+        for col_idx in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+
             # この結合セルがスキップされるべきかチェック
             skip = False
             for merged_range in merged_ranges:
-                # 結合セル範囲内かどうかをチェック
                 if (merged_range.min_row <= row_idx <= merged_range.max_row and
                     merged_range.min_col <= col_idx <= merged_range.max_col):
-                    # 開始セルではない場合はスキップ
                     if not (row_idx == merged_range.min_row and col_idx == merged_range.min_col):
                         skip = True
                         break
@@ -151,22 +182,76 @@ def excel_to_html(excel_path: Path) -> str:
                     colspan = merged_range.max_col - merged_range.min_col + 1
                     break
 
-            # セルの値を取得
+            # セルのスタイルを取得
+            styles = []
+
+            # 背景色
+            if cell.fill and cell.fill.start_color and cell.fill.start_color.rgb:
+                rgb = cell.fill.start_color.rgb
+                if rgb and rgb != '00000000' and len(rgb) == 8:
+                    color = f'#{rgb[2:]}'  # ARGBからRGBに変換
+                    styles.append(f'background-color: {color}')
+
+            # フォント設定
+            if cell.font:
+                if cell.font.size:
+                    styles.append(f'font-size: {cell.font.size}pt')
+                if cell.font.bold:
+                    styles.append('font-weight: bold')
+                if cell.font.color and cell.font.color.rgb:
+                    rgb = cell.font.color.rgb
+                    if rgb and len(rgb) == 8:
+                        color = f'#{rgb[2:]}'
+                        styles.append(f'color: {color}')
+
+            # テキスト配置
+            if cell.alignment:
+                if cell.alignment.horizontal:
+                    h_align = cell.alignment.horizontal
+                    if h_align == 'left':
+                        styles.append('text-align: left')
+                    elif h_align == 'center':
+                        styles.append('text-align: center')
+                    elif h_align == 'right':
+                        styles.append('text-align: right')
+                else:
+                    styles.append('text-align: center')  # デフォルト
+
+                if cell.alignment.vertical:
+                    v_align = cell.alignment.vertical
+                    if v_align == 'top':
+                        styles.append('vertical-align: top')
+                    elif v_align == 'center':
+                        styles.append('vertical-align: middle')
+                    elif v_align == 'bottom':
+                        styles.append('vertical-align: bottom')
+            else:
+                styles.append('text-align: center')  # デフォルト
+
+            # セルの値を取得（数式の場合は結果値を取得）
             value = cell.value if cell.value is not None else ""
 
-            # セルの幅を取得（概算）
-            col_letter = openpyxl.utils.get_column_letter(col_idx)
-            width = ws.column_dimensions[col_letter].width
-            if width:
-                width_px = int(width * 7)  # Excelの列幅をピクセルに変換（概算）
-            else:
-                width_px = 64  # デフォルト幅
+            # 数値の場合、フォーマットを適用
+            if isinstance(value, (int, float)):
+                if cell.number_format and cell.number_format != 'General':
+                    # 簡易的なフォーマット処理
+                    if '0.00' in cell.number_format or '#,##0' in cell.number_format:
+                        value = f'{value:,.2f}' if '.' in str(value) or '.00' in cell.number_format else f'{int(value):,}'
+                    elif '%' in cell.number_format:
+                        value = f'{value * 100:.0f}%'
+                    else:
+                        value = str(value)
+                else:
+                    value = str(value)
+
+            # HTML特殊文字をエスケープ
+            value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
             rowspan_attr = f' rowspan="{rowspan}"' if rowspan > 1 else ''
             colspan_attr = f' colspan="{colspan}"' if colspan > 1 else ''
-            style = f'width: {width_px}px;'
+            style_attr = f' style="{"; ".join(styles)}"' if styles else ''
 
-            html += f'<td{rowspan_attr}{colspan_attr} style="{style}">{value}</td>'
+            html += f'<td{rowspan_attr}{colspan_attr}{style_attr}>{value}</td>'
 
         html += "</tr>\n"
 
