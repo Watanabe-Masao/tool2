@@ -34,7 +34,7 @@ from weasyprint import HTML
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.3"
+APP_VERSION = "1.1.4"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -71,6 +71,36 @@ async def add_cache_control_header(request: Request, call_next):
 # 一時ファイル保存ディレクトリ
 TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
+
+
+def safe_get_rgb_color(color_obj) -> Optional[str]:
+    """
+    openpyxlの色オブジェクトから安全にRGB色を取得
+
+    Args:
+        color_obj: openpyxlの色オブジェクト（Color.rgb属性）
+
+    Returns:
+        Optional[str]: HTML色コード（例: #FFFFFF）、取得できない場合はNone
+    """
+    if not color_obj:
+        return None
+
+    try:
+        # RGBオブジェクトを文字列に変換
+        rgb_str = str(color_obj)
+
+        # 有効な8桁のARGB形式かチェック
+        if rgb_str and isinstance(rgb_str, str) and len(rgb_str) == 8:
+            # 透明または黒をスキップ
+            if rgb_str in ('00000000', 'FF000000'):
+                return None
+            # ARGBからRGBに変換（最初の2桁（アルファ）を除去）
+            return f'#{rgb_str[2:]}'
+
+        return None
+    except (TypeError, AttributeError, ValueError):
+        return None
 
 
 def excel_to_html(excel_path: Path) -> str:
@@ -186,14 +216,10 @@ def excel_to_html(excel_path: Path) -> str:
             styles = []
 
             # 背景色
-            if cell.fill and cell.fill.start_color and cell.fill.start_color.rgb:
-                try:
-                    rgb = str(cell.fill.start_color.rgb)  # 文字列に変換
-                    if rgb and rgb != '00000000' and len(rgb) == 8:
-                        color = f'#{rgb[2:]}'  # ARGBからRGBに変換
-                        styles.append(f'background-color: {color}')
-                except (TypeError, AttributeError):
-                    pass  # 色の取得に失敗した場合は無視
+            if cell.fill and cell.fill.start_color:
+                bg_color = safe_get_rgb_color(cell.fill.start_color.rgb)
+                if bg_color:
+                    styles.append(f'background-color: {bg_color}')
 
             # フォント設定
             if cell.font:
@@ -201,14 +227,10 @@ def excel_to_html(excel_path: Path) -> str:
                     styles.append(f'font-size: {cell.font.size}pt')
                 if cell.font.bold:
                     styles.append('font-weight: bold')
-                if cell.font.color and cell.font.color.rgb:
-                    try:
-                        rgb = str(cell.font.color.rgb)  # 文字列に変換
-                        if rgb and len(rgb) == 8:
-                            color = f'#{rgb[2:]}'
-                            styles.append(f'color: {color}')
-                    except (TypeError, AttributeError):
-                        pass  # 色の取得に失敗した場合は無視
+                if cell.font.color:
+                    font_color = safe_get_rgb_color(cell.font.color.rgb)
+                    if font_color:
+                        styles.append(f'color: {font_color}')
 
             # テキスト配置
             if cell.alignment:
