@@ -291,6 +291,10 @@ class HaibunTemplateCreator:
 
             # ファイル保存
             self.wb.save(output_path)
+
+            # 9. 保存後に再読み込みして結合セルの値を再確認（PDF変換対策）
+            self._fix_merged_cells_for_pdf(output_path, products)
+
             print(f"✓ ファイルを作成しました: {output_path}")
             return output_path
 
@@ -1103,6 +1107,67 @@ class HaibunTemplateCreator:
         # 印刷品質とその他の設定
         self.ws.print_options.horizontalCentered = True  # 水平方向に中央配置
         self.ws.print_options.verticalCentered = False   # 垂直方向は上詰め
+
+    def _fix_merged_cells_for_pdf(self, file_path: str, products: Optional[List[ProductData]] = None) -> None:
+        """保存後のファイルを再読み込みして結合セルの値を再確認・修正（LibreOffice PDF変換対策）
+
+        Args:
+            file_path: Excelファイルのパス
+            products: 商品データリスト（省略可）
+        """
+        if not products:
+            return
+
+        try:
+            # ファイルを再読み込み
+            wb_reload = openpyxl.load_workbook(file_path)
+            ws_reload = wb_reload.active
+            cfg = self.config
+
+            # 各商品ブロックの結合セルに値を再設定
+            for idx, product_data in enumerate(products):
+                if idx >= cfg.num_blocks:
+                    break
+
+                data_row = cfg.data_area_start + (idx * cfg.block_size)
+                detail_row = data_row + 1
+
+                # 店着日（B列）- 結合セルの左上に再設定
+                if product_data.delivery_date:
+                    try:
+                        date_value = datetime.strptime(product_data.delivery_date, '%Y-%m-%d')
+                        cell = ws_reload[f'B{data_row}']
+                        if cell.value is None or cell.value == '':
+                            cell.value = date_value
+                            cell.number_format = 'm/d(aaa)'
+                    except (ValueError, TypeError):
+                        pass
+
+                # 品名（D列）- 結合セルの左上に再設定
+                if product_data.product_name:
+                    cell = ws_reload[f'D{detail_row}']
+                    if cell.value is None or cell.value == '':
+                        cell.value = product_data.product_name
+
+                # 店着原価（G列）- 結合セルの左上に再設定
+                if product_data.store_cost is not None:
+                    cell = ws_reload[f'G{data_row}']
+                    if cell.value is None or cell.value == '':
+                        cell.value = product_data.store_cost
+
+                # 帳合先（AV列）- 結合セルの左上に再設定
+                if product_data.delivery_dest:
+                    cell = ws_reload[f'AV{data_row}']
+                    if cell.value is None or cell.value == '':
+                        cell.value = product_data.delivery_dest
+
+            # 変更を保存
+            wb_reload.save(file_path)
+            wb_reload.close()
+
+        except Exception as e:
+            # エラーが発生しても処理を続行（主処理には影響させない）
+            print(f"Warning: Failed to fix merged cells: {e}")
 
 
 def main() -> int:

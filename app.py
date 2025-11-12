@@ -34,7 +34,7 @@ import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.1.3"
+APP_VERSION = "2.1.4"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -90,15 +90,15 @@ def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
     try:
         # LibreOfficeを使ってExcelをPDFに変換
         # --headless: GUI不要のバックグラウンド実行
-        # --infilter: Excel形式を明示的に指定（結合セルの正確な認識のため）
-        # --convert-to pdf:calc_pdf_Export: Calcスプレッドシート専用のPDF出力
+        # --convert-to pdf: 最もシンプルで安定したPDF変換
         # --outdir: 出力ディレクトリを指定
+        #
+        # 注意: calc_pdf_Exportや--infilterは環境によって動作が不安定なため使用しない
         result = subprocess.run(
             [
                 'libreoffice',
                 '--headless',
-                '--infilter=Calc MS Excel 2007 XML',
-                '--convert-to', 'pdf:calc_pdf_Export',
+                '--convert-to', 'pdf',
                 '--outdir', str(pdf_path.parent),
                 str(excel_path)
             ],
