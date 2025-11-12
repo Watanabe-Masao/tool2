@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配分表テンプレート作成ツール</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 配分表テンプレート作成ツール</h1>
+            <p class="subtitle">店舗への商品配分を管理するExcelテンプレートを生成します</p>
+        </header>
+
+        <main>
+            <!-- 設定フォーム -->
+            <section class="form-section">
+                <h2>テンプレート設定</h2>
+                <form id="templateForm">
+                    <div class="form-group">
+                        <label for="numBlocks">
+                            商品ブロック数
+                            <span class="help-text">1商品 = 3行（データ行・詳細行・空白行）</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="numBlocks"
+                            name="num_blocks"
+                            min="1"
+                            max="100"
+                            value="1"
+                            required
+                        >
+                        <small>1〜100の範囲で指定してください</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="outputFilename">
+                            出力ファイル名（オプション）
+                            <span class="help-text">省略時は自動生成されます</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="outputFilename"
+                            name="output_filename"
+                            placeholder="例: 配分表_2025年1月.xlsx"
+                        >
+                    </div>
+
+                    <!-- 詳細設定（アコーディオン） -->
+                    <details class="advanced-settings">
+                        <summary>詳細設定（上級者向け）</summary>
+                        <div class="advanced-content">
+                            <div class="form-group">
+                                <label for="pixel100">
+                                    列幅（100ピクセル）
+                                </label>
+                                <input
+                                    type="number"
+                                    id="pixel100"
+                                    name="pixel_100"
+                                    step="0.01"
+                                    value="13.5714285714"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="pixel50">
+                                    列幅（50ピクセル）
+                                </label>
+                                <input
+                                    type="number"
+                                    id="pixel50"
+                                    name="pixel_50"
+                                    step="0.01"
+                                    value="6.4285714286"
+                                >
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit" class="btn-primary" id="generateBtn">
+                        <span class="btn-icon">🚀</span>
+                        テンプレート生成
+                    </button>
+                </form>
+            </section>
+
+            <!-- 生成結果表示 -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2>生成結果</h2>
+                <div class="result-content">
+                    <div class="success-message" id="successMessage">
+                        <span class="icon">✅</span>
+                        <p id="messageText"></p>
+                    </div>
+                    <button class="btn-download" id="downloadBtn" style="display: none;">
+                        <span class="btn-icon">📥</span>
+                        Excelファイルをダウンロード
+                    </button>
+                </div>
+            </section>
+
+            <!-- エラー表示 -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <h2>エラー</h2>
+                <div class="error-content">
+                    <div class="error-message" id="errorMessage">
+                        <span class="icon">❌</span>
+                        <p id="errorText"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ローディング表示 -->
+            <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>テンプレートを生成中...</p>
+            </div>
+        </main>
+
+        <footer>
+            <div class="info-section">
+                <h3>📖 テンプレートについて</h3>
+                <ul>
+                    <li>36店舗への商品配分を管理できます</li>
+                    <li>自動計算機能付き（合計、差異、税込価格）</li>
+                    <li>名前付き範囲で簡単参照</li>
+                    <li>商品ブロック数を自由に設定可能</li>
+                </ul>
+            </div>
+
+            <div class="footer-text">
+                <p>&copy; 2025 配分表テンプレート作成ツール v1.0.0</p>
+                <p>Made with ❤️ by Watanabe-Masao</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

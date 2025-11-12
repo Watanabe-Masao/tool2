@@ -1,6 +1,6 @@
 # 配分表テンプレート作成ツール
 
-Excelの配分表テンプレートを自動生成するPythonスクリプトです。
+Excelの配分表テンプレートを自動生成するWebアプリケーション / Pythonスクリプトです。
 
 ## 概要
 
@@ -11,20 +11,81 @@ Excelの配分表テンプレートを自動生成するPythonスクリプトで
 - 自動計算機能（合計、差異、税込価格）
 - 名前付き範囲の定義
 
+## 特徴
+
+✨ **Webアプリケーション対応**: ブラウザから簡単にテンプレート生成
+🚀 **FastAPI**: 高速・モダンなWeb APIフレームワーク
+🎨 **レスポンシブUI**: スマートフォンでも使いやすいデザイン
+📦 **自動ダウンロード**: 生成されたExcelファイルをワンクリックでダウンロード
+⚙️ **カスタマイズ可能**: 商品ブロック数や列幅を自由に設定
+
 ## 必要要件
 
 - Python 3.7以上
-- openpyxl ライブラリ
+- 必要なライブラリ（requirements.txtに記載）
 
 ## インストール
 
+### 1. リポジトリのクローン
+
 ```bash
-pip install openpyxl
+git clone https://github.com/Watanabe-Masao/tool2.git
+cd tool2
+```
+
+### 2. 依存パッケージのインストール
+
+```bash
+pip install -r requirements.txt
+```
+
+または、個別にインストール：
+
+```bash
+pip install openpyxl fastapi uvicorn jinja2 python-multipart
 ```
 
 ## 使用方法
 
-### 基本的な使い方
+### 方法1: Webアプリケーション（推奨）
+
+#### サーバーの起動
+
+```bash
+python app.py
+```
+
+または
+
+```bash
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### ブラウザでアクセス
+
+サーバーが起動したら、ブラウザで以下のURLにアクセスします：
+
+```
+http://localhost:8000
+```
+
+#### 使い方
+
+1. **商品ブロック数**を入力（1〜100）
+2. **出力ファイル名**を入力（オプション）
+3. 必要に応じて**詳細設定**を調整
+4. 「テンプレート生成」ボタンをクリック
+5. 生成完了後、「Excelファイルをダウンロード」ボタンをクリック
+
+#### API ドキュメント
+
+FastAPIの自動生成ドキュメントも利用できます：
+
+```
+http://localhost:8000/docs
+```
+
+### 方法2: Pythonスクリプト（コマンドライン）
 
 ```bash
 python haibun_template_creator.py
@@ -45,23 +106,47 @@ creator = HaibunTemplateCreator(config=config)
 creator.create_template()
 ```
 
-## ファイル構造
+## プロジェクト構造
 
 ```
-haibun_template_creator.py
-├── TemplateConfig: 設定クラス（列幅、行高、色など）
-├── StoreData: 店舗データクラス（店舗コード、店舗名）
-├── BorderFactory: 罫線生成ファクトリークラス
-└── HaibunTemplateCreator: メインクラス
-    ├── create_template(): テンプレート生成
-    ├── _setup_columns(): 列設定
-    ├── _setup_rows(): 行設定
-    ├── _setup_header_area(): タイトルエリア設定
-    ├── _setup_column_headers(): ヘッダー設定
-    ├── _setup_data_rows(): データ行設定
-    ├── _setup_borders(): 罫線設定
-    └── _setup_named_ranges(): 名前定義
+tool2/
+├── app.py                          # FastAPI Webアプリケーション
+├── haibun_template_creator.py      # テンプレート生成エンジン
+├── requirements.txt                # 依存パッケージ
+├── README.md                       # このファイル
+├── .gitignore                      # Git除外設定
+├── templates/                      # HTMLテンプレート
+│   └── index.html                  # メインUI
+├── static/                         # 静的ファイル
+│   ├── style.css                   # スタイルシート
+│   └── script.js                   # フロントエンドロジック
+└── temp_files/                     # 一時ファイル（自動生成）
+    └── .gitkeep
 ```
+
+### 主要コンポーネント
+
+#### `haibun_template_creator.py`
+- **TemplateConfig**: 設定クラス（列幅、行高、色など）
+- **StoreData**: 店舗データクラス（店舗コード、店舗名）
+- **BorderFactory**: 罫線生成ファクトリークラス
+- **HaibunTemplateCreator**: メインクラス
+  - `create_template()`: テンプレート生成
+  - `_setup_columns()`: 列設定
+  - `_setup_rows()`: 行設定
+  - `_setup_header_area()`: タイトルエリア設定
+  - `_setup_column_headers()`: ヘッダー設定
+  - `_setup_data_rows()`: データ行設定
+  - `_setup_borders()`: 罫線設定
+  - `_setup_named_ranges()`: 名前定義
+
+#### `app.py`
+- FastAPIアプリケーション
+- エンドポイント:
+  - `GET /`: メインUI
+  - `POST /api/generate`: テンプレート生成API
+  - `GET /api/download/{file_id}`: ファイルダウンロード
+  - `GET /api/health`: ヘルスチェック
 
 ## テンプレート構造
 
