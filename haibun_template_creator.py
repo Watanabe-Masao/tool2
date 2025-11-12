@@ -442,13 +442,15 @@ class HaibunTemplateCreator:
         # A-G列 一部結合
         self.ws.merge_cells('A7:A8')
         self.ws.merge_cells('B7:C8')
-        self.ws.merge_cells('F7:F8')
-        self.ws.merge_cells('G7:G8')
 
-        # D8:E8（品名）
+        # D7:E7 産地/規格の罫線処理のため一旦空白行として扱う
+        # 8行目のみD8:E8（品名）を設定
         self._set_cell('D8', '品 名', font=Font(size=10),
                        alignment=Alignment(horizontal='center', vertical='center'))
         self.ws.merge_cells('D8:E8')
+
+        self.ws.merge_cells('F7:F8')
+        self.ws.merge_cells('G7:G8')
 
         # H8, I8
         self._set_cell('H8', '税込', font=Font(size=9),
@@ -705,10 +707,11 @@ class HaibunTemplateCreator:
                     cell8.border = Border(bottom=BorderFactory.THIN, left=BorderFactory.THIN)
                 else:
                     cell8.border = Border(bottom=BorderFactory.THIN, right=BorderFactory.THIN)
-            elif col_idx in [4, 5]:
-                cell8.border = BorderFactory.create('thin', 'thin', 'thin',
-                                                   'thin' if col_idx == 5 else None)
-            elif col_idx in [8, 9]:
+            elif col_idx == 4:  # D8（D8:E8結合の開始セル）
+                cell8.border = BorderFactory.create('thin', 'thin', 'thin', None)
+            elif col_idx == 5:  # E8（D8:E8結合の終了セル、スキップ）
+                pass  # 結合されているためスキップ
+            elif col_idx in [8, 9]:  # H8, I8
                 cell8.border = BorderFactory.create(None, 'thin', 'thin', 'thin')
             elif 10 <= col_idx <= 45:
                 cell8.border = BorderFactory.create('thin', 'thin', 'thin', 'thin')
