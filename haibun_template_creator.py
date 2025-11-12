@@ -524,8 +524,9 @@ class HaibunTemplateCreator:
             product_data: 商品データ（省略可）
         """
         cfg = self.config
+        blank_row = data_row + 2  # blank_rowを計算
 
-        # 店着日（B列）
+        # 店着日（B列） - 結合セル全体にデータを設定（PDF変換対策）
         delivery_date_value = None
         if product_data and product_data.delivery_date:
             try:
@@ -534,10 +535,13 @@ class HaibunTemplateCreator:
             except (ValueError, TypeError):
                 pass  # 日付変換に失敗した場合は空欄にする
 
-        self.ws[f'B{data_row}'].number_format = 'm/d(aaa)'
-        self._set_cell(f'B{data_row}', delivery_date_value,
-                       font=Font(size=14, bold=True),
-                       alignment=Alignment(horizontal='center', vertical='center'))
+        # B列とC列の全3行にデータを設定（結合セル）
+        for row in [data_row, detail_row, blank_row]:
+            for col in ['B', 'C']:
+                self.ws[f'{col}{row}'].number_format = 'm/d(aaa)'
+                self._set_cell(f'{col}{row}', delivery_date_value,
+                               font=Font(size=14, bold=True),
+                               alignment=Alignment(horizontal='center', vertical='center'))
 
         # 産地（D列 data_row）
         origin_value = product_data.origin if product_data else None
@@ -551,11 +555,14 @@ class HaibunTemplateCreator:
                        font=Font(size=11, bold=True, color=cfg.color_red),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
-        # 品名（D列 detail_row）
+        # 品名（D列 detail_row） - 結合セル全体にデータを設定（PDF変換対策）
         product_name_value = product_data.product_name if product_data else None
-        self._set_cell(f'D{detail_row}', product_name_value,
-                       font=Font(size=11, bold=True),
-                       alignment=Alignment(horizontal='center', vertical='center'))
+        # D:E列の detail_row と blank_row にデータを設定
+        for row in [detail_row, blank_row]:
+            for col in ['D', 'E']:
+                self._set_cell(f'{col}{row}', product_name_value,
+                               font=Font(size=11, bold=True),
+                               alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店着原価（G列 data_row）
         store_cost_value = product_data.store_cost if product_data else None
@@ -581,11 +588,13 @@ class HaibunTemplateCreator:
                        font=Font(size=12, color=cfg.color_blue),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
-        # 帳合先（AV列 data_row）
+        # 帳合先（AV列 data_row） - 結合セル全体にデータを設定（PDF変換対策）
         delivery_dest_value = product_data.delivery_dest if product_data else None
-        self._set_cell(f'AV{data_row}', delivery_dest_value,
-                       font=Font(size=12, bold=True),
-                       alignment=Alignment(horizontal='center', vertical='center'))
+        # AV列の全3行にデータを設定
+        for row in [data_row, detail_row, blank_row]:
+            self._set_cell(f'AV{row}', delivery_dest_value,
+                           font=Font(size=12, bold=True),
+                           alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店舗配分数（J～AS列 detail_row）
         if product_data and product_data.store_quantities:
