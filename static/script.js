@@ -288,10 +288,53 @@ async function handlePreview(event) {
         });
 
         if (response.ok) {
-            // PDFをブラウザで表示
+            // PDFをモーダルで表示（モバイル対応）
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
+
+            // モーダル要素の取得
+            const pdfModal = document.getElementById('pdfModal');
+            const pdfIframe = document.getElementById('pdfIframe');
+            const pdfFallback = document.getElementById('pdfFallback');
+            const pdfDownloadLink = document.getElementById('pdfDownloadLink');
+            const pdfModalClose = document.getElementById('pdfModalClose');
+
+            // iframeにPDFを読み込む
+            pdfIframe.style.display = 'block';
+            pdfFallback.style.display = 'none';
+            pdfIframe.src = url;
+
+            // フォールバック用ダウンロードリンク設定
+            pdfDownloadLink.href = url;
+            pdfDownloadLink.download = 'preview.pdf';
+
+            // モーダル表示
+            pdfModal.style.display = 'flex';
+
+            // iframe読み込みエラー時のフォールバック処理
+            pdfIframe.onerror = () => {
+                pdfIframe.style.display = 'none';
+                pdfFallback.style.display = 'block';
+            };
+
+            // 閉じるボタンのイベントハンドラ
+            const closeModal = () => {
+                pdfModal.style.display = 'none';
+                pdfIframe.src = '';
+                URL.revokeObjectURL(url);
+                pdfModalClose.removeEventListener('click', closeModal);
+                pdfModal.removeEventListener('click', outsideClickClose);
+            };
+
+            // モーダル外クリックで閉じる
+            const outsideClickClose = (e) => {
+                if (e.target === pdfModal) {
+                    closeModal();
+                }
+            };
+
+            pdfModalClose.addEventListener('click', closeModal);
+            pdfModal.addEventListener('click', outsideClickClose);
         } else {
             const data = await response.json();
             const errorMessage = data.detail || data.message || 'プレビュー生成に失敗しました';
