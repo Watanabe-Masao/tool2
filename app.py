@@ -52,6 +52,11 @@ class TemplateRequest(BaseModel):
         default=None,
         description="出力ファイル名（省略時は自動生成）"
     )
+    buyer_name: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description="担当バイヤー名（最大20文字）"
+    )
     pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
     pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
 
@@ -108,7 +113,7 @@ async def generate_template(req: TemplateRequest):
 
         # テンプレート生成
         creator = HaibunTemplateCreator(config=config)
-        output_path = creator.create_template()
+        output_path = creator.create_template(buyer_name=req.buyer_name)
 
         # ダウンロードURL生成
         download_url = f"/api/download/{file_id}?filename={filename}"

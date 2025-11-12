@@ -87,6 +87,7 @@ async function handleFormSubmit(event) {
 function getFormData() {
     const numBlocks = parseInt(document.getElementById('numBlocks').value);
     const outputFilename = document.getElementById('outputFilename').value.trim();
+    const buyerName = document.getElementById('buyerName').value.trim();
     const pixel100 = parseFloat(document.getElementById('pixel100').value);
     const pixel50 = parseFloat(document.getElementById('pixel50').value);
 
@@ -99,6 +100,10 @@ function getFormData() {
     // オプショナルフィールド
     if (outputFilename) {
         data.output_filename = outputFilename;
+    }
+
+    if (buyerName) {
+        data.buyer_name = buyerName;
     }
 
     return data;

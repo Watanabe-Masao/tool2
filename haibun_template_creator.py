@@ -177,11 +177,12 @@ class HaibunTemplateCreator:
         self.ws: Worksheet = self.wb.active
         self.ws.title = '配分書'
 
-    def create_template(self, output_path: Optional[str] = None) -> str:
+    def create_template(self, output_path: Optional[str] = None, buyer_name: Optional[str] = None) -> str:
         """テンプレートを作成
 
         Args:
             output_path: 出力ファイルパス（省略時は設定のデフォルト値）
+            buyer_name: 担当バイヤー名（省略可）
 
         Returns:
             str: 作成したファイルのパス
@@ -201,7 +202,7 @@ class HaibunTemplateCreator:
             self._setup_rows()
 
             # 2. タイトルエリア（1～6行）
-            self._setup_header_area()
+            self._setup_header_area(buyer_name=buyer_name)
 
             # 3. ヘッダーエリア（7～8行）
             self._setup_column_headers()
@@ -291,8 +292,12 @@ class HaibunTemplateCreator:
         self.ws.row_dimensions[2].hidden = True
 
     # ----------------- タイトル/ヘッダー -----------------
-    def _setup_header_area(self) -> None:
-        """タイトルエリア（1～6行）"""
+    def _setup_header_area(self, buyer_name: Optional[str] = None) -> None:
+        """タイトルエリア（1～6行）
+
+        Args:
+            buyer_name: 担当バイヤー名（省略可）
+        """
         # タイトル（G1:Y1）
         self.ws.merge_cells('G1:Y1')
         self._set_cell(
@@ -320,8 +325,14 @@ class HaibunTemplateCreator:
         )
         self.ws.merge_cells('AB4:AD4')
 
-        # AE4:AT4結合
+        # AE4:AT4結合（担当バイヤー名を入力）
         self.ws.merge_cells('AE4:AT4')
+        if buyer_name:
+            self._set_cell(
+                'AE4', buyer_name,
+                font=Font(size=11, bold=True),
+                alignment=Alignment(horizontal='center', vertical='center')
+            )
 
         # AB4～AT4の中太線設定
         self._setup_row4_medium_border()
