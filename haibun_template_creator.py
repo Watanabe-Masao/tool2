@@ -81,6 +81,10 @@ class TemplateConfig:
     color_red: str = 'FF0000'
     color_blue: str = '0000FF'
 
+    # フォント名（日本語対応フォント）
+    # LibreOfficeのPDF変換で日本語を正しく表示するため明示的に指定
+    font_name: str = 'IPAGothic'  # または 'MS Gothic', 'Yu Gothic'
+
     # 出力ファイル名
     default_output_path: str = '配分表_テンプレート.xlsx'
 
@@ -177,23 +181,26 @@ class StyleManager:
         # 共通の中央揃え
         center_align = Alignment(horizontal='center', vertical='center')
 
+        # 日本語フォント名を取得
+        font_name = cfg.font_name
+
         styles_to_create = [
             # ヘッダー用スタイル
-            ('header_16_bold', Font(size=16, bold=True), Alignment(horizontal='distributed', vertical='distributed')),
-            ('header_20_bold', Font(size=20, bold=True), center_align),
-            ('header_11_bold', Font(size=11, bold=True), center_align),
-            ('header_10', Font(size=10), center_align),
-            ('header_9', Font(size=9), center_align),
-            ('header_8', Font(size=8), center_align),
+            ('header_16_bold', Font(name=font_name, size=16, bold=True), Alignment(horizontal='distributed', vertical='distributed')),
+            ('header_20_bold', Font(name=font_name, size=20, bold=True), center_align),
+            ('header_11_bold', Font(name=font_name, size=11, bold=True), center_align),
+            ('header_10', Font(name=font_name, size=10), center_align),
+            ('header_9', Font(name=font_name, size=9), center_align),
+            ('header_8', Font(name=font_name, size=8), center_align),
 
             # データ用スタイル
-            ('data_14_bold', Font(size=14, bold=True), center_align),
-            ('data_14_bold_right', Font(size=14, bold=True), Alignment(horizontal='right')),
-            ('data_16_bold', Font(size=16, bold=True), center_align),
-            ('data_12_bold', Font(size=12, bold=True), center_align),
-            ('data_12_blue', Font(size=12, color=cfg.color_blue), center_align),
-            ('data_14_red', Font(size=14, bold=True, color=cfg.color_red), center_align),
-            ('data_11_bold', Font(size=11, bold=True), center_align),
+            ('data_14_bold', Font(name=font_name, size=14, bold=True), center_align),
+            ('data_14_bold_right', Font(name=font_name, size=14, bold=True), Alignment(horizontal='right')),
+            ('data_16_bold', Font(name=font_name, size=16, bold=True), center_align),
+            ('data_12_bold', Font(name=font_name, size=12, bold=True), center_align),
+            ('data_12_blue', Font(name=font_name, size=12, color=cfg.color_blue), center_align),
+            ('data_14_red', Font(name=font_name, size=14, bold=True, color=cfg.color_red), center_align),
+            ('data_11_bold', Font(name=font_name, size=11, bold=True), center_align),
         ]
 
         for style_name, font, alignment in styles_to_create:
@@ -422,6 +429,8 @@ class HaibunTemplateCreator:
 
     def _setup_column_headers(self) -> None:
         """ヘッダーエリア（7～8行）"""
+        cfg = self.config
+
         # 7行目ヘッダー
         headers_row7: List[Tuple[str, str, int, bool]] = [
             ('A7', '商品コード', 10, False),
@@ -434,7 +443,7 @@ class HaibunTemplateCreator:
             ('I7', 'ｹｰｽ', 9, False),
         ]
         for addr, val, size, bold in headers_row7:
-            self._set_cell(addr, val, font=Font(size=size, bold=bold),
+            self._set_cell(addr, val, font=Font(name=cfg.font_name, size=size, bold=bold),
                            alignment=Alignment(horizontal='center', vertical='center'))
 
         # F7に通貨書式
@@ -443,7 +452,7 @@ class HaibunTemplateCreator:
         # 店舗コード
         for cell_addr, value in self.store_data.codes:
             self._set_cell(cell_addr, value,
-                           font=Font(size=10, bold=True),
+                           font=Font(name=cfg.font_name, size=10, bold=True),
                            alignment=Alignment(horizontal='center', vertical='center'))
             if isinstance(value, str) and value in ['01', '08']:
                 self.ws[cell_addr].number_format = '@'
@@ -464,13 +473,15 @@ class HaibunTemplateCreator:
 
     def _setup_row8_headers(self) -> None:
         """8行目のヘッダー設定"""
+        cfg = self.config
+
         # A-G列 一部結合
         self.ws.merge_cells('A7:A8')
         self.ws.merge_cells('B7:C8')
 
         # D7:E7 産地/規格の罫線処理のため一旦空白行として扱う
         # 8行目のみD8:E8（品名）を設定
-        self._set_cell('D8', '品 名', font=Font(size=10),
+        self._set_cell('D8', '品 名', font=Font(name=cfg.font_name, size=10),
                        alignment=Alignment(horizontal='center', vertical='center'))
         self.ws.merge_cells('D8:E8')
 
@@ -478,14 +489,14 @@ class HaibunTemplateCreator:
         self.ws.merge_cells('G7:G8')
 
         # H8, I8
-        self._set_cell('H8', '税込', font=Font(size=9),
+        self._set_cell('H8', '税込', font=Font(name=cfg.font_name, size=9),
                        alignment=Alignment(horizontal='center', vertical='center'))
-        self._set_cell('I8', '入数', font=Font(size=11, bold=True),
+        self._set_cell('I8', '入数', font=Font(name=cfg.font_name, size=11, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店舗名
         for cell_addr, name, size in self.store_data.names:
-            self._set_cell(cell_addr, name, font=Font(size=size),
+            self._set_cell(cell_addr, name, font=Font(name=cfg.font_name, size=size),
                            alignment=Alignment(horizontal='center', vertical='center'))
             if cell_addr in ['AD8', 'AE8', 'AF8']:
                 self.ws[cell_addr].number_format = '@'
@@ -550,21 +561,21 @@ class HaibunTemplateCreator:
                 cell = self.ws[f'{col}{row}']
                 cell.value = delivery_date_value
                 cell.number_format = 'm/d(aaa)'
-                cell.font = Font(size=14, bold=True)
+                cell.font = Font(name=cfg.font_name, size=14, bold=True)
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 産地（D列 data_row）- 非結合セル
         origin_value = product_data.origin if product_data else None
         cell = self.ws[f'D{data_row}']
         cell.value = origin_value
-        cell.font = Font(size=11, bold=True)
+        cell.font = Font(name=cfg.font_name, size=11, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 規格（E列 data_row）- 非結合セル
         standard_value = product_data.standard if product_data else None
         cell = self.ws[f'E{data_row}']
         cell.value = standard_value
-        cell.font = Font(size=11, bold=True, color=cfg.color_red)
+        cell.font = Font(name=cfg.font_name, size=11, bold=True, color=cfg.color_red)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 品名（D:E列、detail_row～blank_rowの全4セル）
@@ -573,7 +584,7 @@ class HaibunTemplateCreator:
             for col in ['D', 'E']:
                 cell = self.ws[f'{col}{row}']
                 cell.value = product_name_value
-                cell.font = Font(size=11, bold=True)
+                cell.font = Font(name=cfg.font_name, size=11, bold=True)
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 店着原価（G列、data_row～blank_rowの全3セル）
@@ -581,14 +592,14 @@ class HaibunTemplateCreator:
         for row in [data_row, detail_row, blank_row]:
             cell = self.ws[f'G{row}']
             cell.value = store_cost_value
-            cell.font = Font(size=16, bold=True)
+            cell.font = Font(name=cfg.font_name, size=16, bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 税抜売価（H列 data_row）- 非結合セル
         price_value = product_data.price if product_data else None
         cell = self.ws[f'H{data_row}']
         cell.value = price_value
-        cell.font = Font(size=12, bold=True)
+        cell.font = Font(name=cfg.font_name, size=12, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 入数（I列、detail_row～blank_rowの全2セル）
@@ -596,14 +607,14 @@ class HaibunTemplateCreator:
         for row in [detail_row, blank_row]:
             cell = self.ws[f'I{row}']
             cell.value = quantity_value
-            cell.font = Font(size=14, bold=True)
+            cell.font = Font(name=cfg.font_name, size=14, bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 納品数（AU列 data_row）- 非結合セル
         total_delivery_value = product_data.total_delivery if product_data else None
         cell = self.ws[f'AU{data_row}']
         cell.value = total_delivery_value
-        cell.font = Font(size=12, color=cfg.color_blue)
+        cell.font = Font(name=cfg.font_name, size=12, color=cfg.color_blue)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 帳合先（AV列、data_row～blank_rowの全3セル）
@@ -611,7 +622,7 @@ class HaibunTemplateCreator:
         for row in [data_row, detail_row, blank_row]:
             cell = self.ws[f'AV{row}']
             cell.value = delivery_dest_value
-            cell.font = Font(size=12, bold=True)
+            cell.font = Font(name=cfg.font_name, size=12, bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 店舗配分数（J～AS列、detail_row～blank_rowの全2セル×36店舗）
@@ -626,6 +637,8 @@ class HaibunTemplateCreator:
             blank_row: 空白行番号
             store_quantities: 店舗コードと配分数の辞書
         """
+        cfg = self.config
+
         store_code_to_column = {
             '01': 'J', '02': 'K', '03': 'L', '05': 'M',
             '06': 'N', '07': 'O', '08': 'P', '23': 'Q',
@@ -645,7 +658,7 @@ class HaibunTemplateCreator:
                 for row in [detail_row, blank_row]:
                     cell = self.ws[f'{column}{row}']
                     cell.value = quantity
-                    cell.font = Font(size=11, bold=True)
+                    cell.font = Font(name=cfg.font_name, size=11, bold=True)
                     cell.alignment = Alignment(horizontal='center', vertical='center')
 
     def _restore_merged_cell_values(self, data_row: int, detail_row: int, blank_row: int, product_data: Optional[ProductData] = None) -> None:
@@ -743,63 +756,63 @@ class HaibunTemplateCreator:
         cell = self.ws[f'B{data_row}']
         cell.value = delivery_date_value
         cell.number_format = 'm/d(aaa)'
-        cell.font = Font(size=14, bold=True)
+        cell.font = Font(name=cfg.font_name, size=14, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 産地（D列 data_row）- 非結合セル
         origin_value = product_data.origin if product_data else None
         cell = self.ws[f'D{data_row}']
         cell.value = origin_value
-        cell.font = Font(size=11, bold=True)
+        cell.font = Font(name=cfg.font_name, size=11, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 規格（E列 data_row）- 非結合セル
         standard_value = product_data.standard if product_data else None
         cell = self.ws[f'E{data_row}']
         cell.value = standard_value
-        cell.font = Font(size=11, bold=True, color=cfg.color_red)
+        cell.font = Font(name=cfg.font_name, size=11, bold=True, color=cfg.color_red)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 品名（D列 detail_row） - 結合セルの左上（D{detail_row}）にのみ設定
         product_name_value = product_data.product_name if product_data else None
         cell = self.ws[f'D{detail_row}']
         cell.value = product_name_value
-        cell.font = Font(size=11, bold=True)
+        cell.font = Font(name=cfg.font_name, size=11, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 店着原価（G列 data_row） - 結合セルの左上（G{data_row}）にのみ設定
         store_cost_value = product_data.store_cost if product_data else None
         cell = self.ws[f'G{data_row}']
         cell.value = store_cost_value
-        cell.font = Font(size=16, bold=True)
+        cell.font = Font(name=cfg.font_name, size=16, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 税抜売価（H列 data_row） - 非結合セル
         price_value = product_data.price if product_data else None
         cell = self.ws[f'H{data_row}']
         cell.value = price_value
-        cell.font = Font(size=12, bold=True)
+        cell.font = Font(name=cfg.font_name, size=12, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 入数（I列 detail_row） - 結合セルの左上（I{detail_row}）にのみ設定
         quantity_value = product_data.quantity if product_data else None
         cell = self.ws[f'I{detail_row}']
         cell.value = quantity_value
-        cell.font = Font(size=14, bold=True)
+        cell.font = Font(name=cfg.font_name, size=14, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 納品数（AU列 data_row） - 非結合セル
         total_delivery_value = product_data.total_delivery if product_data else None
         cell = self.ws[f'AU{data_row}']
         cell.value = total_delivery_value
-        cell.font = Font(size=12, color=cfg.color_blue)
+        cell.font = Font(name=cfg.font_name, size=12, color=cfg.color_blue)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 帳合先（AV列 data_row） - 結合セルの左上（AV{data_row}）にのみ設定
         delivery_dest_value = product_data.delivery_dest if product_data else None
         cell = self.ws[f'AV{data_row}']
         cell.value = delivery_dest_value
-        cell.font = Font(size=12, bold=True)
+        cell.font = Font(name=cfg.font_name, size=12, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # 店舗配分数（J～AS列 detail_row） - 各列の結合セルの左上にのみ設定
@@ -830,7 +843,7 @@ class HaibunTemplateCreator:
             if column and quantity:
                 cell = self.ws[f'{column}{detail_row}']
                 cell.value = quantity
-                cell.font = Font(size=11, bold=True)
+                cell.font = Font(name=cfg.font_name, size=11, bold=True)
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
     def _setup_input_fields(self, data_row: int, detail_row: int, product_data: Optional[ProductData] = None) -> None:
@@ -858,19 +871,19 @@ class HaibunTemplateCreator:
             for col in ['B', 'C']:
                 self.ws[f'{col}{row}'].number_format = 'm/d(aaa)'
                 self._set_cell(f'{col}{row}', delivery_date_value,
-                               font=Font(size=14, bold=True),
+                               font=Font(name=cfg.font_name, size=14, bold=True),
                                alignment=Alignment(horizontal='center', vertical='center'))
 
         # 産地（D列 data_row）
         origin_value = product_data.origin if product_data else None
         self._set_cell(f'D{data_row}', origin_value,
-                       font=Font(size=11, bold=True),
+                       font=Font(name=cfg.font_name, size=11, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 規格（E列 data_row）
         standard_value = product_data.standard if product_data else None
         self._set_cell(f'E{data_row}', standard_value,
-                       font=Font(size=11, bold=True, color=cfg.color_red),
+                       font=Font(name=cfg.font_name, size=11, bold=True, color=cfg.color_red),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 品名（D列 detail_row） - 結合セル全体にデータを設定（PDF変換対策）
@@ -879,31 +892,31 @@ class HaibunTemplateCreator:
         for row in [detail_row, blank_row]:
             for col in ['D', 'E']:
                 self._set_cell(f'{col}{row}', product_name_value,
-                               font=Font(size=11, bold=True),
+                               font=Font(name=cfg.font_name, size=11, bold=True),
                                alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店着原価（G列 data_row）
         store_cost_value = product_data.store_cost if product_data else None
         self._set_cell(f'G{data_row}', store_cost_value,
-                       font=Font(size=16, bold=True),
+                       font=Font(name=cfg.font_name, size=16, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 税抜売価（H列 data_row）
         price_value = product_data.price if product_data else None
         self._set_cell(f'H{data_row}', price_value,
-                       font=Font(size=12, bold=True),
+                       font=Font(name=cfg.font_name, size=12, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 入数（I列 detail_row, blank_row結合セル）
         quantity_value = product_data.quantity if product_data else None
         self._set_cell(f'I{detail_row}', quantity_value,
-                       font=Font(size=14, bold=True),
+                       font=Font(name=cfg.font_name, size=14, bold=True),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 納品数（AU列 data_row）
         total_delivery_value = product_data.total_delivery if product_data else None
         self._set_cell(f'AU{data_row}', total_delivery_value,
-                       font=Font(size=12, color=cfg.color_blue),
+                       font=Font(name=cfg.font_name, size=12, color=cfg.color_blue),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
         # 帳合先（AV列 data_row） - 結合セル全体にデータを設定（PDF変換対策）
@@ -911,7 +924,7 @@ class HaibunTemplateCreator:
         # AV列の全3行にデータを設定
         for row in [data_row, detail_row, blank_row]:
             self._set_cell(f'AV{row}', delivery_dest_value,
-                           font=Font(size=12, bold=True),
+                           font=Font(name=cfg.font_name, size=12, bold=True),
                            alignment=Alignment(horizontal='center', vertical='center'))
 
         # 店舗配分数（J～AS列 detail_row）
@@ -944,7 +957,7 @@ class HaibunTemplateCreator:
             if column and quantity:
                 self._set_cell(
                     f'{column}{detail_row}', quantity,
-                    font=Font(size=11, bold=True),
+                    font=Font(name=cfg.font_name, size=11, bold=True),
                     alignment=Alignment(horizontal='center', vertical='center')
                 )
 
@@ -961,26 +974,26 @@ class HaibunTemplateCreator:
         # 合計（AT列）
         self.ws[f'AT{data_row}'].value = f'=SUM(J{detail_row}:AS{blank_row})'
         self._set_cell(f'AT{data_row}', None,
-                       font=Font(size=14, bold=True),
+                       font=Font(name=cfg.font_name, size=14, bold=True),
                        alignment=Alignment(horizontal='right'))
 
         # 税込価格（H列）
         self.ws[f'H{detail_row}'].value = f'=H{data_row}*1.08'
         self._set_cell(f'H{detail_row}', None,
-                       font=Font(size=16, bold=True),
+                       font=Font(name=cfg.font_name, size=16, bold=True),
                        alignment=Alignment(horizontal='center'))
         self.ws[f'H{detail_row}'].number_format = r'#,##0_ ;[Red]\-#,##0\ '
 
         # 差異（AU列）
         self.ws[f'AU{detail_row}'].value = f'=AU{data_row}-AT{data_row}'
         self._set_cell(f'AU{detail_row}', None,
-                       font=Font(size=14, bold=True, color=cfg.color_red),
+                       font=Font(name=cfg.font_name, size=14, bold=True, color=cfg.color_red),
                        alignment=Alignment(horizontal='center'))
 
         # センター送信済チェック（AX列）
         self.ws[f'AX{data_row}'].value = f'=IF(ISTEXT(AW{data_row}),"ｾﾝﾀｰ送信済"," ")'
         self._set_cell(f'AX{data_row}', None,
-                       font=Font(size=16, bold=True),
+                       font=Font(name=cfg.font_name, size=16, bold=True),
                        alignment=Alignment(horizontal='center'))
 
     def _setup_cell_merges(self, data_row: int, detail_row: int, blank_row: int) -> None:
