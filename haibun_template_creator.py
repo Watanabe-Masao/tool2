@@ -21,6 +21,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook import Workbook
 from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.page import PageMargins
 
 
 @dataclass
@@ -213,6 +214,9 @@ class HaibunTemplateCreator:
 
             # 6. 名前定義
             self._setup_named_ranges()
+
+            # 7. 印刷設定
+            self._setup_print_settings()
 
             # ファイル保存
             self.wb.save(output_path)
@@ -818,6 +822,29 @@ class HaibunTemplateCreator:
             cell.alignment = alignment
         if border:
             cell.border = border
+
+    # ----------------- 印刷設定 -----------------
+    def _setup_print_settings(self) -> None:
+        """印刷設定（A4横、全列を1ページに収める）"""
+        # ページ設定
+        self.ws.page_setup.orientation = self.ws.ORIENTATION_LANDSCAPE  # 横向き
+        self.ws.page_setup.paperSize = self.ws.PAPERSIZE_A4  # A4サイズ
+        self.ws.page_setup.fitToWidth = 1  # 幅を1ページに収める
+        self.ws.page_setup.fitToHeight = False  # 高さは自動
+
+        # 余白設定（単位：インチ）
+        self.ws.page_margins = PageMargins(
+            left=0.5,    # 左余白
+            right=0.5,   # 右余白
+            top=0.75,    # 上余白
+            bottom=0.75, # 下余白
+            header=0.3,  # ヘッダー余白
+            footer=0.3   # フッター余白
+        )
+
+        # 印刷品質とその他の設定
+        self.ws.print_options.horizontalCentered = True  # 水平方向に中央配置
+        self.ws.print_options.verticalCentered = False   # 垂直方向は上詰め
 
 
 def main() -> int:
