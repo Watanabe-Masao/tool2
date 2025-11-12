@@ -34,7 +34,7 @@ from weasyprint import HTML
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.2"
+APP_VERSION = "1.1.3"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -187,10 +187,13 @@ def excel_to_html(excel_path: Path) -> str:
 
             # 背景色
             if cell.fill and cell.fill.start_color and cell.fill.start_color.rgb:
-                rgb = cell.fill.start_color.rgb
-                if rgb and rgb != '00000000' and len(rgb) == 8:
-                    color = f'#{rgb[2:]}'  # ARGBからRGBに変換
-                    styles.append(f'background-color: {color}')
+                try:
+                    rgb = str(cell.fill.start_color.rgb)  # 文字列に変換
+                    if rgb and rgb != '00000000' and len(rgb) == 8:
+                        color = f'#{rgb[2:]}'  # ARGBからRGBに変換
+                        styles.append(f'background-color: {color}')
+                except (TypeError, AttributeError):
+                    pass  # 色の取得に失敗した場合は無視
 
             # フォント設定
             if cell.font:
@@ -199,10 +202,13 @@ def excel_to_html(excel_path: Path) -> str:
                 if cell.font.bold:
                     styles.append('font-weight: bold')
                 if cell.font.color and cell.font.color.rgb:
-                    rgb = cell.font.color.rgb
-                    if rgb and len(rgb) == 8:
-                        color = f'#{rgb[2:]}'
-                        styles.append(f'color: {color}')
+                    try:
+                        rgb = str(cell.font.color.rgb)  # 文字列に変換
+                        if rgb and len(rgb) == 8:
+                            color = f'#{rgb[2:]}'
+                            styles.append(f'color: {color}')
+                    except (TypeError, AttributeError):
+                        pass  # 色の取得に失敗した場合は無視
 
             # テキスト配置
             if cell.alignment:
