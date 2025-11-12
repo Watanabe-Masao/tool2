@@ -701,8 +701,9 @@ class HaibunTemplateCreator:
                     cell8.border = Border(bottom=BorderFactory.THIN, right=BorderFactory.THIN)
             elif col_idx == 4:  # D8（D8:E8結合の開始セル）
                 cell8.border = BorderFactory.create('thin', 'thin', 'thin', None)
-            elif col_idx == 5:  # E8（D8:E8結合の終了セル、スキップ）
-                pass  # 結合されているためスキップ
+            elif col_idx == 5:  # E8（D8:E8結合の終了セル）
+                # 結合セルの終端なので上下右の罫線を設定
+                cell8.border = BorderFactory.create('thin', 'thin', None, 'thin')
             elif col_idx in [8, 9]:  # H8, I8
                 cell8.border = BorderFactory.create(None, 'thin', 'thin', 'thin')
             elif 10 <= col_idx <= 45:
