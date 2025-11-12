@@ -152,11 +152,8 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
         with open(temp_path, "rb") as f:
             file_content = f.read()
 
-        # ファイル削除（ダウンロード後）
-        try:
-            temp_path.unlink()
-        except Exception as e:
-            print(f"一時ファイルの削除に失敗: {e}")
+        # 注意: ファイルは削除せず、複数回ダウンロード可能にする
+        # クリーンアップはshutdownイベントで実行される
 
         # ストリーミングレスポンス
         return StreamingResponse(
