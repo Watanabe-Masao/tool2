@@ -199,6 +199,191 @@
         .summary-value {
             color: #666;
         }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            color: #333;
+            background: #f5f5f5;
+        }
+        .tab-btn.active {
+            color: #2196F3;
+            border-bottom-color: #2196F3;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Calendar Styles */
+        .calendar-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .calendar-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+        }
+        .calendar-nav-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .calendar-nav-btn:hover {
+            background: #1976D2;
+        }
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .calendar-weekday {
+            text-align: center;
+            font-weight: 600;
+            color: #666;
+            padding: 10px;
+        }
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-day {
+            position: relative;
+            aspect-ratio: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-day.empty {
+            background: #fafafa;
+            cursor: default;
+            border-color: transparent;
+        }
+        .calendar-day:not(.empty):hover {
+            background: #e3f2fd;
+            border-color: #2196F3;
+        }
+        .calendar-day.today {
+            background: #fff3e0;
+            border-color: #ff9800;
+            font-weight: 600;
+        }
+        .calendar-day.selected {
+            background: #2196F3;
+            color: white;
+            border-color: #1976D2;
+        }
+        .calendar-day.has-orders {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+        .calendar-day.has-orders.selected {
+            background: #1976D2;
+        }
+        .day-number {
+            font-size: 16px;
+        }
+        .order-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: #f44336;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .date-details {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .order-card {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #2196F3;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .order-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .order-card.selected {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        .order-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .order-supplier {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .order-product-count {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .order-products {
+            font-size: 0.9em;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -220,10 +405,18 @@
         </header>
 
         <main>
-            <!-- 設定フォーム -->
-            <section class="form-section">
-                <h2>配分データ入力</h2>
-                <form id="templateForm">
+            <!-- タブナビゲーション -->
+            <div class="tab-navigation">
+                <button class="tab-btn active" data-tab="new-form">新規作成</button>
+                <button class="tab-btn" data-tab="calendar-view">カレンダー表示</button>
+            </div>
+
+            <!-- 新規作成タブ -->
+            <div class="tab-content active" id="new-form">
+                <!-- 設定フォーム -->
+                <section class="form-section">
+                    <h2>配分データ入力</h2>
+                    <form id="templateForm">
                     <!-- ステップ1: 店着日 -->
                     <div class="form-group">
                         <label for="deliveryDate">
@@ -327,6 +520,30 @@
                     </div>
                 </form>
             </section>
+            </div>
+            <!-- End of new-form tab -->
+
+            <!-- カレンダー表示タブ -->
+            <div class="tab-content" id="calendar-view">
+                <section class="calendar-section">
+                    <h2>配分データカレンダー</h2>
+                    <p class="subtitle">過去の配分データを確認し、既存ファイルに商品を追加できます</p>
+
+                    <!-- カレンダー -->
+                    <div id="calendarContainer" class="calendar-container"></div>
+
+                    <!-- 選択した日付の詳細 -->
+                    <div id="dateDetails" class="date-details" style="display: none;">
+                        <h3 id="selectedDateTitle"></h3>
+                        <div id="ordersList" class="orders-list"></div>
+                        <button class="btn-primary" id="addToExistingBtn" style="display: none;">
+                            <span class="btn-icon">➕</span>
+                            選択したファイルに商品を追加
+                        </button>
+                    </div>
+                </section>
+            </div>
+            <!-- End of calendar-view tab -->
 
             <!-- 生成結果表示 -->
             <section class="result-section" id="resultSection" style="display: none;">
@@ -386,6 +603,103 @@
     <script type="module">
         import authService from '/static/js/auth-service.js';
         import { init as initWorkflow } from '/static/js/app-workflow.js';
+        import CalendarView from '/static/js/calendar-view.js';
+
+        let calendarView = null;
+        let selectedOrder = null;
+
+        // Tab switching
+        function setupTabSwitching() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.getAttribute('data-tab');
+
+                    // Update active states
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    btn.classList.add('active');
+                    document.getElementById(tabId)?.classList.add('active');
+
+                    // Initialize calendar when switching to calendar view
+                    if (tabId === 'calendar-view' && !calendarView) {
+                        initCalendarView();
+                    }
+                });
+            });
+        }
+
+        // Initialize calendar view
+        async function initCalendarView() {
+            if (calendarView) return;
+
+            calendarView = new CalendarView();
+            await calendarView.init('calendarContainer', handleDateSelected);
+        }
+
+        // Handle date selection in calendar
+        function handleDateSelected(dateStr, orders) {
+            const dateDetails = document.getElementById('dateDetails');
+            const selectedDateTitle = document.getElementById('selectedDateTitle');
+            const ordersList = document.getElementById('ordersList');
+            const addToExistingBtn = document.getElementById('addToExistingBtn');
+
+            selectedDateTitle.textContent = `${dateStr} の配分データ`;
+
+            if (orders.length === 0) {
+                ordersList.innerHTML = '<p style="color: #999;">この日付には配分データがありません</p>';
+                addToExistingBtn.style.display = 'none';
+                dateDetails.style.display = 'block';
+                return;
+            }
+
+            // Render orders list
+            ordersList.innerHTML = orders.map((order, index) => `
+                <div class="order-card" data-order-id="${order.id}" onclick="selectOrder('${order.id}', ${index})">
+                    <div class="order-card-header">
+                        <span class="order-supplier">${order.supplier || '帳合先未設定'}</span>
+                        <span class="order-product-count">${order.items?.length || 0}商品</span>
+                    </div>
+                    <div class="order-products">
+                        ${(order.items || []).slice(0, 3).map(item => item.name).join(', ')}
+                        ${order.items?.length > 3 ? '...' : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            dateDetails.style.display = 'block';
+            addToExistingBtn.style.display = 'none';
+        }
+
+        // Select an order to add products to
+        window.selectOrder = function(orderId, index) {
+            selectedOrder = orderId;
+
+            // Update UI
+            document.querySelectorAll('.order-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-order-id="${orderId}"]`)?.classList.add('selected');
+
+            // Show add button
+            const addToExistingBtn = document.getElementById('addToExistingBtn');
+            addToExistingBtn.style.display = 'inline-block';
+        };
+
+        // Add products to existing order
+        document.getElementById('addToExistingBtn')?.addEventListener('click', () => {
+            if (!selectedOrder) return;
+
+            // Switch to new form tab and pre-fill data
+            const newFormTab = document.querySelector('[data-tab="new-form"]');
+            newFormTab?.click();
+
+            // TODO: Pre-fill form with existing order data
+            alert('既存ファイルへの商品追加機能は実装中です');
+        });
 
         // Check authentication state on page load
         authService.onAuthStateChange((user) => {
@@ -410,6 +724,9 @@
 
                 // Initialize workflow
                 initWorkflow(user);
+
+                // Setup tab switching
+                setupTabSwitching();
 
                 console.log('User authenticated:', user.email);
             } else {
