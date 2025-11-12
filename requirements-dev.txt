@@ -1,0 +1,16 @@
+# 開発環境用の依存パッケージ
+# 本番環境のパッケージを含む
+-r requirements.txt
+
+# テストツール
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+
+# コード品質チェック
+flake8==6.1.0
+black==23.12.1
+mypy==1.7.1
+
+# その他の開発ツール
+ipython==8.18.1
