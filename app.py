@@ -34,7 +34,7 @@ import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.0.2"
+APP_VERSION = "2.0.3"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(

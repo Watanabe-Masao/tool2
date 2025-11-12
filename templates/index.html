@@ -601,9 +601,9 @@
 
     <!-- Authentication State Management -->
     <script type="module">
-        import authService from '/static/js/auth-service.js';
-        import { init as initWorkflow } from '/static/js/app-workflow.js';
-        import CalendarView from '/static/js/calendar-view.js';
+        import authService from '/static/js/auth-service.js?v={{ version }}';
+        import { init as initWorkflow } from '/static/js/app-workflow.js?v={{ version }}';
+        import CalendarView from '/static/js/calendar-view.js?v={{ version }}';
 
         let calendarView = null;
         let selectedOrder = null;
