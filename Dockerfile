@@ -21,11 +21,12 @@ COPY . .
 # 一時ファイル用ディレクトリを作成
 RUN mkdir -p temp_files
 
-# ポート8000を公開
+# ポート8000を公開（デフォルト）
 EXPOSE 8000
 
 # 環境変数の設定
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
-# アプリケーションの起動
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# アプリケーションの起動（環境変数PORTを使用）
+CMD uvicorn app:app --host 0.0.0.0 --port $PORT

@@ -177,11 +177,20 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
 
 
 @app.get("/api/health")
+@app.head("/api/health")
 async def health_check():
     """
-    ヘルスチェックエンドポイント
+    ヘルスチェックエンドポイント（GET/HEADメソッド対応）
     """
     return {"status": "ok", "message": "API is running"}
+
+
+@app.head("/")
+async def root_head():
+    """
+    ルートパスのHEADリクエスト対応（Renderヘルスチェック用）
+    """
+    return Response(status_code=200)
 
 
 @app.on_event("startup")
