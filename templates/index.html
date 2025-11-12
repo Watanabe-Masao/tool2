@@ -6,6 +6,7 @@
     <title>配分表テンプレート作成ツール</title>
     <link rel="stylesheet" href="/static/style.css?v={{ version }}">
     <style>
+        /* User Info Styles */
         .user-info {
             display: flex;
             align-items: center;
@@ -40,6 +41,8 @@
         .logout-btn:hover {
             background: #c82333;
         }
+
+        /* Loading Screen */
         #loading-screen {
             position: fixed;
             top: 0;
@@ -51,6 +54,150 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+        }
+
+        /* Autocomplete Styles */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .autocomplete-item:hover {
+            background: #f8f9fa;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Product Item Styles */
+        .product-item {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fafafa;
+            position: relative;
+        }
+        .product-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .product-item-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .remove-product-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .remove-product-btn:hover {
+            background: #c82333;
+        }
+        .add-product-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .add-product-btn:hover {
+            background: #218838;
+        }
+
+        /* Store Allocation Grid */
+        .store-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .store-input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .store-input-group label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        .store-input-group input {
+            padding: 6px;
+            font-size: 14px;
+        }
+
+        /* Validation Error */
+        .validation-error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #f5c6cb;
+        }
+        .validation-success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* Summary Box */
+        .summary-box {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 4px solid #2196F3;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .summary-item:last-child {
+            margin-bottom: 0;
+        }
+        .summary-label {
+            font-weight: 600;
+            color: #333;
+        }
+        .summary-value {
+            color: #666;
         }
     </style>
 </head>
@@ -75,25 +222,51 @@
         <main>
             <!-- 設定フォーム -->
             <section class="form-section">
-                <h2>テンプレート設定</h2>
+                <h2>配分データ入力</h2>
                 <form id="templateForm">
+                    <!-- ステップ1: 店着日 -->
                     <div class="form-group">
-                        <label for="numBlocks">
-                            商品ブロック数
-                            <span class="help-text">1商品 = 3行（データ行・詳細行・空白行）</span>
+                        <label for="deliveryDate">
+                            ステップ1: 店着日 <span style="color: red;">*</span>
+                            <span class="help-text">商品が店舗に届く日付</span>
                         </label>
                         <input
-                            type="number"
-                            id="numBlocks"
-                            name="num_blocks"
-                            min="1"
-                            max="100"
-                            value="1"
+                            type="date"
+                            id="deliveryDate"
+                            name="delivery_date"
                             required
                         >
-                        <small>1〜100の範囲で指定してください</small>
                     </div>
 
+                    <!-- ステップ2: 帳合先 -->
+                    <div class="form-group">
+                        <label for="supplier">
+                            ステップ2: 帳合先 <span style="color: red;">*</span>
+                            <span class="help-text">仕入れ先の名前</span>
+                        </label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                type="text"
+                                id="supplier"
+                                name="supplier"
+                                placeholder="例: ○○商事"
+                                required
+                                autocomplete="off"
+                            >
+                            <div class="autocomplete-dropdown" id="supplierDropdown"></div>
+                        </div>
+                    </div>
+
+                    <!-- ステップ3〜5: 商品情報 -->
+                    <div class="products-section">
+                        <h3>ステップ3: 商品情報</h3>
+                        <div id="productsContainer"></div>
+                        <button type="button" class="add-product-btn" id="addProductBtn">
+                            ➕ 商品を追加
+                        </button>
+                    </div>
+
+                    <!-- 出力ファイル名 -->
                     <div class="form-group">
                         <label for="outputFilename">
                             出力ファイル名（オプション）
@@ -107,30 +280,12 @@
                         >
                     </div>
 
-                    <div class="form-group">
-                        <label for="buyerName">
-                            担当バイヤー
-                            <span class="help-text">配分表に表示される担当者名</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="buyerName"
-                            name="buyer_name"
-                            placeholder="例: 山田太郎"
-                            maxlength="20"
-                        >
-                        <small>最大20文字まで入力できます</small>
-                    </div>
-
-                    <!-- 商品情報セクション -->
-                    <div class="products-section">
-                        <h3>商品情報</h3>
-                        <div id="productsContainer"></div>
-                    </div>
+                    <!-- 担当バイヤー（非表示・自動設定） -->
+                    <input type="hidden" id="buyerName" name="buyer_name">
 
                     <!-- 詳細設定（アコーディオン） -->
                     <details class="advanced-settings">
-                        <summary>詳細設定（上級者向け）</summary>
+                        <summary>詳細設定（列幅調整）</summary>
                         <div class="advanced-content">
                             <div class="form-group">
                                 <label for="pixel100">
@@ -173,23 +328,6 @@
                 </form>
             </section>
 
-            <!-- プレビュー表示 -->
-            <section class="preview-section" id="previewSection" style="display: none;">
-                <h2>入力内容プレビュー</h2>
-                <div class="preview-content">
-                    <!-- 基本情報 -->
-                    <div class="preview-basic-info">
-                        <h3>基本情報</h3>
-                        <table class="preview-table">
-                            <tbody id="previewBasicInfo"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- 商品情報 -->
-                    <div class="preview-products" id="previewProducts"></div>
-                </div>
-            </section>
-
             <!-- 生成結果表示 -->
             <section class="result-section" id="resultSection" style="display: none;">
                 <h2>生成結果</h2>
@@ -230,7 +368,8 @@
                     <li>36店舗への商品配分を管理できます</li>
                     <li>自動計算機能付き（合計、差異、税込価格）</li>
                     <li>名前付き範囲で簡単参照</li>
-                    <li>商品ブロック数を自由に設定可能</li>
+                    <li>商品は動的に追加・削除可能</li>
+                    <li>リアルタイムバリデーションで入力ミスを防止</li>
                 </ul>
             </div>
 
@@ -246,6 +385,7 @@
     <!-- Authentication State Management -->
     <script type="module">
         import authService from '/static/js/auth-service.js';
+        import { init as initWorkflow } from '/static/js/app-workflow.js';
 
         // Check authentication state on page load
         authService.onAuthStateChange((user) => {
@@ -253,6 +393,7 @@
             const mainContent = document.getElementById('main-content');
             const userInfo = document.getElementById('user-info');
             const userName = document.getElementById('user-name');
+            const buyerNameInput = document.getElementById('buyerName');
 
             // Hide loading screen
             loadingScreen.style.display = 'none';
@@ -261,7 +402,14 @@
                 // User is logged in - show main content
                 mainContent.style.display = 'block';
                 userInfo.style.display = 'flex';
-                userName.textContent = user.profile?.displayName || user.email;
+                const displayName = user.profile?.displayName || user.email;
+                userName.textContent = displayName;
+
+                // Auto-fill buyer name from user profile
+                buyerNameInput.value = displayName;
+
+                // Initialize workflow
+                initWorkflow(user);
 
                 console.log('User authenticated:', user.email);
             } else {
