@@ -17,7 +17,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi import Request
 from pydantic import BaseModel, Field
 from typing import Dict, List
@@ -28,6 +28,9 @@ from haibun_template_creator import (
     StoreData,
     ProductData
 )
+
+import openpyxl
+from weasyprint import HTML
 
 
 # FastAPIアプリケーション初期化
@@ -44,6 +47,113 @@ templates = Jinja2Templates(directory="templates")
 # 一時ファイル保存ディレクトリ
 TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
+
+
+def excel_to_html(excel_path: Path) -> str:
+    """
+    ExcelファイルをHTMLに変換
+
+    Args:
+        excel_path: Excelファイルのパス
+
+    Returns:
+        str: HTML文字列
+    """
+    wb = openpyxl.load_workbook(excel_path)
+    ws = wb.active
+
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            body {
+                font-family: 'Meiryo', 'MS PGothic', sans-serif;
+                font-size: 9pt;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                page-break-inside: avoid;
+            }
+            td, th {
+                border: 1px solid #000;
+                padding: 2px 4px;
+                text-align: center;
+                font-size: 8pt;
+                white-space: nowrap;
+            }
+            .merged {
+                background-color: #f0f0f0;
+            }
+        </style>
+    </head>
+    <body>
+        <table>
+    """
+
+    # 結合セルの情報を取得
+    merged_ranges = list(ws.merged_cells.ranges)
+
+    # 各行を処理
+    for row_idx, row in enumerate(ws.iter_rows(), start=1):
+        html += "<tr>"
+        for col_idx, cell in enumerate(row, start=1):
+            # この結合セルがスキップされるべきかチェック
+            skip = False
+            for merged_range in merged_ranges:
+                # 結合セル範囲内かどうかをチェック
+                if (merged_range.min_row <= row_idx <= merged_range.max_row and
+                    merged_range.min_col <= col_idx <= merged_range.max_col):
+                    # 開始セルではない場合はスキップ
+                    if not (row_idx == merged_range.min_row and col_idx == merged_range.min_col):
+                        skip = True
+                        break
+
+            if skip:
+                continue
+
+            # 結合セルの場合、rowspanとcolspanを設定
+            rowspan = 1
+            colspan = 1
+            for merged_range in merged_ranges:
+                if (row_idx == merged_range.min_row and col_idx == merged_range.min_col):
+                    rowspan = merged_range.max_row - merged_range.min_row + 1
+                    colspan = merged_range.max_col - merged_range.min_col + 1
+                    break
+
+            # セルの値を取得
+            value = cell.value if cell.value is not None else ""
+
+            # セルの幅を取得（概算）
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            width = ws.column_dimensions[col_letter].width
+            if width:
+                width_px = int(width * 7)  # Excelの列幅をピクセルに変換（概算）
+            else:
+                width_px = 64  # デフォルト幅
+
+            rowspan_attr = f' rowspan="{rowspan}"' if rowspan > 1 else ''
+            colspan_attr = f' colspan="{colspan}"' if colspan > 1 else ''
+            style = f'width: {width_px}px;'
+
+            html += f'<td{rowspan_attr}{colspan_attr} style="{style}">{value}</td>'
+
+        html += "</tr>\n"
+
+    html += """
+        </table>
+    </body>
+    </html>
+    """
+
+    wb.close()
+    return html
 
 
 # リクエストモデル
@@ -221,6 +331,81 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
         )
 
 
+@app.post("/api/preview")
+async def preview_template(req: TemplateRequest):
+    """
+    テンプレートのPDFプレビューを生成
+
+    Args:
+        req: テンプレート生成リクエスト
+
+    Returns:
+        FileResponse: PDFファイル
+    """
+    try:
+        # 一時ファイルパス
+        file_id = str(uuid.uuid4())
+        temp_excel_path = TEMP_DIR / f"{file_id}.xlsx"
+        temp_pdf_path = TEMP_DIR / f"{file_id}.pdf"
+
+        # 設定作成
+        config = TemplateConfig(
+            num_blocks=req.num_blocks,
+            pixel_100=req.pixel_100,
+            pixel_50=req.pixel_50,
+            default_output_path=str(temp_excel_path)
+        )
+
+        # 商品データをProductDataオブジェクトに変換
+        products = []
+        for product_req in req.products:
+            product_data = ProductData(
+                delivery_date=product_req.delivery_date,
+                origin=product_req.origin,
+                standard=product_req.standard,
+                product_name=product_req.product_name,
+                store_cost=product_req.store_cost,
+                price=product_req.price,
+                quantity=product_req.quantity,
+                total_delivery=product_req.total_delivery,
+                delivery_dest=product_req.delivery_dest,
+                store_quantities=product_req.store_quantities
+            )
+            products.append(product_data)
+
+        # テンプレート生成
+        creator = HaibunTemplateCreator(config=config)
+        creator.create_template(
+            buyer_name=req.buyer_name,
+            products=products
+        )
+
+        # ExcelをHTMLに変換してからPDFに変換（weasyprint使用）
+        html_content = excel_to_html(temp_excel_path)
+
+        # HTMLをPDFに変換
+        HTML(string=html_content).write_pdf(str(temp_pdf_path))
+
+        if not temp_pdf_path.exists():
+            raise Exception("PDFファイルが生成されませんでした")
+
+        # PDFを返す
+        return FileResponse(
+            path=str(temp_pdf_path),
+            media_type="application/pdf",
+            filename="preview.pdf",
+            headers={
+                "Content-Disposition": "inline; filename=preview.pdf"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDFプレビュー生成中にエラーが発生しました: {str(e)}"
+        )
+
+
 @app.get("/api/health")
 @app.head("/api/health")
 async def health_check():
@@ -258,6 +443,8 @@ async def shutdown_event():
     print("一時ファイルをクリーンアップ中...")
     try:
         for file in TEMP_DIR.glob("*.xlsx"):
+            file.unlink()
+        for file in TEMP_DIR.glob("*.pdf"):
             file.unlink()
         print("クリーンアップ完了")
     except Exception as e:

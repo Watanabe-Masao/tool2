@@ -395,18 +395,53 @@ function hideResults() {
 // =====================================
 // プレビューハンドラ
 // =====================================
-function handlePreview() {
-    // フォームデータを取得
-    const formData = getFormData();
+async function handlePreview() {
+    try {
+        // ボタンを無効化
+        previewBtn.disabled = true;
+        previewBtn.textContent = 'PDF生成中...';
 
-    // プレビューを生成
-    generatePreview(formData);
+        // フォームデータを取得
+        const formData = getFormData();
 
-    // プレビューセクションを表示
-    previewSection.style.display = 'block';
+        // PDFプレビューAPIを呼び出し
+        const response = await fetch('/api/preview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
 
-    // スムーズスクロール
-    previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'PDFプレビューの生成に失敗しました');
+        }
+
+        // PDFをBlobとして取得
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        // 新しいタブでPDFを開く
+        window.open(url, '_blank');
+
+        // 少し遅延してからURLを解放（新しいタブで開いた後）
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+
+        // ボタンを元に戻す
+        previewBtn.innerHTML = '<span class="btn-icon">📄</span> PDFプレビュー';
+        previewBtn.disabled = false;
+
+    } catch (error) {
+        console.error('プレビューエラー:', error);
+        alert(`PDFプレビューの生成中にエラーが発生しました: ${error.message}`);
+
+        // ボタンを元に戻す
+        previewBtn.innerHTML = '<span class="btn-icon">📄</span> PDFプレビュー';
+        previewBtn.disabled = false;
+    }
 }
 
 function generatePreview(data) {
