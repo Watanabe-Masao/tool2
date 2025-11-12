@@ -34,7 +34,7 @@ import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.1.4"
+APP_VERSION = "2.2.0"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -88,27 +88,50 @@ def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
         Exception: 変換失敗時
     """
     try:
-        # LibreOfficeを使ってExcelをPDFに変換
-        # --headless: GUI不要のバックグラウンド実行
-        # --convert-to pdf: 最もシンプルで安定したPDF変換
-        # --outdir: 出力ディレクトリを指定
-        #
-        # 注意: calc_pdf_Exportや--infilterは環境によって動作が不安定なため使用しない
-        result = subprocess.run(
+        # Excel結合セルのPDF変換対策：Excel → ODS → PDF の2段階変換
+        # 理由：LibreOfficeがExcelを直接PDFに変換すると、結合セルの値が失われることがある
+        #       ODSを経由することで、LibreOffice自身が結合セルを正しく解釈する
+
+        # Step 1: Excel → ODS
+        ods_path = excel_path.parent / f"{excel_path.stem}.ods"
+        result_ods = subprocess.run(
+            [
+                'libreoffice',
+                '--headless',
+                '--convert-to', 'ods',
+                '--outdir', str(excel_path.parent),
+                str(excel_path)
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result_ods.returncode != 0:
+            error_msg = f"Excel to ODS conversion failed:\nstdout: {result_ods.stdout}\nstderr: {result_ods.stderr}"
+            print(f"[ERROR] {error_msg}")
+            raise Exception(error_msg)
+
+        # Step 2: ODS → PDF
+        result_pdf = subprocess.run(
             [
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', str(pdf_path.parent),
-                str(excel_path)
+                str(ods_path)
             ],
             capture_output=True,
             text=True,
-            timeout=30  # 30秒でタイムアウト
+            timeout=30
         )
 
-        if result.returncode != 0:
-            error_msg = f"LibreOffice conversion failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        # ODS一時ファイルを削除
+        if ods_path.exists():
+            ods_path.unlink()
+
+        if result_pdf.returncode != 0:
+            error_msg = f"ODS to PDF conversion failed:\nstdout: {result_pdf.stdout}\nstderr: {result_pdf.stderr}"
             print(f"[ERROR] {error_msg}")
             raise Exception(error_msg)
 
