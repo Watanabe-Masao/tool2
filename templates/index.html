@@ -116,11 +116,34 @@
                         </div>
                     </details>
 
-                    <button type="submit" class="btn-primary" id="generateBtn">
-                        <span class="btn-icon">🚀</span>
-                        テンプレート生成
-                    </button>
+                    <div class="button-group">
+                        <button type="button" class="btn-secondary" id="previewBtn">
+                            <span class="btn-icon">👁️</span>
+                            入力内容をプレビュー
+                        </button>
+                        <button type="submit" class="btn-primary" id="generateBtn">
+                            <span class="btn-icon">🚀</span>
+                            テンプレート生成
+                        </button>
+                    </div>
                 </form>
+            </section>
+
+            <!-- プレビュー表示 -->
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <h2>入力内容プレビュー</h2>
+                <div class="preview-content">
+                    <!-- 基本情報 -->
+                    <div class="preview-basic-info">
+                        <h3>基本情報</h3>
+                        <table class="preview-table">
+                            <tbody id="previewBasicInfo"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- 商品情報 -->
+                    <div class="preview-products" id="previewProducts"></div>
+                </div>
             </section>
 
             <!-- 生成結果表示 -->

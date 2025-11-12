@@ -419,6 +419,147 @@ footer {
 }
 
 /* =====================================
+   ボタングループ
+===================================== */
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.button-group button {
+    flex: 1;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+/* =====================================
+   プレビューセクション
+===================================== */
+.preview-section {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.preview-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.preview-section h3 {
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.preview-section h4 {
+    font-size: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.preview-content {
+    margin-top: 1rem;
+}
+
+.preview-basic-info {
+    margin-bottom: 2rem;
+}
+
+.preview-product {
+    background: var(--bg-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+.preview-table th,
+.preview-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-table th {
+    background: var(--bg-color);
+    font-weight: 600;
+    width: 30%;
+    color: var(--text-color);
+}
+
+.preview-table td {
+    color: var(--text-color);
+}
+
+.preview-table tbody tr:last-child th,
+.preview-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.stores-table {
+    margin-top: 1rem;
+}
+
+.stores-table th,
+.stores-table td {
+    width: 50%;
+}
+
+.stores-table thead th {
+    background: var(--primary-color);
+    color: white;
+    border-bottom: 2px solid var(--primary-hover);
+}
+
+.stores-table tbody tr:hover {
+    background: var(--bg-color);
+}
+
+.no-data {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* =====================================
    レスポンシブ
 ===================================== */
 @media (max-width: 768px) {
@@ -433,6 +574,7 @@ footer {
     .form-section,
     .result-section,
     .error-section,
+    .preview-section,
     .info-section {
         padding: 1.5rem;
     }
@@ -446,5 +588,13 @@ footer {
     .success-message p,
     .error-message p {
         text-align: center;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .preview-table th {
+        width: 40%;
     }
 }

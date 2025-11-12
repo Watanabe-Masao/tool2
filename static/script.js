@@ -22,10 +22,12 @@ const STORES = [
 // =====================================
 const templateForm = document.getElementById('templateForm');
 const generateBtn = document.getElementById('generateBtn');
+const previewBtn = document.getElementById('previewBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const resultSection = document.getElementById('resultSection');
 const errorSection = document.getElementById('errorSection');
+const previewSection = document.getElementById('previewSection');
 const messageText = document.getElementById('messageText');
 const errorText = document.getElementById('errorText');
 const productsContainer = document.getElementById('productsContainer');
@@ -36,6 +38,9 @@ const productsContainer = document.getElementById('productsContainer');
 document.addEventListener('DOMContentLoaded', () => {
     // フォーム送信イベント
     templateForm.addEventListener('submit', handleFormSubmit);
+
+    // プレビューボタンクリックイベント
+    previewBtn.addEventListener('click', handlePreview);
 
     // ダウンロードボタンクリックイベント
     downloadBtn.addEventListener('click', handleDownload);
@@ -366,6 +371,140 @@ function hideLoading() {
 function hideResults() {
     resultSection.style.display = 'none';
     errorSection.style.display = 'none';
+    previewSection.style.display = 'none';
+}
+
+// =====================================
+// プレビューハンドラ
+// =====================================
+function handlePreview() {
+    // フォームデータを取得
+    const formData = getFormData();
+
+    // プレビューを生成
+    generatePreview(formData);
+
+    // プレビューセクションを表示
+    previewSection.style.display = 'block';
+
+    // スムーズスクロール
+    previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function generatePreview(data) {
+    // 基本情報のプレビュー
+    const basicInfoHtml = `
+        <tr>
+            <th>商品ブロック数</th>
+            <td>${data.num_blocks}</td>
+        </tr>
+        ${data.buyer_name ? `<tr><th>担当バイヤー</th><td>${escapeHtml(data.buyer_name)}</td></tr>` : ''}
+        ${data.period ? `<tr><th>期間</th><td>${escapeHtml(data.period)}</td></tr>` : ''}
+        ${data.output_filename ? `<tr><th>ファイル名</th><td>${escapeHtml(data.output_filename)}</td></tr>` : ''}
+    `;
+    document.getElementById('previewBasicInfo').innerHTML = basicInfoHtml;
+
+    // 商品情報のプレビュー
+    const previewProducts = document.getElementById('previewProducts');
+    previewProducts.innerHTML = '';
+
+    data.products.forEach((product, index) => {
+        const productDiv = document.createElement('div');
+        productDiv.className = 'preview-product';
+
+        const hasData = product.delivery_date || product.origin || product.standard ||
+                       product.product_name || product.store_cost || product.price ||
+                       product.quantity || product.total_delivery || product.delivery_dest ||
+                       Object.keys(product.store_quantities).length > 0;
+
+        if (!hasData) {
+            productDiv.innerHTML = `
+                <h3>商品 ${index + 1}</h3>
+                <p class="no-data">入力データなし</p>
+            `;
+        } else {
+            // 商品情報テーブル
+            let productInfoHtml = `<h3>商品 ${index + 1}</h3><table class="preview-table"><tbody>`;
+
+            if (product.delivery_date) {
+                productInfoHtml += `<tr><th>納品日</th><td>${escapeHtml(product.delivery_date)}</td></tr>`;
+            }
+            if (product.origin) {
+                productInfoHtml += `<tr><th>産地</th><td>${escapeHtml(product.origin)}</td></tr>`;
+            }
+            if (product.standard) {
+                productInfoHtml += `<tr><th>規格</th><td>${escapeHtml(product.standard)}</td></tr>`;
+            }
+            if (product.product_name) {
+                productInfoHtml += `<tr><th>品名</th><td>${escapeHtml(product.product_name)}</td></tr>`;
+            }
+            if (product.store_cost) {
+                productInfoHtml += `<tr><th>店着原価</th><td>¥${product.store_cost.toLocaleString()}</td></tr>`;
+            }
+            if (product.price) {
+                const taxIncluded = product.price * 1.08;
+                productInfoHtml += `<tr><th>税抜売価</th><td>¥${product.price.toLocaleString()}</td></tr>`;
+                productInfoHtml += `<tr><th>税込売価</th><td>¥${taxIncluded.toLocaleString()}</td></tr>`;
+            }
+            if (product.quantity) {
+                productInfoHtml += `<tr><th>入数</th><td>${product.quantity}</td></tr>`;
+            }
+            if (product.total_delivery) {
+                productInfoHtml += `<tr><th>総納品数</th><td>${product.total_delivery}</td></tr>`;
+            }
+            if (product.delivery_dest) {
+                productInfoHtml += `<tr><th>納品先</th><td>${escapeHtml(product.delivery_dest)}</td></tr>`;
+            }
+
+            productInfoHtml += '</tbody></table>';
+
+            // 店舗配分数
+            const storeCount = Object.keys(product.store_quantities).length;
+            if (storeCount > 0) {
+                const totalQuantity = Object.values(product.store_quantities).reduce((sum, qty) => sum + qty, 0);
+                productInfoHtml += `
+                    <h4>店舗配分数（${storeCount}店舗）合計: ${totalQuantity}</h4>
+                    <table class="preview-table stores-table">
+                        <thead>
+                            <tr>
+                                <th>店舗名</th>
+                                <th>配分数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                Object.entries(product.store_quantities).forEach(([code, quantity]) => {
+                    const store = STORES.find(s => s.code === code);
+                    const storeName = store ? store.name : `店舗${code}`;
+                    productInfoHtml += `
+                        <tr>
+                            <td>${escapeHtml(storeName)}</td>
+                            <td>${quantity}</td>
+                        </tr>
+                    `;
+                });
+
+                productInfoHtml += '</tbody></table>';
+            }
+
+            productDiv.innerHTML = productInfoHtml;
+        }
+
+        previewProducts.appendChild(productDiv);
+    });
+}
+
+// HTMLエスケープ関数
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 // =====================================
