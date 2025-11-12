@@ -33,16 +33,40 @@ import openpyxl
 from weasyprint import HTML
 
 
+# アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
+APP_VERSION = "1.1.0"
+
 # FastAPIアプリケーション初期化
 app = FastAPI(
     title="配分表テンプレート作成API",
     description="Excelの配分表テンプレートを生成するWebアプリケーション",
-    version="1.0.0"
+    version=APP_VERSION
 )
 
 # 静的ファイルとテンプレートの設定
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+# キャッシュ制御ミドルウェア
+@app.middleware("http")
+async def add_cache_control_header(request: Request, call_next):
+    """
+    静的ファイルにCache-Controlヘッダーを追加
+    バージョンクエリパラメータがある場合は長期間キャッシュ
+    """
+    response = await call_next(request)
+
+    # 静的ファイルの場合
+    if request.url.path.startswith("/static/"):
+        # バージョンパラメータがある場合は1年間キャッシュ
+        if "v=" in request.url.query:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            # バージョンパラメータがない場合は短期間のみキャッシュ
+            response.headers["Cache-Control"] = "public, max-age=3600"
+
+    return response
 
 # 一時ファイル保存ディレクトリ
 TEMP_DIR = Path("temp_files")
@@ -202,7 +226,10 @@ async def root(request: Request):
     """
     ルートページ - フロントエンドUIを表示
     """
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "version": APP_VERSION
+    })
 
 
 @app.post("/api/generate", response_model=TemplateResponse)

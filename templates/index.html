@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>配分表テンプレート作成ツール</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
 </head>
 <body>
     <div class="container">
@@ -176,12 +176,12 @@
             </div>
 
             <div class="footer-text">
-                <p>&copy; 2025 配分表テンプレート作成ツール v1.0.0</p>
+                <p>&copy; 2025 配分表テンプレート作成ツール v{{ version }}</p>
                 <p>Made with ❤️ by Watanabe-Masao</p>
             </div>
         </footer>
     </div>
 
-    <script src="/static/script.js"></script>
+    <script src="/static/script.js?v={{ version }}"></script>
 </body>
 </html>
