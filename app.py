@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
@@ -155,12 +156,17 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
         # 注意: ファイルは削除せず、複数回ダウンロード可能にする
         # クリーンアップはshutdownイベントで実行される
 
+        # 日本語ファイル名のエンコード（RFC 5987対応）
+        # ASCIIフォールバック用にtemplate.xlsxを設定
+        encoded_filename = quote(filename.encode('utf-8'))
+
         # ストリーミングレスポンス
         return StreamingResponse(
             io.BytesIO(file_content),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
+                # RFC 5987形式: ASCIIフォールバック + UTF-8エンコード
+                "Content-Disposition": f"attachment; filename=\"template.xlsx\"; filename*=UTF-8''{encoded_filename}"
             }
         )
 
