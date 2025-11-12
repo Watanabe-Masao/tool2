@@ -1,18 +1,17 @@
 // Firebase Configuration
 // Import the functions you need from the SDKs you need
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js';
 
-// Firebase configuration (仮の設定 - 後で実際の値に置き換える)
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDEMO_API_KEY_REPLACE_WITH_REAL",
+  apiKey: "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc",
   authDomain: "haibun-distribution.firebaseapp.com",
   projectId: "haibun-distribution",
-  storageBucket: "haibun-distribution.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456",
-  measurementId: "G-XXXXXXXXXX"
+  storageBucket: "haibun-distribution.firebasestorage.app",
+  messagingSenderId: "742220611313",
+  appId: "1:742220611313:web:bec0f006c4c648adcbb350"
 };
 
 // Initialize Firebase

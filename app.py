@@ -180,6 +180,20 @@ async def root(request: Request):
     return response
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """
+    ログインページ
+    """
+    response = templates.TemplateResponse("login.html", {
+        "request": request
+    })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 @app.post("/api/generate", response_model=TemplateResponse)
 async def generate_template(req: TemplateRequest):
     """

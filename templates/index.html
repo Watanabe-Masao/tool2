@@ -5,10 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>配分表テンプレート作成ツール</title>
     <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+    <style>
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .user-info .user-details {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-info .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .user-info .user-role {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
+    <div id="loading-screen">
+        <div>読み込み中...</div>
+    </div>
+
+    <div class="container" style="display: none;" id="main-content">
         <header>
+            <div class="user-info" id="user-info" style="display: none;">
+                <div class="user-details">
+                    <span class="user-name" id="user-name"></span>
+                    <span class="user-role">担当バイヤー</span>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">ログアウト</button>
+            </div>
             <h1>📊 配分表テンプレート作成ツール</h1>
             <p class="subtitle">店舗への商品配分を管理するExcelテンプレートを生成します</p>
         </header>
@@ -183,5 +242,46 @@
     </div>
 
     <script src="/static/script.js?v={{ version }}"></script>
+
+    <!-- Authentication State Management -->
+    <script type="module">
+        import authService from '/static/js/auth-service.js';
+
+        // Check authentication state on page load
+        authService.onAuthStateChange((user) => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const mainContent = document.getElementById('main-content');
+            const userInfo = document.getElementById('user-info');
+            const userName = document.getElementById('user-name');
+
+            // Hide loading screen
+            loadingScreen.style.display = 'none';
+
+            if (user) {
+                // User is logged in - show main content
+                mainContent.style.display = 'block';
+                userInfo.style.display = 'flex';
+                userName.textContent = user.profile?.displayName || user.email;
+
+                console.log('User authenticated:', user.email);
+            } else {
+                // Not logged in - redirect to login page
+                console.log('No user authenticated, redirecting to login');
+                window.location.href = '/login';
+            }
+        });
+
+        // Logout handler
+        window.handleLogout = async function() {
+            if (confirm('ログアウトしますか？')) {
+                const result = await authService.logout();
+                if (result.success) {
+                    window.location.href = '/login';
+                } else {
+                    alert('ログアウトに失敗しました: ' + result.error);
+                }
+            }
+        };
+    </script>
 </body>
 </html>
