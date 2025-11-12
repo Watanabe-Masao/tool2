@@ -315,38 +315,61 @@ async function handleDownload() {
         downloadBtn.disabled = true;
         downloadBtn.textContent = 'ダウンロード中...';
 
-        // ファイルをダウンロード
-        const response = await fetch(downloadUrl);
+        // モバイル判定
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        if (!response.ok) {
-            throw new Error('ダウンロードに失敗しました');
+        if (isMobile) {
+            // モバイルの場合は直接URLに遷移
+            window.location.href = downloadUrl;
+
+            // ボタンのテキストを更新
+            setTimeout(() => {
+                downloadBtn.innerHTML = '<span class="btn-icon">✅</span> ダウンロード完了';
+                downloadBtn.style.background = '#059669';
+
+                // 3秒後に元に戻す
+                setTimeout(() => {
+                    downloadBtn.innerHTML = '<span class="btn-icon">📥</span> Excelファイルをダウンロード';
+                    downloadBtn.style.background = '';
+                    downloadBtn.disabled = false;
+                }, 3000);
+            }, 1000);
+        } else {
+            // デスクトップの場合はBlob方式
+            const response = await fetch(downloadUrl);
+
+            if (!response.ok) {
+                throw new Error('ダウンロードに失敗しました');
+            }
+
+            // Blobとして取得
+            const blob = await response.blob();
+
+            // ダウンロードリンクを作成
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = downloadFilename || '配分表_テンプレート.xlsx';
+            document.body.appendChild(a);
+            a.click();
+
+            // クリーンアップ
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+
+            // ボタンのテキストを更新
+            downloadBtn.innerHTML = '<span class="btn-icon">✅</span> ダウンロード完了';
+            downloadBtn.style.background = '#059669';
+
+            // 3秒後に元に戻す
+            setTimeout(() => {
+                downloadBtn.innerHTML = '<span class="btn-icon">📥</span> Excelファイルをダウンロード';
+                downloadBtn.style.background = '';
+                downloadBtn.disabled = false;
+            }, 3000);
         }
-
-        // Blobとして取得
-        const blob = await response.blob();
-
-        // ダウンロードリンクを作成
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = downloadFilename || '配分表_テンプレート.xlsx';
-        document.body.appendChild(a);
-        a.click();
-
-        // クリーンアップ
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        // ボタンのテキストを更新
-        downloadBtn.innerHTML = '<span class="btn-icon">✅</span> ダウンロード完了';
-        downloadBtn.style.background = '#059669';
-
-        // 3秒後に元に戻す
-        setTimeout(() => {
-            downloadBtn.innerHTML = '<span class="btn-icon">📥</span> Excelファイルをダウンロード';
-            downloadBtn.style.background = '';
-            downloadBtn.disabled = false;
-        }, 3000);
 
     } catch (error) {
         alert(`ダウンロード中にエラーが発生しました: ${error.message}`);
