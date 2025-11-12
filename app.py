@@ -34,7 +34,7 @@ import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.0.7"
+APP_VERSION = "2.0.8"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -180,7 +180,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": APP_VERSION,
-        "service": "haibun-template-creator"
+        "service": "tool2"
     }
 
 

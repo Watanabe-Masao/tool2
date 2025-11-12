@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: haibun-template-creator
+    name: tool2
     env: python
     region: oregon
     plan: free
