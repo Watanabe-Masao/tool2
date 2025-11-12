@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict, Union
 from datetime import datetime
 import openpyxl
-from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.styles import Font, Alignment, Border, Side, NamedStyle
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook import Workbook
@@ -162,6 +162,51 @@ class BorderFactory:
         )
 
 
+class StyleManager:
+    """スタイル管理クラス - 頻繁に使うスタイルを事前定義して高速化"""
+
+    @staticmethod
+    def create_named_styles(wb: Workbook, cfg: 'TemplateConfig') -> None:
+        """
+        ワークブックにNamedStyleを登録（高速化のため）
+
+        Args:
+            wb: ワークブック
+            cfg: テンプレート設定
+        """
+        # 共通の中央揃え
+        center_align = Alignment(horizontal='center', vertical='center')
+
+        styles_to_create = [
+            # ヘッダー用スタイル
+            ('header_16_bold', Font(size=16, bold=True), Alignment(horizontal='distributed', vertical='distributed')),
+            ('header_20_bold', Font(size=20, bold=True), center_align),
+            ('header_11_bold', Font(size=11, bold=True), center_align),
+            ('header_10', Font(size=10), center_align),
+            ('header_9', Font(size=9), center_align),
+            ('header_8', Font(size=8), center_align),
+
+            # データ用スタイル
+            ('data_14_bold', Font(size=14, bold=True), center_align),
+            ('data_14_bold_right', Font(size=14, bold=True), Alignment(horizontal='right')),
+            ('data_16_bold', Font(size=16, bold=True), center_align),
+            ('data_12_bold', Font(size=12, bold=True), center_align),
+            ('data_12_blue', Font(size=12, color=cfg.color_blue), center_align),
+            ('data_14_red', Font(size=14, bold=True, color=cfg.color_red), center_align),
+            ('data_11_bold', Font(size=11, bold=True), center_align),
+        ]
+
+        for style_name, font, alignment in styles_to_create:
+            # 既存のスタイルをスキップ
+            if style_name in wb.named_styles:
+                continue
+
+            style = NamedStyle(name=style_name)
+            style.font = font
+            style.alignment = alignment
+            wb.add_named_style(style)
+
+
 class HaibunTemplateCreator:
     """配分表テンプレート作成クラス
 
@@ -192,6 +237,9 @@ class HaibunTemplateCreator:
         self.wb: Workbook = openpyxl.Workbook()
         self.ws: Worksheet = self.wb.active
         self.ws.title = '配分書'
+
+        # NamedStyleを事前登録（高速化）
+        StyleManager.create_named_styles(self.wb, self.config)
 
     def create_template(self, output_path: Optional[str] = None, buyer_name: Optional[str] = None,
                        products: Optional[List[ProductData]] = None) -> str:
@@ -318,39 +366,23 @@ class HaibunTemplateCreator:
         """
         # タイトル（G1:Y1）
         self.ws.merge_cells('G1:Y1')
-        self._set_cell(
-            'G1', '商  品  連  絡  書 <高  知> <愛  媛>',
-            font=Font(size=16, bold=True),
-            alignment=Alignment(horizontal='distributed', vertical='distributed')
-        )
+        self._set_cell('G1', '商  品  連  絡  書 <高  知> <愛  媛>', style_name='header_16_bold')
 
         # B3:H4結合
         self.ws.merge_cells('B3:H4')
 
         # 配分（I3:Z4）
         self.ws.merge_cells('I3:Z4')
-        self._set_cell(
-            'I3', '配分',
-            font=Font(size=20, bold=True),
-            alignment=Alignment(horizontal='center', vertical='center')
-        )
+        self._set_cell('I3', '配分', style_name='header_20_bold')
 
         # 担当バイヤー（AB4:AD4）
-        self._set_cell(
-            'AB4', '担当バイヤー',
-            font=Font(size=8),
-            alignment=Alignment(horizontal='center', vertical='center')
-        )
+        self._set_cell('AB4', '担当バイヤー', style_name='header_8')
         self.ws.merge_cells('AB4:AD4')
 
         # AE4:AT4結合（担当バイヤー名を入力）
         self.ws.merge_cells('AE4:AT4')
         if buyer_name:
-            self._set_cell(
-                'AE4', buyer_name,
-                font=Font(size=11, bold=True),
-                alignment=Alignment(horizontal='center', vertical='center')
-            )
+            self._set_cell('AE4', buyer_name, style_name='header_11_bold')
 
         # AB4～AT4の中太線設定
         self._setup_row4_medium_border()
@@ -360,11 +392,7 @@ class HaibunTemplateCreator:
         self.ws['B5'].border = BorderFactory.create(None, 'thin', 'thin', 'thin')
 
         # 期間（H5:H6）
-        self._set_cell(
-            'H5', '期間',
-            font=Font(size=10),
-            alignment=Alignment(horizontal='center', vertical='center')
-        )
+        self._set_cell('H5', '期間', style_name='header_10')
         self.ws.merge_cells('H5:H6')
 
         # I5:Z6結合 - 細線枠
@@ -894,23 +922,32 @@ class HaibunTemplateCreator:
     def _set_cell(self, cell_addr: str, value: Optional[any] = None,
                   font: Optional[Font] = None,
                   alignment: Optional[Alignment] = None,
-                  border: Optional[Border] = None) -> None:
+                  border: Optional[Border] = None,
+                  style_name: Optional[str] = None) -> None:
         """セルに値と書式を設定
 
         Args:
             cell_addr: セルアドレス（例: 'A1'）
             value: セル値
-            font: フォント
-            alignment: 配置
+            font: フォント（style_nameより優先）
+            alignment: 配置（style_nameより優先）
             border: 罫線
+            style_name: NamedStyleの名前（高速化用）
         """
         cell = self.ws[cell_addr]
         if value is not None:
             cell.value = value
-        if font:
-            cell.font = font
-        if alignment:
-            cell.alignment = alignment
+
+        # NamedStyleを使う（高速）
+        if style_name and not font and not alignment:
+            cell.style = style_name
+        else:
+            # 従来の方法（互換性のため）
+            if font:
+                cell.font = font
+            if alignment:
+                cell.alignment = alignment
+
         if border:
             cell.border = border
 
