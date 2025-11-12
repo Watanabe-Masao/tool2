@@ -126,10 +126,11 @@ def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
 # リクエストモデル
 class ProductDataRequest(BaseModel):
     """商品データリクエスト"""
+    name: Optional[str] = Field(default=None, max_length=50, description="品名")
+    product_name: Optional[str] = Field(default=None, max_length=50, description="品名（後方互換用）")
     delivery_date: Optional[str] = Field(default=None, description="納品日（YYYY-MM-DD形式）")
     origin: Optional[str] = Field(default=None, max_length=30, description="産地")
     standard: Optional[str] = Field(default=None, max_length=20, description="規格")
-    product_name: Optional[str] = Field(default=None, max_length=50, description="品名")
     store_cost: Optional[float] = Field(default=None, description="店着原価")
     price: Optional[float] = Field(default=None, description="税抜売価")
     quantity: Optional[int] = Field(default=None, description="入数")
@@ -139,8 +140,13 @@ class ProductDataRequest(BaseModel):
 
 
 class TemplateRequest(BaseModel):
-    """テンプレート生成リクエスト"""
-    num_blocks: int = Field(default=1, ge=1, le=100, description="商品ブロック数（1-100）")
+    """テンプレート生成リクエスト（Phase 3: 5-step workflow対応）"""
+    # Step 1: 店着日（全商品共通）
+    delivery_date: Optional[str] = Field(default=None, description="店着日（YYYY-MM-DD形式）")
+    # Step 2: 帳合先（全商品共通）
+    supplier: Optional[str] = Field(default=None, max_length=50, description="帳合先名")
+    # 商品数（自動計算されるが、後方互換用に残す）
+    num_blocks: Optional[int] = Field(default=None, ge=1, le=100, description="商品ブロック数（1-100）")
     output_filename: Optional[str] = Field(
         default=None,
         description="出力ファイル名（省略時は自動生成）"
@@ -152,6 +158,7 @@ class TemplateRequest(BaseModel):
     )
     pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
     pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
+    # Step 3-5: 商品情報（動的リスト）
     products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
 
 
@@ -219,9 +226,12 @@ async def generate_template(req: TemplateRequest):
         file_id = str(uuid.uuid4())
         temp_path = TEMP_DIR / f"{file_id}.xlsx"
 
+        # 商品数を動的に取得（num_blocksが指定されていない場合）
+        num_blocks = req.num_blocks if req.num_blocks else len(req.products)
+
         # 設定作成
         config = TemplateConfig(
-            num_blocks=req.num_blocks,
+            num_blocks=num_blocks,
             pixel_100=req.pixel_100,
             pixel_50=req.pixel_50,
             default_output_path=str(temp_path)
@@ -230,16 +240,22 @@ async def generate_template(req: TemplateRequest):
         # 商品データをProductDataオブジェクトに変換
         products = []
         for product_req in req.products:
+            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
+            product_name = product_req.name or product_req.product_name
+
+            # delivery_dateの決定（商品固有 > 全体共通）
+            delivery_date = product_req.delivery_date or req.delivery_date
+
             product_data = ProductData(
-                delivery_date=product_req.delivery_date,
+                delivery_date=delivery_date,
                 origin=product_req.origin,
                 standard=product_req.standard,
-                product_name=product_req.product_name,
+                product_name=product_name,
                 store_cost=product_req.store_cost,
                 price=product_req.price,
                 quantity=product_req.quantity,
                 total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest,
+                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
                 store_quantities=product_req.store_quantities
             )
             products.append(product_data)
