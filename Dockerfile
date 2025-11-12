@@ -5,8 +5,21 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # システムパッケージの更新と必要なパッケージのインストール
+# WeasyPrintの依存関係を含む
 RUN apt-get update && apt-get install -y \
     gcc \
+    build-essential \
+    python3-dev \
+    libcairo2 \
+    libcairo2-dev \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf2.0-dev \
+    libffi-dev \
+    shared-mime-info \
+    libgobject-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 依存関係ファイルをコピー
