@@ -261,10 +261,16 @@ class HaibunTemplateCreator:
         """行高と非表示設定"""
         cfg = self.config
 
-        # 固定行の高さ
+        # 固定行の高さ（ピクセル×0.75=ポイント）
         row_heights: Dict[int, float] = {
-            1: 33.75, 2: 32.25, 3: 24.75, 4: 25.5, 5: 21.75, 6: 21.75,
-            7: 13.5, 8: 16.5
+            1: 30.0,    # 40ピクセル
+            2: 32.25,   # 非表示
+            3: 22.5,    # 30ピクセル
+            4: 22.5,    # 30ピクセル
+            5: 18.75,   # 25ピクセル
+            6: 18.75,   # 25ピクセル
+            7: 13.5,
+            8: 16.5
         }
 
         # データ行の高さを動的に生成
@@ -287,7 +293,7 @@ class HaibunTemplateCreator:
         self.ws.merge_cells('G1:Y1')
         self._set_cell(
             'G1', '商  品  連  絡  書 <高  知> <愛  媛>',
-            font=Font(size=20),
+            font=Font(size=16, bold=True),
             alignment=Alignment(horizontal='distributed', vertical='distributed')
         )
 
@@ -316,9 +322,9 @@ class HaibunTemplateCreator:
         # AB4～AT4の中太線設定
         self._setup_row4_medium_border()
 
-        # B5:G6結合 - 細線枠
+        # B5:G6結合 - 細線枠（上線なし）
         self.ws.merge_cells('B5:G6')
-        self.ws['B5'].border = BorderFactory.create('thin', 'thin', 'thin', 'thin')
+        self.ws['B5'].border = BorderFactory.create(None, 'thin', 'thin', 'thin')
 
         # 期間（H5:H6）
         self._set_cell(
@@ -328,8 +334,8 @@ class HaibunTemplateCreator:
         )
         self.ws.merge_cells('H5:H6')
 
-        # I5:AV6結合 - 細線枠
-        self.ws.merge_cells('I5:AV6')
+        # I5:Z6結合 - 細線枠
+        self.ws.merge_cells('I5:Z6')
         self.ws['I5'].border = BorderFactory.create('thin', 'thin', 'thin', 'thin')
 
     def _setup_row4_medium_border(self) -> None:
