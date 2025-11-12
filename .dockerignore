@@ -25,7 +25,9 @@ ENV/
 
 # Temporary files
 temp_files/*.xlsx
+temp_files/*.pdf
 *.xlsx
+*.pdf
 !example_*.xlsx
 
 # Environment variables
@@ -52,3 +54,12 @@ dist/
 # CI/CD
 .github/
 render.yaml
+
+# Docker
+docker-compose.yml
+Dockerfile
+
+# Testing
+.pytest_cache/
+requirements-dev.txt
+test_*.py

@@ -6,7 +6,7 @@ WORKDIR /app
 
 # システムパッケージの更新と必要なパッケージのインストール
 # WeasyPrintの依存関係を含む
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
     libpango-1.0-0 \
@@ -20,8 +20,9 @@ RUN apt-get update && apt-get install -y \
 # 依存関係ファイルをコピー
 COPY requirements.txt .
 
-# Pythonパッケージのインストール
-RUN pip install --no-cache-dir -r requirements.txt
+# Pythonパッケージのインストール（キャッシュを有効化して高速化）
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # アプリケーションファイルをコピー
 COPY . .
