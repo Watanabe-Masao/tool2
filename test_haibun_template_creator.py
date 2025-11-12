@@ -94,6 +94,12 @@ class TestHeaderStructure:
         assert ws['AU7'].value == '納品数', "AU7のヘッダーが正しくありません"
         assert ws['AU8'].value == '差異', "AU8のヘッダーが正しくありません"
 
+        # 列インデックスの厳密な確認
+        assert ws.cell(7, 8).value == '税抜', "H7 (col=8) が税抜ではありません"
+        assert ws.cell(8, 8).value == '税込', "H8 (col=8) が税込ではありません"
+        assert ws.cell(7, 9).value == 'ｹｰｽ', "I7 (col=9) がケースではありません"
+        assert ws.cell(8, 9).value == '入数', "I8 (col=9) が入数ではありません"
+
         wb.close()
 
     def test_store_headers(self, temp_output_path):
