@@ -5,16 +5,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # システムパッケージの更新と必要なパッケージのインストール
-# WeasyPrintの依存関係を含む
+# LibreOffice for Excel to PDF conversion
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    python3-dev \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libharfbuzz-subset0 \
-    libjpeg-dev \
-    libopenjp2-7-dev \
-    libffi-dev \
+    libreoffice-calc \
+    libreoffice-writer \
+    libreoffice-core \
+    fonts-takao-gothic \
+    fonts-takao-mincho \
+    fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # 依存関係ファイルをコピー

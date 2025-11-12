@@ -30,11 +30,11 @@ from haibun_template_creator import (
 )
 
 import openpyxl
-from weasyprint import HTML
+import subprocess
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.5"
+APP_VERSION = "2.0.0"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -73,224 +73,54 @@ TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
 
 
-def safe_get_rgb_color(color_obj) -> Optional[str]:
+def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
     """
-    openpyxlの色オブジェクトから安全にRGB色を取得
-
-    Args:
-        color_obj: openpyxlの色オブジェクト（Color.rgb属性）
-
-    Returns:
-        Optional[str]: HTML色コード（例: #FFFFFF）、取得できない場合はNone
-    """
-    if not color_obj:
-        return None
-
-    try:
-        # RGBオブジェクトを文字列に変換
-        rgb_str = str(color_obj)
-
-        # 有効な8桁のARGB形式かチェック
-        if rgb_str and isinstance(rgb_str, str) and len(rgb_str) == 8:
-            # 透明または黒をスキップ
-            if rgb_str in ('00000000', 'FF000000'):
-                return None
-            # ARGBからRGBに変換（最初の2桁（アルファ）を除去）
-            return f'#{rgb_str[2:]}'
-
-        return None
-    except (TypeError, AttributeError, ValueError):
-        return None
-
-
-def excel_to_html(excel_path: Path) -> str:
-    """
-    ExcelファイルをHTMLに変換（書式を保持）
+    ExcelファイルをLibreOfficeを使ってPDFに変換（完全な書式保持）
 
     Args:
         excel_path: Excelファイルのパス
+        pdf_path: 出力PDFファイルのパス
 
     Returns:
-        str: HTML文字列
+        bool: 変換成功時True
+
+    Raises:
+        Exception: 変換失敗時
     """
-    wb = openpyxl.load_workbook(excel_path)
-    ws = wb.active
+    try:
+        # LibreOfficeを使ってExcelをPDFに変換
+        # --headless: GUI不要のバックグラウンド実行
+        # --convert-to pdf: PDF形式に変換
+        # --outdir: 出力ディレクトリを指定
+        result = subprocess.run(
+            [
+                'libreoffice',
+                '--headless',
+                '--convert-to', 'pdf',
+                '--outdir', str(pdf_path.parent),
+                str(excel_path)
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30  # 30秒でタイムアウト
+        )
 
-    # 列幅情報を収集
-    col_widths = {}
-    for col_idx in range(1, ws.max_column + 1):
-        col_letter = openpyxl.utils.get_column_letter(col_idx)
-        width = ws.column_dimensions[col_letter].width
-        if width:
-            # Excel列幅 → ピクセル変換（より正確な計算）
-            col_widths[col_idx] = int(width * 7.5)
-        else:
-            col_widths[col_idx] = 64  # デフォルト幅
+        if result.returncode != 0:
+            error_msg = f"LibreOffice conversion failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+            print(f"[ERROR] {error_msg}")
+            raise Exception(error_msg)
 
-    # 行高情報を収集
-    row_heights = {}
-    for row_idx in range(1, ws.max_row + 1):
-        height = ws.row_dimensions[row_idx].height
-        if height:
-            # Excel行高 → ピクセル変換
-            row_heights[row_idx] = int(height * 1.33)
-        else:
-            row_heights[row_idx] = 20  # デフォルト高
+        # 出力ファイル名を調整（LibreOfficeは元のファイル名で出力する）
+        expected_pdf = pdf_path.parent / f"{excel_path.stem}.pdf"
+        if expected_pdf.exists() and expected_pdf != pdf_path:
+            expected_pdf.rename(pdf_path)
 
-    # テーブルの合計幅を計算
-    table_width = sum(col_widths.values())
+        return pdf_path.exists()
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            @page {{
-                size: A4 landscape;
-                margin: 10mm;
-            }}
-            body {{
-                font-family: 'Meiryo', 'MS Gothic', sans-serif;
-                margin: 0;
-                padding: 10px;
-            }}
-            table {{
-                border-collapse: collapse;
-                width: {table_width}px;
-                table-layout: fixed;
-                font-size: 9pt;
-            }}
-            td {{
-                border: 1px solid #000000;
-                padding: 2px 4px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                vertical-align: middle;
-            }}
-        </style>
-    </head>
-    <body>
-        <table>
-    """
-
-    # 列幅を定義
-    html += "<colgroup>"
-    for col_idx in range(1, ws.max_column + 1):
-        html += f'<col style="width: {col_widths[col_idx]}px;">'
-    html += "</colgroup>\n"
-
-    # 結合セルの情報を取得
-    merged_ranges = list(ws.merged_cells.ranges)
-
-    # 各行を処理
-    for row_idx in range(1, ws.max_row + 1):
-        row_height = row_heights[row_idx]
-        html += f'<tr style="height: {row_height}px;">'
-
-        for col_idx in range(1, ws.max_column + 1):
-            cell = ws.cell(row=row_idx, column=col_idx)
-
-            # この結合セルがスキップされるべきかチェック
-            skip = False
-            for merged_range in merged_ranges:
-                if (merged_range.min_row <= row_idx <= merged_range.max_row and
-                    merged_range.min_col <= col_idx <= merged_range.max_col):
-                    if not (row_idx == merged_range.min_row and col_idx == merged_range.min_col):
-                        skip = True
-                        break
-
-            if skip:
-                continue
-
-            # 結合セルの場合、rowspanとcolspanを設定
-            rowspan = 1
-            colspan = 1
-            for merged_range in merged_ranges:
-                if (row_idx == merged_range.min_row and col_idx == merged_range.min_col):
-                    rowspan = merged_range.max_row - merged_range.min_row + 1
-                    colspan = merged_range.max_col - merged_range.min_col + 1
-                    break
-
-            # セルのスタイルを取得
-            styles = []
-
-            # 背景色
-            if cell.fill and cell.fill.start_color:
-                bg_color = safe_get_rgb_color(cell.fill.start_color.rgb)
-                if bg_color:
-                    styles.append(f'background-color: {bg_color}')
-
-            # フォント設定
-            if cell.font:
-                if cell.font.size:
-                    styles.append(f'font-size: {cell.font.size}pt')
-                if cell.font.bold:
-                    styles.append('font-weight: bold')
-                if cell.font.color:
-                    font_color = safe_get_rgb_color(cell.font.color.rgb)
-                    if font_color:
-                        styles.append(f'color: {font_color}')
-
-            # テキスト配置
-            if cell.alignment:
-                if cell.alignment.horizontal:
-                    h_align = cell.alignment.horizontal
-                    if h_align == 'left':
-                        styles.append('text-align: left')
-                    elif h_align == 'center':
-                        styles.append('text-align: center')
-                    elif h_align == 'right':
-                        styles.append('text-align: right')
-                else:
-                    styles.append('text-align: center')  # デフォルト
-
-                if cell.alignment.vertical:
-                    v_align = cell.alignment.vertical
-                    if v_align == 'top':
-                        styles.append('vertical-align: top')
-                    elif v_align == 'center':
-                        styles.append('vertical-align: middle')
-                    elif v_align == 'bottom':
-                        styles.append('vertical-align: bottom')
-            else:
-                styles.append('text-align: center')  # デフォルト
-
-            # セルの値を取得（数式の場合は結果値を取得）
-            value = cell.value if cell.value is not None else ""
-
-            # 数値の場合、フォーマットを適用
-            if isinstance(value, (int, float)):
-                if cell.number_format and cell.number_format != 'General':
-                    # 簡易的なフォーマット処理
-                    if '0.00' in cell.number_format or '#,##0' in cell.number_format:
-                        value = f'{value:,.2f}' if '.' in str(value) or '.00' in cell.number_format else f'{int(value):,}'
-                    elif '%' in cell.number_format:
-                        value = f'{value * 100:.0f}%'
-                    else:
-                        value = str(value)
-                else:
-                    value = str(value)
-
-            # HTML特殊文字をエスケープ
-            value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-
-            rowspan_attr = f' rowspan="{rowspan}"' if rowspan > 1 else ''
-            colspan_attr = f' colspan="{colspan}"' if colspan > 1 else ''
-            style_attr = f' style="{"; ".join(styles)}"' if styles else ''
-
-            html += f'<td{rowspan_attr}{colspan_attr}{style_attr}>{value}</td>'
-
-        html += "</tr>\n"
-
-    html += """
-        </table>
-    </body>
-    </html>
-    """
-
-    wb.close()
-    return html
+    except subprocess.TimeoutExpired:
+        raise Exception("PDF変換がタイムアウトしました（30秒）")
+    except Exception as e:
+        raise Exception(f"PDF変換中にエラーが発生: {str(e)}")
 
 
 # リクエストモデル
@@ -529,14 +359,9 @@ async def preview_template(req: TemplateRequest):
         )
         print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
 
-        # ExcelをHTMLに変換してからPDFに変換（weasyprint使用）
-        print(f"[DEBUG] Converting Excel to HTML...")
-        html_content = excel_to_html(temp_excel_path)
-        print(f"[DEBUG] HTML content length: {len(html_content)}")
-
-        # HTMLをPDFに変換
-        print(f"[DEBUG] Converting HTML to PDF...")
-        HTML(string=html_content).write_pdf(str(temp_pdf_path))
+        # ExcelをPDFに変換（LibreOffice使用）
+        print(f"[DEBUG] Converting Excel to PDF using LibreOffice...")
+        excel_to_pdf(temp_excel_path, temp_pdf_path)
         print(f"[DEBUG] PDF created: {temp_pdf_path.exists()}")
 
         if not temp_pdf_path.exists():
