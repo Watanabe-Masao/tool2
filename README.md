@@ -115,6 +115,10 @@ tool2/
 ├── requirements.txt                # 依存パッケージ
 ├── README.md                       # このファイル
 ├── .gitignore                      # Git除外設定
+├── .dockerignore                   # Docker除外設定
+├── Dockerfile                      # Dockerイメージ定義
+├── docker-compose.yml              # Docker Compose設定
+├── render.yaml                     # Render Blueprint設定
 ├── templates/                      # HTMLテンプレート
 │   └── index.html                  # メインUI
 ├── static/                         # 静的ファイル
@@ -207,6 +211,119 @@ tool2/
 ### 店舗データのカスタマイズ
 
 `StoreData.get_default_data()`メソッドを変更することで、店舗コードや店舗名をカスタマイズできます。
+
+## クラウドデプロイ（本番環境）
+
+### Renderでのデプロイ（推奨・無料）
+
+[Render](https://render.com) を使用して無料でWebアプリをデプロイできます。
+
+#### 手順
+
+1. **Renderアカウントの作成**
+   - [render.com](https://render.com) にアクセスしてアカウント作成
+   - GitHubアカウントで連携
+
+2. **新しいWebサービスの作成**
+   - ダッシュボードから「New +」→「Web Service」を選択
+   - GitHubリポジトリを接続（`Watanabe-Masao/tool2`）
+
+3. **設定**
+   以下の項目を設定します：
+
+   - **Name**: `haibun-template-creator`（任意）
+   - **Region**: `Oregon` または `Singapore`（近い方）
+   - **Branch**: `claude/excel-distribution-template-creator-011CV3e6JaohqsZyk8DRq9nW`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+   - **Instance Type**: `Free`
+
+4. **デプロイ**
+   - 「Create Web Service」をクリック
+   - 自動的にビルドとデプロイが開始されます
+   - 5〜10分でデプロイ完了
+
+5. **アクセス**
+   - デプロイ完了後、Renderが生成したURL（例: `https://haibun-template-creator.onrender.com`）でアクセス可能
+
+#### Blueprint設定（オプション）
+
+`render.yaml`ファイルを使用すると、設定を自動化できます：
+
+```yaml
+services:
+  - type: web
+    name: haibun-template-creator
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+```
+
+Renderダッシュボードで「New +」→「Blueprint」を選択し、リポジトリを接続すると自動的にデプロイされます。
+
+#### 注意事項
+
+- **無料プランの制限**:
+  - 15分間アクセスがないとスリープ状態になります
+  - スリープ後の初回アクセスは30秒〜1分程度かかります
+  - 月750時間まで無料（継続稼働には有料プラン必要）
+
+- **本番環境の推奨事項**:
+  - 有料プラン（$7/月〜）でスリープ無効化
+  - カスタムドメインの設定
+  - 環境変数での機密情報管理
+
+### その他のデプロイオプション
+
+#### Railway
+- [Railway](https://railway.app) - 無料枠500時間/月
+- GitHubリポジトリを接続するだけで自動デプロイ
+
+#### PythonAnywhere
+- [PythonAnywhere](https://www.pythonanywhere.com) - Python特化ホスティング
+- 初心者向けで設定が簡単
+
+#### Docker
+
+Dockerを使用すると、環境に依存せずに簡単にデプロイできます。
+
+**前提条件**: Docker と Docker Compose のインストール
+
+##### 方法1: Docker Compose（推奨）
+
+```bash
+# コンテナのビルドと起動
+docker-compose up -d
+
+# ログの確認
+docker-compose logs -f
+
+# 停止
+docker-compose down
+```
+
+アクセス: `http://localhost:8000`
+
+##### 方法2: Docker CLI
+
+```bash
+# イメージのビルド
+docker build -t haibun-template-creator .
+
+# コンテナの起動
+docker run -d -p 8000:8000 --name haibun-app haibun-template-creator
+
+# ログの確認
+docker logs -f haibun-app
+
+# 停止
+docker stop haibun-app
+docker rm haibun-app
+```
 
 ## ライセンス
 

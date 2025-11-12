@@ -189,10 +189,10 @@ async def startup_event():
     """
     アプリケーション起動時の処理
     """
+    port = os.getenv("PORT", "8000")
     print("=" * 60)
     print("配分表テンプレート作成Webアプリケーションを起動しました")
-    print("URL: http://localhost:8000")
-    print("API Docs: http://localhost:8000/docs")
+    print(f"PORT: {port}")
     print("=" * 60)
 
 
@@ -212,4 +212,5 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
