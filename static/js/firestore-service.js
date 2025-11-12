@@ -41,13 +41,23 @@ class FirestoreService {
       if (!user) throw new Error('ログインが必要です');
 
       const suppliersRef = collection(db, 'suppliers');
-      const q = query(suppliersRef, where('createdBy', '==', user.uid), orderBy('updatedAt', 'desc'));
+      // インデックス不要のシンプルなクエリ
+      const q = query(suppliersRef, where('createdBy', '==', user.uid));
       const querySnapshot = await getDocs(q);
 
       const suppliers = [];
       querySnapshot.forEach((doc) => {
-        suppliers.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        suppliers.push({
+          id: doc.id,
+          ...data,
+          // Timestamp を文字列に変換してソート可能にする
+          _sortKey: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : 0
+        });
       });
+
+      // クライアント側で updatedAt でソート（降順）
+      suppliers.sort((a, b) => b._sortKey - a._sortKey);
 
       return suppliers;
     } catch (error) {
@@ -95,20 +105,26 @@ class FirestoreService {
   async getProductsBySupplier(supplierId) {
     try {
       const productsRef = collection(db, 'products');
+      // インデックス不要のシンプルなクエリ
       const q = query(
         productsRef,
-        where('supplierId', '==', supplierId),
-        orderBy('usageCount', 'desc'),
-        limit(50)
+        where('supplierId', '==', supplierId)
       );
       const querySnapshot = await getDocs(q);
 
       const products = [];
       querySnapshot.forEach((doc) => {
-        products.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        products.push({
+          id: doc.id,
+          ...data,
+          _sortKey: data.usageCount || 0
+        });
       });
 
-      return products;
+      // クライアント側でソート（降順）して上位50件を返す
+      products.sort((a, b) => b._sortKey - a._sortKey);
+      return products.slice(0, 50);
     } catch (error) {
       console.error('Get products by supplier error:', error);
       return [];
@@ -126,20 +142,17 @@ class FirestoreService {
       const productsRef = collection(db, 'products');
       let q;
 
+      // インデックス不要のシンプルなクエリ
       if (supplierId) {
         q = query(
           productsRef,
           where('supplierId', '==', supplierId),
-          where('createdBy', '==', user.uid),
-          orderBy('usageCount', 'desc'),
-          limit(10)
+          where('createdBy', '==', user.uid)
         );
       } else {
         q = query(
           productsRef,
-          where('createdBy', '==', user.uid),
-          orderBy('usageCount', 'desc'),
-          limit(10)
+          where('createdBy', '==', user.uid)
         );
       }
 
@@ -150,11 +163,17 @@ class FirestoreService {
         const data = doc.data();
         // クライアント側でフィルタリング（Firestoreの制限のため）
         if (!searchTerm || data.name.includes(searchTerm)) {
-          products.push({ id: doc.id, ...data });
+          products.push({
+            id: doc.id,
+            ...data,
+            _sortKey: data.usageCount || 0
+          });
         }
       });
 
-      return products;
+      // クライアント側でソート（降順）して上位10件を返す
+      products.sort((a, b) => b._sortKey - a._sortKey);
+      return products.slice(0, 10);
     } catch (error) {
       console.error('Search products error:', error);
       return [];
@@ -197,20 +216,27 @@ class FirestoreService {
       if (!user) return [];
 
       const ordersRef = collection(db, 'orders');
+      // インデックス不要のシンプルなクエリ
       const q = query(
         ordersRef,
         where('userId', '==', user.uid),
-        where('deliveryDate', '==', date),
-        orderBy('createdAt', 'desc')
+        where('deliveryDate', '==', date)
       );
 
       const querySnapshot = await getDocs(q);
       const orders = [];
 
       querySnapshot.forEach((doc) => {
-        orders.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        orders.push({
+          id: doc.id,
+          ...data,
+          _sortKey: data.createdAt?.toMillis ? data.createdAt.toMillis() : 0
+        });
       });
 
+      // クライアント側でソート（降順）
+      orders.sort((a, b) => b._sortKey - a._sortKey);
       return orders;
     } catch (error) {
       console.error('Get orders by date error:', error);
@@ -227,12 +253,12 @@ class FirestoreService {
       if (!user) return [];
 
       const ordersRef = collection(db, 'orders');
+      // インデックス不要のシンプルなクエリ（範囲クエリのみ）
       const q = query(
         ordersRef,
         where('userId', '==', user.uid),
         where('deliveryDate', '>=', startDate),
-        where('deliveryDate', '<=', endDate),
-        orderBy('deliveryDate', 'asc')
+        where('deliveryDate', '<=', endDate)
       );
 
       const querySnapshot = await getDocs(q);
@@ -240,6 +266,13 @@ class FirestoreService {
 
       querySnapshot.forEach((doc) => {
         orders.push({ id: doc.id, ...doc.data() });
+      });
+
+      // クライアント側でソート（昇順）
+      orders.sort((a, b) => {
+        if (a.deliveryDate < b.deliveryDate) return -1;
+        if (a.deliveryDate > b.deliveryDate) return 1;
+        return 0;
       });
 
       return orders;
