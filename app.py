@@ -34,7 +34,7 @@ from weasyprint import HTML
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -226,10 +226,15 @@ async def root(request: Request):
     """
     ルートページ - フロントエンドUIを表示
     """
-    return templates.TemplateResponse("index.html", {
+    response = templates.TemplateResponse("index.html", {
         "request": request,
         "version": APP_VERSION
     })
+    # HTMLページはキャッシュしない（常に最新版を取得）
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.post("/api/generate", response_model=TemplateResponse)
