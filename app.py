@@ -447,6 +447,18 @@ async def health_check():
     return {"status": "ok", "message": "API is running"}
 
 
+@app.get("/api/version")
+async def get_version():
+    """
+    現在のアプリケーションバージョンを返す
+    """
+    return {
+        "version": APP_VERSION,
+        "pdf_preview_available": True,
+        "cache_busting_enabled": True
+    }
+
+
 @app.head("/")
 async def root_head():
     """
