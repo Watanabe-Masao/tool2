@@ -514,11 +514,124 @@ class HaibunTemplateCreator:
             # 該当する商品データを取得（存在する場合）
             product_data = products[idx] if products and idx < len(products) else None
 
-            # データ書き込み後に結合（openpyxlの仕様上、MergedCell回避のため）
-            self._setup_input_fields(data_row, detail_row, product_data)
-            self._setup_formulas(data_row, detail_row, blank_row)
+            # 1. 先にセル結合を実行（ベースとなる構造を作成）
             self._setup_cell_merges(data_row, detail_row, blank_row)
             self._merge_store_columns(detail_row, blank_row)
+
+            # 2. 結合後に値をプロット（左上セルに確実に設定される）
+            self._setup_input_fields_after_merge(data_row, detail_row, product_data)
+            self._setup_formulas(data_row, detail_row, blank_row)
+
+    def _setup_input_fields_after_merge(self, data_row: int, detail_row: int, product_data: Optional[ProductData] = None) -> None:
+        """結合後の入力欄にデータをプロット（ベストプラクティス：結合後に左上セルのみ設定）
+
+        Args:
+            data_row: 商品情報行番号
+            detail_row: 詳細情報行番号
+            product_data: 商品データ（省略可）
+        """
+        cfg = self.config
+
+        # 店着日（B列） - 結合セルの左上（B{data_row}）にのみ設定
+        delivery_date_value = None
+        if product_data and product_data.delivery_date:
+            try:
+                delivery_date_value = datetime.strptime(product_data.delivery_date, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                pass
+
+        cell = self.ws[f'B{data_row}']
+        cell.value = delivery_date_value
+        cell.number_format = 'm/d(aaa)'
+        cell.font = Font(size=14, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 産地（D列 data_row）- 非結合セル
+        origin_value = product_data.origin if product_data else None
+        cell = self.ws[f'D{data_row}']
+        cell.value = origin_value
+        cell.font = Font(size=11, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 規格（E列 data_row）- 非結合セル
+        standard_value = product_data.standard if product_data else None
+        cell = self.ws[f'E{data_row}']
+        cell.value = standard_value
+        cell.font = Font(size=11, bold=True, color=cfg.color_red)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 品名（D列 detail_row） - 結合セルの左上（D{detail_row}）にのみ設定
+        product_name_value = product_data.product_name if product_data else None
+        cell = self.ws[f'D{detail_row}']
+        cell.value = product_name_value
+        cell.font = Font(size=11, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 店着原価（G列 data_row） - 結合セルの左上（G{data_row}）にのみ設定
+        store_cost_value = product_data.store_cost if product_data else None
+        cell = self.ws[f'G{data_row}']
+        cell.value = store_cost_value
+        cell.font = Font(size=16, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 税抜売価（H列 data_row） - 非結合セル
+        price_value = product_data.price if product_data else None
+        cell = self.ws[f'H{data_row}']
+        cell.value = price_value
+        cell.font = Font(size=12, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 入数（I列 detail_row） - 結合セルの左上（I{detail_row}）にのみ設定
+        quantity_value = product_data.quantity if product_data else None
+        cell = self.ws[f'I{detail_row}']
+        cell.value = quantity_value
+        cell.font = Font(size=14, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 納品数（AU列 data_row） - 非結合セル
+        total_delivery_value = product_data.total_delivery if product_data else None
+        cell = self.ws[f'AU{data_row}']
+        cell.value = total_delivery_value
+        cell.font = Font(size=12, color=cfg.color_blue)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 帳合先（AV列 data_row） - 結合セルの左上（AV{data_row}）にのみ設定
+        delivery_dest_value = product_data.delivery_dest if product_data else None
+        cell = self.ws[f'AV{data_row}']
+        cell.value = delivery_dest_value
+        cell.font = Font(size=12, bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 店舗配分数（J～AS列 detail_row） - 各列の結合セルの左上にのみ設定
+        if product_data and product_data.store_quantities:
+            self._populate_store_quantities_after_merge(detail_row, product_data.store_quantities)
+
+    def _populate_store_quantities_after_merge(self, detail_row: int, store_quantities: Dict[str, int]) -> None:
+        """結合後の店舗配分数をセルに入力（左上セルのみ）
+
+        Args:
+            detail_row: 詳細情報行番号
+            store_quantities: 店舗コードと配分数の辞書
+        """
+        store_code_to_column = {
+            '01': 'J', '02': 'K', '03': 'L', '05': 'M',
+            '06': 'N', '07': 'O', '08': 'P', '23': 'Q',
+            '24': 'R', '26': 'S', '28': 'T', '30': 'U',
+            '32': 'V', '34': 'W', '36': 'X', '37': 'Y',
+            '39': 'Z', '40': 'AA', '41': 'AB', '43': 'AC',
+            '45': 'AD', '47': 'AE', '48': 'AF', '305': 'AG',
+            '307': 'AH', '308': 'AI', '311': 'AJ', '313': 'AK',
+            '314': 'AL', '317': 'AM', '318': 'AN', '341': 'AO',
+            '342': 'AP', '343': 'AQ', '344': 'AR', '911': 'AS',
+        }
+
+        for store_code, quantity in store_quantities.items():
+            column = store_code_to_column.get(store_code)
+            if column and quantity:
+                cell = self.ws[f'{column}{detail_row}']
+                cell.value = quantity
+                cell.font = Font(size=11, bold=True)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
 
     def _setup_input_fields(self, data_row: int, detail_row: int, product_data: Optional[ProductData] = None) -> None:
         """入力欄のフォント/体裁とデータ入力
