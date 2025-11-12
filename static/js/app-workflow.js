@@ -533,6 +533,3 @@ window.validateAllocation = function(productId) {
         messageDiv.innerHTML = '';
     }
 };
-
-// Export functions for use in other modules
-export { addProduct, removeProduct, validateAllocation };
