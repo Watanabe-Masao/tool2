@@ -73,11 +73,6 @@ class TemplateRequest(BaseModel):
         max_length=20,
         description="担当バイヤー名（最大20文字）"
     )
-    period: Optional[str] = Field(
-        default=None,
-        max_length=50,
-        description="期間"
-    )
     pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
     pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
     products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
@@ -154,7 +149,6 @@ async def generate_template(req: TemplateRequest):
         creator = HaibunTemplateCreator(config=config)
         output_path = creator.create_template(
             buyer_name=req.buyer_name,
-            period=req.period,
             products=products
         )
 

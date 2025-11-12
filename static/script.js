@@ -195,7 +195,6 @@ function getFormData() {
     const numBlocks = parseInt(document.getElementById('numBlocks').value);
     const outputFilename = document.getElementById('outputFilename').value.trim();
     const buyerName = document.getElementById('buyerName').value.trim();
-    const period = document.getElementById('period').value.trim();
     const pixel100 = parseFloat(document.getElementById('pixel100').value);
     const pixel50 = parseFloat(document.getElementById('pixel50').value);
 
@@ -212,10 +211,6 @@ function getFormData() {
 
     if (buyerName) {
         data.buyer_name = buyerName;
-    }
-
-    if (period) {
-        data.period = period;
     }
 
     // 商品データを収集
@@ -422,7 +417,6 @@ function generatePreview(data) {
             <td>${data.num_blocks}</td>
         </tr>
         ${data.buyer_name ? `<tr><th>担当バイヤー</th><td>${escapeHtml(data.buyer_name)}</td></tr>` : ''}
-        ${data.period ? `<tr><th>期間</th><td>${escapeHtml(data.period)}</td></tr>` : ''}
         ${data.output_filename ? `<tr><th>ファイル名</th><td>${escapeHtml(data.output_filename)}</td></tr>` : ''}
     `;
     document.getElementById('previewBasicInfo').innerHTML = basicInfoHtml;

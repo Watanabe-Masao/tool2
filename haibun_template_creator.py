@@ -194,13 +194,12 @@ class HaibunTemplateCreator:
         self.ws.title = '配分書'
 
     def create_template(self, output_path: Optional[str] = None, buyer_name: Optional[str] = None,
-                       period: Optional[str] = None, products: Optional[List[ProductData]] = None) -> str:
+                       products: Optional[List[ProductData]] = None) -> str:
         """テンプレートを作成
 
         Args:
             output_path: 出力ファイルパス（省略時は設定のデフォルト値）
             buyer_name: 担当バイヤー名（省略可）
-            period: 期間（省略可）
             products: 商品データリスト（省略可）
 
         Returns:
@@ -221,7 +220,7 @@ class HaibunTemplateCreator:
             self._setup_rows()
 
             # 2. タイトルエリア（1～6行）
-            self._setup_header_area(buyer_name=buyer_name, period=period)
+            self._setup_header_area(buyer_name=buyer_name)
 
             # 3. ヘッダーエリア（7～8行）
             self._setup_column_headers()
@@ -311,12 +310,11 @@ class HaibunTemplateCreator:
         self.ws.row_dimensions[2].hidden = True
 
     # ----------------- タイトル/ヘッダー -----------------
-    def _setup_header_area(self, buyer_name: Optional[str] = None, period: Optional[str] = None) -> None:
+    def _setup_header_area(self, buyer_name: Optional[str] = None) -> None:
         """タイトルエリア（1～6行）
 
         Args:
             buyer_name: 担当バイヤー名（省略可）
-            period: 期間（省略可）
         """
         # タイトル（G1:Y1）
         self.ws.merge_cells('G1:Y1')
@@ -369,15 +367,9 @@ class HaibunTemplateCreator:
         )
         self.ws.merge_cells('H5:H6')
 
-        # I5:Z6結合 - 細線枠（期間を入力）
+        # I5:Z6結合 - 細線枠
         self.ws.merge_cells('I5:Z6')
         self.ws['I5'].border = BorderFactory.create('thin', 'thin', 'thin', 'thin')
-        if period:
-            self._set_cell(
-                'I5', period,
-                font=Font(size=11, bold=True),
-                alignment=Alignment(horizontal='center', vertical='center')
-            )
 
     def _setup_row4_medium_border(self) -> None:
         """行4の中太線設定（AB～AT）"""

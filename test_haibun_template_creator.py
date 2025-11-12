@@ -136,21 +136,6 @@ class TestBasicFunctionality:
 
         wb.close()
 
-    def test_period_input(self, temp_output_path):
-        """期間が正しく入力されるかテスト"""
-        period = "2025年1月1日〜1月31日"
-        config = TemplateConfig(num_blocks=1, default_output_path=str(temp_output_path))
-        creator = HaibunTemplateCreator(config=config)
-        creator.create_template(period=period)
-
-        wb = openpyxl.load_workbook(temp_output_path)
-        ws = wb.active
-
-        # I5:Z6セルに期間が入力されているか
-        assert ws['I5'].value == period, "期間が正しく入力されていません"
-
-        wb.close()
-
     def test_product_data_input(self, temp_output_path, sample_product_data):
         """商品データが正しく入力されるかテスト"""
         config = TemplateConfig(num_blocks=1, default_output_path=str(temp_output_path))
