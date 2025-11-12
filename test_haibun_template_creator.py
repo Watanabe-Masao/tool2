@@ -59,12 +59,12 @@ class TestHeaderStructure:
 
         # 期待される結合
         assert 'A7:A8' in merged_ranges, "A7:A8が結合されていません（商品コード）"
-        assert 'B7:C8' in merged_ranges, "B7:C8が結合されていません（納品日）"
+        assert 'B7:C8' in merged_ranges, "B7:C8が結合されていません（店着日）"
         assert 'D8:E8' in merged_ranges, "D8:E8が結合されていません（品名）"
         assert 'F7:F8' in merged_ranges, "F7:F8が結合されていません（LFC着）"
         assert 'G7:G8' in merged_ranges, "G7:G8が結合されていません（店着原価）"
         assert 'AT7:AT8' in merged_ranges, "AT7:AT8が結合されていません（合計）"
-        assert 'AV7:AV8' in merged_ranges, "AV7:AV8が結合されていません（納品先）"
+        assert 'AV7:AV8' in merged_ranges, "AV7:AV8が結合されていません（帳合先）"
 
         wb.close()
 
@@ -79,7 +79,7 @@ class TestHeaderStructure:
 
         # 7行目のヘッダー
         assert ws['A7'].value == '商品コード', "A7のヘッダーが正しくありません"
-        assert ws['B7'].value == '納品日', "B7のヘッダーが正しくありません"
+        assert ws['B7'].value == '店着日', "B7のヘッダーが正しくありません"
         assert ws['D7'].value == '産地', "D7のヘッダーが正しくありません"
         assert ws['E7'].value == '規  格', "E7のヘッダーが正しくありません"
         assert ws['F7'].value == ' LFC着', "F7のヘッダーが正しくありません"
@@ -152,8 +152,8 @@ class TestBasicFunctionality:
         ws = wb.active
 
         # 商品データが正しいセルに入力されているか（1商品目は9行目から）
-        # 納品日（B9）- datetimeオブジェクトとして格納される
-        assert ws['B9'].value is not None, "納品日が入力されていません"
+        # 店着日（B9）- datetimeオブジェクトとして格納される
+        assert ws['B9'].value is not None, "店着日が入力されていません"
 
         # 産地（D9）
         assert ws['D9'].value == '高知県', "産地が正しく入力されていません"
@@ -176,8 +176,8 @@ class TestBasicFunctionality:
         # 総納品数（AU9）
         assert ws['AU9'].value == 100, "総納品数が正しく入力されていません"
 
-        # 納品先（AV9）
-        assert ws['AV9'].value == '本社', "納品先が正しく入力されていません"
+        # 帳合先（AV9）
+        assert ws['AV9'].value == '本社', "帳合先が正しく入力されていません"
 
         wb.close()
 
