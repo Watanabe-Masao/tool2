@@ -10,5 +10,17 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: FIREBASE_API_KEY
+        value: AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc
+      - key: FIREBASE_AUTH_DOMAIN
+        value: haibun-distribution.firebaseapp.com
+      - key: FIREBASE_PROJECT_ID
+        value: haibun-distribution
+      - key: FIREBASE_STORAGE_BUCKET
+        value: haibun-distribution.firebasestorage.app
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        value: "742220611313"
+      - key: FIREBASE_APP_ID
+        value: 1:742220611313:web:bec0f006c4c648adcbb350
     # 自動デプロイを有効化（デフォルトでtrue）
     autoDeploy: true
