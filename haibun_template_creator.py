@@ -73,7 +73,7 @@ class TemplateConfig:
     col_as: int = 45  # 店舗列終了
     col_at: int = 46  # 合計
     col_au: int = 47  # 納品数
-    col_av: int = 48  # 納品先
+    col_av: int = 48  # 帳合先
     col_aw: int = 49  # 非表示列
     col_ax: int = 50  # センター送信
 
@@ -420,7 +420,7 @@ class HaibunTemplateCreator:
         # 7行目ヘッダー
         headers_row7: List[Tuple[str, str, int, bool]] = [
             ('A7', '商品コード', 10, False),
-            ('B7', '納品日', 10, False),
+            ('B7', '店着日', 10, False),
             ('D7', '産地', 10, False),
             ('E7', '規  格', 10, False),
             ('F7', ' LFC着', 10, False),
@@ -443,7 +443,7 @@ class HaibunTemplateCreator:
             if isinstance(value, str) and value in ['01', '08']:
                 self.ws[cell_addr].number_format = '@'
 
-        # 合計・納品数・納品先
+        # 合計・納品数・帳合先
         self._set_cell('AT7', '合計', alignment=Alignment(horizontal='center', vertical='center'))
         self.ws.merge_cells('AT7:AT8')
 
@@ -451,7 +451,7 @@ class HaibunTemplateCreator:
                        alignment=Alignment(horizontal='center', vertical='center'),
                        border=BorderFactory.create('thin', 'thin', 'thin', 'thin'))
 
-        self._set_cell('AV7', '納品先', alignment=Alignment(horizontal='center', vertical='distributed'))
+        self._set_cell('AV7', '帳合先', alignment=Alignment(horizontal='center', vertical='distributed'))
         self.ws.merge_cells('AV7:AV8')
 
         # 行8
@@ -525,7 +525,7 @@ class HaibunTemplateCreator:
         """
         cfg = self.config
 
-        # 納品日（B列）
+        # 店着日（B列）
         delivery_date_value = None
         if product_data and product_data.delivery_date:
             try:
@@ -581,7 +581,7 @@ class HaibunTemplateCreator:
                        font=Font(size=12, color=cfg.color_blue),
                        alignment=Alignment(horizontal='center', vertical='center'))
 
-        # 取引先（AV列 data_row）
+        # 帳合先（AV列 data_row）
         delivery_dest_value = product_data.delivery_dest if product_data else None
         self._set_cell(f'AV{data_row}', delivery_dest_value,
                        font=Font(size=12, bold=True),
@@ -665,10 +665,10 @@ class HaibunTemplateCreator:
             blank_row: 空白行番号
         """
         # 3行すべて結合
-        self.ws.merge_cells(f'B{data_row}:C{blank_row}')    # 納品日
+        self.ws.merge_cells(f'B{data_row}:C{blank_row}')    # 店着日
         self.ws.merge_cells(f'G{data_row}:G{blank_row}')    # 店着原価
         self.ws.merge_cells(f'AT{data_row}:AT{blank_row}')  # 合計
-        self.ws.merge_cells(f'AV{data_row}:AV{blank_row}')  # 納品先
+        self.ws.merge_cells(f'AV{data_row}:AV{blank_row}')  # 帳合先
         self.ws.merge_cells(f'AX{data_row}:AY{blank_row}')  # センター送信
 
         # 2-3行のみ結合（1行目は独立）
@@ -845,8 +845,8 @@ class HaibunTemplateCreator:
             blank_row: 空白行番号
             block_num: ブロック番号（1から始まる）
         """
-        # 納品日 (B:C列、3行結合)
-        name = f'納品日_{block_num}'
+        # 店着日 (B:C列、3行結合)
+        name = f'店着日_{block_num}'
         defined_name = DefinedName(name, attr_text=f"'配分書'!$B${data_row}:$C${blank_row}")
         self.wb.defined_names[name] = defined_name
 
@@ -885,8 +885,8 @@ class HaibunTemplateCreator:
         defined_name = DefinedName(name, attr_text=f"'配分書'!$AU${data_row}")
         self.wb.defined_names[name] = defined_name
 
-        # 納品先 (AV列、3行結合)
-        name = f'納品先_{block_num}'
+        # 帳合先 (AV列、3行結合)
+        name = f'帳合先_{block_num}'
         defined_name = DefinedName(name, attr_text=f"'配分書'!$AV${data_row}:$AV${blank_row}")
         self.wb.defined_names[name] = defined_name
 

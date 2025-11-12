@@ -8,14 +8,17 @@ let productCounter = 0;
 let products = [];
 let currentUser = null;
 
-// Store names (36 stores)
-const STORE_NAMES = [
-    '本店', '1号店', '2号店', '3号店', '4号店', '5号店',
-    '6号店', '7号店', '8号店', '9号店', '10号店', '11号店',
-    '12号店', '13号店', '14号店', '15号店', '16号店', '17号店',
-    '18号店', '19号店', '20号店', '21号店', '22号店', '23号店',
-    '24号店', '25号店', '26号店', '27号店', '28号店', '29号店',
-    '30号店', '31号店', '32号店', '33号店', '34号店', '35号店'
+// Store data (36 stores) - must match STORES in script.js
+const STORES = [
+    {code: '01', name: '朝倉'}, {code: '02', name: '伊野'}, {code: '03', name: '高須'}, {code: '05', name: '愛宕'},
+    {code: '06', name: '神田'}, {code: '07', name: '毎日屋土佐道路'}, {code: '08', name: '山手'}, {code: '23', name: '桟橋'},
+    {code: '24', name: '大橋通'}, {code: '26', name: 'アクシス南国'}, {code: '28', name: '瀬戸'}, {code: '30', name: '清水'},
+    {code: '32', name: '四万十'}, {code: '34', name: 'アクシスいの'}, {code: '36', name: '土佐道路東'}, {code: '37', name: 'とさのさと御座'},
+    {code: '39', name: '六泉寺'}, {code: '40', name: '薊野'}, {code: '41', name: '中万々'}, {code: '43', name: '高岡'},
+    {code: '45', name: '久米'}, {code: '47', name: '森松'}, {code: '48', name: '束本'}, {code: '305', name: '仁井田'},
+    {code: '307', name: '窪川'}, {code: '308', name: 'さが'}, {code: '311', name: '丸味'}, {code: '313', name: 'サングリーン'},
+    {code: '314', name: '大月'}, {code: '317', name: '西土佐'}, {code: '318', name: '十和'}, {code: '341', name: '吾川'},
+    {code: '342', name: '池川'}, {code: '343', name: '上八川'}, {code: '344', name: '下八川'}, {code: '911', name: '惣菜'}
 ];
 
 // Initialize
@@ -232,9 +235,9 @@ export function addProduct() {
 
 // Generate store input fields
 function generateStoreInputs(productId) {
-    return STORE_NAMES.map((storeName, index) => `
+    return STORES.map((store, index) => `
         <div class="store-input-group">
-            <label for="store-${productId}-${index}">${storeName}</label>
+            <label for="store-${productId}-${index}">${store.code} ${store.name}</label>
             <input
                 type="number"
                 id="store-${productId}-${index}"
