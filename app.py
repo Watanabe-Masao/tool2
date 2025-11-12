@@ -34,7 +34,7 @@ from weasyprint import HTML
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "1.1.4"
+APP_VERSION = "1.1.5"
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -487,6 +487,8 @@ async def preview_template(req: TemplateRequest):
     Returns:
         FileResponse: PDFファイル
     """
+    import traceback
+
     try:
         # 一時ファイルパス
         file_id = str(uuid.uuid4())
@@ -519,17 +521,23 @@ async def preview_template(req: TemplateRequest):
             products.append(product_data)
 
         # テンプレート生成
+        print(f"[DEBUG] Creating Excel template...")
         creator = HaibunTemplateCreator(config=config)
         creator.create_template(
             buyer_name=req.buyer_name,
             products=products
         )
+        print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
 
         # ExcelをHTMLに変換してからPDFに変換（weasyprint使用）
+        print(f"[DEBUG] Converting Excel to HTML...")
         html_content = excel_to_html(temp_excel_path)
+        print(f"[DEBUG] HTML content length: {len(html_content)}")
 
         # HTMLをPDFに変換
+        print(f"[DEBUG] Converting HTML to PDF...")
         HTML(string=html_content).write_pdf(str(temp_pdf_path))
+        print(f"[DEBUG] PDF created: {temp_pdf_path.exists()}")
 
         if not temp_pdf_path.exists():
             raise Exception("PDFファイルが生成されませんでした")
@@ -545,6 +553,8 @@ async def preview_template(req: TemplateRequest):
         )
 
     except Exception as e:
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"[ERROR] PDF preview generation failed:\n{error_detail}")
         raise HTTPException(
             status_code=500,
             detail=f"PDFプレビュー生成中にエラーが発生しました: {str(e)}"
