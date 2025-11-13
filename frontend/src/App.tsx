@@ -1,35 +1,62 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { Route, Switch, Redirect } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { IonApp, IonRouterOutlet } from '@ionic/react';
+import { IonReactRouter } from '@ionic/react-router';
+import { theme } from './theme';
+import { AuthProvider, useAuthContext } from './context/AuthContext';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { LoginPage } from './pages/LoginPage';
+import { NewOrderPage } from './pages/NewOrderPage';
+import { CalendarPage } from './pages/CalendarPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+/**
+ * メインアプリケーション（内部）
+ */
+const AppContent: React.FC = () => {
+  const { user, loading } = useAuthContext();
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <IonApp>
+      <IonReactRouter>
+        <IonRouterOutlet>
+          <Switch>
+            {/* ログインページ */}
+            <Route exact path="/login" component={LoginPage} />
 
-export default App
+            {/* 保護されたルート */}
+            <ProtectedRoute path="/new-order" component={NewOrderPage} />
+            <ProtectedRoute path="/calendar" component={CalendarPage} />
+
+            {/* ルートパス: 認証状態に応じてリダイレクト */}
+            <Route exact path="/">
+              {loading ? null : user ? <Redirect to="/new-order" /> : <Redirect to="/login" />}
+            </Route>
+
+            {/* 404: ルートにリダイレクト */}
+            <Route path="*">
+              <Redirect to="/" />
+            </Route>
+          </Switch>
+        </IonRouterOutlet>
+      </IonReactRouter>
+    </IonApp>
+  );
+};
+
+/**
+ * メインアプリケーション
+ */
+const App: React.FC = () => {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+};
+
+export default App;
