@@ -1,4 +1,5 @@
 import React from 'react';
+import { IonPage, IonContent } from '@ionic/react';
 import { Container, Typography, Box } from '@mui/material';
 
 /**
@@ -11,15 +12,19 @@ import { Container, Typography, Box } from '@mui/material';
  */
 export const CalendarPage: React.FC = () => {
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          カレンダー
-        </Typography>
-        <Typography color="text.secondary">
-          過去の注文データをカレンダー形式で表示予定
-        </Typography>
-      </Box>
-    </Container>
+    <IonPage>
+      <IonContent>
+        <Container maxWidth="lg">
+          <Box sx={{ py: 4 }}>
+            <Typography variant="h4" gutterBottom>
+              カレンダー
+            </Typography>
+            <Typography color="text.secondary">
+              過去の注文データをカレンダー形式で表示予定
+            </Typography>
+          </Box>
+        </Container>
+      </IonContent>
+    </IonPage>
   );
 };

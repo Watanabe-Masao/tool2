@@ -4,12 +4,11 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { IonApp, IonRouterOutlet } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
+import { CircularProgress, Box } from '@mui/material';
 import { theme } from './theme';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
-import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
-import { NewOrderPage } from './pages/NewOrderPage';
-import { CalendarPage } from './pages/CalendarPage';
 
 /**
  * メインアプリケーション（内部）
@@ -17,26 +16,35 @@ import { CalendarPage } from './pages/CalendarPage';
 const AppContent: React.FC = () => {
   const { user, loading } = useAuthContext();
 
+  // 認証状態確認中
+  if (loading) {
+    return (
+      <IonApp>
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="100vh"
+        >
+          <CircularProgress />
+        </Box>
+      </IonApp>
+    );
+  }
+
   return (
     <IonApp>
       <IonReactRouter>
         <IonRouterOutlet>
           <Switch>
-            {/* ログインページ */}
-            <Route exact path="/login" component={LoginPage} />
-
-            {/* 保護されたルート */}
-            <ProtectedRoute path="/new-order" component={NewOrderPage} />
-            <ProtectedRoute path="/calendar" component={CalendarPage} />
-
-            {/* ルートパス: 認証状態に応じてリダイレクト */}
-            <Route exact path="/">
-              {loading ? null : user ? <Redirect to="/new-order" /> : <Redirect to="/login" />}
+            {/* ログインページ（未認証のみ） */}
+            <Route exact path="/login">
+              {user ? <Redirect to="/new-order" /> : <LoginPage />}
             </Route>
 
-            {/* 404: ルートにリダイレクト */}
-            <Route path="*">
-              <Redirect to="/" />
+            {/* メインレイアウト（認証済みのみ） */}
+            <Route path="/">
+              {user ? <MainLayout /> : <Redirect to="/login" />}
             </Route>
           </Switch>
         </IonRouterOutlet>
