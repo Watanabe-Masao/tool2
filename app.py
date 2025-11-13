@@ -78,8 +78,8 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
     PDF変換用にExcelファイルを最適化
 
     LibreOfficeのPDF変換で問題を起こす要素を除去：
-    - 非表示列の内容をクリア
-    - 非表示フラグを解除し列幅0に設定（LibreOfficeの非表示列誤処理を回避）
+    - 非表示列の内容をクリア（削除ではなく）
+    - 列幅を極小値に設定
     - 日付を文字列に変換（Safari対応）
 
     Args:
@@ -107,10 +107,9 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
                         cell.value = None
                         cell.number_format = 'General'
 
-                # 非表示フラグを解除して列幅を0に（LibreOfficeの非表示列の誤処理を回避）
-                ws.column_dimensions[col_letter].hidden = False
-                ws.column_dimensions[col_letter].width = 0.0
-                print(f"[DEBUG] Column {col_letter}: hidden=False, width=0.0")
+                # 列幅を極小値に設定（非表示のまま維持）
+                ws.column_dimensions[col_letter].width = 0.08333
+                print(f"[DEBUG] Column {col_letter}: cleared, width=0.08333")
 
         # 日付セルをPDF変換に適した形式に変換（Safari対応）
         # 日本語曜日マッピング
