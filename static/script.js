@@ -388,15 +388,64 @@ function handleDownload() {
         return;
     }
 
-    // ダウンロードリンクを作成してクリック
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = downloadFilename || 'template.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // iOS（iPhone/iPad）またはモバイルデバイス検出
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    console.log('Download initiated:', downloadFilename);
+    if (isMobile || isIOS) {
+        // モバイルデバイスの場合：モーダルを表示
+        showDownloadModal();
+    } else {
+        // デスクトップの場合：自動ダウンロード
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = downloadFilename || 'template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        console.log('Download initiated:', downloadFilename);
+    }
+}
+
+// ダウンロードモーダル表示
+function showDownloadModal() {
+    const modal = document.getElementById('downloadModal');
+    const downloadLink = document.getElementById('downloadModalLink');
+    const closeBtn = document.getElementById('downloadModalClose');
+
+    if (!modal || !downloadLink) {
+        // フォールバック：モーダルが存在しない場合は直接ダウンロード
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = downloadFilename || 'template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+    }
+
+    // ダウンロードリンクを設定
+    downloadLink.href = downloadUrl;
+    downloadLink.download = downloadFilename || 'template.xlsx';
+
+    // モーダルを表示
+    modal.style.display = 'flex';
+
+    // 閉じるボタンのイベントリスナー
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // モーダル背景クリックで閉じる
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    console.log('Download modal shown for mobile device');
 }
 
 // =====================================
