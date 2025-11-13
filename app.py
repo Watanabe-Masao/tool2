@@ -8,12 +8,14 @@ FastAPIを使用したバックエンドサーバー
 
 import os
 import logging
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Request
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # APIルーターのインポート (Phase 1.4: APIエンドポイントの分離)
 from config.api import router
@@ -23,6 +25,43 @@ from config.config import settings
 
 # 例外ハンドラーのインポート (Phase 3: エラーハンドリング統一)
 from config.handlers import register_exception_handlers
+
+# ロガー設定（モジュールレベル）
+logger = logging.getLogger(__name__)
+
+# バックグラウンドスケジューラー
+scheduler = BackgroundScheduler()
+
+
+# ============================================================
+# ファイルクリーンアップ
+# ============================================================
+
+def cleanup_old_files():
+    """
+    古い一時ファイルを削除
+
+    設定されたmax_file_age_hoursより古いファイルを削除します。
+    """
+    try:
+        cutoff_time = datetime.now() - timedelta(hours=settings.max_file_age_hours)
+        cutoff_timestamp = cutoff_time.timestamp()
+
+        deleted_count = 0
+        for pattern in ["*.xlsx", "*.pdf", "*.ods"]:
+            for file in settings.temp_dir.glob(pattern):
+                try:
+                    if file.stat().st_mtime < cutoff_timestamp:
+                        file.unlink()
+                        deleted_count += 1
+                        logger.debug(f"Deleted old file: {file.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete file {file.name}: {e}")
+
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} old temporary files")
+    except Exception as e:
+        logger.error(f"Error during file cleanup: {e}", exc_info=True)
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -117,7 +156,6 @@ async def startup_event():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    logger = logging.getLogger(__name__)
 
     port = os.getenv("PORT", "8000")
     logger.info("=" * 60)
@@ -127,21 +165,44 @@ async def startup_event():
     logger.info(f"App version: {settings.app_version}")
     logger.info("=" * 60)
 
+    # 定期的なファイルクリーンアップジョブを開始（1時間ごと）
+    scheduler.add_job(
+        cleanup_old_files,
+        'interval',
+        hours=1,
+        id='cleanup_old_files',
+        name='古い一時ファイルのクリーンアップ',
+        replace_existing=True
+    )
+    scheduler.start()
+    logger.info(f"Started periodic file cleanup job (every 1 hour, max age: {settings.max_file_age_hours} hours)")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """
-    アプリケーション終了時の処理 - 一時ファイルのクリーンアップ
+    アプリケーション終了時の処理
     """
-    print("一時ファイルをクリーンアップ中...")
+    # スケジューラーを停止
+    logger.info("Shutting down periodic cleanup scheduler...")
+    scheduler.shutdown(wait=False)
+    logger.info("Scheduler stopped")
+
+    # 最終クリーンアップを実行
+    logger.info("一時ファイルをクリーンアップ中...")
     try:
-        for file in settings.temp_dir.glob("*.xlsx"):
-            file.unlink()
-        for file in settings.temp_dir.glob("*.pdf"):
-            file.unlink()
-        print("クリーンアップ完了")
+        deleted_count = 0
+        for pattern in ["*.xlsx", "*.pdf", "*.ods"]:
+            for file in settings.temp_dir.glob(pattern):
+                try:
+                    file.unlink()
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete file {file.name}: {e}")
+
+        logger.info(f"クリーンアップ完了 ({deleted_count} files deleted)")
     except Exception as e:
-        print(f"クリーンアップ中にエラーが発生: {e}")
+        logger.error(f"クリーンアップ中にエラーが発生: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
