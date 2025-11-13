@@ -7,6 +7,7 @@ FastAPIを使用したバックエンドサーバー
 """
 
 import os
+import logging
 
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
@@ -20,12 +21,18 @@ from config.api import router
 # 設定のインポート
 from config.config import settings
 
+# 例外ハンドラーのインポート (Phase 3: エラーハンドリング統一)
+from config.handlers import register_exception_handlers
+
 # FastAPIアプリケーション初期化
 app = FastAPI(
     title="配分表テンプレート作成API",
     description="Excelの配分表テンプレートを生成するWebアプリケーション",
     version=settings.app_version
 )
+
+# 例外ハンドラーを登録 (Phase 3: エラーハンドリング統一)
+register_exception_handlers(app)
 
 # APIルーターを登録 (Phase 1.4: APIエンドポイントの分離)
 app.include_router(router)
@@ -103,11 +110,22 @@ async def startup_event():
     """
     アプリケーション起動時の処理
     """
+    # ログ設定 (Phase 3: エラーハンドリング統一)
+    log_level = logging.DEBUG if settings.debug else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    logger = logging.getLogger(__name__)
+
     port = os.getenv("PORT", "8000")
-    print("=" * 60)
-    print("配分表テンプレート作成Webアプリケーションを起動しました")
-    print(f"PORT: {port}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("配分表テンプレート作成Webアプリケーションを起動しました")
+    logger.info(f"PORT: {port}")
+    logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"App version: {settings.app_version}")
+    logger.info("=" * 60)
 
 
 @app.on_event("shutdown")

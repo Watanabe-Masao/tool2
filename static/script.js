@@ -7,6 +7,7 @@ import { ValidationService } from './js/services/validation-service.js';
 import { DownloadService } from './js/services/download-service.js';
 import { LoadingUI } from './js/ui/loading.js';
 import { NotificationUI } from './js/ui/notification.js';
+import { ErrorHandler } from './js/utils/error-handler.js';
 
 // =====================================
 // グローバル変数
@@ -71,8 +72,8 @@ async function handleFormSubmit(event) {
         // 成功
         handleSuccess(data);
     } catch (error) {
-        // エラー
-        handleError(`テンプレート生成エラー: ${error.message}`);
+        // エラー（ErrorHandlerで処理）
+        handleError(error);
     } finally {
         // ローディング非表示
         LoadingUI.hide();
@@ -106,8 +107,8 @@ async function handlePreview(event) {
         // PDFをモーダルで表示（モバイル対応）
         showPDFModal(blob);
     } catch (error) {
-        // エラー
-        handleError(`プレビュー生成エラー: ${error.message}`);
+        // エラー（ErrorHandlerで処理）
+        handleError(error);
     } finally {
         // ローディング非表示
         LoadingUI.hide();
@@ -198,8 +199,9 @@ function handleSuccess(data) {
 // =====================================
 // エラーハンドラ
 // =====================================
-function handleError(errorMessage) {
-    console.error('[Main] Error occurred:', errorMessage);
+function handleError(error) {
+    // ErrorHandlerで統一的に処理
+    const errorMessage = ErrorHandler.handle(error, 'アプリケーションエラー');
 
     // エラーメッセージを表示
     NotificationUI.showError(errorMessage);
@@ -230,5 +232,6 @@ function handleDownload() {
 // app-workflow.jsなど他のスクリプトから使用するため
 window.ValidationService = ValidationService;
 window.FormService = FormService;
+window.ErrorHandler = ErrorHandler;
 
 console.log('[Main] Script loaded successfully');
