@@ -19,7 +19,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi import Request
-from pydantic import BaseModel, Field
 from typing import Dict, List
 
 from haibun_template_creator import (
@@ -28,6 +27,16 @@ from haibun_template_creator import (
     StoreData,
     ProductData
 )
+
+# モデルのインポート (Phase 1.2: モデルの分離)
+from config.models import (
+    ProductDataRequest,
+    TemplateRequest,
+    TemplateResponse
+)
+
+# サービスのインポート (Phase 1.3: サービス層の作成)
+from config.services.pdf_service import PDFService
 
 import openpyxl
 import subprocess
@@ -73,196 +82,9 @@ TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
 
 
-def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
-    """
-    PDF変換用にExcelファイルを最適化
-
-    LibreOfficeのPDF変換で問題を起こす要素を除去：
-    - 非表示列の内容をクリア（削除ではなく）
-    - 列幅を極小値に設定
-    - 日付を文字列に変換（Safari対応）
-
-    Args:
-        excel_path: 変換前のExcelファイルパス（このファイルを直接修正）
-    """
-    import openpyxl
-    from datetime import datetime
-
-    try:
-        wb = openpyxl.load_workbook(excel_path)
-        ws = wb.active
-
-        # 非表示列の処理（A, Fのみ。AWは表示列なので対象外）
-        hidden_columns = ['A', 'F']
-
-        for col_letter in hidden_columns:
-            if ws.column_dimensions[col_letter].hidden:
-                print(f"[DEBUG] Processing hidden column {col_letter} for PDF conversion")
-
-                # 列の全セルの内容をクリア（結合セルはスキップ）
-                for row in range(1, ws.max_row + 1):
-                    cell = ws[f'{col_letter}{row}']
-                    # 結合セルの場合はスキップ
-                    if not isinstance(cell, openpyxl.cell.cell.MergedCell):
-                        cell.value = None
-                        cell.number_format = 'General'
-
-                # 列幅を極小値に設定（非表示のまま維持）
-                ws.column_dimensions[col_letter].width = 0.08333
-                print(f"[DEBUG] Column {col_letter}: cleared, width=0.08333")
-
-        # 日付セルをPDF変換に適した形式に変換（Safari対応）
-        # 日本語曜日マッピング
-        weekday_ja = ['月', '火', '水', '木', '金', '土', '日']
-
-        for row in ws.iter_rows(min_row=7, max_row=100):  # データエリア
-            for cell in row:
-                if isinstance(cell.value, datetime):
-                    # datetimeを読みやすい文字列に変換（日本語曜日付き）
-                    weekday_str = weekday_ja[cell.value.weekday()]
-                    date_str = cell.value.strftime(f'%m/%d({weekday_str})')
-                    cell.value = date_str
-                    cell.number_format = '@'  # テキスト形式
-                    print(f"[DEBUG] Converted datetime in {cell.coordinate} to string: {date_str}")
-
-        # 変更を保存
-        wb.save(excel_path)
-        wb.close()
-        print(f"[DEBUG] Excel file optimized for PDF conversion")
-
-    except Exception as e:
-        print(f"[ERROR] PDF conversion preparation failed: {e}")
-        import traceback
-        print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
-        # エラー発生時も処理を続行（元のファイルを使用）
-        try:
-            wb.close()
-        except:
-            pass
-
-
-def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
-    """
-    ExcelファイルをLibreOfficeを使ってPDFに変換（完全な書式保持）
-
-    Args:
-        excel_path: Excelファイルのパス
-        pdf_path: 出力PDFファイルのパス
-
-    Returns:
-        bool: 変換成功時True
-
-    Raises:
-        Exception: 変換失敗時
-    """
-    try:
-        # Excel結合セルのPDF変換対策：Excel → ODS → PDF の2段階変換
-        # 理由：LibreOfficeがExcelを直接PDFに変換すると、結合セルの値が失われることがある
-        #       ODSを経由することで、LibreOffice自身が結合セルを正しく解釈する
-
-        # Step 1: Excel → ODS
-        ods_path = excel_path.parent / f"{excel_path.stem}.ods"
-        result_ods = subprocess.run(
-            [
-                'libreoffice',
-                '--headless',
-                '--convert-to', 'ods',
-                '--outdir', str(excel_path.parent),
-                str(excel_path)
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        if result_ods.returncode != 0:
-            error_msg = f"Excel to ODS conversion failed:\nstdout: {result_ods.stdout}\nstderr: {result_ods.stderr}"
-            print(f"[ERROR] {error_msg}")
-            raise Exception(error_msg)
-
-        # Step 2: ODS → PDF
-        result_pdf = subprocess.run(
-            [
-                'libreoffice',
-                '--headless',
-                '--convert-to', 'pdf',
-                '--outdir', str(pdf_path.parent),
-                str(ods_path)
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        # ODS一時ファイルを削除
-        if ods_path.exists():
-            ods_path.unlink()
-
-        if result_pdf.returncode != 0:
-            error_msg = f"ODS to PDF conversion failed:\nstdout: {result_pdf.stdout}\nstderr: {result_pdf.stderr}"
-            print(f"[ERROR] {error_msg}")
-            raise Exception(error_msg)
-
-        # 出力ファイル名を調整（LibreOfficeは元のファイル名で出力する）
-        expected_pdf = pdf_path.parent / f"{excel_path.stem}.pdf"
-        if expected_pdf.exists() and expected_pdf != pdf_path:
-            expected_pdf.rename(pdf_path)
-
-        return pdf_path.exists()
-
-    except subprocess.TimeoutExpired:
-        raise Exception("PDF変換がタイムアウトしました（30秒）")
-    except Exception as e:
-        raise Exception(f"PDF変換中にエラーが発生: {str(e)}")
-
-
-# リクエストモデル
-class ProductDataRequest(BaseModel):
-    """商品データリクエスト"""
-    name: Optional[str] = Field(default=None, max_length=50, description="品名")
-    product_name: Optional[str] = Field(default=None, max_length=50, description="品名（後方互換用）")
-    delivery_date: Optional[str] = Field(default=None, description="納品日（YYYY-MM-DD形式）")
-    origin: Optional[str] = Field(default=None, max_length=30, description="産地")
-    standard: Optional[str] = Field(default=None, max_length=20, description="規格")
-    store_cost: Optional[float] = Field(default=None, description="店着原価")
-    price: Optional[float] = Field(default=None, description="税抜売価")
-    quantity: Optional[int] = Field(default=None, description="入数")
-    total_delivery: Optional[int] = Field(default=None, description="総納品数")
-    delivery_dest: Optional[str] = Field(default=None, max_length=30, description="納品先")
-    store_quantities: Dict[str, int] = Field(default_factory=dict, description="店舗配分数")
-
-
-class TemplateRequest(BaseModel):
-    """テンプレート生成リクエスト（Phase 3: 5-step workflow対応）"""
-    # Step 1: 店着日（全商品共通）
-    delivery_date: Optional[str] = Field(default=None, description="店着日（YYYY-MM-DD形式）")
-    # Step 2: 帳合先（全商品共通）
-    supplier: Optional[str] = Field(default=None, max_length=50, description="帳合先名")
-    # 商品数（自動計算されるが、後方互換用に残す）
-    num_blocks: Optional[int] = Field(default=None, ge=1, le=100, description="商品ブロック数（1-100）")
-    output_filename: Optional[str] = Field(
-        default=None,
-        description="出力ファイル名（省略時は自動生成）"
-    )
-    buyer_name: Optional[str] = Field(
-        default=None,
-        max_length=20,
-        description="担当バイヤー名（最大20文字）"
-    )
-    pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
-    pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
-    # Step 3-5: 商品情報（動的リスト）
-    products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
-
-
-# レスポンスモデル
-class TemplateResponse(BaseModel):
-    """テンプレート生成レスポンス"""
-    success: bool
-    message: str
-    download_url: Optional[str] = None
-    filename: Optional[str] = None
-
+# ============================================================
+# API Endpoints
+# ============================================================
 
 @app.get("/api/health")
 async def health_check():
@@ -506,11 +328,11 @@ async def preview_template(req: TemplateRequest):
 
         # PDF変換用にExcelを最適化（非表示列を削除）
         print(f"[DEBUG] Preparing Excel for PDF conversion...")
-        prepare_excel_for_pdf_conversion(temp_excel_path)
+        PDFService.prepare_for_conversion(temp_excel_path)
 
         # ExcelをPDFに変換（LibreOffice使用）
         print(f"[DEBUG] Converting Excel to PDF using LibreOffice...")
-        excel_to_pdf(temp_excel_path, temp_pdf_path)
+        PDFService.convert_to_pdf(temp_excel_path, temp_pdf_path)
         print(f"[DEBUG] PDF created: {temp_pdf_path.exists()}")
 
         if not temp_pdf_path.exists():
