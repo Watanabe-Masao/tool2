@@ -433,13 +433,13 @@ class HaibunTemplateCreator:
         """ヘッダーエリア（7～8行）"""
         cfg = self.config
 
-        # 7行目ヘッダー
+        # 7行目ヘッダー（非表示列Fは除外）
         headers_row7: List[Tuple[str, str, int, bool]] = [
             ('A7', '商品コード', 10, False),
             ('B7', '店着日', 10, False),
             ('D7', '産地', 10, False),
             ('E7', '規  格', 10, False),
-            ('F7', ' LFC着', 10, False),
+            # F7は非表示列のため設定しない
             ('G7', '店着原価', 8, False),
             ('H7', '税抜', 9, False),
             ('I7', 'ｹｰｽ', 9, False),
@@ -447,9 +447,6 @@ class HaibunTemplateCreator:
         for addr, val, size, bold in headers_row7:
             self._set_cell(addr, val, font=Font(name=cfg.font_name, size=size, bold=bold),
                            alignment=Alignment(horizontal='center', vertical='center'))
-
-        # F7に通貨書式
-        self.ws['F7'].number_format = r'"¥"#,##0;[Red]"¥"\-#,##0'
 
         # 店舗コード
         for cell_addr, value in self.store_data.codes:
@@ -487,7 +484,7 @@ class HaibunTemplateCreator:
                        alignment=Alignment(horizontal='center', vertical='center'))
         self.ws.merge_cells('D8:E8')
 
-        self.ws.merge_cells('F7:F8')
+        # F7:F8は非表示列なので結合しない（LibreOffice/Excelでの表示ずれ防止）
         self.ws.merge_cells('G7:G8')
 
         # H8, I8
@@ -715,11 +712,10 @@ class HaibunTemplateCreator:
 
         # 2-3行のみ結合（1行目は独立）
         self.ws.merge_cells(f'D{detail_row}:E{blank_row}')  # 産地/品名
-        self.ws.merge_cells(f'F{detail_row}:F{blank_row}')  # LFC着
+        # F列とAW列は非表示列なので結合しない（LibreOffice/Excelでの表示ずれ防止）
         self.ws.merge_cells(f'H{detail_row}:H{blank_row}')  # 税込
         self.ws.merge_cells(f'I{detail_row}:I{blank_row}')  # 入数
         self.ws.merge_cells(f'AU{detail_row}:AU{blank_row}')  # 差異
-        self.ws.merge_cells(f'AW{detail_row}:AW{blank_row}')  # AW列（非表示）
 
     def _merge_store_columns(self, detail_row: int, blank_row: int) -> None:
         """店舗列（J～AS）の結合
