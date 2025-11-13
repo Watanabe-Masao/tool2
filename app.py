@@ -78,7 +78,7 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
     PDF変換用にExcelファイルを最適化
 
     非表示列を物理的に削除してLibreOfficeのPDF変換での列ずれを防止：
-    - 非表示列（A, F, AW）を完全に削除
+    - 非表示列（A, F）を完全に削除
     - 日付を文字列に変換（Safari対応）
 
     Args:
@@ -98,8 +98,8 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
         columns_to_delete = []
 
         # 非表示列をチェック（列インデックスで記録）
+        # 後ろから削除するため、大きい順
         hidden_specs = [
-            ('AW', 49),  # 後ろから削除するため、大きい順
             ('F', 6),
             ('A', 1),
         ]
