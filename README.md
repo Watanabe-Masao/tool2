@@ -102,23 +102,34 @@ docker-compose logs -f
 
 ## 🏗️ プロジェクト構造
 
+**モジュラーアーキテクチャ** を採用し、保守性と拡張性を重視した設計になっています。
+
 ```
 tool2/
-├── app.py                          # FastAPI アプリケーション
+├── app.py (132行)                  # FastAPI アプリケーション (-79%削減)
 ├── haibun_template_creator.py      # Excelテンプレート生成エンジン
 ├── requirements.txt                # Python依存パッケージ
 ├── requirements-dev.txt            # 開発用パッケージ
-├── Dockerfile                      # Docker設定
-├── docker-compose.yml              # Docker Compose設定
-├── render.yaml                     # Render デプロイ設定
-├── FIREBASE_SETUP.md               # Firebase セットアップガイド
-├── SECURITY.md                     # セキュリティポリシー
-├── README.md                       # このファイル
+│
+├── config/                         # 設定とコアモジュール
+│   ├── config.py                   # アプリケーション設定（Pydantic Settings）
+│   ├── exceptions.py               # カスタム例外クラス
+│   ├── handlers.py                 # 例外ハンドラー
+│   ├── models/                     # データモデル（Pydantic）
+│   │   ├── requests.py             # リクエストモデル
+│   │   └── responses.py            # レスポンスモデル
+│   ├── services/                   # ビジネスロジック層
+│   │   ├── excel_service.py        # Excel生成サービス
+│   │   └── pdf_service.py          # PDF変換サービス
+│   └── api/                        # APIルーター層
+│       └── routes.py               # エンドポイント定義
 │
 ├── docs/                           # ドキュメント
-│   ├── ARCHITECTURE.md             # システム構造
+│   ├── ARCHITECTURE.md             # システムアーキテクチャ
+│   ├── MODULE_STRUCTURE.md         # モジュール構造詳細（NEW!）
 │   ├── TECHNICAL_DETAILS.md        # 技術詳細（PDF問題等）
-│   └── DEVELOPMENT.md              # 開発ガイド
+│   ├── DEVELOPMENT.md              # 開発ガイド
+│   └── REFACTORING_PLAN.md         # リファクタリング計画
 │
 ├── templates/                      # HTMLテンプレート
 │   ├── index.html                  # メインUI
@@ -126,8 +137,22 @@ tool2/
 │
 ├── static/                         # 静的ファイル
 │   ├── style.css                   # CSS
-│   ├── script.js                   # メインJS
-│   └── js/                         # JavaScriptモジュール
+│   ├── script.js (234行)           # メインJS (-52%削減)
+│   └── js/                         # JavaScriptモジュール（ES6）
+│       ├── api/                    # API通信層
+│       │   ├── client.js           # APIクライアント
+│       │   └── endpoints.js        # エンドポイント定義
+│       ├── services/               # サービス層
+│       │   ├── form-service.js     # フォーム処理
+│       │   ├── download-service.js # ダウンロード処理
+│       │   └── validation-service.js # バリデーション
+│       ├── ui/                     # UI層
+│       │   ├── loading.js          # ローディング表示
+│       │   └── notification.js     # 通知表示
+│       ├── utils/                  # ユーティリティ層
+│       │   ├── device-detector.js  # デバイス判定
+│       │   ├── error-handler.js    # エラーハンドリング
+│       │   └── form-utils.js       # フォームヘルパー
 │       ├── firebase-config.js      # Firebase設定
 │       ├── auth-service.js         # 認証サービス
 │       ├── firestore-service.js    # Firestore操作
@@ -136,11 +161,27 @@ tool2/
 │       ├── app-workflow.js         # ワークフロー管理
 │       └── calendar-view.js        # カレンダー表示
 │
-├── test_haibun_template_creator.py # ユニットテスト
-├── test_api_integration.py         # APIインテグレーションテスト
+├── tests/                          # テストスイート
+│   ├── test_config.py              # 設定のテスト
+│   └── test_models.py              # モデルのテスト
+├── test_haibun_template_creator.py # テンプレート生成テスト
+├── test_api_integration.py         # API統合テスト
 │
+├── Dockerfile                      # Docker設定
+├── docker-compose.yml              # Docker Compose設定
+├── render.yaml                     # Render デプロイ設定
 └── temp_files/                     # 一時ファイル（自動生成）
 ```
+
+### アーキテクチャの特徴
+
+✅ **関心の分離**: API、サービス、UI、ユーティリティを明確に分離
+✅ **SSOT**: 設定やエンドポイントを一箇所で管理
+✅ **テスト容易性**: 各モジュールを独立してテスト可能
+✅ **コード削減**: 合計-737行（-60%）のリファクタリング達成
+✅ **統一エラーハンドリング**: バックエンドとフロントエンドで一貫したエラー処理
+
+詳細は [docs/MODULE_STRUCTURE.md](docs/MODULE_STRUCTURE.md) を参照
 
 ## 🧪 テスト
 

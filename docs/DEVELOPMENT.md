@@ -536,84 +536,127 @@ debugger;  // ブレークポイント
 
 ## Refactoring Plan
 
-### 優先度高
+### ✅ 完了済み（v2.0）
 
-#### 1. app.py の分割
+#### 1. app.py の分割 ✅
 
-**現状**: 1ファイルに全エンドポイント（~400行）
+**実施済み**: モジュール化完了（2025-01）
 
-**目標**: モジュール分割
+**成果**: app.py 619行 → 132行（-79%削減）
 
 ```
-app.py                    # FastAPIアプリ初期化
-api/
-  ├── __init__.py
-  ├── generate.py         # /api/generate
-  ├── preview.py          # /api/preview
-  └── download.py         # /api/download
-utils/
-  ├── __init__.py
-  ├── excel_utils.py      # prepare_excel_for_pdf_conversion
-  └── pdf_utils.py        # excel_to_pdf
+config/
+  ├── config.py           # アプリケーション設定
+  ├── exceptions.py       # カスタム例外クラス
+  ├── handlers.py         # 例外ハンドラー
+  ├── models/
+  │   ├── requests.py     # リクエストモデル
+  │   └── responses.py    # レスポンスモデル
+  ├── services/
+  │   ├── excel_service.py  # Excel生成サービス
+  │   └── pdf_service.py    # PDF変換サービス
+  └── api/
+      └── routes.py       # APIエンドポイント定義
 ```
 
-#### 2. JavaScript のモジュール化強化
+#### 2. JavaScript のモジュール化 ✅
 
-**現状**: `script.js` が肥大化（~450行）
+**実施済み**: ES6モジュール化完了（2025-01）
 
-**目標**: 機能別分割
+**成果**: script.js 484行 → 234行（-52%削減）
 
 ```
 static/js/
-  ├── main.js             # エントリーポイント
-  ├── api-client.js       # API呼び出し
-  ├── form-handler.js     # フォーム処理
-  ├── download-handler.js # ダウンロード処理
-  └── validation.js       # バリデーション
+  ├── script.js           # エントリーポイント
+  ├── api/
+  │   ├── client.js       # APIクライアント
+  │   └── endpoints.js    # エンドポイント定義
+  ├── services/
+  │   ├── form-service.js # フォーム処理
+  │   ├── download-service.js # ダウンロード処理
+  │   └── validation-service.js # バリデーション
+  ├── ui/
+  │   ├── loading.js      # ローディング表示
+  │   └── notification.js # 通知表示
+  └── utils/
+      ├── device-detector.js # デバイス判定
+      ├── error-handler.js   # エラーハンドリング
+      └── form-utils.js      # フォームヘルパー
 ```
 
-#### 3. エラーハンドリング統一
+#### 3. エラーハンドリング統一 ✅
+
+**実施済み**: バックエンド・フロントエンド両方で統一（2025-01）
 
 ```python
-# カスタム例外クラス
-class TemplateCreationError(Exception):
-    """テンプレート生成エラー"""
+# config/exceptions.py
+class AppException(Exception):
+    """アプリケーション基底例外"""
+    def __init__(self, message: str, detail: Optional[str] = None):
+        self.message = message
+        self.detail = detail
+
+class TemplateCreationError(AppException):
     pass
 
-class PDFConversionError(Exception):
-    """PDF変換エラー"""
+class PDFConversionError(AppException):
     pass
 
-# 統一エラーレスポンス
-@app.exception_handler(TemplateCreationError)
-async def template_error_handler(request, exc):
+# config/handlers.py
+async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(
-        status_code=500,
-        content={"error": str(exc), "type": "TemplateCreationError"}
+        status_code=400,
+        content=ErrorResponse(
+            error=exc.message,
+            detail=exc.detail,
+            error_type=exc.__class__.__name__
+        ).dict()
     )
 ```
 
-### 優先度中
+```javascript
+// static/js/utils/error-handler.js
+export class ErrorHandler {
+    static handle(error, context = '') {
+        const errorType = this.detectErrorType(error);
+        const message = this.getErrorMessage(error, errorType);
+        return context ? `${context}: ${message}` : message;
+    }
+}
+```
 
-#### 4. 設定ファイル外部化
+詳細は [docs/MODULE_STRUCTURE.md](MODULE_STRUCTURE.md) を参照
+
+#### 4. 設定ファイル外部化 ✅
+
+**実施済み**: Pydantic Settings導入（2025-01）
 
 ```python
-# config.py
-from pydantic import BaseSettings
+# config/config.py
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     app_name: str = "Haibun Template Creator"
-    max_products: int = 100
+    app_version: str = "2.0.0"
+    debug: bool = False
+
     temp_dir: Path = Path("temp_files")
-    libreoffice_path: str = "libreoffice"
+    max_products: int = 100
+    libreoffice_timeout: int = 30
+
+    pixel_100: float = 13.5714285714
+    pixel_50: float = 6.4285714286
 
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
 
 settings = Settings()
 ```
 
-#### 5. キャッシュ導入
+### 今後の優先度中
+
+#### 1. キャッシュ導入
 
 ```python
 from functools import lru_cache
@@ -624,9 +667,9 @@ def get_store_data() -> StoreData:
     return StoreData.get_default_data()
 ```
 
-### 優先度低
+### 今後の優先度低
 
-#### 6. TypeScript移行
+#### 1. TypeScript移行
 
 ```typescript
 // types.ts

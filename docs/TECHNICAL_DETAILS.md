@@ -102,7 +102,7 @@ for col_letter in hidden_columns:
 
 **方針**: Excel​ファイル構造を変更せず、PDF変換前に非表示列の**内容のみクリア**
 
-**実装場所**: `app.py:prepare_excel_for_pdf_conversion()`
+**実装場所**: `config/services/pdf_service.py:PDFService.prepare_for_conversion()`
 
 **処理フロー**:
 1. Excelファイル生成（通常通り、非表示列含む）
@@ -113,38 +113,51 @@ for col_letter in hidden_columns:
 
 **コード**:
 ```python
-def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
-    """PDF変換用にExcelファイルを最適化"""
-    wb = openpyxl.load_workbook(excel_path)
-    ws = wb.active
+# config/services/pdf_service.py
+class PDFService:
+    @staticmethod
+    def prepare_for_conversion(excel_path: Path) -> None:
+        """PDF変換用にExcelファイルを最適化"""
+        wb = openpyxl.load_workbook(excel_path)
+        ws = wb.active
 
-    # 非表示列の処理（A, Fのみ。AWは表示列）
-    hidden_columns = ['A', 'F']
+        # 非表示列の処理
+        PDFService._clear_hidden_columns(ws)
 
-    for col_letter in hidden_columns:
-        if ws.column_dimensions[col_letter].hidden:
-            # 列の全セルの内容をクリア
-            for row in range(1, ws.max_row + 1):
-                cell = ws[f'{col_letter}{row}']
-                if not isinstance(cell, openpyxl.cell.cell.MergedCell):
-                    cell.value = None
-                    cell.number_format = 'General'
+        # 日付を文字列に変換
+        PDFService._convert_dates_to_strings(ws)
 
-            # 列幅を極小値に設定
-            ws.column_dimensions[col_letter].width = 0.08333
+        wb.save(excel_path)
+        wb.close()
 
-    # 日付を文字列に変換（Safari対応）
-    weekday_ja = ['月', '火', '水', '木', '金', '土', '日']
-    for row in ws.iter_rows(min_row=7, max_row=100):
-        for cell in row:
-            if isinstance(cell.value, datetime):
-                weekday_str = weekday_ja[cell.value.weekday()]
-                date_str = cell.value.strftime(f'%m/%d({weekday_str})')
-                cell.value = date_str
-                cell.number_format = '@'
+    @staticmethod
+    def _clear_hidden_columns(ws) -> None:
+        """非表示列の内容をクリア（A, Fのみ。AWは表示列）"""
+        hidden_columns = ['A', 'F']
 
-    wb.save(excel_path)
-    wb.close()
+        for col_letter in hidden_columns:
+            if ws.column_dimensions[col_letter].hidden:
+                # 列の全セルの内容をクリア
+                for row in range(1, ws.max_row + 1):
+                    cell = ws[f'{col_letter}{row}']
+                    if not isinstance(cell, openpyxl.cell.cell.MergedCell):
+                        cell.value = None
+                        cell.number_format = 'General'
+
+                # 列幅を極小値に設定
+                ws.column_dimensions[col_letter].width = 0.08333
+
+    @staticmethod
+    def _convert_dates_to_strings(ws) -> None:
+        """日付を日本語曜日付き文字列に変換（Safari対応）"""
+        weekday_ja = ['月', '火', '水', '木', '金', '土', '日']
+        for row in ws.iter_rows(min_row=7, max_row=100):
+            for cell in row:
+                if isinstance(cell.value, datetime):
+                    weekday_str = weekday_ja[cell.value.weekday()]
+                    date_str = cell.value.strftime(f'%m/%d({weekday_str})')
+                    cell.value = date_str
+                    cell.number_format = '@'
 ```
 
 ### 学んだ教訓
@@ -301,10 +314,11 @@ ws.merge_cells('AW7:AW8')
 ws.merge_cells(f'AW{data_row}:AW{blank_row}')
 ```
 
-#### 2. app.py
+#### 2. config/services/pdf_service.py
 
 **PDF変換処理から除外**:
 ```python
+# PDFService._clear_hidden_columns()
 # AWは表示列なので処理対象外
 hidden_columns = ['A', 'F']  # AWは含めない
 ```
