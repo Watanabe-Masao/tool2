@@ -61,7 +61,7 @@ class TestHeaderStructure:
         assert 'A7:A8' in merged_ranges, "A7:A8が結合されていません（商品コード）"
         assert 'B7:C8' in merged_ranges, "B7:C8が結合されていません（店着日）"
         assert 'D8:E8' in merged_ranges, "D8:E8が結合されていません（品名）"
-        assert 'F7:F8' in merged_ranges, "F7:F8が結合されていません（LFC着）"
+        # F7:F8は非表示列のため結合しない（LibreOffice/Excelでの列ずれ防止）
         assert 'G7:G8' in merged_ranges, "G7:G8が結合されていません（店着原価）"
         assert 'AT7:AT8' in merged_ranges, "AT7:AT8が結合されていません（合計）"
         assert 'AV7:AV8' in merged_ranges, "AV7:AV8が結合されていません（帳合先）"
@@ -82,7 +82,8 @@ class TestHeaderStructure:
         assert ws['B7'].value == '店着日', "B7のヘッダーが正しくありません"
         assert ws['D7'].value == '産地', "D7のヘッダーが正しくありません"
         assert ws['E7'].value == '規  格', "E7のヘッダーが正しくありません"
-        assert ws['F7'].value == ' LFC着', "F7のヘッダーが正しくありません"
+        # F7は非表示列のため値を設定しない
+        assert ws['F7'].value is None, "F7は非表示列なので値がないはずです"
         assert ws['G7'].value == '店着原価', "G7のヘッダーが正しくありません"
         assert ws['H7'].value == '税抜', "H7のヘッダーが正しくありません"
         assert ws['I7'].value == 'ｹｰｽ', "I7のヘッダーが正しくありません"
