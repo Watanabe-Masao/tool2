@@ -5,12 +5,14 @@ services:
     region: oregon
     plan: free
     # フロントエンド（React）とバックエンド（Python）の両方をビルド
-    buildCommand: pip install -r requirements.txt && cd frontend && npm install && npm run build && cd ..
+    buildCommand: bash build.sh
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: NODE_VERSION
+        value: 20.11.0
       # バックエンド用Firebase環境変数（/api/firebase-config用）
       - key: FIREBASE_API_KEY
         value: AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc
