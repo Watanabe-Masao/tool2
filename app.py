@@ -119,6 +119,17 @@ async def serve_react_app(full_path: str):
 
     # React の index.html を配信
     index_path = frontend_dist / "index.html"
+
+    # デバッグ情報をログ出力
+    logger.info(f"Request path: {full_path}")
+    logger.info(f"Frontend dist directory: {frontend_dist}")
+    logger.info(f"Frontend dist exists: {frontend_dist.exists()}")
+    logger.info(f"Index path: {index_path}")
+    logger.info(f"Index exists: {index_path.exists()}")
+
+    if frontend_dist.exists():
+        logger.info(f"Contents of frontend/dist: {list(frontend_dist.iterdir())}")
+
     if index_path.exists():
         response = FileResponse(index_path)
         # HTMLページはキャッシュしない（常に最新版を取得）
@@ -128,8 +139,10 @@ async def serve_react_app(full_path: str):
         return response
 
     # ビルドされていない場合のエラー
+    error_msg = f"<h1>Frontend not built</h1><p>frontend/dist directory exists: {frontend_dist.exists()}</p><p>index.html exists: {index_path.exists()}</p>"
+    logger.error(f"Frontend build not found. Dir exists: {frontend_dist.exists()}, Index exists: {index_path.exists()}")
     return HTMLResponse(
-        content="<h1>Frontend not built</h1><p>Run 'cd frontend && npm run build' first</p>",
+        content=error_msg,
         status_code=500
     )
 
