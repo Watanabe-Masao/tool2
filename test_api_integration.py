@@ -8,7 +8,8 @@ Phase 3 API統合テスト
 
 import pytest
 from fastapi.testclient import TestClient
-from app import app, TemplateRequest, ProductDataRequest
+from app import app
+from config.models import TemplateRequest, ProductDataRequest
 
 
 client = TestClient(app)
