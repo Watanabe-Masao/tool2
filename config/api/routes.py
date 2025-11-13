@@ -13,6 +13,7 @@ APIルーター定義
 import os
 import io
 import uuid
+import logging
 from pathlib import Path
 from urllib.parse import quote
 
@@ -22,6 +23,15 @@ from fastapi.responses import StreamingResponse, FileResponse
 from config.config import settings
 from config.models import TemplateRequest, TemplateResponse
 from config.services import ExcelService, PDFService
+from config.exceptions import (
+    TemplateCreationError,
+    PDFConversionError,
+    FileNotFoundError as AppFileNotFoundError,
+    ConfigurationError
+)
+
+# ロガー設定
+logger = logging.getLogger(__name__)
 
 
 # APIルーター
@@ -38,6 +48,9 @@ async def generate_template(req: TemplateRequest):
 
     Returns:
         TemplateResponse: 生成結果とダウンロードURL
+
+    Raises:
+        TemplateCreationError: テンプレート生成失敗時
     """
     try:
         # ファイル名の生成
@@ -60,9 +73,10 @@ async def generate_template(req: TemplateRequest):
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"テンプレート生成中にエラーが発生しました: {str(e)}"
+        # カスタム例外を使用（統一ハンドラーで処理）
+        raise TemplateCreationError(
+            message="テンプレート生成中にエラーが発生しました",
+            detail=str(e)
         )
 
 
@@ -77,17 +91,20 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
 
     Returns:
         StreamingResponse: Excelファイル
+
+    Raises:
+        AppFileNotFoundError: ファイルが存在しない場合
     """
+    # ファイルパス取得
+    temp_path = settings.temp_dir / f"{file_id}.xlsx"
+
+    if not temp_path.exists():
+        raise AppFileNotFoundError(
+            message="ファイルが見つかりません",
+            detail=f"ファイルID: {file_id}"
+        )
+
     try:
-        # ファイルパス取得
-        temp_path = settings.temp_dir / f"{file_id}.xlsx"
-
-        if not temp_path.exists():
-            raise HTTPException(
-                status_code=404,
-                detail="ファイルが見つかりません"
-            )
-
         # ファイルを読み込み
         with open(temp_path, "rb") as f:
             file_content = f.read()
@@ -109,12 +126,15 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
             }
         )
 
-    except HTTPException:
+    except AppFileNotFoundError:
+        # カスタム例外をそのまま伝播
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"ファイルのダウンロード中にエラーが発生しました: {str(e)}"
+        # その他のエラーは汎用エラーとして扱う
+        logger.error(f"Download error: {e}", exc_info=True)
+        raise TemplateCreationError(
+            message="ファイルのダウンロード中にエラーが発生しました",
+            detail=str(e)
         )
 
 
@@ -128,34 +148,38 @@ async def preview_template(req: TemplateRequest):
 
     Returns:
         FileResponse: PDFファイル
-    """
-    import traceback
 
+    Raises:
+        PDFConversionError: PDF生成失敗時
+    """
     try:
         # 一時ファイルパス
         file_id = str(uuid.uuid4())
         temp_pdf_path = settings.temp_dir / f"{file_id}.pdf"
 
         # テンプレート生成
-        print(f"[DEBUG] Creating Excel template...")
+        logger.debug("Creating Excel template...")
         temp_excel_path, _ = ExcelService.create_template(
             temp_dir=settings.temp_dir,
             request=req,
             file_id=file_id
         )
-        print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
+        logger.debug(f"Excel template created: {temp_excel_path.exists()}")
 
         # PDF変換用にExcelを最適化（非表示列を削除）
-        print(f"[DEBUG] Preparing Excel for PDF conversion...")
+        logger.debug("Preparing Excel for PDF conversion...")
         PDFService.prepare_for_conversion(temp_excel_path)
 
         # ExcelをPDFに変換（LibreOffice使用）
-        print(f"[DEBUG] Converting Excel to PDF using LibreOffice...")
+        logger.debug("Converting Excel to PDF using LibreOffice...")
         PDFService.convert_to_pdf(temp_excel_path, temp_pdf_path)
-        print(f"[DEBUG] PDF created: {temp_pdf_path.exists()}")
+        logger.debug(f"PDF created: {temp_pdf_path.exists()}")
 
         if not temp_pdf_path.exists():
-            raise Exception("PDFファイルが生成されませんでした")
+            raise PDFConversionError(
+                message="PDFファイルが生成されませんでした",
+                detail="LibreOffice変換が完了しましたが、ファイルが見つかりません"
+            )
 
         # PDFを返す
         return FileResponse(
@@ -167,12 +191,15 @@ async def preview_template(req: TemplateRequest):
             }
         )
 
+    except PDFConversionError:
+        # カスタム例外をそのまま伝播
+        raise
     except Exception as e:
-        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-        print(f"[ERROR] PDF preview generation failed:\n{error_detail}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"PDFプレビュー生成中にエラーが発生しました: {str(e)}"
+        # その他のエラーはPDF変換エラーとして扱う
+        logger.error(f"PDF preview generation failed: {e}", exc_info=True)
+        raise PDFConversionError(
+            message="PDFプレビュー生成中にエラーが発生しました",
+            detail=str(e)
         )
 
 
@@ -209,14 +236,46 @@ async def get_firebase_config():
 
     注意: Firebase Web SDKの仕様上、これらの設定は公開されても問題ありません。
     セキュリティはFirestore Security Rulesで制御します。
+
+    Raises:
+        HTTPException: Firebase設定が環境変数に設定されていない場合
     """
+    # 必須の環境変数を取得
+    api_key = os.getenv("FIREBASE_API_KEY")
+    auth_domain = os.getenv("FIREBASE_AUTH_DOMAIN")
+    project_id = os.getenv("FIREBASE_PROJECT_ID")
+    storage_bucket = os.getenv("FIREBASE_STORAGE_BUCKET")
+    messaging_sender_id = os.getenv("FIREBASE_MESSAGING_SENDER_ID")
+    app_id = os.getenv("FIREBASE_APP_ID")
+
+    # 環境変数の検証
+    missing_vars = []
+    if not api_key:
+        missing_vars.append("FIREBASE_API_KEY")
+    if not auth_domain:
+        missing_vars.append("FIREBASE_AUTH_DOMAIN")
+    if not project_id:
+        missing_vars.append("FIREBASE_PROJECT_ID")
+    if not storage_bucket:
+        missing_vars.append("FIREBASE_STORAGE_BUCKET")
+    if not messaging_sender_id:
+        missing_vars.append("FIREBASE_MESSAGING_SENDER_ID")
+    if not app_id:
+        missing_vars.append("FIREBASE_APP_ID")
+
+    if missing_vars:
+        raise ConfigurationError(
+            message="Firebase設定が不完全です",
+            detail=f"以下の環境変数を設定してください: {', '.join(missing_vars)}"
+        )
+
     firebase_config = {
-        "apiKey": os.getenv("FIREBASE_API_KEY", "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc"),
-        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", "haibun-distribution.firebaseapp.com"),
-        "projectId": os.getenv("FIREBASE_PROJECT_ID", "haibun-distribution"),
-        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", "haibun-distribution.firebasestorage.app"),
-        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", "742220611313"),
-        "appId": os.getenv("FIREBASE_APP_ID", "1:742220611313:web:bec0f006c4c648adcbb350")
+        "apiKey": api_key,
+        "authDomain": auth_domain,
+        "projectId": project_id,
+        "storageBucket": storage_bucket,
+        "messagingSenderId": messaging_sender_id,
+        "appId": app_id
     }
 
     return firebase_config

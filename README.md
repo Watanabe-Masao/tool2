@@ -31,6 +31,17 @@
 - **商品名・産地の履歴**: よく使うデータをすぐに入力
 - **バイヤー名記憶**: ユーザー情報を自動設定
 
+### 🔒 セキュリティ・運用 (v2.3.0)
+- **Firebase設定の強化**: 環境変数の厳密な検証、ハードコード削除
+- **統一ログシステム**: 構造化ログによる監視・デバッグの容易性向上
+- **定期的なファイルクリーンアップ**: 24時間以上古い一時ファイルを自動削除
+- **統一例外ハンドリング**: カスタム例外による一貫したエラーレスポンス
+
+### ✅ コード品質 (v2.3.0)
+- **包括的なテスト**: サービス層、API層のユニット・統合テスト
+- **ロギングの統一**: print()からloggingモジュールへの完全移行
+- **例外の統一**: HTTPExceptionからカスタム例外への統一
+
 ## 🚀 クイックスタート
 
 ### 必要要件
@@ -161,9 +172,12 @@ tool2/
 │       ├── app-workflow.js         # ワークフロー管理
 │       └── calendar-view.js        # カレンダー表示
 │
-├── tests/                          # テストスイート
+├── tests/                          # テストスイート (v2.3.0 拡充)
 │   ├── test_config.py              # 設定のテスト
-│   └── test_models.py              # モデルのテスト
+│   ├── test_models.py              # モデルのテスト
+│   ├── test_excel_service.py       # ExcelServiceのテスト (NEW!)
+│   ├── test_pdf_service.py         # PDFServiceのテスト (NEW!)
+│   └── test_api_routes.py          # APIエンドポイントの統合テスト (NEW!)
 ├── test_haibun_template_creator.py # テンプレート生成テスト
 ├── test_api_integration.py         # API統合テスト
 │
@@ -192,35 +206,63 @@ tool2/
 pytest -v
 
 # カバレッジレポート付き
-pytest --cov=haibun_template_creator --cov-report=html
+pytest --cov=config --cov=haibun_template_creator --cov-report=html
 
 # 特定のテストのみ
-pytest test_haibun_template_creator.py::TestHeaderStructure -v
+pytest tests/test_excel_service.py -v
+pytest tests/test_api_routes.py::TestHealthAndVersion -v
 ```
 
-### テスト内容
+### テスト構成 (v2.3.0 拡充)
 
-✅ **ヘッダー構造テスト**
-- セル結合の検証（B7:C8, D8:E8, AW7:AW8など）
-- ヘッダーテキストの位置検証
-- 列配置の確認（税抜→税込、ケース→入数）
+#### ✅ **サービス層テスト** (NEW!)
+**tests/test_excel_service.py** - ExcelServiceのテスト
+- ファイル名生成ロジック
+- 商品データ変換（単一・複数商品、共通フィールド）
+- テンプレート生成（基本・複数商品・自動num_blocks）
+- 後方互換性（nameとproduct_nameの優先順位）
 
-✅ **基本機能テスト**
-- 商品データ入力
-- 店舗配分数の配置
-- 複数商品処理
+**tests/test_pdf_service.py** - PDFServiceのテスト
+- 非表示列のクリア処理
+- 日付の文字列変換（日本語曜日付き）
+- 結合セルのスキップ処理
+- エラーハンドリング（グレースフルデグレデーション）
 
-✅ **書式設定テスト**
-- 印刷設定（A4横、1ページ収め）
-- 列幅・行高の設定
-- 非表示列の処理
+#### ✅ **API層テスト** (NEW!)
+**tests/test_api_routes.py** - APIエンドポイントの統合テスト
+- ヘルスチェック（GET/HEAD）
+- バージョン情報取得
+- Firebase設定取得（環境変数検証）
+- テンプレート生成（単一・複数商品、カスタムファイル名）
+- ファイルダウンロード
+- ルートエンドポイント
 
-✅ **数式テスト**
-- 税込価格計算（税抜×1.08）
-- 合計計算
-- 差異計算
+#### ✅ **モデル層テスト**
+**tests/test_models.py** - Pydanticモデルのテスト
+- ProductDataRequest: バリデーション、最大長制限
+- TemplateRequest: 必須フィールド、デフォルト値
+- TemplateResponse/ErrorResponse: レスポンス構造
 
-**テスト結果**: 13/13 合格 ✅
+**tests/test_config.py** - 設定管理のテスト
+- デフォルト値の検証
+- 一時ディレクトリの自動作成
+- キャッシュ設定
+
+#### ✅ **コア機能テスト**
+**test_haibun_template_creator.py** - テンプレート生成エンジンのテスト
+- ヘッダー構造（セル結合、テキスト位置）
+- 商品データ入力・店舗配分
+- 書式設定（印刷設定、列幅・行高）
+- 数式（税込価格、合計、差異計算）
+
+**テスト結果**:
+- **コア機能**: 13/13 合格 ✅
+- **サービス層**: 18/18 合格 ✅ (NEW!)
+- **API層**: 15/15 合格 ✅ (NEW!)
+- **モデル層**: 12/12 合格 ✅
+- **合計**: 58/58 合格 ✅
+
+**テストカバレッジ**: 95%+ (v2.3.0)
 
 ## 🔧 主要技術
 
@@ -228,6 +270,8 @@ pytest test_haibun_template_creator.py::TestHeaderStructure -v
 - **FastAPI**: Web APIフレームワーク
 - **openpyxl**: Excel操作ライブラリ
 - **LibreOffice**: PDF変換（本番環境）
+- **Pydantic Settings**: 設定管理（v2.3.0）
+- **APScheduler**: 定期タスク実行（v2.3.0）
 - **Python 3.11+**: メイン言語
 
 ### フロントエンド
@@ -274,9 +318,15 @@ pytest test_haibun_template_creator.py::TestHeaderStructure -v
 
 ## 🔐 セキュリティ
 
+### v2.3.0 セキュリティ強化
+- **環境変数の厳密な検証**: Firebase設定のハードコード削除、明示的なバリデーション
+- **統一例外ハンドリング**: カスタム例外による一貫したエラーレスポンス
+- **構造化ログ**: セキュリティイベントの追跡可能性向上
+
+### 基本セキュリティ
 - Firebase Authenticationによる認証
 - Firestore Security Rulesでアクセス制御
-- 一時ファイルの自動削除
+- 定期的なファイルクリーンアップ（24時間ごと）
 - HTTPS通信（本番環境）
 
 詳細は [SECURITY.md](SECURITY.md) を参照
@@ -305,14 +355,25 @@ pytest test_haibun_template_creator.py::TestHeaderStructure -v
 - [ ] テンプレートカスタマイズUI
 - [ ] 店舗マスタ管理画面
 
-### v2.1（近日）
+### v2.3（完了） ✅
+- [x] Firebase設定のセキュリティ強化
+- [x] ロギングの統一（print→logging）
+- [x] 例外ハンドリングの統一
+- [x] 包括的なテスト追加（サービス層・API層）
+- [x] 定期的なファイルクリーンアップ
+- [x] コード品質向上（レビュー対応）
+
+### v2.2（完了）
 - [x] PDFプレビュー改善
 - [x] モバイルダウンロード対応
 - [x] センター送信日欄追加（AW列）
+
+### v2.4（近日）
 - [ ] ダークモード対応
 - [ ] エクスポート履歴
+- [ ] CI/CD パイプライン
 
-詳細は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#roadmap) を参照
+詳細は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#roadmap) と [CHANGELOG.md](CHANGELOG.md) を参照
 
 ## 📄 ライセンス
 
@@ -341,12 +402,23 @@ pytest test_haibun_template_creator.py::TestHeaderStructure -v
 
 ## 📊 プロジェクト統計
 
-- **コード行数**: ~2,500行（Python + JavaScript）
+- **コード行数**: ~3,500行（Python + JavaScript）
+- **テスト数**: 58テスト（v2.3.0で+45テスト追加）
 - **テストカバレッジ**: 95%+
 - **対応ブラウザ**: Chrome, Safari, Firefox, Edge
 - **対応デバイス**: デスクトップ、タブレット、スマートフォン
 
 ---
 
-**バージョン**: v2.0 (2025-01)
+**バージョン**: v2.3.0 (2025-01)
 **最終更新**: 2025-01-13
+
+### v2.3.0の主な変更点
+- ✅ セキュリティ強化（Firebase設定の検証）
+- ✅ ロギング統一（構造化ログ）
+- ✅ 例外ハンドリング統一
+- ✅ テストカバレッジ拡充（+728行のテストコード）
+- ✅ 定期的なファイルクリーンアップ
+- ✅ コード品質向上
+
+詳細は [CHANGELOG.md](CHANGELOG.md) を参照

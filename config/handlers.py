@@ -195,6 +195,35 @@ async def pdf_conversion_error_handler(
     )
 
 
+async def configuration_error_handler(
+    request: Request,
+    exc: ConfigurationError
+) -> JSONResponse:
+    """
+    設定エラーハンドラー
+
+    Args:
+        request: リクエストオブジェクト
+        exc: 設定エラー
+
+    Returns:
+        JSONResponse: エラーレスポンス
+    """
+    logger.error(f"Configuration error: {exc.message}", extra={
+        "detail": exc.detail,
+        "path": request.url.path
+    })
+
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error=exc.message,
+            detail=exc.detail,
+            error_type="ConfigurationError"
+        ).dict()
+    )
+
+
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     汎用例外ハンドラー
@@ -230,11 +259,12 @@ def register_exception_handlers(app):
     Args:
         app: FastAPIアプリケーションインスタンス
     """
-    # カスタム例外ハンドラー
+    # カスタム例外ハンドラー（具体的な例外から順に登録）
     app.add_exception_handler(TemplateCreationError, template_creation_error_handler)
     app.add_exception_handler(PDFConversionError, pdf_conversion_error_handler)
     app.add_exception_handler(ValidationError, validation_error_handler)
     app.add_exception_handler(FileNotFoundError, file_not_found_handler)
+    app.add_exception_handler(ConfigurationError, configuration_error_handler)
     app.add_exception_handler(AppException, app_exception_handler)
 
     # Pydantic検証エラー

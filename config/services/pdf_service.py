@@ -10,11 +10,15 @@ PDF変換サービス
 - 信頼性: エラーハンドリングとタイムアウト管理
 """
 
+import logging
 from pathlib import Path
 import subprocess
 import openpyxl
 from datetime import datetime
 from config.config import settings
+
+# ロガー設定
+logger = logging.getLogger(__name__)
 
 
 class PDFService:
@@ -53,12 +57,10 @@ class PDFService:
             # 変更を保存
             wb.save(excel_path)
             wb.close()
-            print(f"[DEBUG] Excel file optimized for PDF conversion")
+            logger.debug("Excel file optimized for PDF conversion")
 
         except Exception as e:
-            print(f"[ERROR] PDF conversion preparation failed: {e}")
-            import traceback
-            print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+            logger.error(f"PDF conversion preparation failed: {e}", exc_info=True)
             # エラー発生時も処理を続行（元のファイルを使用）
             try:
                 wb.close()
@@ -77,7 +79,7 @@ class PDFService:
 
         for col_letter in hidden_columns:
             if ws.column_dimensions[col_letter].hidden:
-                print(f"[DEBUG] Processing hidden column {col_letter} for PDF conversion")
+                logger.debug(f"Processing hidden column {col_letter} for PDF conversion")
 
                 # 列の全セルの内容をクリア（結合セルはスキップ）
                 for row in range(1, ws.max_row + 1):
@@ -89,7 +91,7 @@ class PDFService:
 
                 # 列幅を極小値に設定（非表示のまま維持）
                 ws.column_dimensions[col_letter].width = 0.08333
-                print(f"[DEBUG] Column {col_letter}: cleared, width=0.08333")
+                logger.debug(f"Column {col_letter}: cleared, width=0.08333")
 
     @staticmethod
     def _convert_dates_to_strings(ws) -> None:
@@ -110,7 +112,7 @@ class PDFService:
                     date_str = cell.value.strftime(f'%m/%d({weekday_str})')
                     cell.value = date_str
                     cell.number_format = '@'  # テキスト形式
-                    print(f"[DEBUG] Converted datetime in {cell.coordinate} to string: {date_str}")
+                    logger.debug(f"Converted datetime in {cell.coordinate} to string: {date_str}")
 
     @staticmethod
     def convert_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
@@ -153,7 +155,7 @@ class PDFService:
 
             if result_ods.returncode != 0:
                 error_msg = f"Excel to ODS conversion failed:\nstdout: {result_ods.stdout}\nstderr: {result_ods.stderr}"
-                print(f"[ERROR] {error_msg}")
+                logger.error(error_msg)
                 raise Exception(error_msg)
 
             # Step 2: ODS → PDF
@@ -176,7 +178,7 @@ class PDFService:
 
             if result_pdf.returncode != 0:
                 error_msg = f"ODS to PDF conversion failed:\nstdout: {result_pdf.stdout}\nstderr: {result_pdf.stderr}"
-                print(f"[ERROR] {error_msg}")
+                logger.error(error_msg)
                 raise Exception(error_msg)
 
             # 出力ファイル名を調整（LibreOfficeは元のファイル名で出力する）
