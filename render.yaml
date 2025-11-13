@@ -4,12 +4,18 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    # フロントエンド（React）とバックエンド（Python）の両方をビルド
+    buildCommand: |
+      pip install -r requirements.txt &&
+      cd frontend &&
+      npm install &&
+      npm run build
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      # バックエンド用Firebase環境変数（/api/firebase-config用）
       - key: FIREBASE_API_KEY
         value: AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc
       - key: FIREBASE_AUTH_DOMAIN
@@ -21,6 +27,19 @@ services:
       - key: FIREBASE_MESSAGING_SENDER_ID
         value: "742220611313"
       - key: FIREBASE_APP_ID
+        value: 1:742220611313:web:bec0f006c4c648adcbb350
+      # フロントエンド用Firebase環境変数（Reactビルド時に埋め込まれる）
+      - key: VITE_FIREBASE_API_KEY
+        value: AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: haibun-distribution.firebaseapp.com
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: haibun-distribution
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: haibun-distribution.firebasestorage.app
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: "742220611313"
+      - key: VITE_FIREBASE_APP_ID
         value: 1:742220611313:web:bec0f006c4c648adcbb350
     # 自動デプロイを有効化（デフォルトでtrue）
     autoDeploy: true

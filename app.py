@@ -9,12 +9,11 @@ FastAPIを使用したバックエンドサーバー
 import os
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi import Request
+from fastapi.responses import HTMLResponse, FileResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # APIルーターのインポート (Phase 1.4: APIエンドポイントの分離)
@@ -76,64 +75,28 @@ register_exception_handlers(app)
 # APIルーターを登録 (Phase 1.4: APIエンドポイントの分離)
 app.include_router(router)
 
-# 静的ファイルとテンプレートの設定
+# 静的ファイルの設定
+# React アプリのビルド成果物を配信
+# Reactのビルド成果物ディレクトリ
+frontend_dist = Path(__file__).parent / "frontend" / "dist"
+
+# 古い静的ファイルもマウント（バックエンドAPIで使用する場合のため）
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
-
-# キャッシュ制御ミドルウェア
-@app.middleware("http")
-async def add_cache_control_header(request: Request, call_next):
-    """
-    静的ファイルにCache-Controlヘッダーを追加
-    バージョンクエリパラメータがある場合は長期間キャッシュ
-    """
-    response = await call_next(request)
-
-    # 静的ファイルの場合
-    if request.url.path.startswith("/static/"):
-        # バージョンパラメータがある場合は1年間キャッシュ
-        if "v=" in request.url.query:
-            response.headers["Cache-Control"] = f"public, max-age={settings.cache_max_age_with_version}, immutable"
-        else:
-            # バージョンパラメータがない場合は短期間のみキャッシュ
-            response.headers["Cache-Control"] = f"public, max-age={settings.cache_max_age_without_version}"
-
-    return response
 
 
 # ============================================================
-# Web Pages (Templates)
+# React SPA のフォールバックルーティング
 # ============================================================
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+@app.get("/assets/{file_path:path}")
+async def serve_assets(file_path: str):
     """
-    ルートページ - フロントエンドUIを表示
+    Reactのアセット（JS、CSS）を配信
     """
-    response = templates.TemplateResponse("index.html", {
-        "request": request,
-        "version": settings.app_version
-    })
-    # HTMLページはキャッシュしない（常に最新版を取得）
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    """
-    ログインページ
-    """
-    response = templates.TemplateResponse("login.html", {
-        "request": request
-    })
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    asset_path = frontend_dist / "assets" / file_path
+    if asset_path.exists():
+        return FileResponse(asset_path)
+    return Response(status_code=404)
 
 
 @app.head("/")
@@ -142,6 +105,33 @@ async def root_head():
     ルートパスのHEADリクエスト対応（Renderヘルスチェック用）
     """
     return Response(status_code=200)
+
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app(full_path: str):
+    """
+    すべてのパスでReactアプリを配信（SPA フォールバック）
+    /api/ で始まるパスは除外（APIルーターで処理）
+    """
+    # APIパスは除外（すでにルーターで処理される）
+    if full_path.startswith("api/"):
+        return Response(status_code=404)
+
+    # React の index.html を配信
+    index_path = frontend_dist / "index.html"
+    if index_path.exists():
+        response = FileResponse(index_path)
+        # HTMLページはキャッシュしない（常に最新版を取得）
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+    # ビルドされていない場合のエラー
+    return HTMLResponse(
+        content="<h1>Frontend not built</h1><p>Run 'cd frontend && npm run build' first</p>",
+        status_code=500
+    )
 
 
 @app.on_event("startup")
