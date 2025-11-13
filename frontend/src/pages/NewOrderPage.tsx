@@ -1,4 +1,5 @@
 import React from 'react';
+import { IonPage, IonContent } from '@ionic/react';
 import { Container, Typography, Box } from '@mui/material';
 
 /**
@@ -13,15 +14,19 @@ import { Container, Typography, Box } from '@mui/material';
  */
 export const NewOrderPage: React.FC = () => {
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          新規作成
-        </Typography>
-        <Typography color="text.secondary">
-          5ステップの注文フォームを実装予定
-        </Typography>
-      </Box>
-    </Container>
+    <IonPage>
+      <IonContent>
+        <Container maxWidth="lg">
+          <Box sx={{ py: 4 }}>
+            <Typography variant="h4" gutterBottom>
+              新規作成
+            </Typography>
+            <Typography color="text.secondary">
+              5ステップの注文フォームを実装予定
+            </Typography>
+          </Box>
+        </Container>
+      </IonContent>
+    </IonPage>
   );
 };
