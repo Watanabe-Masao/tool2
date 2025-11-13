@@ -404,16 +404,22 @@ async def preview_template(req: TemplateRequest):
         # 商品データをProductDataオブジェクトに変換
         products = []
         for product_req in req.products:
+            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
+            product_name = product_req.name or product_req.product_name
+
+            # delivery_dateの決定（商品固有 > 全体共通）
+            delivery_date = product_req.delivery_date or req.delivery_date
+
             product_data = ProductData(
-                delivery_date=product_req.delivery_date,
+                delivery_date=delivery_date,
                 origin=product_req.origin,
                 standard=product_req.standard,
-                product_name=product_req.product_name,
+                product_name=product_name,
                 store_cost=product_req.store_cost,
                 price=product_req.price,
                 quantity=product_req.quantity,
                 total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest,
+                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
                 store_quantities=product_req.store_quantities
             )
             products.append(product_data)
