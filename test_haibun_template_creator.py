@@ -58,7 +58,7 @@ class TestHeaderStructure:
         merged_ranges = [str(merged_range) for merged_range in ws.merged_cells.ranges]
 
         # 期待される結合
-        assert 'A7:A8' in merged_ranges, "A7:A8が結合されていません（商品コード）"
+        # A7:A8は非表示列のため結合しない（LibreOffice/Excelでの列ずれ防止）
         assert 'B7:C8' in merged_ranges, "B7:C8が結合されていません（店着日）"
         assert 'D8:E8' in merged_ranges, "D8:E8が結合されていません（品名）"
         # F7:F8は非表示列のため結合しない（LibreOffice/Excelでの列ずれ防止）
@@ -78,7 +78,8 @@ class TestHeaderStructure:
         ws = wb.active
 
         # 7行目のヘッダー
-        assert ws['A7'].value == '商品コード', "A7のヘッダーが正しくありません"
+        # A7は非表示列のため値を設定しない
+        assert ws['A7'].value is None, "A7は非表示列なので値がないはずです"
         assert ws['B7'].value == '店着日', "B7のヘッダーが正しくありません"
         assert ws['D7'].value == '産地', "D7のヘッダーが正しくありません"
         assert ws['E7'].value == '規  格', "E7のヘッダーが正しくありません"
