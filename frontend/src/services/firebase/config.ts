@@ -1,18 +1,45 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { FirebaseConfigResponse } from '@/types';
 
 /**
- * Firebase設定をサーバーから取得
- * セキュリティのため、環境変数はサーバー側で管理
+ * Firebase設定を環境変数から取得
+ *
+ * 開発環境: .env ファイルから読み込み
+ * 本番環境: Viteのビルド時に環境変数が埋め込まれる
  */
-const fetchFirebaseConfig = async (): Promise<FirebaseConfigResponse> => {
-  const response = await fetch('/api/firebase-config');
-  if (!response.ok) {
-    throw new Error('Firebase設定の取得に失敗しました');
+const getFirebaseConfig = () => {
+  // 環境変数から直接読み込み
+  const config = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  };
+
+  // 環境変数の検証
+  const missingVars = [];
+  if (!config.apiKey) missingVars.push('VITE_FIREBASE_API_KEY');
+  if (!config.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!config.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
+  if (!config.storageBucket) missingVars.push('VITE_FIREBASE_STORAGE_BUCKET');
+  if (!config.messagingSenderId) missingVars.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
+  if (!config.appId) missingVars.push('VITE_FIREBASE_APP_ID');
+
+  if (missingVars.length > 0) {
+    throw new Error(
+      `Firebase環境変数が設定されていません。\n` +
+      `.envファイルに以下を設定してください:\n${missingVars.join('\n')}\n\n` +
+      `例:\n` +
+      `VITE_FIREBASE_API_KEY=your_api_key_here\n` +
+      `VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com\n` +
+      `VITE_FIREBASE_PROJECT_ID=your_project_id`
+    );
   }
-  return response.json();
+
+  return config;
 };
 
 /**
@@ -46,8 +73,8 @@ export const initializeFirebase = async (): Promise<void> => {
     try {
       console.log('Firebase初期化を開始...');
 
-      // サーバーからFirebase設定を取得
-      const config = await fetchFirebaseConfig();
+      // 環境変数からFirebase設定を取得
+      const config = getFirebaseConfig();
 
       // Firebaseアプリを初期化
       app = initializeApp(config);
