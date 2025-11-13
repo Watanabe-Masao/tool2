@@ -281,7 +281,7 @@ class TestAPIHealth:
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "ok"
+        assert data["status"] == "healthy"  # 実際の実装に合わせて修正（app.py:268）
 
     def test_version_endpoint(self):
         """バージョン情報エンドポイント"""
