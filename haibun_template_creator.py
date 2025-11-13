@@ -433,9 +433,9 @@ class HaibunTemplateCreator:
         """ヘッダーエリア（7～8行）"""
         cfg = self.config
 
-        # 7行目ヘッダー（非表示列Fは除外）
+        # 7行目ヘッダー（非表示列A, Fは除外）
         headers_row7: List[Tuple[str, str, int, bool]] = [
-            ('A7', '商品コード', 10, False),
+            # A7は非表示列のため設定しない
             ('B7', '店着日', 10, False),
             ('D7', '産地', 10, False),
             ('E7', '規  格', 10, False),
@@ -475,7 +475,7 @@ class HaibunTemplateCreator:
         cfg = self.config
 
         # A-G列 一部結合
-        self.ws.merge_cells('A7:A8')
+        # A7:A8は非表示列なので結合しない（LibreOffice/Excelでの表示ずれ防止）
         self.ws.merge_cells('B7:C8')
 
         # D7:E7 産地/規格の罫線処理のため一旦空白行として扱う
