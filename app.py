@@ -73,6 +73,70 @@ TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
 
 
+def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
+    """
+    PDF変換用にExcelファイルを最適化
+
+    LibreOfficeのPDF変換で問題を起こす要素を除去：
+    - 非表示列の内容をクリア（削除ではなく）
+    - 列幅を0に設定
+    - 日付を文字列に変換（Safari対応）
+
+    Args:
+        excel_path: 変換前のExcelファイルパス（このファイルを直接修正）
+    """
+    import openpyxl
+    from datetime import datetime
+
+    try:
+        wb = openpyxl.load_workbook(excel_path)
+        ws = wb.active
+
+        # 非表示列の処理（内容をクリアし、列幅を0に）
+        hidden_columns = ['A', 'F', 'AW']
+
+        for col_letter in hidden_columns:
+            if ws.column_dimensions[col_letter].hidden:
+                print(f"[DEBUG] Clearing hidden column {col_letter} for PDF conversion")
+
+                # 列幅を極小に設定
+                ws.column_dimensions[col_letter].width = 0.08333
+
+                # 列の全セルの内容をクリア（結合セルはスキップ）
+                for row in range(1, ws.max_row + 1):
+                    cell = ws[f'{col_letter}{row}']
+                    # 結合セルの場合はスキップ
+                    if not isinstance(cell, openpyxl.cell.cell.MergedCell):
+                        cell.value = None
+                        cell.number_format = 'General'
+
+        # 日付セルをPDF変換に適した形式に変換（Safari対応）
+        # 日本語曜日マッピング
+        weekday_ja = ['月', '火', '水', '木', '金', '土', '日']
+
+        for row in ws.iter_rows(min_row=7, max_row=100):  # データエリア
+            for cell in row:
+                if isinstance(cell.value, datetime):
+                    # datetimeを読みやすい文字列に変換（日本語曜日付き）
+                    weekday_str = weekday_ja[cell.value.weekday()]
+                    date_str = cell.value.strftime(f'%m/%d({weekday_str})')
+                    cell.value = date_str
+                    cell.number_format = '@'  # テキスト形式
+                    print(f"[DEBUG] Converted datetime in {cell.coordinate} to string: {date_str}")
+
+        # 変更を保存
+        wb.save(excel_path)
+        wb.close()
+        print(f"[DEBUG] Excel file prepared for PDF conversion: {excel_path}")
+
+    except Exception as e:
+        print(f"[WARNING] Failed to prepare Excel for PDF conversion: {e}")
+        import traceback
+        print(f"[WARNING] Traceback: {traceback.format_exc()}")
+        # エラーが発生しても処理を続行（元のExcelをそのまま使用）
+        pass
+
+
 def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
     """
     ExcelファイルをLibreOfficeを使ってPDFに変換（完全な書式保持）
@@ -393,9 +457,12 @@ async def preview_template(req: TemplateRequest):
         temp_excel_path = TEMP_DIR / f"{file_id}.xlsx"
         temp_pdf_path = TEMP_DIR / f"{file_id}.pdf"
 
+        # 商品数を取得
+        num_blocks = len(req.products) if req.products else 1
+
         # 設定作成
         config = TemplateConfig(
-            num_blocks=req.num_blocks,
+            num_blocks=num_blocks,
             pixel_100=req.pixel_100,
             pixel_50=req.pixel_50,
             default_output_path=str(temp_excel_path)
@@ -432,6 +499,10 @@ async def preview_template(req: TemplateRequest):
             products=products
         )
         print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
+
+        # PDF変換用にExcelを最適化（非表示列を削除）
+        print(f"[DEBUG] Preparing Excel for PDF conversion...")
+        prepare_excel_for_pdf_conversion(temp_excel_path)
 
         # ExcelをPDFに変換（LibreOffice使用）
         print(f"[DEBUG] Converting Excel to PDF using LibreOffice...")
