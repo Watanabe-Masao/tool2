@@ -9,8 +9,6 @@ FastAPIを使用したバックエンドサーバー
 import os
 import io
 import uuid
-from datetime import datetime
-from typing import Optional
 from pathlib import Path
 from urllib.parse import quote
 
@@ -19,14 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi import Request
-from typing import Dict, List
-
-from haibun_template_creator import (
-    HaibunTemplateCreator,
-    TemplateConfig,
-    StoreData,
-    ProductData
-)
 
 # モデルのインポート (Phase 1.2: モデルの分離)
 from config.models import (
@@ -36,10 +26,7 @@ from config.models import (
 )
 
 # サービスのインポート (Phase 1.3: サービス層の作成)
-from config.services.pdf_service import PDFService
-
-import openpyxl
-import subprocess
+from config.services import ExcelService, PDFService
 
 
 # アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
@@ -142,57 +129,12 @@ async def generate_template(req: TemplateRequest):
     """
     try:
         # ファイル名の生成
-        if req.output_filename:
-            filename = req.output_filename
-            if not filename.endswith('.xlsx'):
-                filename += '.xlsx'
-        else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"配分表_テンプレート_{timestamp}.xlsx"
-
-        # 一時ファイルパス
-        file_id = str(uuid.uuid4())
-        temp_path = TEMP_DIR / f"{file_id}.xlsx"
-
-        # 商品数を動的に取得（num_blocksが指定されていない場合）
-        num_blocks = req.num_blocks if req.num_blocks else len(req.products)
-
-        # 設定作成
-        config = TemplateConfig(
-            num_blocks=num_blocks,
-            pixel_100=req.pixel_100,
-            pixel_50=req.pixel_50,
-            default_output_path=str(temp_path)
-        )
-
-        # 商品データをProductDataオブジェクトに変換
-        products = []
-        for product_req in req.products:
-            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
-            product_name = product_req.name or product_req.product_name
-
-            # delivery_dateの決定（商品固有 > 全体共通）
-            delivery_date = product_req.delivery_date or req.delivery_date
-
-            product_data = ProductData(
-                delivery_date=delivery_date,
-                origin=product_req.origin,
-                standard=product_req.standard,
-                product_name=product_name,
-                store_cost=product_req.store_cost,
-                price=product_req.price,
-                quantity=product_req.quantity,
-                total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
-                store_quantities=product_req.store_quantities
-            )
-            products.append(product_data)
+        filename = ExcelService.generate_filename(req.output_filename)
 
         # テンプレート生成
-        creator = HaibunTemplateCreator(config=config)
-        output_path = creator.create_template(
-            buyer_name=req.buyer_name,
-            products=products
+        output_path, file_id = ExcelService.create_template(
+            temp_dir=TEMP_DIR,
+            request=req
         )
 
         # ダウンロードURL生成
@@ -280,49 +222,14 @@ async def preview_template(req: TemplateRequest):
     try:
         # 一時ファイルパス
         file_id = str(uuid.uuid4())
-        temp_excel_path = TEMP_DIR / f"{file_id}.xlsx"
         temp_pdf_path = TEMP_DIR / f"{file_id}.pdf"
-
-        # 商品数を取得
-        num_blocks = len(req.products) if req.products else 1
-
-        # 設定作成
-        config = TemplateConfig(
-            num_blocks=num_blocks,
-            pixel_100=req.pixel_100,
-            pixel_50=req.pixel_50,
-            default_output_path=str(temp_excel_path)
-        )
-
-        # 商品データをProductDataオブジェクトに変換
-        products = []
-        for product_req in req.products:
-            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
-            product_name = product_req.name or product_req.product_name
-
-            # delivery_dateの決定（商品固有 > 全体共通）
-            delivery_date = product_req.delivery_date or req.delivery_date
-
-            product_data = ProductData(
-                delivery_date=delivery_date,
-                origin=product_req.origin,
-                standard=product_req.standard,
-                product_name=product_name,
-                store_cost=product_req.store_cost,
-                price=product_req.price,
-                quantity=product_req.quantity,
-                total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
-                store_quantities=product_req.store_quantities
-            )
-            products.append(product_data)
 
         # テンプレート生成
         print(f"[DEBUG] Creating Excel template...")
-        creator = HaibunTemplateCreator(config=config)
-        creator.create_template(
-            buyer_name=req.buyer_name,
-            products=products
+        temp_excel_path, _ = ExcelService.create_template(
+            temp_dir=TEMP_DIR,
+            request=req,
+            file_id=file_id
         )
         print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
 
