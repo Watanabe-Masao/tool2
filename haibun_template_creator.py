@@ -314,14 +314,10 @@ class HaibunTemplateCreator:
         """列幅と非表示設定"""
         cfg = self.config
 
-        # 非表示列
-        for col in ['A', 'F', 'AW']:
-            self.ws.column_dimensions[col].hidden = True
-
-        # 基本列幅
+        # 基本列幅（非表示列A, Fは除外）
         basic_widths: Dict[str, float] = {
-            'A': 6.3984375, 'B': 7.296875, 'C': 7.296875, 'D': 10.0,
-            'E': 13.3984375, 'F': 6.19921875, 'G': 8.3984375, 'H': 13.0,
+            'B': 7.296875, 'C': 7.296875, 'D': 10.0,
+            'E': 13.3984375, 'G': 8.3984375, 'H': 13.0,
             'I': cfg.pixel_100,
         }
         for col, width in basic_widths.items():
@@ -332,13 +328,19 @@ class HaibunTemplateCreator:
             col_letter = get_column_letter(col_idx)
             self.ws.column_dimensions[col_letter].width = cfg.pixel_50
 
-        # 特殊列幅
+        # 特殊列幅（AWは非表示列なので除外）
         special_widths: Dict[str, float] = {
             'AT': 7.09765625, 'AU': 13.0, 'AV': 12.8984375,
-            'AW': 8.09765625, 'AX': 8.09765625
+            'AX': 8.09765625
         }
         for col, width in special_widths.items():
             self.ws.column_dimensions[col].width = width
+
+        # 非表示列（列幅を極小値に設定してから非表示にする）
+        # openpyxlは列幅0を許可しないため、0.08333（1ピクセル相当）に設定
+        for col in ['A', 'F', 'AW']:
+            self.ws.column_dimensions[col].width = 0.08333
+            self.ws.column_dimensions[col].hidden = True
 
     def _setup_rows(self) -> None:
         """行高と非表示設定"""
