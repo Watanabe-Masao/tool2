@@ -33,6 +33,9 @@
 | Webフレームワーク | FastAPI | 高速、自動ドキュメント生成 |
 | Excel操作 | openpyxl 3.1+ | Excelファイル生成 |
 | PDF変換 | LibreOffice | 高品質なPDF変換 |
+| 設定管理 | Pydantic Settings 2.0+ | 環境変数管理、型安全 (v2.3) |
+| タスクスケジューラ | APScheduler 3.10+ | 定期的なファイルクリーンアップ (v2.3) |
+| ログ | Python logging | 構造化ログ、デバッグ支援 (v2.3) |
 | フロントエンド | Vanilla JavaScript (ES6) | 軽量、フレームワーク不要 |
 | 認証 | Firebase Authentication | Google認証、簡単統合 |
 | データベース | Firestore | NoSQL、リアルタイム同期 |
@@ -125,6 +128,36 @@
 
 FastAPIアプリケーションのメインファイル。
 
+#### v2.3.0 新機能
+
+**定期的なファイルクリーンアップ**
+```python
+# APSchedulerによる定期実行
+scheduler = BackgroundScheduler()
+
+def cleanup_old_files():
+    """24時間以上古いファイルを削除"""
+    cutoff_time = datetime.now() - timedelta(hours=24)
+    for file in temp_dir.glob("*.xlsx", "*.pdf", "*.ods"):
+        if file.stat().st_mtime < cutoff_time:
+            file.unlink()
+
+@app.on_event("startup")
+async def startup_event():
+    scheduler.add_job(cleanup_old_files, 'interval', hours=1)
+    scheduler.start()
+```
+
+**統一ロギング**
+```python
+# 構造化ログ
+logger = logging.getLogger(__name__)
+
+logger.info("Application started")
+logger.debug(f"Excel template created: {path.exists()}")
+logger.error("Error occurred", exc_info=True)
+```
+
 #### エンドポイント構成
 
 ```python
@@ -142,47 +175,81 @@ async def login_page(request: Request)
 async def generate_template(req: TemplateRequest)
     """Excelテンプレート生成"""
     1. リクエスト検証
-    2. TemplateConfig作成
-    3. HaibunTemplateCreator.create_template()呼び出し
-    4. 一時ファイルに保存
-    5. ダウンロードURL返却
+    2. ExcelService.create_template()呼び出し (v2.3)
+    3. 一時ファイルに保存
+    4. ダウンロードURL返却
+
+    # カスタム例外を使用 (v2.3)
+    except Exception as e:
+        raise TemplateCreationError(message="...", detail=str(e))
 
 @app.post("/api/preview")
 async def preview_template(req: TemplateRequest)
     """PDFプレビュー生成"""
     1. Excelテンプレート生成
-    2. prepare_excel_for_pdf_conversion() 実行
+    2. PDFService.prepare_for_conversion() 実行 (v2.3)
        - 非表示列の内容クリア
        - 日付を文字列に変換
-    3. excel_to_pdf() 呼び出し
+    3. PDFService.convert_to_pdf() 呼び出し (v2.3)
        - Excel → ODS変換
        - ODS → PDF変換
     4. PDFファイル返却
 
+    # ロギング統一 (v2.3)
+    logger.debug("Creating Excel template...")
+    logger.error("PDF preview generation failed", exc_info=True)
+
 @app.get("/api/download/{file_id}")
 async def download_file(file_id: str)
     """ファイルダウンロード"""
-    temp_files/ からファイル返却
+    # カスタム例外 (v2.3)
+    if not temp_path.exists():
+        raise AppFileNotFoundError(message="...", detail=f"ファイルID: {file_id}")
 
 @app.get("/api/health")
 async def health_check()
     """ヘルスチェック（Render用）"""
+
+@app.get("/api/firebase-config")
+async def get_firebase_config()
+    """Firebase設定取得 (v2.3: セキュリティ強化)"""
+    # 環境変数の検証
+    if missing_vars:
+        raise ConfigurationError(message="...", detail="...")
 ```
 
-#### ヘルパー関数
+#### サービス層 (v2.3.0)
 
+**config/services/excel_service.py**
 ```python
-def prepare_excel_for_pdf_conversion(excel_path: Path) -> None
-    """PDF変換前の最適化処理"""
-    - 非表示列（A, F）の内容クリア
-    - 列幅を0.08333に設定
-    - datetimeを日本語曜日付き文字列に変換
+class ExcelService:
+    @staticmethod
+    def generate_filename(output_filename: Optional[str]) -> str
+        """ファイル名生成（タイムスタンプ付き）"""
 
-def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool
-    """LibreOfficeでPDF変換"""
-    - Excel → ODS変換（中間フォーマット）
-    - ODS → PDF変換
-    - 一時ファイル削除
+    @staticmethod
+    def convert_product_data(...) -> List[ProductData]
+        """商品データ変換（後方互換性あり）"""
+
+    @staticmethod
+    def create_template(...) -> tuple[Path, str]
+        """テンプレート生成（HaibunTemplateCreatorの抽象化）"""
+```
+
+**config/services/pdf_service.py**
+```python
+class PDFService:
+    @staticmethod
+    def prepare_for_conversion(excel_path: Path) -> None
+        """PDF変換前の最適化"""
+        # ロギング統一 (v2.3)
+        logger.debug("Processing hidden column...")
+        logger.error("PDF conversion preparation failed", exc_info=True)
+
+    @staticmethod
+    def convert_to_pdf(excel_path: Path, pdf_path: Path) -> bool
+        """LibreOffice PDF変換"""
+        # Excel → ODS → PDF の2段階変換
 ```
 
 ### haibun_template_creator.py
