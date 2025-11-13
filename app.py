@@ -19,7 +19,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi import Request
-from pydantic import BaseModel, Field
 from typing import Dict, List
 
 from haibun_template_creator import (
@@ -27,6 +26,13 @@ from haibun_template_creator import (
     TemplateConfig,
     StoreData,
     ProductData
+)
+
+# モデルのインポート (Phase 1.2: モデルの分離)
+from config.models import (
+    ProductDataRequest,
+    TemplateRequest,
+    TemplateResponse
 )
 
 import openpyxl
@@ -216,53 +222,9 @@ def excel_to_pdf(excel_path: Path, pdf_path: Path) -> bool:
         raise Exception(f"PDF変換中にエラーが発生: {str(e)}")
 
 
-# リクエストモデル
-class ProductDataRequest(BaseModel):
-    """商品データリクエスト"""
-    name: Optional[str] = Field(default=None, max_length=50, description="品名")
-    product_name: Optional[str] = Field(default=None, max_length=50, description="品名（後方互換用）")
-    delivery_date: Optional[str] = Field(default=None, description="納品日（YYYY-MM-DD形式）")
-    origin: Optional[str] = Field(default=None, max_length=30, description="産地")
-    standard: Optional[str] = Field(default=None, max_length=20, description="規格")
-    store_cost: Optional[float] = Field(default=None, description="店着原価")
-    price: Optional[float] = Field(default=None, description="税抜売価")
-    quantity: Optional[int] = Field(default=None, description="入数")
-    total_delivery: Optional[int] = Field(default=None, description="総納品数")
-    delivery_dest: Optional[str] = Field(default=None, max_length=30, description="納品先")
-    store_quantities: Dict[str, int] = Field(default_factory=dict, description="店舗配分数")
-
-
-class TemplateRequest(BaseModel):
-    """テンプレート生成リクエスト（Phase 3: 5-step workflow対応）"""
-    # Step 1: 店着日（全商品共通）
-    delivery_date: Optional[str] = Field(default=None, description="店着日（YYYY-MM-DD形式）")
-    # Step 2: 帳合先（全商品共通）
-    supplier: Optional[str] = Field(default=None, max_length=50, description="帳合先名")
-    # 商品数（自動計算されるが、後方互換用に残す）
-    num_blocks: Optional[int] = Field(default=None, ge=1, le=100, description="商品ブロック数（1-100）")
-    output_filename: Optional[str] = Field(
-        default=None,
-        description="出力ファイル名（省略時は自動生成）"
-    )
-    buyer_name: Optional[str] = Field(
-        default=None,
-        max_length=20,
-        description="担当バイヤー名（最大20文字）"
-    )
-    pixel_100: Optional[float] = Field(default=13.5714285714, description="100ピクセル列幅")
-    pixel_50: Optional[float] = Field(default=6.4285714286, description="50ピクセル列幅")
-    # Step 3-5: 商品情報（動的リスト）
-    products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
-
-
-# レスポンスモデル
-class TemplateResponse(BaseModel):
-    """テンプレート生成レスポンス"""
-    success: bool
-    message: str
-    download_url: Optional[str] = None
-    filename: Optional[str] = None
-
+# ============================================================
+# API Endpoints
+# ============================================================
 
 @app.get("/api/health")
 async def health_check():
