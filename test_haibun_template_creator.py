@@ -65,6 +65,7 @@ class TestHeaderStructure:
         assert 'G7:G8' in merged_ranges, "G7:G8が結合されていません（店着原価）"
         assert 'AT7:AT8' in merged_ranges, "AT7:AT8が結合されていません（合計）"
         assert 'AV7:AV8' in merged_ranges, "AV7:AV8が結合されていません（帳合先）"
+        assert 'AW7:AW8' in merged_ranges, "AW7:AW8が結合されていません（センター送信日）"
 
         wb.close()
 
@@ -95,6 +96,8 @@ class TestHeaderStructure:
         assert ws['I8'].value == '入数', "I8のヘッダーが正しくありません（ケースの下にあるべき）"
         assert ws['AU7'].value == '納品数', "AU7のヘッダーが正しくありません"
         assert ws['AU8'].value == '差異', "AU8のヘッダーが正しくありません"
+        assert ws['AV7'].value == '帳合先', "AV7のヘッダーが正しくありません"
+        assert ws['AW7'].value == 'センター送信日', "AW7のヘッダーが正しくありません"
 
         # 列インデックスの厳密な確認
         assert ws.cell(7, 8).value == '税抜', "H7 (col=8) が税抜ではありません"
@@ -265,7 +268,10 @@ class TestFormatting:
         # 非表示列の確認
         assert ws.column_dimensions['A'].hidden == True, "A列が非表示になっていません"
         assert ws.column_dimensions['F'].hidden == True, "F列が非表示になっていません"
-        assert ws.column_dimensions['AW'].hidden == True, "AW列が非表示になっていません"
+
+        # AW列は表示列（センター送信日）
+        assert ws.column_dimensions['AW'].hidden == False, "AW列が非表示になっています"
+        assert ws.column_dimensions['AW'].width == 12.0, "AW列の幅が正しくありません"
 
         # 一部の列幅を確認
         assert ws.column_dimensions['B'].width == 7.296875, "B列の幅が正しくありません"

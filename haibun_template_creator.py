@@ -328,9 +328,10 @@ class HaibunTemplateCreator:
             col_letter = get_column_letter(col_idx)
             self.ws.column_dimensions[col_letter].width = cfg.pixel_50
 
-        # 特殊列幅（AWは非表示列なので除外）
+        # 特殊列幅
         special_widths: Dict[str, float] = {
             'AT': 7.09765625, 'AU': 13.0, 'AV': 12.8984375,
+            'AW': 12.0,  # センター送信日
             'AX': 8.09765625
         }
         for col, width in special_widths.items():
@@ -338,7 +339,7 @@ class HaibunTemplateCreator:
 
         # 非表示列（列幅を極小値に設定してから非表示にする）
         # openpyxlは列幅0を許可しないため、0.08333（1ピクセル相当）に設定
-        for col in ['A', 'F', 'AW']:
+        for col in ['A', 'F']:
             self.ws.column_dimensions[col].width = 0.08333
             self.ws.column_dimensions[col].hidden = True
 
@@ -466,6 +467,11 @@ class HaibunTemplateCreator:
 
         self._set_cell('AV7', '帳合先', alignment=Alignment(horizontal='center', vertical='distributed'))
         self.ws.merge_cells('AV7:AV8')
+
+        self._set_cell('AW7', 'センター送信日',
+                       alignment=Alignment(horizontal='center', vertical='center'),
+                       font=Font(name=cfg.font_name, size=9, bold=False))
+        self.ws.merge_cells('AW7:AW8')
 
         # 行8
         self._setup_row8_headers()
@@ -708,11 +714,12 @@ class HaibunTemplateCreator:
         self.ws.merge_cells(f'G{data_row}:G{blank_row}')    # 店着原価
         self.ws.merge_cells(f'AT{data_row}:AT{blank_row}')  # 合計
         self.ws.merge_cells(f'AV{data_row}:AV{blank_row}')  # 帳合先
+        self.ws.merge_cells(f'AW{data_row}:AW{blank_row}')  # センター送信日
         self.ws.merge_cells(f'AX{data_row}:AY{blank_row}')  # センター送信
 
         # 2-3行のみ結合（1行目は独立）
         self.ws.merge_cells(f'D{detail_row}:E{blank_row}')  # 産地/品名
-        # F列とAW列は非表示列なので結合しない（LibreOffice/Excelでの表示ずれ防止）
+        # F列は非表示列なので結合しない（LibreOffice/Excelでの表示ずれ防止）
         self.ws.merge_cells(f'H{detail_row}:H{blank_row}')  # 税込
         self.ws.merge_cells(f'I{detail_row}:I{blank_row}')  # 入数
         self.ws.merge_cells(f'AU{detail_row}:AU{blank_row}')  # 差異
