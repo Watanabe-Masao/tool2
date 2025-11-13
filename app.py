@@ -78,8 +78,8 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
     PDF変換用にExcelファイルを最適化
 
     LibreOfficeのPDF変換で問題を起こす要素を除去：
-    - 非表示列の内容をクリア（削除ではなく）
-    - 列幅を0に設定
+    - 非表示列の内容をクリア
+    - 非表示フラグを解除し列幅0に設定（LibreOfficeの非表示列誤処理を回避）
     - 日付を文字列に変換（Safari対応）
 
     Args:
@@ -92,15 +92,12 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
         wb = openpyxl.load_workbook(excel_path)
         ws = wb.active
 
-        # 非表示列の処理（内容をクリアし、列幅を0に）
+        # 非表示列の処理
         hidden_columns = ['A', 'F', 'AW']
 
         for col_letter in hidden_columns:
             if ws.column_dimensions[col_letter].hidden:
-                print(f"[DEBUG] Clearing hidden column {col_letter} for PDF conversion")
-
-                # 列幅を極小に設定
-                ws.column_dimensions[col_letter].width = 0.08333
+                print(f"[DEBUG] Processing hidden column {col_letter} for PDF conversion")
 
                 # 列の全セルの内容をクリア（結合セルはスキップ）
                 for row in range(1, ws.max_row + 1):
@@ -109,6 +106,11 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
                     if not isinstance(cell, openpyxl.cell.cell.MergedCell):
                         cell.value = None
                         cell.number_format = 'General'
+
+                # 非表示フラグを解除して列幅を0に（LibreOfficeの非表示列の誤処理を回避）
+                ws.column_dimensions[col_letter].hidden = False
+                ws.column_dimensions[col_letter].width = 0.0
+                print(f"[DEBUG] Column {col_letter}: hidden=False, width=0.0")
 
         # 日付セルをPDF変換に適した形式に変換（Safari対応）
         # 日本語曜日マッピング
