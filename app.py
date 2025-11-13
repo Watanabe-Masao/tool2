@@ -77,8 +77,9 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
     """
     PDF変換用にExcelファイルを最適化
 
-    非表示列を物理的に削除してLibreOfficeのPDF変換での列ずれを防止：
-    - 非表示列（A, F）を完全に削除
+    LibreOfficeのPDF変換で問題を起こす要素を除去：
+    - 非表示列の内容をクリア（削除ではなく）
+    - 列幅を極小値に設定
     - 日付を文字列に変換（Safari対応）
 
     Args:
@@ -86,61 +87,45 @@ def prepare_excel_for_pdf_conversion(excel_path: Path) -> None:
     """
     import openpyxl
     from datetime import datetime
-    from copy import copy
 
     try:
         wb = openpyxl.load_workbook(excel_path)
         ws = wb.active
 
-        print(f"[DEBUG] Starting PDF optimization...")
+        # 非表示列の処理（A, Fのみ。AWは表示列なので対象外）
+        hidden_columns = ['A', 'F']
 
-        # ステップ1: 削除対象の非表示列を特定
-        columns_to_delete = []
+        for col_letter in hidden_columns:
+            if ws.column_dimensions[col_letter].hidden:
+                print(f"[DEBUG] Processing hidden column {col_letter} for PDF conversion")
 
-        # 非表示列をチェック（列インデックスで記録）
-        # 後ろから削除するため、大きい順
-        hidden_specs = [
-            ('F', 6),
-            ('A', 1),
-        ]
-
-        for col_letter, col_idx in hidden_specs:
-            if col_letter in ws.column_dimensions and ws.column_dimensions[col_letter].hidden:
-                columns_to_delete.append((col_idx, col_letter))
-                print(f"[DEBUG] Marking column {col_letter} (index {col_idx}) for deletion")
-
-        # ステップ2: 後ろから順に列を削除（インデックスのずれを防ぐ）
-        for col_idx, col_letter in sorted(columns_to_delete, reverse=True):
-            try:
-                print(f"[DEBUG] Deleting column {col_letter} at index {col_idx}")
-                ws.delete_cols(col_idx, 1)
-                print(f"[DEBUG] Successfully deleted column {col_letter}")
-            except Exception as e:
-                print(f"[WARNING] Failed to delete column {col_letter}: {e}")
-                # 削除失敗の場合は内容をクリア
+                # 列の全セルの内容をクリア（結合セルはスキップ）
                 for row in range(1, ws.max_row + 1):
-                    try:
-                        cell = ws.cell(row=row, column=col_idx)
-                        if not isinstance(cell, openpyxl.cell.cell.MergedCell):
-                            cell.value = None
-                    except:
-                        pass
-                if col_letter in ws.column_dimensions:
-                    ws.column_dimensions[col_letter].width = 0.001
+                    cell = ws[f'{col_letter}{row}']
+                    # 結合セルの場合はスキップ
+                    if not isinstance(cell, openpyxl.cell.cell.MergedCell):
+                        cell.value = None
+                        cell.number_format = 'General'
 
-        # ステップ3: 日付セルを文字列に変換（Safari対応）
+                # 列幅を極小値に設定（非表示のまま維持）
+                ws.column_dimensions[col_letter].width = 0.08333
+                print(f"[DEBUG] Column {col_letter}: cleared, width=0.08333")
+
+        # 日付セルをPDF変換に適した形式に変換（Safari対応）
+        # 日本語曜日マッピング
         weekday_ja = ['月', '火', '水', '木', '金', '土', '日']
 
-        for row in ws.iter_rows(min_row=1, max_row=100):
+        for row in ws.iter_rows(min_row=7, max_row=100):  # データエリア
             for cell in row:
-                if cell.value and isinstance(cell.value, datetime):
+                if isinstance(cell.value, datetime):
+                    # datetimeを読みやすい文字列に変換（日本語曜日付き）
                     weekday_str = weekday_ja[cell.value.weekday()]
                     date_str = cell.value.strftime(f'%m/%d({weekday_str})')
                     cell.value = date_str
-                    cell.number_format = '@'
-                    print(f"[DEBUG] Converted datetime in {cell.coordinate} to: {date_str}")
+                    cell.number_format = '@'  # テキスト形式
+                    print(f"[DEBUG] Converted datetime in {cell.coordinate} to string: {date_str}")
 
-        # ステップ4: ファイルを保存
+        # 変更を保存
         wb.save(excel_path)
         wb.close()
         print(f"[DEBUG] Excel file optimized for PDF conversion")
