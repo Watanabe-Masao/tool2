@@ -7,50 +7,28 @@ FastAPIを使用したバックエンドサーバー
 """
 
 import os
-import io
-import uuid
-from datetime import datetime
-from typing import Optional
-from pathlib import Path
-from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi import Request
-from typing import Dict, List
 
-from haibun_template_creator import (
-    HaibunTemplateCreator,
-    TemplateConfig,
-    StoreData,
-    ProductData
-)
+# APIルーターのインポート (Phase 1.4: APIエンドポイントの分離)
+from config.api import router
 
-# モデルのインポート (Phase 1.2: モデルの分離)
-from config.models import (
-    ProductDataRequest,
-    TemplateRequest,
-    TemplateResponse
-)
-
-# サービスのインポート (Phase 1.3: サービス層の作成)
-from config.services.pdf_service import PDFService
-
-import openpyxl
-import subprocess
-
-
-# アプリケーションバージョン（静的ファイルのキャッシュバスティング用）
-APP_VERSION = "2.2.1"
+# 設定のインポート
+from config.config import settings
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
     title="配分表テンプレート作成API",
     description="Excelの配分表テンプレートを生成するWebアプリケーション",
-    version=APP_VERSION
+    version=settings.app_version
 )
+
+# APIルーターを登録 (Phase 1.4: APIエンドポイントの分離)
+app.include_router(router)
 
 # 静的ファイルとテンプレートの設定
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -70,34 +48,17 @@ async def add_cache_control_header(request: Request, call_next):
     if request.url.path.startswith("/static/"):
         # バージョンパラメータがある場合は1年間キャッシュ
         if "v=" in request.url.query:
-            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            response.headers["Cache-Control"] = f"public, max-age={settings.cache_max_age_with_version}, immutable"
         else:
             # バージョンパラメータがない場合は短期間のみキャッシュ
-            response.headers["Cache-Control"] = "public, max-age=3600"
+            response.headers["Cache-Control"] = f"public, max-age={settings.cache_max_age_without_version}"
 
     return response
 
-# 一時ファイル保存ディレクトリ
-TEMP_DIR = Path("temp_files")
-TEMP_DIR.mkdir(exist_ok=True)
-
 
 # ============================================================
-# API Endpoints
+# Web Pages (Templates)
 # ============================================================
-
-@app.get("/api/health")
-async def health_check():
-    """
-    ヘルスチェックエンドポイント
-    Renderがサーバーの状態を確認するために使用
-    """
-    return {
-        "status": "healthy",
-        "version": APP_VERSION,
-        "service": "tool2"
-    }
-
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -106,7 +67,7 @@ async def root(request: Request):
     """
     response = templates.TemplateResponse("index.html", {
         "request": request,
-        "version": APP_VERSION
+        "version": settings.app_version
     })
     # HTMLページはキャッシュしない（常に最新版を取得）
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -127,276 +88,6 @@ async def login_page(request: Request):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
-
-
-@app.post("/api/generate", response_model=TemplateResponse)
-async def generate_template(req: TemplateRequest):
-    """
-    テンプレート生成API
-
-    Args:
-        req: テンプレート生成リクエスト
-
-    Returns:
-        TemplateResponse: 生成結果とダウンロードURL
-    """
-    try:
-        # ファイル名の生成
-        if req.output_filename:
-            filename = req.output_filename
-            if not filename.endswith('.xlsx'):
-                filename += '.xlsx'
-        else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"配分表_テンプレート_{timestamp}.xlsx"
-
-        # 一時ファイルパス
-        file_id = str(uuid.uuid4())
-        temp_path = TEMP_DIR / f"{file_id}.xlsx"
-
-        # 商品数を動的に取得（num_blocksが指定されていない場合）
-        num_blocks = req.num_blocks if req.num_blocks else len(req.products)
-
-        # 設定作成
-        config = TemplateConfig(
-            num_blocks=num_blocks,
-            pixel_100=req.pixel_100,
-            pixel_50=req.pixel_50,
-            default_output_path=str(temp_path)
-        )
-
-        # 商品データをProductDataオブジェクトに変換
-        products = []
-        for product_req in req.products:
-            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
-            product_name = product_req.name or product_req.product_name
-
-            # delivery_dateの決定（商品固有 > 全体共通）
-            delivery_date = product_req.delivery_date or req.delivery_date
-
-            product_data = ProductData(
-                delivery_date=delivery_date,
-                origin=product_req.origin,
-                standard=product_req.standard,
-                product_name=product_name,
-                store_cost=product_req.store_cost,
-                price=product_req.price,
-                quantity=product_req.quantity,
-                total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
-                store_quantities=product_req.store_quantities
-            )
-            products.append(product_data)
-
-        # テンプレート生成
-        creator = HaibunTemplateCreator(config=config)
-        output_path = creator.create_template(
-            buyer_name=req.buyer_name,
-            products=products
-        )
-
-        # ダウンロードURL生成
-        download_url = f"/api/download/{file_id}?filename={filename}"
-
-        return TemplateResponse(
-            success=True,
-            message="テンプレートの生成に成功しました",
-            download_url=download_url,
-            filename=filename
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"テンプレート生成中にエラーが発生しました: {str(e)}"
-        )
-
-
-@app.get("/api/download/{file_id}")
-async def download_template(file_id: str, filename: str = "配分表_テンプレート.xlsx"):
-    """
-    生成されたテンプレートファイルをダウンロード
-
-    Args:
-        file_id: ファイルID
-        filename: ダウンロード時のファイル名
-
-    Returns:
-        StreamingResponse: Excelファイル
-    """
-    try:
-        # ファイルパス取得
-        temp_path = TEMP_DIR / f"{file_id}.xlsx"
-
-        if not temp_path.exists():
-            raise HTTPException(
-                status_code=404,
-                detail="ファイルが見つかりません"
-            )
-
-        # ファイルを読み込み
-        with open(temp_path, "rb") as f:
-            file_content = f.read()
-
-        # 注意: ファイルは削除せず、複数回ダウンロード可能にする
-        # クリーンアップはshutdownイベントで実行される
-
-        # 日本語ファイル名のエンコード（RFC 5987対応）
-        # ASCIIフォールバック用にtemplate.xlsxを設定
-        encoded_filename = quote(filename.encode('utf-8'))
-
-        # ストリーミングレスポンス
-        return StreamingResponse(
-            io.BytesIO(file_content),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                # RFC 5987形式: ASCIIフォールバック + UTF-8エンコード
-                "Content-Disposition": f"attachment; filename=\"template.xlsx\"; filename*=UTF-8''{encoded_filename}"
-            }
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"ファイルのダウンロード中にエラーが発生しました: {str(e)}"
-        )
-
-
-@app.post("/api/preview")
-async def preview_template(req: TemplateRequest):
-    """
-    テンプレートのPDFプレビューを生成
-
-    Args:
-        req: テンプレート生成リクエスト
-
-    Returns:
-        FileResponse: PDFファイル
-    """
-    import traceback
-
-    try:
-        # 一時ファイルパス
-        file_id = str(uuid.uuid4())
-        temp_excel_path = TEMP_DIR / f"{file_id}.xlsx"
-        temp_pdf_path = TEMP_DIR / f"{file_id}.pdf"
-
-        # 商品数を取得
-        num_blocks = len(req.products) if req.products else 1
-
-        # 設定作成
-        config = TemplateConfig(
-            num_blocks=num_blocks,
-            pixel_100=req.pixel_100,
-            pixel_50=req.pixel_50,
-            default_output_path=str(temp_excel_path)
-        )
-
-        # 商品データをProductDataオブジェクトに変換
-        products = []
-        for product_req in req.products:
-            # product_nameの決定（name優先、なければproduct_nameにフォールバック）
-            product_name = product_req.name or product_req.product_name
-
-            # delivery_dateの決定（商品固有 > 全体共通）
-            delivery_date = product_req.delivery_date or req.delivery_date
-
-            product_data = ProductData(
-                delivery_date=delivery_date,
-                origin=product_req.origin,
-                standard=product_req.standard,
-                product_name=product_name,
-                store_cost=product_req.store_cost,
-                price=product_req.price,
-                quantity=product_req.quantity,
-                total_delivery=product_req.total_delivery,
-                delivery_dest=product_req.delivery_dest or req.supplier,  # 納品先がなければ帳合先を使用
-                store_quantities=product_req.store_quantities
-            )
-            products.append(product_data)
-
-        # テンプレート生成
-        print(f"[DEBUG] Creating Excel template...")
-        creator = HaibunTemplateCreator(config=config)
-        creator.create_template(
-            buyer_name=req.buyer_name,
-            products=products
-        )
-        print(f"[DEBUG] Excel template created: {temp_excel_path.exists()}")
-
-        # PDF変換用にExcelを最適化（非表示列を削除）
-        print(f"[DEBUG] Preparing Excel for PDF conversion...")
-        PDFService.prepare_for_conversion(temp_excel_path)
-
-        # ExcelをPDFに変換（LibreOffice使用）
-        print(f"[DEBUG] Converting Excel to PDF using LibreOffice...")
-        PDFService.convert_to_pdf(temp_excel_path, temp_pdf_path)
-        print(f"[DEBUG] PDF created: {temp_pdf_path.exists()}")
-
-        if not temp_pdf_path.exists():
-            raise Exception("PDFファイルが生成されませんでした")
-
-        # PDFを返す
-        return FileResponse(
-            path=str(temp_pdf_path),
-            media_type="application/pdf",
-            filename="preview.pdf",
-            headers={
-                "Content-Disposition": "inline; filename=preview.pdf"
-            }
-        )
-
-    except Exception as e:
-        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-        print(f"[ERROR] PDF preview generation failed:\n{error_detail}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"PDFプレビュー生成中にエラーが発生しました: {str(e)}"
-        )
-
-
-@app.get("/api/health")
-@app.head("/api/health")
-async def health_check():
-    """
-    ヘルスチェックエンドポイント（GET/HEADメソッド対応）
-    """
-    return {"status": "ok", "message": "API is running"}
-
-
-@app.get("/api/version")
-async def get_version():
-    """
-    現在のアプリケーションバージョンを返す
-    """
-    return {
-        "version": APP_VERSION,
-        "pdf_preview_available": True,
-        "cache_busting_enabled": True
-    }
-
-
-@app.get("/api/firebase-config")
-async def get_firebase_config():
-    """
-    Firebaseの設定を環境変数から取得して返す
-    セキュリティ向上のため、クライアント側にハードコードしない
-
-    注意: Firebase Web SDKの仕様上、これらの設定は公開されても問題ありません。
-    セキュリティはFirestore Security Rulesで制御します。
-    """
-    firebase_config = {
-        "apiKey": os.getenv("FIREBASE_API_KEY", "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc"),
-        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", "haibun-distribution.firebaseapp.com"),
-        "projectId": os.getenv("FIREBASE_PROJECT_ID", "haibun-distribution"),
-        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", "haibun-distribution.firebasestorage.app"),
-        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", "742220611313"),
-        "appId": os.getenv("FIREBASE_APP_ID", "1:742220611313:web:bec0f006c4c648adcbb350")
-    }
-
-    return firebase_config
 
 
 @app.head("/")
@@ -426,9 +117,9 @@ async def shutdown_event():
     """
     print("一時ファイルをクリーンアップ中...")
     try:
-        for file in TEMP_DIR.glob("*.xlsx"):
+        for file in settings.temp_dir.glob("*.xlsx"):
             file.unlink()
-        for file in TEMP_DIR.glob("*.pdf"):
+        for file in settings.temp_dir.glob("*.pdf"):
             file.unlink()
         print("クリーンアップ完了")
     except Exception as e:
