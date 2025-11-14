@@ -50,8 +50,9 @@ export const NewOrderPage: React.FC = () => {
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
-    excelFilename: string;
-    pdfFilename: string;
+    filename: string;
+    downloadUrl: string;
+    pdfFilename?: string;
   } | null>(null);
 
   const { user } = useAuthContext();
@@ -171,7 +172,8 @@ export const NewOrderPage: React.FC = () => {
 
         // 生成されたファイル情報を保存
         setGeneratedFiles({
-          excelFilename: response.filename,
+          filename: response.filename,
+          downloadUrl: response.download_url,
           pdfFilename: response.pdf_filename,
         });
 
@@ -207,7 +209,7 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleDownloadExcel = () => {
     if (generatedFiles) {
-      TemplateService.downloadFile(generatedFiles.excelFilename);
+      TemplateService.downloadFile(generatedFiles.filename);
     }
   };
 
@@ -313,7 +315,7 @@ export const NewOrderPage: React.FC = () => {
         </Container>
 
         {/* PDFプレビューモーダル */}
-        {generatedFiles && (
+        {generatedFiles && generatedFiles.pdfFilename && (
           <PDFPreviewModal
             open={showPDFPreview}
             onClose={() => setShowPDFPreview(false)}
@@ -327,8 +329,8 @@ export const NewOrderPage: React.FC = () => {
           <DownloadModal
             open={showDownloadModal}
             onClose={() => setShowDownloadModal(false)}
-            downloadUrl={TemplateService.getDownloadUrl(generatedFiles.excelFilename)}
-            filename={generatedFiles.excelFilename}
+            downloadUrl={TemplateService.getDownloadUrl(generatedFiles.filename)}
+            filename={generatedFiles.filename}
           />
         )}
       </IonContent>
