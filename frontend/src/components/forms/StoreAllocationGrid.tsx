@@ -9,16 +9,11 @@ import {
   Alert,
   Chip,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Grid,
   Paper,
 } from '@mui/material';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { STORE_NAMES } from '@/utils/constants';
+import { STORE_DATA } from '@/utils/constants';
 
 /**
  * StoreAllocationGridのProps
@@ -37,8 +32,8 @@ interface StoreAllocationGridProps {
 /**
  * Step 5: 36店舗配分グリッド
  *
- * Material-UIのTableを使用して36店舗への配分数を入力します。
- * - 編集可能なテーブル
+ * 6列×6行のグリッドレイアウトで36店舗への配分数を入力します。
+ * - 編集可能なグリッド
  * - リアルタイムバリデーション
  * - 合計・差分の自動計算
  */
@@ -95,9 +90,9 @@ export const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
             )}
 
             {/* 統計情報 */}
-            <Card variant="outlined" sx={{ mb: 2 }}>
+            <Card variant="outlined" sx={{ mb: 3 }}>
               <CardContent>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       総納品数
@@ -123,81 +118,106 @@ export const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
                       {remaining}
                     </Typography>
                   </Box>
-                </Box>
-
-                {/* ステータスチップ */}
-                <Box sx={{ mt: 2 }}>
-                  {remaining === 0 ? (
-                    <Chip label="配分完了" color="success" size="small" />
-                  ) : remaining > 0 ? (
-                    <Chip label={`残り ${remaining} 個を配分してください`} color="warning" size="small" />
-                  ) : (
-                    <Chip label={`${Math.abs(remaining)} 個超過しています`} color="error" size="small" />
-                  )}
+                  <Box sx={{ ml: 'auto' }}>
+                    {remaining === 0 ? (
+                      <Chip label="✓ 配分完了" color="success" />
+                    ) : remaining > 0 ? (
+                      <Chip label={`残り ${remaining} 個`} color="warning" />
+                    ) : (
+                      <Chip label={`${Math.abs(remaining)} 個超過`} color="error" />
+                    )}
+                  </Box>
                 </Box>
               </CardContent>
             </Card>
 
-            {/* 店舗配分テーブル */}
-            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                      店舗名
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }} align="right">
-                      配分数
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {STORE_NAMES.map((storeName, index) => (
-                    <TableRow
-                      key={index}
+            {/* 店舗配分グリッド（6列×6行） */}
+            <Grid container spacing={2}>
+              {STORE_DATA.map((store, index) => (
+                <Grid item xs={12} sm={6} md={4} lg={2} key={store.code}>
+                  <Paper
+                    elevation={allocations[index] > 0 ? 3 : 1}
+                    sx={{
+                      p: 2,
+                      height: '100%',
+                      bgcolor: allocations[index] > 0 ? 'success.light' : 'background.paper',
+                      border: allocations[index] > 0 ? '2px solid' : '1px solid',
+                      borderColor: allocations[index] > 0 ? 'success.main' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        boxShadow: 3,
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    {/* 店番 */}
+                    <Typography
+                      variant="caption"
                       sx={{
-                        '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
-                        '&:hover': { bgcolor: 'action.selected' },
+                        display: 'block',
+                        color: 'text.secondary',
+                        fontWeight: 600,
+                        mb: 0.5,
                       }}
                     >
-                      <TableCell component="th" scope="row">
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {storeName}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={allocations[index] || 0}
-                          onChange={(e) => handleChange(index, e.target.value)}
-                          inputProps={{
-                            min: 0,
-                            step: 1,
-                            style: { textAlign: 'right' },
-                          }}
-                          sx={{
-                            width: 100,
-                            '& input': {
-                              bgcolor: allocations[index] > 0 ? 'success.lighter' : 'transparent',
-                              fontWeight: allocations[index] > 0 ? 600 : 400,
-                            },
-                          }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      No.{store.code}
+                    </Typography>
+
+                    {/* 店舗名 */}
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        mb: 1,
+                        minHeight: '2.5em',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {store.name}
+                    </Typography>
+
+                    {/* 配分数入力 */}
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={allocations[index] || ''}
+                      onChange={(e) => handleChange(index, e.target.value)}
+                      placeholder="0"
+                      inputProps={{
+                        min: 0,
+                        step: 1,
+                        style: { textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 },
+                      }}
+                      sx={{
+                        width: '100%',
+                        '& input': {
+                          bgcolor: 'background.paper',
+                        },
+                      }}
+                    />
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
 
             {/* 合計表示 */}
-            <Card variant="outlined" sx={{ mt: 2, bgcolor: remaining === 0 ? 'success.lighter' : 'warning.lighter' }}>
+            <Card
+              variant="outlined"
+              sx={{
+                mt: 3,
+                bgcolor: remaining === 0 ? 'success.light' : remaining < 0 ? 'error.light' : 'warning.light',
+                borderColor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+                borderWidth: 2,
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="h6">合計</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    合計
+                  </Typography>
                   <Typography
-                    variant="h5"
+                    variant="h4"
                     sx={{
                       fontWeight: 'bold',
                       color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
