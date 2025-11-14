@@ -27,6 +27,9 @@ temp_files/
 .env
 .env.local
 
+# Exception: frontend .env can be committed (contains public Firebase client config)
+!frontend/.env
+
 # OS
 .DS_Store
 Thumbs.db
