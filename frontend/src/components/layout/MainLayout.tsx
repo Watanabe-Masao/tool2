@@ -2,7 +2,6 @@ import React from 'react';
 import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet } from '@ionic/react';
 import { Route, Redirect } from 'react-router-dom';
 import { addCircle, calendar } from 'ionicons/icons';
-import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { Header } from '@/components/layout/Header';
 import { NewOrderPage } from '@/pages/NewOrderPage';
 import { CalendarPage } from '@/pages/CalendarPage';

@@ -53,7 +53,7 @@ COPY frontend/package*.json frontend/
 # フロントエンド依存関係のインストール
 RUN cd frontend && npm install
 
-# アプリケーションファイルをコピー
+# アプリケーションファイルをコピー（frontend/.envも含まれる）
 COPY . .
 
 # Reactアプリをビルド

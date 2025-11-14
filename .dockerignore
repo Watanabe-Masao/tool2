@@ -30,9 +30,12 @@ temp_files/*.pdf
 *.pdf
 !example_*.xlsx
 
-# Environment variables
-.env
-.env.local
+# Environment variables (root directory only, NOT subdirectories)
+/.env
+/.env.local
+backend/.env
+backend/.env.local
+# Note: frontend/.env is intentionally NOT excluded
 
 # OS
 .DS_Store
