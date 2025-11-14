@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from 'firebase/auth';
-import { useAuth, UseAuthReturn } from '@/hooks/useAuth';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import type { UseAuthReturn } from '@/hooks/useAuth';
 import { initializeFirebase } from '@/services/firebase/config';
 import { CircularProgress, Box } from '@mui/material';
 
