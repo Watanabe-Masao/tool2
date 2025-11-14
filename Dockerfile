@@ -78,30 +78,20 @@ RUN echo "Checking frontend/.env before build:" && \
     echo "First 3 lines of frontend/.env:" && \
     head -3 frontend/.env
 
-# Read .env file and export as environment variables for Vite build
-# This ensures Vite can access them during build time
+# .env ファイルを読み込んで環境変数としてエクスポート
 RUN cd frontend && \
     if [ -f .env ]; then \
-        echo "Exporting variables from .env file for Vite build..."; \
-        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs) && \
-        echo "Building with environment variables..." && \
-        npm run build; \
-    else \
-        echo "No .env file found, using ARG/ENV values..."; \
+        set -a && \
+        . ./.env && \
+        set +a && \
         npm run build; \
     fi
 
-# Verify that environment variables are embedded in the build output
-RUN echo "===== Verifying build output =====" && \
-    cd frontend/dist/assets && \
-    echo "Searching for Firebase API key in built JS files..." && \
+# ビルド結果の検証
+RUN cd frontend/dist/assets && \
     if grep -q "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc" *.js; then \
         echo "✓ Firebase API key found in build output"; \
-    else \
-        echo "✗ WARNING: Firebase API key NOT found in build output"; \
-        echo "This means environment variables are not being embedded during build"; \
-    fi && \
-    echo "===== Build verification complete ====="
+    fi
 
 # 一時ファイル用ディレクトリを作成
 RUN mkdir -p temp_files
