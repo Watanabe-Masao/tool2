@@ -53,11 +53,11 @@ COPY frontend/package*.json frontend/
 # フロントエンド依存関係のインストール
 RUN cd frontend && npm install
 
-# Firebase設定ファイルを明示的にコピー（.dockerignoreを回避）
-COPY frontend/.env frontend/.env
-
 # アプリケーションファイルをコピー
 COPY . .
+
+# Firebase設定ファイルを明示的に上書きコピー（.dockerignoreを回避）
+COPY frontend/.env frontend/.env
 
 # Reactアプリをビルド
 RUN cd frontend && npm run build
