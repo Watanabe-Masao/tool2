@@ -214,7 +214,11 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleDownloadExcel = () => {
     if (generatedFiles) {
-      TemplateService.downloadFile(generatedFiles.filename);
+      // レスポンスの download_url を直接使用
+      const link = document.createElement('a');
+      link.href = generatedFiles.downloadUrl;
+      link.download = generatedFiles.filename;
+      link.click();
     }
   };
 
@@ -336,7 +340,7 @@ export const NewOrderPage: React.FC = () => {
           <DownloadModal
             open={showDownloadModal}
             onClose={() => setShowDownloadModal(false)}
-            downloadUrl={TemplateService.getDownloadUrl(generatedFiles.filename)}
+            downloadUrl={generatedFiles.downloadUrl}
             filename={generatedFiles.filename}
           />
         )}
