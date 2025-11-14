@@ -94,38 +94,21 @@ export const NetworkStatus: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      {/* 同期中インジケーター（画面上部固定） */}
+      {/* 同期中Snackbar（控えめな表示） */}
       {isSyncing && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            bgcolor: 'info.main',
-            color: 'white',
-            px: 2,
-            py: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-          }}
+        <Snackbar
+          open={isSyncing}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Sync sx={{ animation: 'spin 2s linear infinite', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} />
-          <Box sx={{ flexGrow: 0 }}>データを同期中...</Box>
-          {unsyncedCount > 0 && (
-            <Chip label={`${unsyncedCount}件`} size="small" sx={{ bgcolor: 'white', color: 'info.main' }} />
-          )}
-        </Box>
-      )}
-
-      {/* 同期中のプログレスバー */}
-      {isSyncing && (
-        <Box sx={{ position: 'fixed', top: 48, left: 0, right: 0, zIndex: 9998 }}>
-          <LinearProgress color="info" />
-        </Box>
+          <Alert
+            severity="info"
+            icon={<Sync />}
+            sx={{ width: '100%', alignItems: 'center' }}
+          >
+            データを同期中...
+            {unsyncedCount > 0 && ` (${unsyncedCount}件)`}
+          </Alert>
+        </Snackbar>
       )}
     </>
   );
