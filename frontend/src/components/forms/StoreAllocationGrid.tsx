@@ -1,11 +1,22 @@
-import React, { useMemo, useCallback } from 'react';
+import React from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { AgGridReact } from 'ag-grid-react';
-import type { ColDef, CellValueChangedEvent } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-material.css';
-import { Box, Typography, Card, CardContent, Alert, Chip } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Alert,
+  Chip,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from '@mui/material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_NAMES } from '@/utils/constants';
 
@@ -24,22 +35,10 @@ interface StoreAllocationGridProps {
 }
 
 /**
- * 店舗行データの型
- */
-interface StoreRowData {
-  /** 店舗ID (0-35) */
-  id: number;
-  /** 店舗名 */
-  storeName: string;
-  /** 配分数 */
-  quantity: number;
-}
-
-/**
  * Step 5: 36店舗配分グリッド
  *
- * ag-Gridを使用して36店舗への配分数を入力します。
- * - 編集可能なグリッド
+ * Material-UIのTableを使用して36店舗への配分数を入力します。
+ * - 編集可能なテーブル
  * - リアルタイムバリデーション
  * - 合計・差分の自動計算
  */
@@ -51,69 +50,12 @@ export const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
 }) => {
   const productErrors = errors.products?.[productIndex];
 
-  /**
-   * 列定義
-   */
-  const columnDefs = useMemo<ColDef<StoreRowData>[]>(
-    () => [
-      {
-        field: 'storeName',
-        headerName: '店舗',
-        editable: false,
-        flex: 1,
-        minWidth: 150,
-        cellStyle: { fontWeight: 500 },
-      },
-      {
-        field: 'quantity',
-        headerName: '配分数',
-        editable: true,
-        flex: 1,
-        minWidth: 120,
-        type: 'numericColumn',
-        valueParser: (params) => {
-          const value = params.newValue;
-          const num = Number(value);
-          return isNaN(num) || num < 0 ? 0 : Math.floor(num);
-        },
-        cellStyle: (params) => {
-          if (params.value > 0) {
-            return { backgroundColor: '#e8f5e9', fontWeight: 600 };
-          }
-          return undefined;
-        },
-      },
-    ],
-    []
-  );
-
-  /**
-   * デフォルト列定義
-   */
-  const defaultColDef = useMemo<ColDef>(
-    () => ({
-      sortable: true,
-      filter: true,
-      resizable: true,
-    }),
-    []
-  );
-
   return (
     <Controller
       name={`products.${productIndex}.storeAllocations`}
       control={control}
       render={({ field }) => {
         const allocations = field.value || new Array(36).fill(0);
-
-        /**
-         * 行データを作成
-         */
-        const rowData: StoreRowData[] = STORE_NAMES.map((storeName, index) => ({
-          id: index,
-          storeName,
-          quantity: allocations[index] || 0,
-        }));
 
         /**
          * 合計配分数を計算
@@ -126,16 +68,14 @@ export const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
         const remaining = totalDelivery - totalAllocated;
 
         /**
-         * セル値変更時のハンドラ
+         * 配分数変更ハンドラー
          */
-        const handleCellValueChanged = useCallback(
-          (event: CellValueChangedEvent<StoreRowData>) => {
-            const newAllocations = [...allocations];
-            newAllocations[event.data!.id] = event.data!.quantity;
-            field.onChange(newAllocations);
-          },
-          [allocations, field]
-        );
+        const handleChange = (index: number, value: string) => {
+          const newAllocations = [...allocations];
+          const numValue = parseInt(value, 10);
+          newAllocations[index] = isNaN(numValue) || numValue < 0 ? 0 : numValue;
+          field.onChange(newAllocations);
+        };
 
         return (
           <Box sx={{ py: 4 }}>
@@ -198,18 +138,76 @@ export const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
               </CardContent>
             </Card>
 
-            {/* ag-Gridテーブル */}
-            <div className="ag-theme-material" style={{ height: 600, width: '100%' }}>
-              <AgGridReact<StoreRowData>
-                rowData={rowData}
-                columnDefs={columnDefs}
-                defaultColDef={defaultColDef}
-                onCellValueChanged={handleCellValueChanged}
-                suppressMovableColumns
-                animateRows
-                rowSelection="single"
-              />
-            </div>
+            {/* 店舗配分テーブル */}
+            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
+                      店舗名
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }} align="right">
+                      配分数
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {STORE_NAMES.map((storeName, index) => (
+                    <TableRow
+                      key={index}
+                      sx={{
+                        '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
+                        '&:hover': { bgcolor: 'action.selected' },
+                      }}
+                    >
+                      <TableCell component="th" scope="row">
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {storeName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={allocations[index] || 0}
+                          onChange={(e) => handleChange(index, e.target.value)}
+                          inputProps={{
+                            min: 0,
+                            step: 1,
+                            style: { textAlign: 'right' },
+                          }}
+                          sx={{
+                            width: 100,
+                            '& input': {
+                              bgcolor: allocations[index] > 0 ? 'success.lighter' : 'transparent',
+                              fontWeight: allocations[index] > 0 ? 600 : 400,
+                            },
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* 合計表示 */}
+            <Card variant="outlined" sx={{ mt: 2, bgcolor: remaining === 0 ? 'success.lighter' : 'warning.lighter' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6">合計</Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+                    }}
+                  >
+                    {totalAllocated} / {totalDelivery}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Box>
         );
       }}
