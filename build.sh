@@ -60,7 +60,16 @@ fi
 echo "Installing frontend dependencies..."
 npm install
 
-echo "Building frontend..."
+# Export environment variables from .env file for Vite build
+if [ -f .env ]; then
+    echo "Exporting variables from .env file for Vite build..."
+    set -a  # automatically export all variables
+    source .env
+    set +a  # stop automatically exporting
+fi
+
+echo "Building frontend with environment variables..."
+echo "VITE_FIREBASE_API_KEY is set: $(if [ -n "$VITE_FIREBASE_API_KEY" ]; then echo "YES"; else echo "NO"; fi)"
 npm run build
 
 echo "Build completed successfully!"
