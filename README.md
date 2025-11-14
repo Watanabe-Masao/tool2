@@ -347,6 +347,13 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 
 詳細は [docs/TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md#iphone-safari-download) を参照
 
+### スマホログイン時の認証エラー (auth/unauthorized-domain)
+- **問題**: スマートフォンでログイン時にエラーが発生し、ログインボタンが押せない
+- **原因**: デプロイメントドメインがFirebaseの承認済みドメインに未登録
+- **解決**: Firebase ConsoleでRender.comのドメインを承認済みドメインに追加
+
+詳細な手順は [docs/FIX_AUTH_DOMAIN_ERROR.md](docs/FIX_AUTH_DOMAIN_ERROR.md) を参照
+
 ## 🗺️ ロードマップ
 
 ### v3.0（計画中）
