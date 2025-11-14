@@ -43,7 +43,7 @@ export class FirestoreService {
       })),
       buyer_name: orderData.buyerName,
       timestamp: new Date(),
-      user_id: userId,
+      userId: userId, // user_id → userId に変更
     };
   }
 
@@ -70,7 +70,7 @@ export class FirestoreService {
       })),
       buyerName: firestoreData.buyer_name,
       timestamp: firestoreData.timestamp?.toDate() || new Date(),
-      userId: firestoreData.user_id,
+      userId: firestoreData.userId, // user_id → userId に変更
     };
   }
 
@@ -109,7 +109,7 @@ export class FirestoreService {
 
     let q = query(
       ordersRef,
-      where('user_id', '==', userId),
+      where('userId', '==', userId), // user_id → userId に変更
       orderBy('timestamp', 'desc')
     );
 
@@ -147,7 +147,7 @@ export class FirestoreService {
 
     const q = query(
       ordersRef,
-      where('user_id', '==', userId),
+      where('userId', '==', userId), // user_id → userId に変更
       where('delivery_date', '==', deliveryDate),
       orderBy('timestamp', 'desc')
     );

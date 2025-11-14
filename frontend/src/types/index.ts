@@ -211,7 +211,7 @@ export interface FirestoreOrderData {
   }>;
   buyer_name: string;
   timestamp: Date;
-  user_id: string;
+  userId: string; // user_id → userId に変更
 }
 
 /**
