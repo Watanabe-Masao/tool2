@@ -10,6 +10,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
+  base: '/',  // Ensure assets are loaded from root path
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    // Ensure build output is clean
+    emptyOutDir: true
+  },
   server: {
     port: 3000,
     proxy: {

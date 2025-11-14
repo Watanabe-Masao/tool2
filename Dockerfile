@@ -56,8 +56,52 @@ RUN cd frontend && npm install
 # アプリケーションファイルをコピー（frontend/.envも含まれる）
 COPY . .
 
-# Reactアプリをビルド
-RUN cd frontend && npm run build
+# Ensure frontend/.env exists for Vite build
+# If not present, create it from ARG values (for Render.com builds)
+RUN if [ ! -f frontend/.env ]; then \
+        echo "Creating frontend/.env from build arguments..." && \
+        { \
+            echo "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}"; \
+            echo "VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}"; \
+            echo "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}"; \
+            echo "VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}"; \
+            echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}"; \
+            echo "VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}"; \
+        } > frontend/.env; \
+    else \
+        echo "frontend/.env already exists, using it for build"; \
+    fi
+
+# Verify .env file (for debugging)
+RUN echo "Checking frontend/.env before build:" && \
+    ls -la frontend/.env && \
+    echo "First 3 lines of frontend/.env:" && \
+    head -3 frontend/.env
+
+# Read .env file and export as environment variables for Vite build
+# This ensures Vite can access them during build time
+RUN cd frontend && \
+    if [ -f .env ]; then \
+        echo "Exporting variables from .env file for Vite build..."; \
+        export $(cat .env | grep -v '^#' | grep -v '^$' | xargs) && \
+        echo "Building with environment variables..." && \
+        npm run build; \
+    else \
+        echo "No .env file found, using ARG/ENV values..."; \
+        npm run build; \
+    fi
+
+# Verify that environment variables are embedded in the build output
+RUN echo "===== Verifying build output =====" && \
+    cd frontend/dist/assets && \
+    echo "Searching for Firebase API key in built JS files..." && \
+    if grep -q "AIzaSyCjuPCpB0wqHxdX4JWL6VnEj1LJWgr4cKc" *.js; then \
+        echo "✓ Firebase API key found in build output"; \
+    else \
+        echo "✗ WARNING: Firebase API key NOT found in build output"; \
+        echo "This means environment variables are not being embedded during build"; \
+    fi && \
+    echo "===== Build verification complete ====="
 
 # 一時ファイル用ディレクトリを作成
 RUN mkdir -p temp_files

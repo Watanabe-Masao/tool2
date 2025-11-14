@@ -51,7 +51,8 @@ logs/
 
 # Distribution / packaging
 build/
-dist/
+# Note: dist/ is commented out to allow frontend/dist (React build output)
+# dist/
 *.egg-info/
 
 # CI/CD
