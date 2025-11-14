@@ -7,6 +7,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { CircularProgress, Box } from '@mui/material';
 import { theme } from './theme';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 
@@ -60,9 +61,11 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 };
