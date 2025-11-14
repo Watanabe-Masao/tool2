@@ -182,12 +182,17 @@ export const NewOrderPage: React.FC = () => {
         // 成功メッセージ
         showSuccess('テンプレートを生成しました');
 
-        // iPhone Safariの場合はダウンロードモーダルを表示
-        if (isIPhoneSafari()) {
-          setShowDownloadModal(true);
+        // PDFが生成されている場合とそうでない場合で分岐
+        if (response.pdf_filename) {
+          // PDFがある場合
+          if (isIPhoneSafari()) {
+            setShowDownloadModal(true);
+          } else {
+            setShowPDFPreview(true);
+          }
         } else {
-          // それ以外はPDFプレビューを表示
-          setShowPDFPreview(true);
+          // PDFがない場合は直接ダウンロードモーダルを表示
+          setShowDownloadModal(true);
         }
       } else {
         // オフライン時
