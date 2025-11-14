@@ -227,7 +227,7 @@ export class FirestoreService {
     // 既存の履歴を取得
     const q = query(
       historyRef,
-      where('user_id', '==', userId),
+      where('userId', '==', userId),
       where('field', '==', field)
     );
 
@@ -236,7 +236,7 @@ export class FirestoreService {
     if (snapshot.empty) {
       // 新規作成
       await addDoc(historyRef, {
-        user_id: userId,
+        userId: userId,
         field,
         values: [value],
         last_updated: Timestamp.now(),
@@ -275,7 +275,7 @@ export class FirestoreService {
 
     const q = query(
       historyRef,
-      where('user_id', '==', userId),
+      where('userId', '==', userId),
       where('field', '==', field)
     );
 
