@@ -8,6 +8,7 @@ import { CircularProgress, Box } from '@mui/material';
 import { theme } from './theme';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { NetworkStatus } from './components/common/NetworkStatus';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 
@@ -50,6 +51,9 @@ const AppContent: React.FC = () => {
           </Switch>
         </IonRouterOutlet>
       </IonReactRouter>
+
+      {/* ネットワークステータス表示（認証後のみ） */}
+      {user && <NetworkStatus />}
     </IonApp>
   );
 };

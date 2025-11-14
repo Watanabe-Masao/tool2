@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IonPage, IonContent } from '@ionic/react';
-import { Container, Box } from '@mui/material';
+import { Container, Box, Alert, Chip } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { FormStepper } from '@/components/forms/FormStepper';
@@ -15,10 +15,10 @@ import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { TemplateService } from '@/services/api/templateService';
-import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
+import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
@@ -56,6 +56,9 @@ export const NewOrderPage: React.FC = () => {
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+
+  // オフライン同期
+  const { isOnline, isSyncing, unsyncedCount, saveOrder: saveOrderWithSync } = useDataSync();
 
   // オートコンプリート
   const supplierAutocomplete = useAutocomplete('supplier');
@@ -146,20 +149,13 @@ export const NewOrderPage: React.FC = () => {
       // バイヤー名を取得（ユーザー名またはメールアドレス）
       const buyerName = user?.displayName || user?.email || '匿名';
 
-      // テンプレート生成API呼び出し
-      const response = await TemplateService.generateTemplate(data, buyerName);
+      // オフライン同期を使用してデータを保存
+      // オンライン時: Firestore + API呼び出し
+      // オフライン時: IndexedDBのみ
+      await saveOrderWithSync(data, buyerName);
 
-      // Firestoreに保存
+      // オートコンプリート履歴に追加
       if (user) {
-        const orderData = {
-          ...data,
-          buyerName,
-          userId: user.uid,
-          timestamp: new Date(),
-        };
-        await FirestoreService.saveOrder(orderData, user.uid);
-
-        // オートコンプリート履歴に追加
         await supplierAutocomplete.addToHistory(data.supplier);
         for (const product of data.products) {
           await productNameAutocomplete.addToHistory(product.name);
@@ -167,27 +163,35 @@ export const NewOrderPage: React.FC = () => {
         }
       }
 
-      hideLoading();
+      // オンライン時のみテンプレート生成API呼び出し
+      if (isOnline) {
+        const response = await TemplateService.generateTemplate(data, buyerName);
 
-      // 成功メッセージ
-      showSuccess('テンプレートを生成しました');
+        console.log('Template generated:', response);
 
-      console.log('Template generated:', response);
+        // 生成されたファイル情報を保存
+        setGeneratedFiles({
+          excelFilename: response.filename,
+          pdfFilename: response.pdf_filename,
+        });
 
-      // 生成されたファイル情報を保存
-      setGeneratedFiles({
-        excelFilename: response.filename,
-        pdfFilename: response.pdf_filename,
-      });
+        hideLoading();
 
-      // iPhone Safariの場合はダウンロードモーダルを表示
-      if (isIPhoneSafari()) {
-        setShowDownloadModal(true);
+        // 成功メッセージ
+        showSuccess('テンプレートを生成しました');
+
+        // iPhone Safariの場合はダウンロードモーダルを表示
+        if (isIPhoneSafari()) {
+          setShowDownloadModal(true);
+        } else {
+          // それ以外はPDFプレビューを表示
+          setShowPDFPreview(true);
+        }
       } else {
-        // それ以外はPDFプレビューを表示
-        setShowPDFPreview(true);
+        // オフライン時
+        hideLoading();
+        showSuccess('データをローカルに保存しました。オンライン復帰時に自動同期されます。');
       }
-
     } catch (error) {
       hideLoading();
       console.error('Template generation error:', error);
@@ -260,6 +264,39 @@ export const NewOrderPage: React.FC = () => {
       <IonContent>
         <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
+            {/* ネットワーク状態・同期状態の表示 */}
+            <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* オンライン/オフライン状態 */}
+              <Chip
+                label={isOnline ? 'オンライン' : 'オフライン'}
+                color={isOnline ? 'success' : 'warning'}
+                size="small"
+                variant="outlined"
+              />
+
+              {/* 同期中表示 */}
+              {isSyncing && (
+                <Chip label="同期中..." color="info" size="small" variant="outlined" />
+              )}
+
+              {/* 未同期データ数 */}
+              {unsyncedCount > 0 && (
+                <Chip
+                  label={`未同期: ${unsyncedCount}件`}
+                  color="warning"
+                  size="small"
+                  variant="filled"
+                />
+              )}
+            </Box>
+
+            {/* オフライン時の警告 */}
+            {!isOnline && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
+              </Alert>
+            )}
+
             {/* ステッパーナビゲーション */}
             <FormStepper
               activeStep={activeStep}
