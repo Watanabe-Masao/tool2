@@ -88,11 +88,12 @@ export const useDataSync = (): UseDataSyncReturn => {
   }, [getUnsyncedOrders]);
 
   /**
-   * 未同期データの数を定期的に更新
+   * 初回マウント時のみ未同期データの数を更新
    */
   useEffect(() => {
     updateUnsyncedCount();
-  }, [updateUnsyncedCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * IndexedDBからFirestoreに同期
@@ -165,14 +166,20 @@ export const useDataSync = (): UseDataSyncReturn => {
   }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount, showSuccess, showError]);
 
   /**
-   * オンライン復帰時に自動同期
+   * オンライン復帰時に自動同期（デバウンス付き）
    */
   useEffect(() => {
     if (isOnline && !isSyncing) {
-      console.log('オンライン復帰を検知。同期を開始します...');
-      syncIndexedDBToFirestore();
+      console.log('オンライン復帰を検知。2秒後に同期を開始します...');
+      // 2秒後に同期を実行（ネットワークが安定するまで待つ）
+      const timer = setTimeout(() => {
+        syncIndexedDBToFirestore();
+      }, 2000);
+
+      return () => clearTimeout(timer);
     }
-  }, [isOnline, isSyncing, syncIndexedDBToFirestore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
 
   /**
    * 注文を保存（オンライン/オフライン自動判定）
