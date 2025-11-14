@@ -338,15 +338,27 @@ firebase deploy --only firestore:indexes
 3. `app.py` の `/api/firebase-config` エンドポイントの値を確認
 4. 環境変数が正しく設定されているか確認
 
-### エラー5: "CORS policy" エラー
+### エラー5: "auth/unauthorized-domain" エラー（スマホログイン時）
 
-**原因:** Firebase のオリジン設定が間違っている
+**症状:** スマートフォンでログイン時に `auth/unauthorized-domain` エラーが発生し、ログインボタンが押せない
+
+**原因:** Render.comのデプロイメントドメインがFirebase の承認済みドメインリストに登録されていない
 
 **解決策:**
 1. Firebase Console → Authentication → Settings → Authorized domains
 2. アプリのドメインを追加:
    - `localhost`（開発環境）
-   - `your-app.onrender.com`（本番環境）
+   - `tool2.onrender.com`（本番環境 - **Render.comのデプロイURL**）
+
+**詳細な手順:** [docs/FIX_AUTH_DOMAIN_ERROR.md](docs/FIX_AUTH_DOMAIN_ERROR.md) を参照
+
+### エラー6: "CORS policy" エラー
+
+**原因:** Firebase のオリジン設定が間違っている
+
+**解決策:**
+1. Firebase Console → Authentication → Settings → Authorized domains
+2. アプリのドメインを追加（上記と同様）
 
 ---
 
