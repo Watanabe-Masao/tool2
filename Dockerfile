@@ -56,6 +56,28 @@ RUN cd frontend && npm install
 # アプリケーションファイルをコピー（frontend/.envも含まれる）
 COPY . .
 
+# Ensure frontend/.env exists for Vite build
+# If not present, create it from ARG values (for Render.com builds)
+RUN if [ ! -f frontend/.env ]; then \
+        echo "Creating frontend/.env from build arguments..." && \
+        { \
+            echo "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}"; \
+            echo "VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}"; \
+            echo "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}"; \
+            echo "VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}"; \
+            echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}"; \
+            echo "VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}"; \
+        } > frontend/.env; \
+    else \
+        echo "frontend/.env already exists, using it for build"; \
+    fi
+
+# Verify .env file (for debugging)
+RUN echo "Checking frontend/.env before build:" && \
+    ls -la frontend/.env && \
+    echo "First 3 lines of frontend/.env:" && \
+    head -3 frontend/.env
+
 # Reactアプリをビルド
 RUN cd frontend && npm run build
 

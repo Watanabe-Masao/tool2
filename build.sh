@@ -37,6 +37,26 @@ npm --version
 echo "Building React frontend..."
 cd frontend
 
+# Debug: Check if .env file exists and show its contents
+echo "Checking for .env file..."
+if [ -f .env ]; then
+    echo ".env file found!"
+    echo "First 3 lines of .env:"
+    head -3 .env
+else
+    echo "WARNING: .env file not found!"
+    echo "Creating .env from environment variables..."
+    {
+        echo "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}"
+        echo "VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}"
+        echo "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}"
+        echo "VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}"
+        echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}"
+        echo "VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}"
+    } > .env
+    echo ".env file created from environment variables"
+fi
+
 echo "Installing frontend dependencies..."
 npm install
 
