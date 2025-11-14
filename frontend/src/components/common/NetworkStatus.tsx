@@ -1,5 +1,5 @@
 import React from 'react';
-import { Snackbar, Alert, AlertTitle, Box, LinearProgress, Chip } from '@mui/material';
+import { Snackbar, Alert, AlertTitle } from '@mui/material';
 import { CloudOff, CloudDone, Sync } from '@mui/icons-material';
 import { useDataSync } from '@/hooks/useDataSync';
 

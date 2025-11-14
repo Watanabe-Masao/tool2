@@ -32,6 +32,8 @@ interface ProductFormCardProps {
   productNameOptions?: string[];
   /** 産地のオートコンプリート候補 */
   originOptions?: string[];
+  /** Enterキー押下時のハンドラー */
+  onEnterPress?: () => void;
 }
 
 /**
@@ -48,11 +50,25 @@ export const ProductFormCard: React.FC<ProductFormCardProps> = ({
   showRemove,
   productNameOptions = [],
   originOptions = [],
+  onEnterPress,
 }) => {
   const productErrors = errors.products?.[index];
 
+  /**
+   * Enterキー押下時のハンドラー
+   */
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && onEnterPress && e.target instanceof HTMLInputElement) {
+      // テキストエリア以外でEnterが押された場合
+      if (e.target.type !== 'textarea') {
+        e.preventDefault();
+        onEnterPress();
+      }
+    }
+  };
+
   return (
-    <Card variant="outlined" sx={{ mb: 2 }}>
+    <Card variant="outlined" sx={{ mb: 2 }} onKeyDown={handleKeyDown}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">商品 {index + 1}</Typography>

@@ -216,7 +216,7 @@ export const NewOrderPage: React.FC = () => {
   const renderStepContent = () => {
     switch (activeStep) {
       case 0:
-        return <DeliveryDateForm control={control} errors={errors} />;
+        return <DeliveryDateForm control={control} errors={errors} onEnterPress={handleNext} />;
 
       case 1:
         return (
@@ -224,6 +224,7 @@ export const NewOrderPage: React.FC = () => {
             control={control}
             errors={errors}
             supplierOptions={supplierAutocomplete.options}
+            onEnterPress={handleNext}
           />
         );
 
@@ -234,11 +235,12 @@ export const NewOrderPage: React.FC = () => {
             errors={errors}
             productNameOptions={productNameAutocomplete.options}
             originOptions={originAutocomplete.options}
+            onEnterPress={handleNext}
           />
         );
 
       case 3:
-        return <TotalDeliveryForm control={control} errors={errors} />;
+        return <TotalDeliveryForm control={control} errors={errors} onEnterPress={handleNext} />;
 
       case 4:
         // 各商品の店舗配分グリッド

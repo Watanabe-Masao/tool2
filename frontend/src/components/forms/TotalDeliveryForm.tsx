@@ -12,6 +12,8 @@ interface TotalDeliveryFormProps {
   control: Control<OrderFormData>;
   /** エラー */
   errors: FieldErrors<OrderFormData>;
+  /** Enterキー押下時のハンドラー */
+  onEnterPress?: () => void;
 }
 
 /**
@@ -20,7 +22,7 @@ interface TotalDeliveryFormProps {
  * 全店舗への総納品数を入力します。
  * この数値は各店舗への配分数の合計と一致する必要があります。
  */
-export const TotalDeliveryForm: React.FC<TotalDeliveryFormProps> = ({ control, errors }) => {
+export const TotalDeliveryForm: React.FC<TotalDeliveryFormProps> = ({ control, errors, onEnterPress }) => {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
@@ -51,6 +53,12 @@ export const TotalDeliveryForm: React.FC<TotalDeliveryFormProps> = ({ control, e
             onChange={(e) => {
               const value = e.target.value;
               field.onChange(value ? parseInt(value, 10) : 0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && onEnterPress) {
+                e.preventDefault();
+                onEnterPress();
+              }
             }}
           />
         )}

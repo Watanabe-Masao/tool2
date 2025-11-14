@@ -19,6 +19,8 @@ interface ProductFormProps {
   productNameOptions?: string[];
   /** 産地のオートコンプリート候補 */
   originOptions?: string[];
+  /** Enterキー押下時のハンドラー */
+  onEnterPress?: () => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   errors,
   productNameOptions,
   originOptions,
+  onEnterPress,
 }) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -83,6 +86,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           showRemove={fields.length > 1}
           productNameOptions={productNameOptions}
           originOptions={originOptions}
+          onEnterPress={onEnterPress}
         />
       ))}
 

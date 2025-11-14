@@ -14,6 +14,8 @@ interface SupplierFormProps {
   errors: FieldErrors<OrderFormData>;
   /** オートコンプリート候補（オプション） */
   supplierOptions?: string[];
+  /** Enterキー押下時のハンドラー */
+  onEnterPress?: () => void;
 }
 
 /**
@@ -26,6 +28,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   control,
   errors,
   supplierOptions = [],
+  onEnterPress,
 }) => {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
@@ -60,6 +63,12 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
                 error={!!errors.supplier}
                 helperText={errors.supplier?.message}
                 fullWidth
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && onEnterPress) {
+                    e.preventDefault();
+                    onEnterPress();
+                  }
+                }}
               />
             )}
           />

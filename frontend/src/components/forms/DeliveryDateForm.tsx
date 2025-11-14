@@ -13,6 +13,8 @@ interface DeliveryDateFormProps {
   control: Control<OrderFormData>;
   /** エラー */
   errors: FieldErrors<OrderFormData>;
+  /** Enterキー押下時のハンドラー */
+  onEnterPress?: () => void;
 }
 
 /**
@@ -20,7 +22,7 @@ interface DeliveryDateFormProps {
  *
  * 商品が店舗に届く日付を選択します。
  */
-export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, errors }) => {
+export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, errors, onEnterPress }) => {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
@@ -52,6 +54,12 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
                 field.onChange(new Date(dateValue));
               } else {
                 field.onChange(null);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && onEnterPress) {
+                e.preventDefault();
+                onEnterPress();
               }
             }}
           />
