@@ -12,10 +12,15 @@ import { SupplierForm } from '@/components/forms/SupplierForm';
 import { ProductForm } from '@/components/forms/ProductForm';
 import { TotalDeliveryForm } from '@/components/forms/TotalDeliveryForm';
 import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
+import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
+import { DownloadModal } from '@/components/modals/DownloadModal';
 import { TemplateService } from '@/services/api/templateService';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
+import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
+import { isIPhoneSafari } from '@/utils/deviceDetection';
 
 /**
  * フォームのステップ定義
@@ -42,8 +47,20 @@ const FORM_STEPS: FormStep[] = [
  */
 export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [generatedFiles, setGeneratedFiles] = useState<{
+    excelFilename: string;
+    pdfFilename: string;
+  } | null>(null);
+
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+
+  // オートコンプリート
+  const supplierAutocomplete = useAutocomplete('supplier');
+  const productNameAutocomplete = useAutocomplete('productName');
+  const originAutocomplete = useAutocomplete('origin');
 
   /**
    * React Hook Form セットアップ
@@ -132,6 +149,24 @@ export const NewOrderPage: React.FC = () => {
       // テンプレート生成API呼び出し
       const response = await TemplateService.generateTemplate(data, buyerName);
 
+      // Firestoreに保存
+      if (user) {
+        const orderData = {
+          ...data,
+          buyerName,
+          userId: user.uid,
+          timestamp: new Date(),
+        };
+        await FirestoreService.saveOrder(orderData, user.uid);
+
+        // オートコンプリート履歴に追加
+        await supplierAutocomplete.addToHistory(data.supplier);
+        for (const product of data.products) {
+          await productNameAutocomplete.addToHistory(product.name);
+          await originAutocomplete.addToHistory(product.origin);
+        }
+      }
+
       hideLoading();
 
       // 成功メッセージ
@@ -139,11 +174,19 @@ export const NewOrderPage: React.FC = () => {
 
       console.log('Template generated:', response);
 
-      // ファイルをダウンロード
-      TemplateService.downloadFile(response.filename);
+      // 生成されたファイル情報を保存
+      setGeneratedFiles({
+        excelFilename: response.filename,
+        pdfFilename: response.pdf_filename,
+      });
 
-      // TODO: Firestoreに保存
-      // TODO: PDFプレビューモーダルを表示
+      // iPhone Safariの場合はダウンロードモーダルを表示
+      if (isIPhoneSafari()) {
+        setShowDownloadModal(true);
+      } else {
+        // それ以外はPDFプレビューを表示
+        setShowPDFPreview(true);
+      }
 
     } catch (error) {
       hideLoading();
@@ -155,21 +198,36 @@ export const NewOrderPage: React.FC = () => {
   /**
    * 現在のステップのコンテンツを返す
    */
+  /**
+   * Excelファイルをダウンロード
+   */
+  const handleDownloadExcel = () => {
+    if (generatedFiles) {
+      TemplateService.downloadFile(generatedFiles.excelFilename);
+    }
+  };
+
   const renderStepContent = () => {
     switch (activeStep) {
       case 0:
         return <DeliveryDateForm control={control} errors={errors} />;
 
       case 1:
-        return <SupplierForm control={control} errors={errors} supplierOptions={[]} />;
+        return (
+          <SupplierForm
+            control={control}
+            errors={errors}
+            supplierOptions={supplierAutocomplete.options}
+          />
+        );
 
       case 2:
         return (
           <ProductForm
             control={control}
             errors={errors}
-            productNameOptions={[]}
-            originOptions={[]}
+            productNameOptions={productNameAutocomplete.options}
+            originOptions={originAutocomplete.options}
           />
         );
 
@@ -216,6 +274,26 @@ export const NewOrderPage: React.FC = () => {
             <Box sx={{ mt: 2 }}>{renderStepContent()}</Box>
           </Box>
         </Container>
+
+        {/* PDFプレビューモーダル */}
+        {generatedFiles && (
+          <PDFPreviewModal
+            open={showPDFPreview}
+            onClose={() => setShowPDFPreview(false)}
+            pdfUrl={TemplateService.getDownloadUrl(generatedFiles.pdfFilename)}
+            onDownloadExcel={handleDownloadExcel}
+          />
+        )}
+
+        {/* ダウンロードモーダル（iPhone Safari用） */}
+        {generatedFiles && (
+          <DownloadModal
+            open={showDownloadModal}
+            onClose={() => setShowDownloadModal(false)}
+            downloadUrl={TemplateService.getDownloadUrl(generatedFiles.excelFilename)}
+            filename={generatedFiles.excelFilename}
+          />
+        )}
       </IonContent>
     </IonPage>
   );
