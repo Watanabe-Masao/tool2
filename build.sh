@@ -1,18 +1,18 @@
 #!/bin/bash
 set -e
 
-echo "===== Starting build process ====="
+echo "===== ビルドプロセス開始 ====="
 
-# Install Python dependencies
-echo "Installing Python dependencies..."
+# Python依存関係のインストール
+echo "Python依存関係をインストール中..."
 pip install -r requirements.txt
 
-# Check if Node.js is available, install if not
-echo "Checking Node.js availability..."
+# Node.jsの確認とインストール
+echo "Node.jsの確認中..."
 if ! command -v node &> /dev/null; then
-    echo "Node.js not found. Installing Node.js 20.x..."
+    echo "Node.jsが見つかりません。Node.js 20.xをインストール中..."
 
-    # Download and install Node.js binary (no root required)
+    # Node.jsバイナリをダウンロードしてインストール（root権限不要）
     NODE_VERSION="20.11.0"
     NODE_DISTRO="linux-x64"
 
@@ -20,32 +20,32 @@ if ! command -v node &> /dev/null; then
     curl -o node-v${NODE_VERSION}-${NODE_DISTRO}.tar.xz https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-${NODE_DISTRO}.tar.xz
     tar -xf node-v${NODE_VERSION}-${NODE_DISTRO}.tar.xz
 
-    # Add to PATH
+    # PATHに追加
     export PATH="$HOME/node-v${NODE_VERSION}-${NODE_DISTRO}/bin:$PATH"
 
     cd -
 
-    echo "Node.js installed successfully!"
+    echo "Node.jsのインストールが完了しました！"
 else
-    echo "Node.js is already installed"
+    echo "Node.jsは既にインストールされています"
 fi
 
 node --version
 npm --version
 
-# Build frontend
-echo "Building React frontend..."
+# フロントエンドのビルド
+echo "Reactフロントエンドをビルド中..."
 cd frontend
 
-# Debug: Check if .env file exists and show its contents
-echo "Checking for .env file..."
+# デバッグ: .envファイルの存在確認と内容表示
+echo ".envファイルを確認中..."
 if [ -f .env ]; then
-    echo ".env file found!"
-    echo "First 3 lines of .env:"
+    echo ".envファイルが見つかりました！"
+    echo ".envの最初の3行:"
     head -3 .env
 else
-    echo "WARNING: .env file not found!"
-    echo "Creating .env from environment variables..."
+    echo "警告: .envファイルが見つかりません！"
+    echo "環境変数から.envファイルを作成中..."
     {
         echo "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}"
         echo "VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}"
@@ -54,27 +54,27 @@ else
         echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}"
         echo "VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}"
     } > .env
-    echo ".env file created from environment variables"
+    echo "環境変数から.envファイルを作成しました"
 fi
 
-echo "Installing frontend dependencies..."
+echo "フロントエンド依存関係をインストール中..."
 npm install
 
-# Export environment variables from .env file for Vite build
+# .envファイルから環境変数を自動エクスポート
 if [ -f .env ]; then
-    echo "Exporting variables from .env file for Vite build..."
-    set -a  # automatically export all variables
+    echo ".envファイルからViteビルド用の環境変数をエクスポート中..."
+    set -a  # 自動エクスポート有効化
     source .env
-    set +a  # stop automatically exporting
+    set +a  # 自動エクスポート無効化
 fi
 
-echo "Building frontend with environment variables..."
-echo "VITE_FIREBASE_API_KEY is set: $(if [ -n "$VITE_FIREBASE_API_KEY" ]; then echo "YES"; else echo "NO"; fi)"
+echo "環境変数を使用してフロントエンドをビルド中..."
+echo "VITE_FIREBASE_API_KEYが設定されています: $(if [ -n "$VITE_FIREBASE_API_KEY" ]; then echo "はい"; else echo "いいえ"; fi)"
 npm run build
 
-echo "Build completed successfully!"
+echo "ビルドが正常に完了しました！"
 ls -la dist/
 
 cd ..
 
-echo "===== Build process completed ====="
+echo "===== ビルドプロセス完了 ====="
