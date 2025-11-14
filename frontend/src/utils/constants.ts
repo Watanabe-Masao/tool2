@@ -6,7 +6,12 @@
 // API関連
 // ============================================================
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+/**
+ * APIのベースURL
+ * 開発環境ではViteプロキシを使用するため'/api'
+ * 本番環境では環境変数から取得
+ */
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const API_ENDPOINTS = {
   /** ヘルスチェック */
@@ -16,8 +21,8 @@ export const API_ENDPOINTS = {
   /** Firebase設定取得 */
   FIREBASE_CONFIG: '/firebase-config',
   /** テンプレート生成 */
-  GENERATE_TEMPLATE: '/generate-template',
-  /** ファイルダウンロード */
+  GENERATE_TEMPLATE: '/generate',
+  /** ファイルダウンロード（ベースパス） */
   DOWNLOAD: '/download',
 } as const;
 

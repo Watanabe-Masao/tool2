@@ -147,10 +147,14 @@ export interface TemplateRequest {
  * APIレスポンス: テンプレート生成成功
  */
 export interface TemplateResponse {
+  /** 成功フラグ */
+  success: boolean;
   /** 生成されたExcelファイル名 */
   filename: string;
-  /** 生成されたPDFファイル名 */
-  pdf_filename: string;
+  /** ダウンロードURL */
+  download_url: string;
+  /** 生成されたPDFファイル名（オプション） */
+  pdf_filename?: string;
   /** メッセージ */
   message: string;
 }
