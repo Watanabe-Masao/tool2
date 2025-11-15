@@ -77,7 +77,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
                   {presets.map((preset) => (
                     <Chip
                       key={preset.id}
-                      label={preset.name}
+                      label={preset.supplier}
                       onClick={() => field.onChange(preset.supplier)}
                       color={field.value === preset.supplier ? 'primary' : 'default'}
                       sx={{ mb: 1 }}

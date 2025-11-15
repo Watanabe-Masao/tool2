@@ -4,7 +4,6 @@ import { useAuthContext } from '@/context/AuthContext';
 
 export interface SupplierPreset {
   id: string;
-  name: string;
   supplier: string;
   createdAt: Date;
   updatedAt: Date;
@@ -38,11 +37,11 @@ export const useSupplierPresets = () => {
   /**
    * プリセットを追加
    */
-  const addPreset = async (name: string, supplier: string): Promise<boolean> => {
+  const addPreset = async (supplier: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      await FirestoreService.saveSupplierPreset(user.uid, name, supplier);
+      await FirestoreService.saveSupplierPreset(user.uid, supplier);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
@@ -68,13 +67,9 @@ export const useSupplierPresets = () => {
   /**
    * プリセットを更新
    */
-  const updatePreset = async (
-    presetId: string,
-    name: string,
-    supplier: string
-  ): Promise<boolean> => {
+  const updatePreset = async (presetId: string, supplier: string): Promise<boolean> => {
     try {
-      await FirestoreService.updateSupplierPreset(presetId, name, supplier);
+      await FirestoreService.updateSupplierPreset(presetId, supplier);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {

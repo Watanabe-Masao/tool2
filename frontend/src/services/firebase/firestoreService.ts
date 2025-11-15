@@ -294,27 +294,21 @@ export class FirestoreService {
    * プリセットを保存
    *
    * @param userId - ユーザーID
-   * @param name - プリセット名
    * @param supplier - 帳合先の値
    * @returns プリセットID
    */
-  static async saveSupplierPreset(
-    userId: string,
-    name: string,
-    supplier: string
-  ): Promise<string> {
+  static async saveSupplierPreset(userId: string, supplier: string): Promise<string> {
     const db = getFirebaseFirestore();
     const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
 
     const docRef = await addDoc(presetsRef, {
       userId,
-      name,
       supplier,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
 
-    console.log(`[Firestore] Supplier preset saved: ${name}`);
+    console.log(`[Firestore] Supplier preset saved: ${supplier}`);
     return docRef.id;
   }
 
@@ -327,7 +321,6 @@ export class FirestoreService {
   static async getSupplierPresets(userId: string): Promise<
     Array<{
       id: string;
-      name: string;
       supplier: string;
       createdAt: Date;
       updatedAt: Date;
@@ -344,7 +337,6 @@ export class FirestoreService {
       const data = doc.data();
       return {
         id: doc.id,
-        name: data.name,
         supplier: data.supplier,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
@@ -373,19 +365,13 @@ export class FirestoreService {
    * プリセットを更新
    *
    * @param presetId - プリセットID
-   * @param name - プリセット名
    * @param supplier - 帳合先の値
    */
-  static async updateSupplierPreset(
-    presetId: string,
-    name: string,
-    supplier: string
-  ): Promise<void> {
+  static async updateSupplierPreset(presetId: string, supplier: string): Promise<void> {
     const db = getFirebaseFirestore();
     const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, presetId);
 
     await updateDoc(presetRef, {
-      name,
       supplier,
       updatedAt: Timestamp.now(),
     });

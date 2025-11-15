@@ -36,7 +36,6 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const { presets, addPreset, deletePreset, updatePreset } = useSupplierPresets();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [presetName, setPresetName] = useState('');
   const [presetValue, setPresetValue] = useState('');
   const [error, setError] = useState('');
 
@@ -44,14 +43,13 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    * 新規プリセットを追加
    */
   const handleAdd = async () => {
-    if (!presetName.trim() || !presetValue.trim()) {
-      setError('プリセット名と帳合先を入力してください');
+    if (!presetValue.trim()) {
+      setError('帳合先を入力してください');
       return;
     }
 
-    const success = await addPreset(presetName.trim(), presetValue.trim());
+    const success = await addPreset(presetValue.trim());
     if (success) {
-      setPresetName('');
       setPresetValue('');
       setIsAdding(false);
       setError('');
@@ -77,7 +75,6 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    */
   const handleStartEdit = (preset: SupplierPreset) => {
     setEditingId(preset.id);
-    setPresetName(preset.name);
     setPresetValue(preset.supplier);
     setIsAdding(false);
   };
@@ -87,15 +84,14 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    */
   const handleSaveEdit = async () => {
     if (!editingId) return;
-    if (!presetName.trim() || !presetValue.trim()) {
-      setError('プリセット名と帳合先を入力してください');
+    if (!presetValue.trim()) {
+      setError('帳合先を入力してください');
       return;
     }
 
-    const success = await updatePreset(editingId, presetName.trim(), presetValue.trim());
+    const success = await updatePreset(editingId, presetValue.trim());
     if (success) {
       setEditingId(null);
-      setPresetName('');
       setPresetValue('');
       setError('');
     } else {
@@ -109,7 +105,6 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const handleCancelEdit = () => {
     setEditingId(null);
     setIsAdding(false);
-    setPresetName('');
     setPresetValue('');
     setError('');
   };
@@ -141,20 +136,13 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
                 <ListItem>
                   <Box sx={{ width: '100%' }}>
                     <TextField
-                      label="プリセット名"
-                      value={presetName}
-                      onChange={(e) => setPresetName(e.target.value)}
-                      fullWidth
-                      size="small"
-                      sx={{ mb: 1 }}
-                    />
-                    <TextField
                       label="帳合先"
                       value={presetValue}
                       onChange={(e) => setPresetValue(e.target.value)}
                       fullWidth
                       size="small"
                       sx={{ mb: 1 }}
+                      placeholder="例: ○○商事"
                     />
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                       <Button size="small" onClick={handleCancelEdit}>
@@ -169,10 +157,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
               ) : (
                 // 表示モード
                 <ListItem>
-                  <ListItemText
-                    primary={preset.name}
-                    secondary={preset.supplier}
-                  />
+                  <ListItemText primary={preset.supplier} />
                   <ListItemSecondaryAction>
                     <IconButton
                       edge="end"
@@ -196,15 +181,6 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
             <ListItem>
               <Box sx={{ width: '100%' }}>
                 <TextField
-                  label="プリセット名"
-                  placeholder="例: A社"
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={{ mb: 1 }}
-                />
-                <TextField
                   label="帳合先"
                   placeholder="例: ○○商事"
                   value={presetValue}
@@ -212,6 +188,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
                   fullWidth
                   size="small"
                   sx={{ mb: 1 }}
+                  autoFocus
                 />
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Button size="small" onClick={handleCancelEdit}>
