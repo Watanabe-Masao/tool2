@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  # 手動トリガーを有効化
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  # プッシュ時も自動実行（オプション）
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Deploy (placeholder)
+      run: |
+        echo "Deploying to ${{ inputs.environment || 'production' }}"
+        # ここに実際のデプロイコマンドを追加
+        # 例:
+        # - Vercel: vercel deploy --prod
+        # - Firebase: firebase deploy
+        # - AWS S3: aws s3 sync ./frontend/dist s3://your-bucket
