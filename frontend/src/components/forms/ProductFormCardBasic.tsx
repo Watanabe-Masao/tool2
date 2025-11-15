@@ -20,7 +20,7 @@ import {
   DialogContentText,
   ButtonBase,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2 } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -355,35 +355,50 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     <>
       <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          {/* ヘッダー: 商品番号 + 削除ボタン */}
+          {/* ヘッダー: 商品番号 + プリセットボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <ButtonBase
-              onTouchStart={handleProductHeaderLongPressStart}
-              onTouchEnd={handleProductHeaderLongPressEnd}
-              onMouseDown={handleProductHeaderLongPressStart}
-              onMouseUp={handleProductHeaderLongPressEnd}
-              onMouseLeave={handleProductHeaderLongPressEnd}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                if (currentName && currentOrigin) {
-                  setSaveDialogOpen(true);
-                } else {
-                  showError('品名と産地を入力してください');
-                }
-              }}
-              sx={{
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <Typography variant="subtitle1" fontWeight="medium">
-                商品 {index + 1}
-              </Typography>
-            </ButtonBase>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ButtonBase
+                onTouchStart={handleProductHeaderLongPressStart}
+                onTouchEnd={handleProductHeaderLongPressEnd}
+                onMouseDown={handleProductHeaderLongPressStart}
+                onMouseUp={handleProductHeaderLongPressEnd}
+                onMouseLeave={handleProductHeaderLongPressEnd}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (currentName && currentOrigin) {
+                    setSaveDialogOpen(true);
+                  } else {
+                    showError('品名と産地を入力してください');
+                  }
+                }}
+                sx={{
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight="medium">
+                  商品 {index + 1}
+                </Typography>
+                <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
+              </ButtonBase>
+              <Chip
+                icon={<Inventory2 />}
+                label="プリセット呼び出し"
+                onClick={handlePresetButtonClick}
+                variant="outlined"
+                size="small"
+                color="secondary"
+                sx={{ fontSize: '0.75rem' }}
+              />
+            </Box>
             {showRemove && (
               <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
                 <Delete fontSize="small" />
@@ -391,8 +406,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             )}
           </Box>
 
-          {/* カテゴリーChip & プリセットボタン */}
-          <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+          {/* カテゴリーChip */}
+          <Box sx={{ mb: 1.5 }}>
             {currentCategoryCode ? (
               <Chip
                 icon={<CategoryIcon />}
@@ -413,16 +428,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
               />
             )}
-            <Chip
-              icon={<Inventory2 />}
-              label="プリセットから選択"
-              onClick={handlePresetButtonClick}
-              variant="outlined"
-              size="small"
-              color="secondary"
-              sx={{ fontSize: '0.8rem' }}
-            />
-          </Stack>
+          </Box>
 
           <Grid container spacing={1.5}>
             {/* 品名 */}

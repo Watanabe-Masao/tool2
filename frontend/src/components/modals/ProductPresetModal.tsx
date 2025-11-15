@@ -1,25 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   List,
   ListItemButton,
-  ListItemText,
   IconButton,
   Box,
   Typography,
   Chip,
-  Stack,
   Tabs,
   Tab,
   Button,
   DialogActions,
   DialogContentText,
 } from '@mui/material';
-import { Close, Inventory2, Delete } from '@mui/icons-material';
+import { Close, Inventory2, Delete, PushPin, PushPinOutlined } from '@mui/icons-material';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
-import { getCategoryName } from '@/utils/categories';
+import { getCategoryName, MAIN_CATEGORIES } from '@/utils/categories';
+import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 
 /**
  * ProductPresetModalのProps
@@ -52,21 +52,93 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   // カテゴリーフィルターのタブ（0: 全て, 1: 果実, 2: 野菜）
   const [categoryFilter, setCategoryFilter] = useState(0);
 
+  // 詳細カテゴリーフィルター（小カテゴリーコード）
+  const [detailedCategoryCode, setDetailedCategoryCode] = useState<string>('');
+
+  // カテゴリー選択モーダルの状態
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [presetToDelete, setPresetToDelete] = useState<ProductHistoryItem | null>(null);
+
+  // 長押し検出用のタイマー
+  const longPressTimer = useRef<number | null>(null);
+
+  // スワイプ状態管理
+  const [swipeState, setSwipeState] = useState<{
+    id: string | null;
+    startX: number;
+    currentX: number;
+    isSwiping: boolean;
+  }>({
+    id: null,
+    startX: 0,
+    currentX: 0,
+    isSwiping: false,
+  });
 
   /**
    * タブ変更ハンドラー
    */
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCategoryFilter(newValue);
+    setDetailedCategoryCode(''); // タブ変更時に詳細カテゴリーをクリア
+  };
+
+  /**
+   * タブ長押し開始
+   */
+  const handleTabLongPressStart = (tabIndex: number) => {
+    if (tabIndex === 0) return; // 「全て」タブは長押し不要
+
+    longPressTimer.current = window.setTimeout(() => {
+      // 果実（tabIndex=1）または野菜（tabIndex=2）のカテゴリー選択モーダルを開く
+      setCategoryModalOpen(true);
+    }, 500); // 500ms長押しでモーダル表示
+  };
+
+  /**
+   * タブ長押し終了
+   */
+  const handleTabLongPressEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  /**
+   * カテゴリー選択
+   */
+  const handleSelectCategory = (categoryCode: string) => {
+    setDetailedCategoryCode(categoryCode);
+    // カテゴリーが選択されたら、対応する大カテゴリータブに切り替え
+    if (categoryCode) {
+      const mainCategory = MAIN_CATEGORIES.find((mc) =>
+        mc.subCategories.some((sc) => sc.code === categoryCode)
+      );
+      if (mainCategory?.code === '61') {
+        setCategoryFilter(1); // 果実タブ
+      } else if (mainCategory?.code === '62') {
+        setCategoryFilter(2); // 野菜タブ
+      }
+    }
   };
 
   /**
    * カテゴリーでフィルタリングしたプリセット
    */
   const filteredPresets = presets.filter((preset) => {
+    // ピン留めされているアイテムは常に表示
+    if (preset.pinned) return true;
+
+    // 詳細カテゴリーが選択されている場合は、それでフィルタリング
+    if (detailedCategoryCode) {
+      return preset.categoryCode === detailedCategoryCode;
+    }
+
+    // 大カテゴリーでフィルタリング
     if (categoryFilter === 0) return true; // 全て表示
     if (categoryFilter === 1) {
       // 果実（61）
@@ -83,17 +155,85 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    * プリセットを選択
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
+    // スワイプ中は選択しない
+    if (swipeState.isSwiping) return;
     onSelect(preset);
     onClose();
   };
 
   /**
-   * 削除ボタンをクリック
+   * スワイプ開始
    */
-  const handleDeleteClick = (e: React.MouseEvent, preset: ProductHistoryItem) => {
-    e.stopPropagation(); // リストアイテムのクリックイベントを止める
-    setPresetToDelete(preset);
-    setDeleteDialogOpen(true);
+  const handleSwipeStart = (e: React.TouchEvent | React.MouseEvent, presetId: string) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setSwipeState({
+      id: presetId,
+      startX: clientX,
+      currentX: clientX,
+      isSwiping: false,
+    });
+  };
+
+  /**
+   * スワイプ中
+   */
+  const handleSwipeMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!swipeState.id) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - swipeState.startX;
+
+    // 5px以上動いたらスワイプとみなす
+    if (Math.abs(deltaX) > 5) {
+      setSwipeState((prev) => ({
+        ...prev,
+        currentX: clientX,
+        isSwiping: true,
+      }));
+    }
+  };
+
+  /**
+   * スワイプ終了
+   */
+  const handleSwipeEnd = async (preset: ProductHistoryItem) => {
+    if (!swipeState.id || swipeState.id !== preset.id) return;
+
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const threshold = 100; // スワイプ判定の閾値（ピクセル）
+
+    // 左スワイプ（削除）
+    if (deltaX < -threshold) {
+      setPresetToDelete(preset);
+      setDeleteDialogOpen(true);
+    }
+
+    // 右スワイプ（ピン留め/ピン留め解除）
+    if (deltaX > threshold) {
+      await handleTogglePin(preset);
+    }
+
+    // スワイプ状態をリセット
+    setSwipeState({
+      id: null,
+      startX: 0,
+      currentX: 0,
+      isSwiping: false,
+    });
+  };
+
+  /**
+   * ピン留めをトグル
+   */
+  const handleTogglePin = async (preset: ProductHistoryItem) => {
+    try {
+      await FirestoreService.toggleProductHistoryPinned(preset.id, !preset.pinned);
+      // プリセット一覧を再読み込み（親コンポーネントで管理している場合は、親に通知する必要がある）
+      // ここでは直接onDeleteを使って再読み込みをトリガー
+      window.location.reload(); // 簡易的な実装
+    } catch (error) {
+      console.error('[ProductPresetModal] Failed to toggle pin:', error);
+    }
   };
 
   /**
@@ -116,6 +256,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    */
   const handleClose = () => {
     setCategoryFilter(0);
+    setDetailedCategoryCode('');
     onClose();
   };
 
@@ -149,11 +290,36 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
             <Tab label={`全て (${presets.length})`} />
             <Tab
               label={`果実 (${presets.filter(p => p.categoryCode && p.categoryCode.startsWith('0006') && p.categoryCode <= '000612').length})`}
+              onTouchStart={() => handleTabLongPressStart(1)}
+              onTouchEnd={handleTabLongPressEnd}
+              onMouseDown={() => handleTabLongPressStart(1)}
+              onMouseUp={handleTabLongPressEnd}
+              onMouseLeave={handleTabLongPressEnd}
             />
             <Tab
               label={`野菜 (${presets.filter(p => p.categoryCode && p.categoryCode.startsWith('0006') && p.categoryCode >= '000620').length})`}
+              onTouchStart={() => handleTabLongPressStart(2)}
+              onTouchEnd={handleTabLongPressEnd}
+              onMouseDown={() => handleTabLongPressStart(2)}
+              onMouseUp={handleTabLongPressEnd}
+              onMouseLeave={handleTabLongPressEnd}
             />
           </Tabs>
+
+          {/* 詳細カテゴリーが選択されている場合は表示 */}
+          {detailedCategoryCode && (
+            <Box sx={{ px: 2, py: 1, bgcolor: 'primary.light', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" color="primary.contrastText">
+                絞り込み中:
+              </Typography>
+              <Chip
+                label={getCategoryName(detailedCategoryCode)}
+                size="small"
+                onDelete={() => setDetailedCategoryCode('')}
+                sx={{ bgcolor: 'white' }}
+              />
+            </Box>
+          )}
         </Box>
 
         <DialogContent dividers sx={{ p: 0, flexGrow: 1, overflow: 'auto' }}>
@@ -170,71 +336,126 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
             </Box>
           ) : (
             <List sx={{ py: 0 }}>
-              {filteredPresets.map((preset) => (
-                <ListItemButton
-                  key={preset.id}
-                  sx={{
-                    py: 2,
-                    px: 2,
-                    '&:hover .delete-button': {
-                      opacity: 1,
-                    },
-                  }}
-                >
-                  <ListItemText
-                    onClick={() => handleSelectPreset(preset)}
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <Typography variant="body1" fontWeight="medium">
-                          {preset.name}
-                        </Typography>
-                        {preset.categoryCode && (
-                          <Chip
-                            label={getCategoryName(preset.categoryCode)}
-                            size="small"
-                            color="primary"
-                            sx={{ fontSize: '0.7rem', height: 20 }}
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <Stack spacing={0.3} sx={{ mt: 0.5 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          産地: {preset.origin}
-                        </Typography>
-                        {preset.specification && (
-                          <Typography variant="body2" color="text.secondary">
-                            規格: {preset.specification}
-                          </Typography>
-                        )}
-                        {preset.quantityPerPackage && (
-                          <Typography variant="body2" color="text.secondary">
-                            入数: {preset.quantityPerPackage}
-                            {preset.unit && ` ${preset.unit}`}
-                          </Typography>
-                        )}
-                        <Typography variant="caption" color="text.disabled">
-                          使用回数: {preset.usageCount}回
-                        </Typography>
-                      </Stack>
-                    }
-                  />
-                  <IconButton
-                    className="delete-button"
-                    onClick={(e) => handleDeleteClick(e, preset)}
-                    color="error"
-                    size="small"
+              {filteredPresets.map((preset) => {
+                const isCurrentSwiping = swipeState.id === preset.id;
+                const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
+                const showDeleteHint = deltaX < -30;
+                const showPinHint = deltaX > 30;
+
+                return (
+                  <Box
+                    key={preset.id}
                     sx={{
-                      opacity: 0.5,
-                      transition: 'opacity 0.2s',
-                      ml: 1,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      bgcolor: showDeleteHint
+                        ? 'error.light'
+                        : showPinHint
+                        ? 'primary.light'
+                        : 'transparent',
+                      transition:
+                        showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
                     }}
                   >
-                    <Delete />
-                  </IconButton>
-                </ListItemButton>
-              ))}
+                    {/* 削除ヒント背景 */}
+                    {showDeleteHint && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 80,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'error.contrastText',
+                        }}
+                      >
+                        <Delete />
+                      </Box>
+                    )}
+
+                    {/* ピン留めヒント背景 */}
+                    {showPinHint && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 80,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'primary.contrastText',
+                        }}
+                      >
+                        {preset.pinned ? <PushPinOutlined /> : <PushPin />}
+                      </Box>
+                    )}
+
+                    <ListItemButton
+                      onClick={() => handleSelectPreset(preset)}
+                      onTouchStart={(e) => handleSwipeStart(e, preset.id)}
+                      onTouchMove={handleSwipeMove}
+                      onTouchEnd={() => handleSwipeEnd(preset)}
+                      onMouseDown={(e) => handleSwipeStart(e, preset.id)}
+                      onMouseMove={handleSwipeMove}
+                      onMouseUp={() => handleSwipeEnd(preset)}
+                      onMouseLeave={() => handleSwipeEnd(preset)}
+                      sx={{
+                        py: 1.5,
+                        px: 2,
+                        transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
+                        transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
+                        bgcolor: 'background.paper',
+                        cursor: isCurrentSwiping ? 'grabbing' : 'pointer',
+                      }}
+                    >
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {/* ピン留めアイコン */}
+                        {preset.pinned && (
+                          <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+                        )}
+                        <Box sx={{ flex: 1 }}>
+                          {/* 1行目: 品名 + カテゴリー */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              {preset.name}
+                            </Typography>
+                            {preset.categoryCode && (
+                              <Chip
+                                label={getCategoryName(preset.categoryCode)}
+                                size="small"
+                                color="primary"
+                                sx={{ fontSize: '0.65rem', height: 18 }}
+                              />
+                            )}
+                          </Box>
+                          {/* 2行目: 産地、規格、入り数を横並び */}
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <Typography variant="caption" color="text.secondary">
+                              産地: {preset.origin}
+                            </Typography>
+                            {preset.specification && (
+                              <Typography variant="caption" color="text.secondary">
+                                規格: {preset.specification}
+                              </Typography>
+                            )}
+                            {preset.quantityPerPackage && (
+                              <Typography variant="caption" color="text.secondary">
+                                入数: {preset.quantityPerPackage}
+                                {preset.unit && ` ${preset.unit}`}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </Box>
+                    </ListItemButton>
+                  </Box>
+                );
+              })}
             </List>
           )}
         </DialogContent>
@@ -275,6 +496,14 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* カテゴリー選択モーダル */}
+      <CategorySelectModal
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        onSelect={handleSelectCategory}
+        selectedCategoryCode={detailedCategoryCode}
+      />
     </>
   );
 };
