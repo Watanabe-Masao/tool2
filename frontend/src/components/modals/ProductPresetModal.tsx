@@ -5,12 +5,10 @@ import {
   DialogContent,
   List,
   ListItemButton,
-  ListItemText,
   IconButton,
   Box,
   Typography,
   Chip,
-  Stack,
   Tabs,
   Tab,
   Button,
@@ -58,7 +56,6 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [selectedMainCategoryForModal, setSelectedMainCategoryForModal] = useState<'61' | '62'>('61');
 
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,7 +93,6 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
 
     longPressTimer.current = window.setTimeout(() => {
       // 果実（tabIndex=1）または野菜（tabIndex=2）のカテゴリー選択モーダルを開く
-      setSelectedMainCategoryForModal(tabIndex === 1 ? '61' : '62');
       setCategoryModalOpen(true);
     }, 500); // 500ms長押しでモーダル表示
   };
@@ -220,15 +216,6 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       currentX: 0,
       isSwiping: false,
     });
-  };
-
-  /**
-   * 削除ボタンをクリック
-   */
-  const handleDeleteClick = (e: React.MouseEvent, preset: ProductHistoryItem) => {
-    e.stopPropagation(); // リストアイテムのクリックイベントを止める
-    setPresetToDelete(preset);
-    setDeleteDialogOpen(true);
   };
 
   /**
