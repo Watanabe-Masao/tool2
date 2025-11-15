@@ -1,12 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { Typography, Box, Paper } from '@mui/material';
+import {
+  Typography,
+  Box,
+  Paper,
+  TextField,
+  Autocomplete,
+  Stack,
+  Chip,
+  Divider,
+  IconButton,
+} from '@mui/material';
+import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { SupplierPresetManagerModal } from '@/components/modals/SupplierPresetManagerModal';
 
 /**
  * DeliveryDateFormのProps
@@ -16,20 +28,30 @@ interface DeliveryDateFormProps {
   control: Control<OrderFormData>;
   /** エラー */
   errors: FieldErrors<OrderFormData>;
+  /** 帳合先のオートコンプリート候補 */
+  supplierOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
 }
 
 /**
- * Step 1: 店着日選択フォーム
+ * Step 1: 店着日選択・帳合先入力フォーム
  *
- * 商品が店舗に届く日付を選択します。
- * インラインカレンダーでタップして選択できます。
+ * 商品が店舗に届く日付を選択し、帳合先を入力します。
+ * インラインカレンダーでタップして日付を選択できます。
  */
-export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, errors }) => {
+export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
+  control,
+  errors,
+  supplierOptions = [],
+  onEnterPress,
+}) => {
+  const { presets } = useSupplierPresets();
+  const [showPresetManager, setShowPresetManager] = useState(false);
+
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1.5 }}>
         店着日を選択
       </Typography>
 
@@ -37,40 +59,21 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
         name="deliveryDate"
         control={control}
         render={({ field }) => (
-          <Box>
-            {/* 選択された日付の表示 */}
-            <Paper
-              elevation={1}
-              sx={{
-                p: 1.5,
-                mb: 1.5,
-                textAlign: 'center',
-                bgcolor: 'primary.light',
-                color: 'primary.contrastText',
-              }}
-            >
-              <Typography variant="caption" display="block" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                選択された日付
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {field.value ? format(field.value, 'yyyy年M月d日(E)', { locale: ja }) : '未選択'}
-              </Typography>
-            </Paper>
-
+          <Box sx={{ mb: 3 }}>
             {/* インラインカレンダー */}
             <Paper
               elevation={2}
               sx={{
-                p: 1,
+                p: 1.5,
                 display: 'flex',
                 justifyContent: 'center',
                 '& .rdp': {
                   margin: 0,
-                  fontSize: '0.9rem',
+                  fontSize: '1rem',
                 },
                 '& .rdp-day_button': {
-                  fontSize: '0.9rem',
-                  padding: '0.5rem',
+                  fontSize: '1rem',
+                  padding: '0.6rem',
                 },
                 '& .rdp-month': {
                   margin: '0.5rem',
@@ -95,6 +98,90 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
             )}
           </Box>
         )}
+      />
+
+      {/* 帳合先入力セクション */}
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight="medium">帳合先を入力</Typography>
+          <IconButton
+            size="small"
+            onClick={() => setShowPresetManager(true)}
+            title="プリセット管理"
+          >
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Box>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+          プリセットボタンをタップするか、直接入力してください
+        </Typography>
+
+        <Controller
+          name="supplier"
+          control={control}
+          render={({ field }) => (
+            <Box>
+              {/* プリセットボタン */}
+              {presets.length > 0 && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                    プリセット
+                  </Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {presets.map((preset) => (
+                      <Chip
+                        key={preset.id}
+                        label={preset.supplier}
+                        onClick={() => field.onChange(preset.supplier)}
+                        color={field.value === preset.supplier ? 'primary' : 'default'}
+                        size="small"
+                        sx={{ mb: 0.5 }}
+                      />
+                    ))}
+                  </Stack>
+                  <Divider sx={{ my: 1.5 }} />
+                </Box>
+              )}
+
+              {/* 入力フィールド */}
+              <Autocomplete
+                {...field}
+                options={supplierOptions}
+                freeSolo
+                value={field.value || ''}
+                onChange={(_, newValue) => {
+                  field.onChange(newValue || '');
+                }}
+                onInputChange={(_, newInputValue) => {
+                  field.onChange(newInputValue);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="帳合先"
+                    placeholder="例: ○○商事"
+                    error={!!errors.supplier}
+                    helperText={errors.supplier?.message}
+                    fullWidth
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && onEnterPress) {
+                        e.preventDefault();
+                        onEnterPress();
+                      }
+                    }}
+                  />
+                )}
+              />
+            </Box>
+          )}
+        />
+      </Box>
+
+      {/* プリセット管理モーダル */}
+      <SupplierPresetManagerModal
+        open={showPresetManager}
+        onClose={() => setShowPresetManager(false)}
       />
     </Box>
   );
