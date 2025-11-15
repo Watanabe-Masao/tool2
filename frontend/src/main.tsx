@@ -17,6 +17,9 @@ import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
+/* Swiper CSS */
+import 'swiper/swiper-bundle.css';
+
 /* Custom CSS */
 import './index.css';
 import App from './App.tsx';

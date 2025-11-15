@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IonPage, IonContent } from '@ionic/react';
-import { Container, Box, Alert, Chip } from '@mui/material';
+import { Container, Box, Alert, Chip, Button } from '@mui/material';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { FormStepper } from '@/components/forms/FormStepper';
-import type { FormStep } from '@/components/forms/FormStepper';
+import { FormStepIndicator } from '@/components/forms/FormStepIndicator';
+import type { FormStep } from '@/components/forms/FormStepIndicator';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { SupplierForm } from '@/components/forms/SupplierForm';
 import { ProductForm } from '@/components/forms/ProductForm';
@@ -57,6 +59,9 @@ export const NewOrderPage: React.FC = () => {
     pdfFilename?: string;
   } | null>(null);
 
+  // Swiper instance reference
+  const swiperRef = useRef<SwiperType | null>(null);
+
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
@@ -76,7 +81,6 @@ export const NewOrderPage: React.FC = () => {
     handleSubmit,
     watch,
     formState: { errors },
-    trigger,
   } = useForm<OrderFormData>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -97,47 +101,10 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   /**
-   * 次のステップへ進む
+   * スライド変更時の処理
    */
-  const handleNext = async () => {
-    let isValid = false;
-
-    // 現在のステップのバリデーション
-    switch (activeStep) {
-      case 0: // 店着日
-        isValid = await trigger('deliveryDate');
-        break;
-      case 1: // 帳合先
-        isValid = await trigger('supplier');
-        break;
-      case 2: // 商品情報
-        isValid = await trigger('products');
-        break;
-      case 3: // 総納品数
-        isValid = await trigger('totalDelivery');
-        break;
-      case 4: // 店舗配分（最終ステップ）
-        // すべてのフィールドをバリデーション
-        isValid = await trigger();
-        if (isValid) {
-          // フォーム送信
-          handleSubmit(onSubmit)();
-        }
-        return;
-      default:
-        isValid = true;
-    }
-
-    if (isValid) {
-      setActiveStep((prev) => Math.min(prev + 1, FORM_STEPS.length - 1));
-    }
-  };
-
-  /**
-   * 前のステップへ戻る
-   */
-  const handleBack = () => {
-    setActiveStep((prev) => Math.max(prev - 1, 0));
+  const handleSlideChange = (swiper: SwiperType) => {
+    setActiveStep(swiper.activeIndex);
   };
 
   /**
@@ -224,66 +191,29 @@ export const NewOrderPage: React.FC = () => {
     }
   };
 
-  const renderStepContent = () => {
-    switch (activeStep) {
-      case 0:
-        return <DeliveryDateForm control={control} errors={errors} onEnterPress={handleNext} />;
-
-      case 1:
-        return (
-          <SupplierForm
-            control={control}
-            errors={errors}
-            supplierOptions={supplierAutocomplete.options}
-            onEnterPress={handleNext}
-          />
-        );
-
-      case 2:
-        return (
-          <ProductForm
-            control={control}
-            errors={errors}
-            productNameOptions={productNameAutocomplete.options}
-            originOptions={originAutocomplete.options}
-            onEnterPress={handleNext}
-          />
-        );
-
-      case 3:
-        return <TotalDeliveryForm control={control} errors={errors} onEnterPress={handleNext} />;
-
-      case 4:
-        // 各商品の店舗配分（モバイル/デスクトップ対応）
-        const isMobile = isMobileDevice();
-        return (
-          <Box>
-            {formData.products.map((_, index) =>
-              isMobile ? (
-                <StoreAllocationMobile
-                  key={index}
-                  productIndex={index}
-                  control={control}
-                  errors={errors}
-                  totalDelivery={formData.totalDelivery}
-                />
-              ) : (
-                <StoreAllocationGrid
-                  key={index}
-                  productIndex={index}
-                  control={control}
-                  errors={errors}
-                  totalDelivery={formData.totalDelivery}
-                />
-              )
-            )}
-          </Box>
-        );
-
-      default:
-        return null;
+  /**
+   * 最終ステップで送信ボタンを表示
+   */
+  const renderSubmitButton = () => {
+    if (activeStep === FORM_STEPS.length - 1) {
+      return (
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleSubmit(onSubmit)}
+            fullWidth
+            sx={{ maxWidth: 400 }}
+          >
+            テンプレート生成
+          </Button>
+        </Box>
+      );
     }
+    return null;
   };
+
+  const isMobile = isMobileDevice();
 
   return (
     <IonPage>
@@ -323,18 +253,83 @@ export const NewOrderPage: React.FC = () => {
               </Alert>
             )}
 
-            {/* ステッパーナビゲーション */}
-            <FormStepper
-              activeStep={activeStep}
-              steps={FORM_STEPS}
-              onNext={handleNext}
-              onBack={handleBack}
-              isLastStep={activeStep === FORM_STEPS.length - 1}
-              nextButtonText={activeStep === FORM_STEPS.length - 1 ? 'テンプレート生成' : undefined}
-            />
+            {/* ステップインジケーター */}
+            <FormStepIndicator activeStep={activeStep} steps={FORM_STEPS} />
 
-            {/* ステップコンテンツ */}
-            <Box sx={{ mt: 2 }}>{renderStepContent()}</Box>
+            {/* スワイプ可能なステップコンテンツ */}
+            <Box sx={{ mt: 2 }}>
+              <Swiper
+                onSwiper={(swiper) => (swiperRef.current = swiper)}
+                onSlideChange={handleSlideChange}
+                spaceBetween={16}
+                slidesPerView={1}
+                allowTouchMove={true}
+                style={{ width: '100%' }}
+              >
+                {/* Step 1: 店着日 */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    <DeliveryDateForm control={control} errors={errors} />
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 2: 帳合先 */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    <SupplierForm
+                      control={control}
+                      errors={errors}
+                      supplierOptions={supplierAutocomplete.options}
+                    />
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 3: 商品情報 */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    <ProductForm
+                      control={control}
+                      errors={errors}
+                      productNameOptions={productNameAutocomplete.options}
+                      originOptions={originAutocomplete.options}
+                    />
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 4: 総納品数 */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    <TotalDeliveryForm control={control} errors={errors} />
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 5: 店舗配分 */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    {formData.products.map((_, index) =>
+                      isMobile ? (
+                        <StoreAllocationMobile
+                          key={index}
+                          productIndex={index}
+                          control={control}
+                          errors={errors}
+                          totalDelivery={formData.totalDelivery}
+                        />
+                      ) : (
+                        <StoreAllocationGrid
+                          key={index}
+                          productIndex={index}
+                          control={control}
+                          errors={errors}
+                          totalDelivery={formData.totalDelivery}
+                        />
+                      )
+                    )}
+                    {renderSubmitButton()}
+                  </Box>
+                </SwiperSlide>
+              </Swiper>
+            </Box>
           </Box>
         </Container>
 
