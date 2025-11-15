@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFieldArray } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { Box, Button, Typography, Alert } from '@mui/material';
+import { Box, IconButton, Typography, Alert } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -60,9 +60,21 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   return (
     <Box>
-      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1.5 }}>
-        商品情報を入力してください
-      </Typography>
+      {/* ヘッダーセクション（固定） */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Typography variant="subtitle1" fontWeight="medium">
+          商品情報を入力してください
+        </Typography>
+        <IconButton
+          onClick={handleAddProduct}
+          disabled={fields.length >= 10}
+          size="small"
+          color="primary"
+          aria-label="商品を追加"
+        >
+          <Add />
+        </IconButton>
+      </Box>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
@@ -86,18 +98,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         />
       ))}
 
-      {/* 商品を追加ボタン */}
-      <Button
-        variant="outlined"
-        startIcon={<Add />}
-        onClick={handleAddProduct}
-        fullWidth
-        sx={{ mt: 1.5 }}
-        disabled={fields.length >= 10}
-      >
-        商品を追加
-      </Button>
-
+      {/* 最大数エラー */}
       {fields.length >= 10 && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           商品は最大10個まで追加できます
