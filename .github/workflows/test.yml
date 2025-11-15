@@ -5,6 +5,8 @@ on:
     branches: [ main, master, claude/** ]
   pull_request:
     branches: [ main, master ]
+  # 手動トリガーを追加
+  workflow_dispatch:
 
 jobs:
   test:
