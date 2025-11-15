@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IonPage, IonContent } from '@ionic/react';
 import { Container, Box, Alert, Chip, Button } from '@mui/material';
@@ -69,12 +69,7 @@ export const NewOrderPage: React.FC = () => {
   /**
    * React Hook Form セットアップ
    */
-  const {
-    control,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<OrderFormData>({
+  const methods = useForm<OrderFormData>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       deliveryDate: new Date(),
@@ -89,6 +84,13 @@ export const NewOrderPage: React.FC = () => {
     },
     mode: 'onChange',
   });
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = methods;
 
   // フォームデータを監視
   const formData = watch();
@@ -221,9 +223,10 @@ export const NewOrderPage: React.FC = () => {
   const isMobile = isMobileDevice();
 
   return (
-    <IonPage>
-      <IonContent>
-        <Container maxWidth="lg">
+    <FormProvider {...methods}>
+      <IonPage>
+        <IonContent>
+          <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
             {/* ネットワーク状態・同期状態の表示 */}
             <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -367,5 +370,6 @@ export const NewOrderPage: React.FC = () => {
         />
       </IonContent>
     </IonPage>
+    </FormProvider>
   );
 };
