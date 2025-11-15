@@ -127,18 +127,20 @@ export interface TemplateRequest {
     /** 産地 */
     origin: string;
     /** 規格 */
-    specification: string;
-    /** 1パックの数量 */
-    quantity_per_package: number;
-    /** 店原 */
+    standard: string;
+    /** 入数 */
+    quantity: number;
+    /** 店着原価 */
     store_cost: number;
-    /** 本体価格（税抜） */
-    price_excluding_tax: number;
-    /** 36店舗への配分数 */
-    store_allocations: number[];
+    /** 税抜売価 */
+    price: number;
+    /** 総納品数 */
+    total_delivery: number;
+    /** 納品先（帳合先） */
+    delivery_dest: string;
+    /** 店舗配分数（店舗コード→数量のマップ） */
+    store_quantities: number[];
   }>;
-  /** 総納品数 */
-  total_delivery: number;
   /** カスタムファイル名（オプション） */
   custom_filename?: string;
 }

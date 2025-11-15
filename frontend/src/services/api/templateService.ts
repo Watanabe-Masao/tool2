@@ -19,15 +19,16 @@ export class TemplateService {
       delivery_date: format(formData.deliveryDate, 'yyyy-MM-dd'),
       supplier: formData.supplier,
       buyer_name: buyerName,
-      total_delivery: formData.totalDelivery,
       products: formData.products.map((product) => ({
         name: product.name,
         origin: product.origin,
-        specification: product.specification || '',
-        quantity_per_package: product.quantityPerPackage,
+        standard: product.specification || '',  // specification → standard
+        quantity: product.quantityPerPackage,   // quantity_per_package → quantity
         store_cost: product.storeCost,
-        price_excluding_tax: product.priceExcludingTax,
-        store_allocations: product.storeAllocations,
+        price: product.priceExcludingTax,       // price_excluding_tax → price
+        total_delivery: formData.totalDelivery,  // 各商品にtotal_deliveryを追加
+        delivery_dest: formData.supplier,        // delivery_dest（帳合先）を追加
+        store_quantities: product.storeAllocations,  // store_allocations → store_quantities
       })),
     };
   }
