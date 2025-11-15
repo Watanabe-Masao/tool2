@@ -20,13 +20,15 @@ import {
   DialogContentText,
   ButtonBase,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2 } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
+import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
+import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import { getCategoryName } from '@/utils/categories';
 
 /**
@@ -102,11 +104,15 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
+  // プリセット選択モーダルの状態
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+
   // 商品保存確認ダイアログの状態
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // 商品履歴フック（帳合先とカテゴリーでフィルタ）
   const {
+    history,
     getUniqueNames,
     getUniqueOrigins,
     getUniqueSpecifications,
@@ -223,6 +229,30 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const handleClearCategory = (e: React.MouseEvent) => {
     e.stopPropagation(); // Chipのクリックイベントを止める
     setValue(`products.${index}.categoryCode`, '');
+  };
+
+  /**
+   * プリセット選択ボタンをクリック
+   */
+  const handlePresetButtonClick = () => {
+    if (!supplier) {
+      showError('帳合先を先に入力してください');
+      return;
+    }
+    setPresetModalOpen(true);
+  };
+
+  /**
+   * プリセットを一括設定
+   */
+  const handleSelectPreset = (preset: ProductHistoryItem) => {
+    setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
+    setValue(`products.${index}.name`, preset.name);
+    setValue(`products.${index}.origin`, preset.origin);
+    setValue(`products.${index}.specification`, preset.specification);
+    setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
+    setValue(`products.${index}.unit`, preset.unit);
+    showSuccess('プリセットを読み込みました');
   };
 
   /**
@@ -344,8 +374,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             )}
           </Box>
 
-          {/* カテゴリーChip */}
-          <Box sx={{ mb: 1.5 }}>
+          {/* カテゴリーChip & プリセットボタン */}
+          <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
             {currentCategoryCode ? (
               <Chip
                 icon={<CategoryIcon />}
@@ -366,7 +396,16 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
               />
             )}
-          </Box>
+            <Chip
+              icon={<Inventory2 />}
+              label="プリセットから選択"
+              onClick={handlePresetButtonClick}
+              variant="outlined"
+              size="small"
+              color="secondary"
+              sx={{ fontSize: '0.8rem' }}
+            />
+          </Stack>
 
           <Grid container spacing={1.5}>
             {/* 品名 */}
@@ -791,6 +830,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         onClose={() => setCategoryModalOpen(false)}
         onSelect={handleSelectCategory}
         selectedCategoryCode={currentCategoryCode}
+      />
+
+      {/* プリセット選択モーダル */}
+      <ProductPresetModal
+        open={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
+        onSelect={handleSelectPreset}
+        presets={history}
       />
     </>
   );
