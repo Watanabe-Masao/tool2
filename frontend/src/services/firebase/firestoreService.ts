@@ -559,4 +559,16 @@ export class FirestoreService {
     console.log(`[Firestore] Deleted ${snapshot.docs.length} product history items`);
     return snapshot.docs.length;
   }
+
+  /**
+   * 商品履歴をIDで削除
+   */
+  static async deleteProductHistoryById(historyId: string): Promise<void> {
+    const db = getFirebaseFirestore();
+    const historyRef = doc(db, 'product_history', historyId);
+
+    await deleteDoc(historyRef);
+
+    console.log(`[Firestore] Deleted product history item: ${historyId}`);
+  }
 }

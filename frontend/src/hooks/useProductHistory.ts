@@ -186,5 +186,6 @@ export const useProductHistory = (supplier?: string, categoryCode?: string) => {
     getUniqueUnits,
     deleteHistory,
     getCategoryCodeByName,
+    loadHistory, // 履歴を再読み込み
   };
 };

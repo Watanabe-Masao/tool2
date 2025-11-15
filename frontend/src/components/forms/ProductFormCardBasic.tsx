@@ -120,6 +120,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueUnits,
     deleteHistory,
     getCategoryCodeByName,
+    loadHistory,
   } = useProductHistory(supplier, currentCategoryCode || undefined);
 
   // 削除確認ダイアログの状態
@@ -253,6 +254,22 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
     showSuccess('プリセットを読み込みました');
+  };
+
+  /**
+   * プリセットを削除
+   */
+  const handleDeletePreset = async (presetId: string) => {
+    try {
+      await FirestoreService.deleteProductHistoryById(presetId);
+      showSuccess('プリセットを削除しました');
+      // 履歴を再読み込み
+      await loadHistory();
+    } catch (error) {
+      console.error('[ProductFormCardBasic] Failed to delete preset:', error);
+      showError('プリセットの削除に失敗しました');
+      throw error; // モーダルにエラーを伝播
+    }
   };
 
   /**
@@ -837,6 +854,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         open={presetModalOpen}
         onClose={() => setPresetModalOpen(false)}
         onSelect={handleSelectPreset}
+        onDelete={handleDeletePreset}
         presets={history}
       />
     </>
