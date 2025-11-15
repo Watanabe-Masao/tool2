@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { TextField, Typography, Box, Autocomplete } from '@mui/material';
+import {
+  TextField,
+  Typography,
+  Box,
+  Autocomplete,
+  Stack,
+  Chip,
+  Divider,
+  IconButton,
+} from '@mui/material';
+import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { SupplierPresetManagerModal } from '@/components/modals/SupplierPresetManagerModal';
 
 /**
  * SupplierFormのProps
@@ -22,7 +34,7 @@ interface SupplierFormProps {
  * Step 2: 帳合先入力フォーム
  *
  * 商品の帳合先（仕入先）を入力します。
- * オートコンプリート機能で過去の入力履歴から選択可能です。
+ * プリセット機能で頻繁に使う帳合先を素早く選択できます。
  */
 export const SupplierForm: React.FC<SupplierFormProps> = ({
   control,
@@ -30,49 +42,89 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   supplierOptions = [],
   onEnterPress,
 }) => {
-  return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-        帳合先を入力してください
-      </Typography>
+  const { presets } = useSupplierPresets();
+  const [showPresetManager, setShowPresetManager] = useState(false);
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        商品の帳合先（仕入先）を入力してください。過去の入力履歴から選択することもできます。
+  return (
+    <Box sx={{ maxWidth: 600, mx: 'auto', py: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">帳合先を入力</Typography>
+        <IconButton
+          size="small"
+          onClick={() => setShowPresetManager(true)}
+          title="プリセット管理"
+        >
+          <SettingsIcon />
+        </IconButton>
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        プリセットボタンをタップするか、直接入力してください
       </Typography>
 
       <Controller
         name="supplier"
         control={control}
         render={({ field }) => (
-          <Autocomplete
-            {...field}
-            options={supplierOptions}
-            freeSolo
-            value={field.value || ''}
-            onChange={(_, newValue) => {
-              field.onChange(newValue || '');
-            }}
-            onInputChange={(_, newInputValue) => {
-              field.onChange(newInputValue);
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="帳合先"
-                placeholder="例: ○○商事"
-                error={!!errors.supplier}
-                helperText={errors.supplier?.message}
-                fullWidth
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && onEnterPress) {
-                    e.preventDefault();
-                    onEnterPress();
-                  }
-                }}
-              />
+          <Box>
+            {/* プリセットボタン */}
+            {presets.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  プリセット
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {presets.map((preset) => (
+                    <Chip
+                      key={preset.id}
+                      label={preset.name}
+                      onClick={() => field.onChange(preset.supplier)}
+                      color={field.value === preset.supplier ? 'primary' : 'default'}
+                      sx={{ mb: 1 }}
+                    />
+                  ))}
+                </Stack>
+                <Divider sx={{ my: 2 }} />
+              </Box>
             )}
-          />
+
+            {/* 入力フィールド */}
+            <Autocomplete
+              {...field}
+              options={supplierOptions}
+              freeSolo
+              value={field.value || ''}
+              onChange={(_, newValue) => {
+                field.onChange(newValue || '');
+              }}
+              onInputChange={(_, newInputValue) => {
+                field.onChange(newInputValue);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="帳合先"
+                  placeholder="例: ○○商事"
+                  error={!!errors.supplier}
+                  helperText={errors.supplier?.message}
+                  fullWidth
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && onEnterPress) {
+                      e.preventDefault();
+                      onEnterPress();
+                    }
+                  }}
+                />
+              )}
+            />
+          </Box>
         )}
+      />
+
+      {/* プリセット管理モーダル */}
+      <SupplierPresetManagerModal
+        open={showPresetManager}
+        onClose={() => setShowPresetManager(false)}
       />
     </Box>
   );

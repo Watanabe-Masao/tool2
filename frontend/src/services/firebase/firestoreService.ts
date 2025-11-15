@@ -289,4 +289,107 @@ export class FirestoreService {
     console.log(`[Firestore] Retrieved ${values.length} autocomplete options for ${field}`);
     return values;
   }
+
+  /**
+   * プリセットを保存
+   *
+   * @param userId - ユーザーID
+   * @param name - プリセット名
+   * @param supplier - 帳合先の値
+   * @returns プリセットID
+   */
+  static async saveSupplierPreset(
+    userId: string,
+    name: string,
+    supplier: string
+  ): Promise<string> {
+    const db = getFirebaseFirestore();
+    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
+
+    const docRef = await addDoc(presetsRef, {
+      userId,
+      name,
+      supplier,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`[Firestore] Supplier preset saved: ${name}`);
+    return docRef.id;
+  }
+
+  /**
+   * プリセット一覧を取得
+   *
+   * @param userId - ユーザーID
+   * @returns プリセット配列
+   */
+  static async getSupplierPresets(userId: string): Promise<
+    Array<{
+      id: string;
+      name: string;
+      supplier: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  > {
+    const db = getFirebaseFirestore();
+    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
+
+    const q = query(presetsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+
+    const snapshot = await getDocs(q);
+
+    const presets = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        supplier: data.supplier,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+      };
+    });
+
+    console.log(`[Firestore] Retrieved ${presets.length} supplier presets`);
+    return presets;
+  }
+
+  /**
+   * プリセットを削除
+   *
+   * @param presetId - プリセットID
+   */
+  static async deleteSupplierPreset(presetId: string): Promise<void> {
+    const db = getFirebaseFirestore();
+    const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, presetId);
+
+    await deleteDoc(presetRef);
+
+    console.log(`[Firestore] Supplier preset deleted: ${presetId}`);
+  }
+
+  /**
+   * プリセットを更新
+   *
+   * @param presetId - プリセットID
+   * @param name - プリセット名
+   * @param supplier - 帳合先の値
+   */
+  static async updateSupplierPreset(
+    presetId: string,
+    name: string,
+    supplier: string
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+    const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, presetId);
+
+    await updateDoc(presetRef, {
+      name,
+      supplier,
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`[Firestore] Supplier preset updated: ${presetId}`);
+  }
 }

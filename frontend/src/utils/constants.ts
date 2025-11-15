@@ -37,6 +37,8 @@ export const FIRESTORE_COLLECTIONS = {
   AUTOCOMPLETE_HISTORY: 'autocomplete_history',
   /** ユーザープロフィール */
   USER_PROFILES: 'user_profiles',
+  /** 帳合先プリセット */
+  SUPPLIER_PRESETS: 'supplier_presets',
 } as const;
 
 // ============================================================
