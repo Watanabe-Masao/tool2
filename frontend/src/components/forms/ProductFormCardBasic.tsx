@@ -18,7 +18,6 @@ import {
   DialogActions,
   Button,
   DialogContentText,
-  ButtonBase,
 } from '@mui/material';
 import { Delete, Category as CategoryIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -116,9 +115,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     conditions: {},
   });
 
-  // 長押し検出用のタイマー
+  // 長押し検出用のタイマー（履歴削除用）
   const longPressTimer = useRef<number | null>(null);
-  const categoryLongPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -134,22 +132,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   };
 
   /**
-   * カテゴリーボタン長押し開始
+   * カテゴリーChipをクリック（モーダルを開く）
    */
-  const handleCategoryLongPressStart = () => {
-    categoryLongPressTimer.current = window.setTimeout(() => {
-      setCategoryModalOpen(true);
-    }, 500); // 500ms長押しでカテゴリー選択モーダル表示
-  };
-
-  /**
-   * カテゴリーボタン長押し終了
-   */
-  const handleCategoryLongPressEnd = () => {
-    if (categoryLongPressTimer.current) {
-      window.clearTimeout(categoryLongPressTimer.current);
-      categoryLongPressTimer.current = null;
-    }
+  const handleCategoryChipClick = () => {
+    setCategoryModalOpen(true);
   };
 
   /**
@@ -157,6 +143,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleSelectCategory = (categoryCode: string) => {
     setValue(`products.${index}.categoryCode`, categoryCode);
+  };
+
+  /**
+   * カテゴリークリア（×ボタン）
+   */
+  const handleClearCategory = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Chipのクリックイベントを止める
+    setValue(`products.${index}.categoryCode`, '');
   };
 
   /**
@@ -242,45 +236,39 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     <>
       <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-            <ButtonBase
-              onTouchStart={handleCategoryLongPressStart}
-              onTouchEnd={handleCategoryLongPressEnd}
-              onMouseDown={handleCategoryLongPressStart}
-              onMouseUp={handleCategoryLongPressEnd}
-              onMouseLeave={handleCategoryLongPressEnd}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setCategoryModalOpen(true);
-              }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <CategoryIcon fontSize="small" color={currentCategoryCode ? 'primary' : 'disabled'} />
-              <Box sx={{ textAlign: 'left' }}>
-                <Typography variant="subtitle1" fontWeight="medium">
-                  商品 {index + 1}
-                </Typography>
-                {currentCategoryCode && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
-                    {getCategoryName(currentCategoryCode)}
-                  </Typography>
-                )}
-              </Box>
-            </ButtonBase>
+          {/* ヘッダー: 商品番号 + 削除ボタン */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight="medium">
+              商品 {index + 1}
+            </Typography>
             {showRemove && (
               <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
                 <Delete fontSize="small" />
               </IconButton>
+            )}
+          </Box>
+
+          {/* カテゴリーChip */}
+          <Box sx={{ mb: 1.5 }}>
+            {currentCategoryCode ? (
+              <Chip
+                icon={<CategoryIcon />}
+                label={getCategoryName(currentCategoryCode)}
+                onClick={handleCategoryChipClick}
+                onDelete={handleClearCategory}
+                color="primary"
+                size="small"
+                sx={{ fontSize: '0.8rem' }}
+              />
+            ) : (
+              <Chip
+                icon={<CategoryIcon />}
+                label="+ カテゴリーを追加"
+                onClick={handleCategoryChipClick}
+                variant="outlined"
+                size="small"
+                sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
+              />
             )}
           </Box>
 
