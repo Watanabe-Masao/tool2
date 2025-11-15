@@ -11,7 +11,8 @@ export interface ProductHistoryItem {
   name: string;
   origin: string;
   specification: string;
-  quantityPerPackage: number;
+  quantityPerPackage: number | null;
+  unit: string;
   usageCount: number;
 }
 
@@ -100,14 +101,15 @@ export const useProductHistory = (supplier?: string) => {
       (item) =>
         item.name === name && item.origin === origin && item.specification === specification
     );
-    const quantities = new Map<number, number>();
+    const quantities = new Map<number | null, number>();
     filtered.forEach((item) => {
       const current = quantities.get(item.quantityPerPackage) || 0;
       quantities.set(item.quantityPerPackage, current + item.usageCount);
     });
     return Array.from(quantities.entries())
       .sort((a, b) => b[1] - a[1])
-      .map((entry) => entry[0]);
+      .map((entry) => entry[0])
+      .filter((qty): qty is number => qty !== null); // Filter out null values
   };
 
   return {

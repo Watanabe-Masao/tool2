@@ -234,8 +234,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             />
           </Grid>
 
-          {/* 入数（1パックの数量から名前変更） */}
-          <Grid item xs={12}>
+          {/* 入数 */}
+          <Grid item xs={6}>
             <Controller
               name={`products.${index}.quantityPerPackage`}
               control={control}
@@ -250,15 +250,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                       {...field}
                       type="number"
                       label="入数"
-                      placeholder="例: 5"
+                      placeholder="例: 40"
                       error={!!productErrors?.quantityPerPackage}
                       helperText={productErrors?.quantityPerPackage?.message}
-                      required
                       inputProps={{ min: 1, step: 1 }}
-                      value={field.value || ''}
+                      value={field.value ?? ''}
                       onChange={(e) => {
                         const value = e.target.value;
-                        field.onChange(value ? parseInt(value, 10) : 1);
+                        field.onChange(value ? parseInt(value, 10) : null);
                       }}
                       fullWidth
                     />
@@ -280,6 +279,25 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                   </Box>
                 );
               }}
+            />
+          </Grid>
+
+          {/* 単位 */}
+          <Grid item xs={6}>
+            <Controller
+              name={`products.${index}.unit`}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="単位"
+                  placeholder="例: 玉、g、個"
+                  error={!!productErrors?.unit}
+                  helperText={productErrors?.unit?.message}
+                  value={field.value || ''}
+                  fullWidth
+                />
+              )}
             />
           </Grid>
         </Grid>

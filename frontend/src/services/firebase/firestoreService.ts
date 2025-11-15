@@ -37,6 +37,7 @@ export class FirestoreService {
         origin: product.origin,
         specification: product.specification || '',
         quantity_per_package: product.quantityPerPackage,
+        unit: product.unit || '',
         store_cost: product.storeCost,
         price_excluding_tax: product.priceExcludingTax,
         store_allocations: product.storeAllocations,
@@ -64,6 +65,7 @@ export class FirestoreService {
         origin: product.origin,
         specification: product.specification || '',
         quantityPerPackage: product.quantity_per_package,
+        unit: product.unit || '',
         storeCost: product.store_cost,
         priceExcludingTax: product.price_excluding_tax,
         storeAllocations: product.store_allocations,
@@ -388,6 +390,7 @@ export class FirestoreService {
    * @param origin - 産地
    * @param specification - 規格
    * @param quantityPerPackage - 入数
+   * @param unit - 単位
    * @returns 履歴ID
    */
   static async saveProductHistory(
@@ -396,7 +399,8 @@ export class FirestoreService {
     name: string,
     origin: string,
     specification: string,
-    quantityPerPackage: number
+    quantityPerPackage: number | null,
+    unit: string
   ): Promise<string> {
     const db = getFirebaseFirestore();
     const historyRef = collection(db, 'product_history');
@@ -409,7 +413,8 @@ export class FirestoreService {
       where('name', '==', name),
       where('origin', '==', origin),
       where('specification', '==', specification),
-      where('quantityPerPackage', '==', quantityPerPackage)
+      where('quantityPerPackage', '==', quantityPerPackage),
+      where('unit', '==', unit)
     );
 
     const snapshot = await getDocs(q);
@@ -433,6 +438,7 @@ export class FirestoreService {
       origin,
       specification,
       quantityPerPackage,
+      unit,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       usageCount: 1,
@@ -459,7 +465,8 @@ export class FirestoreService {
       name: string;
       origin: string;
       specification: string;
-      quantityPerPackage: number;
+      quantityPerPackage: number | null;
+      unit: string;
       usageCount: number;
     }>
   > {
@@ -488,7 +495,8 @@ export class FirestoreService {
         name: data.name,
         origin: data.origin,
         specification: data.specification,
-        quantityPerPackage: data.quantityPerPackage,
+        quantityPerPackage: data.quantityPerPackage ?? null,
+        unit: data.unit || '',
         usageCount: data.usageCount || 1,
       };
     });

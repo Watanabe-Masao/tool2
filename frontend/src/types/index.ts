@@ -13,7 +13,9 @@ export interface ProductData {
   /** 規格 */
   specification: string;
   /** 1パックの数量 */
-  quantityPerPackage: number;
+  quantityPerPackage: number | null;
+  /** 単位 */
+  unit: string;
   /** 店原 */
   storeCost: number;
   /** 本体価格（税抜） */
@@ -129,7 +131,9 @@ export interface TemplateRequest {
     /** 規格 */
     standard: string;
     /** 入数 */
-    quantity: number;
+    quantity: number | null;
+    /** 単位 */
+    unit: string;
     /** 店着原価 */
     store_cost: number;
     /** 税抜売価 */
@@ -206,7 +210,8 @@ export interface FirestoreOrderData {
     name: string;
     origin: string;
     specification: string;
-    quantity_per_package: number;
+    quantity_per_package: number | null;
+    unit: string;
     store_cost: number;
     price_excluding_tax: number;
     store_allocations: number[];
@@ -259,7 +264,9 @@ export interface ProductFormData {
   /** 規格 */
   specification: string;
   /** 1パックの数量 */
-  quantityPerPackage: number;
+  quantityPerPackage: number | null;
+  /** 単位 */
+  unit: string;
   /** 店原 */
   storeCost: number;
   /** 本体価格（税抜） */

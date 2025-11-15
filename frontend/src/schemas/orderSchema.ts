@@ -24,12 +24,22 @@ export const productSchema = z.object({
     .optional()
     .default(''),
 
-  /** 1パックの数量 */
+  /** 1パックの数量（入数） */
   quantityPerPackage: z
-    .number()
-    .min(NUMBER_RANGE.QUANTITY_PER_PACKAGE.min, `1パックの数量は${NUMBER_RANGE.QUANTITY_PER_PACKAGE.min}以上で入力してください`)
-    .max(NUMBER_RANGE.QUANTITY_PER_PACKAGE.max, `1パックの数量は${NUMBER_RANGE.QUANTITY_PER_PACKAGE.max}以下で入力してください`)
-    .int('整数で入力してください'),
+    .number({
+      invalid_type_error: '入数は数値で入力してください',
+    })
+    .min(NUMBER_RANGE.QUANTITY_PER_PACKAGE.min, `入数は${NUMBER_RANGE.QUANTITY_PER_PACKAGE.min}以上で入力してください`)
+    .max(NUMBER_RANGE.QUANTITY_PER_PACKAGE.max, `入数は${NUMBER_RANGE.QUANTITY_PER_PACKAGE.max}以下で入力してください`)
+    .int('整数で入力してください')
+    .nullable(),
+
+  /** 単位 */
+  unit: z
+    .string()
+    .max(MAX_LENGTH.SPECIFICATION, `単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
+    .optional()
+    .default(''),
 
   /** 店原 */
   storeCost: z
