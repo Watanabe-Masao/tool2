@@ -132,7 +132,8 @@ export const NewOrderPage: React.FC = () => {
             product.origin,
             product.specification || '',
             product.quantityPerPackage ?? null,
-            product.unit || ''
+            product.unit || '',
+            product.categoryCode
           );
         }
       }

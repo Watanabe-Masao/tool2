@@ -5,6 +5,12 @@ import { STORE_COUNT, MAX_LENGTH, NUMBER_RANGE } from '@/utils/constants';
  * 商品データのバリデーションスキーマ
  */
 export const productSchema = z.object({
+  /** カテゴリーコード（オプショナル） */
+  categoryCode: z
+    .string()
+    .optional()
+    .default(''),
+
   /** 品名 */
   name: z
     .string()

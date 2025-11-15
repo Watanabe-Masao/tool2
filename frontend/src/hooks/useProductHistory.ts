@@ -8,6 +8,7 @@ import { useAuthContext } from '@/context/AuthContext';
 export interface ProductHistoryItem {
   id: string;
   supplier: string;
+  categoryCode?: string;
   name: string;
   origin: string;
   specification: string;
@@ -22,7 +23,7 @@ export interface ProductHistoryItem {
  * 帳合先に基づいた商品履歴を管理し、
  * 品名、産地、規格、入数の階層的なフィルタリングを提供します。
  */
-export const useProductHistory = (supplier?: string) => {
+export const useProductHistory = (supplier?: string, categoryCode?: string) => {
   const { user } = useAuthContext();
   const [history, setHistory] = useState<ProductHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,11 +51,16 @@ export const useProductHistory = (supplier?: string) => {
   }, [user, supplier]);
 
   /**
-   * 品名の一意のリストを取得
+   * 品名の一意のリストを取得（カテゴリーフィルタリング適用）
    */
   const getUniqueNames = useMemo(() => {
+    // カテゴリーコードが指定されている場合はフィルタリング
+    const filteredHistory = categoryCode
+      ? history.filter((item) => item.categoryCode === categoryCode)
+      : history;
+
     const names = new Map<string, number>();
-    history.forEach((item) => {
+    filteredHistory.forEach((item) => {
       const current = names.get(item.name) || 0;
       names.set(item.name, current + item.usageCount);
     });
@@ -62,7 +68,7 @@ export const useProductHistory = (supplier?: string) => {
     return Array.from(names.entries())
       .sort((a, b) => b[1] - a[1])
       .map((entry) => entry[0]);
-  }, [history]);
+  }, [history, categoryCode]);
 
   /**
    * 指定した品名に基づいて、産地の一意のリストを取得
@@ -162,6 +168,14 @@ export const useProductHistory = (supplier?: string) => {
     }
   };
 
+  /**
+   * 品名からカテゴリーコードを取得
+   */
+  const getCategoryCodeByName = (name: string): string | undefined => {
+    const item = history.find((h) => h.name === name);
+    return item?.categoryCode;
+  };
+
   return {
     history,
     loading,
@@ -171,5 +185,6 @@ export const useProductHistory = (supplier?: string) => {
     getUniqueQuantities,
     getUniqueUnits,
     deleteHistory,
+    getCategoryCodeByName,
   };
 };

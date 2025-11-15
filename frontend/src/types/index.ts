@@ -6,6 +6,8 @@
  * 商品データ
  */
 export interface ProductData {
+  /** カテゴリーコード */
+  categoryCode?: string;
   /** 品名 */
   name: string;
   /** 産地 */
@@ -257,6 +259,8 @@ export interface OrderFormData {
  * React Hook Form用の商品フォームデータ
  */
 export interface ProductFormData {
+  /** カテゴリーコード */
+  categoryCode?: string;
   /** 品名 */
   name: string;
   /** 産地 */

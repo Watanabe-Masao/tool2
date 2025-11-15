@@ -400,7 +400,8 @@ export class FirestoreService {
     origin: string,
     specification: string,
     quantityPerPackage: number | null,
-    unit: string
+    unit: string,
+    categoryCode?: string
   ): Promise<string> {
     const db = getFirebaseFirestore();
     const historyRef = collection(db, 'product_history');
@@ -425,6 +426,7 @@ export class FirestoreService {
       await updateDoc(docRef, {
         updatedAt: Timestamp.now(),
         usageCount: (snapshot.docs[0].data().usageCount || 0) + 1,
+        ...(categoryCode && { categoryCode }), // カテゴリーコードがあれば更新
       });
       console.log(`[Firestore] Product history updated: ${name}`);
       return snapshot.docs[0].id;
@@ -439,6 +441,7 @@ export class FirestoreService {
       specification,
       quantityPerPackage,
       unit,
+      ...(categoryCode && { categoryCode }),
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       usageCount: 1,
@@ -462,6 +465,7 @@ export class FirestoreService {
     Array<{
       id: string;
       supplier: string;
+      categoryCode?: string;
       name: string;
       origin: string;
       specification: string;
@@ -492,6 +496,7 @@ export class FirestoreService {
       return {
         id: doc.id,
         supplier: data.supplier,
+        categoryCode: data.categoryCode,
         name: data.name,
         origin: data.origin,
         specification: data.specification,

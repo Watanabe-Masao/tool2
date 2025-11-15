@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Controller, useWatch } from 'react-hook-form';
+import React, { useState, useRef, useEffect } from 'react';
+import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Card,
@@ -18,11 +18,14 @@ import {
   DialogActions,
   Button,
   DialogContentText,
+  ButtonBase,
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import { useNotification } from '@/context/NotificationContext';
+import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
+import { getCategoryName } from '@/utils/categories';
 
 /**
  * ProductFormCardBasicのProps
@@ -83,8 +86,18 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 }) => {
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
+  const { setValue } = useFormContext<OrderFormData>();
 
-  // 商品履歴フック（帳合先でフィルタ）
+  // 現在の値を監視
+  const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
+  const currentName = useWatch({ control, name: `products.${index}.name` });
+  const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
+  const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
+
+  // カテゴリー選択モーダルの状態
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+
+  // 商品履歴フック（帳合先とカテゴリーでフィルタ）
   const {
     getUniqueNames,
     getUniqueOrigins,
@@ -92,12 +105,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueQuantities,
     getUniqueUnits,
     deleteHistory,
-  } = useProductHistory(supplier);
-
-  // 現在の値を監視
-  const currentName = useWatch({ control, name: `products.${index}.name` });
-  const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
-  const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
+    getCategoryCodeByName,
+  } = useProductHistory(supplier, currentCategoryCode || '');
 
   // 削除確認ダイアログの状態
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
@@ -109,6 +118,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
+  const categoryLongPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -122,6 +132,44 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       }
     }
   };
+
+  /**
+   * カテゴリーボタン長押し開始
+   */
+  const handleCategoryLongPressStart = () => {
+    categoryLongPressTimer.current = window.setTimeout(() => {
+      setCategoryModalOpen(true);
+    }, 500); // 500ms長押しでカテゴリー選択モーダル表示
+  };
+
+  /**
+   * カテゴリーボタン長押し終了
+   */
+  const handleCategoryLongPressEnd = () => {
+    if (categoryLongPressTimer.current) {
+      window.clearTimeout(categoryLongPressTimer.current);
+      categoryLongPressTimer.current = null;
+    }
+  };
+
+  /**
+   * カテゴリー選択
+   */
+  const handleSelectCategory = (categoryCode: string) => {
+    setValue(`products.${index}.categoryCode`, categoryCode);
+  };
+
+  /**
+   * 品名選択時にカテゴリーを自動設定
+   */
+  useEffect(() => {
+    if (currentName && !currentCategoryCode) {
+      const categoryCode = getCategoryCodeByName(currentName);
+      if (categoryCode) {
+        setValue(`products.${index}.categoryCode`, categoryCode);
+      }
+    }
+  }, [currentName, currentCategoryCode, getCategoryCodeByName, setValue, index]);
 
   /**
    * 長押し開始
@@ -195,7 +243,40 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight="medium">商品 {index + 1}</Typography>
+            <ButtonBase
+              onTouchStart={handleCategoryLongPressStart}
+              onTouchEnd={handleCategoryLongPressEnd}
+              onMouseDown={handleCategoryLongPressStart}
+              onMouseUp={handleCategoryLongPressEnd}
+              onMouseLeave={handleCategoryLongPressEnd}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setCategoryModalOpen(true);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <CategoryIcon fontSize="small" color={currentCategoryCode ? 'primary' : 'disabled'} />
+              <Box sx={{ textAlign: 'left' }}>
+                <Typography variant="subtitle1" fontWeight="medium">
+                  商品 {index + 1}
+                </Typography>
+                {currentCategoryCode && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                    {getCategoryName(currentCategoryCode)}
+                  </Typography>
+                )}
+              </Box>
+            </ButtonBase>
             {showRemove && (
               <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
                 <Delete fontSize="small" />
@@ -578,6 +659,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* カテゴリー選択モーダル */}
+      <CategorySelectModal
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        onSelect={handleSelectCategory}
+        selectedCategoryCode={currentCategoryCode}
+      />
     </>
   );
 };
