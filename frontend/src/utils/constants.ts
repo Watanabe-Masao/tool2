@@ -6,7 +6,12 @@
 // API関連
 // ============================================================
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+/**
+ * APIのベースURL
+ * 開発環境ではViteプロキシを使用するため'/api'
+ * 本番環境では環境変数から取得
+ */
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const API_ENDPOINTS = {
   /** ヘルスチェック */
@@ -16,8 +21,8 @@ export const API_ENDPOINTS = {
   /** Firebase設定取得 */
   FIREBASE_CONFIG: '/firebase-config',
   /** テンプレート生成 */
-  GENERATE_TEMPLATE: '/generate-template',
-  /** ファイルダウンロード */
+  GENERATE_TEMPLATE: '/generate',
+  /** ファイルダウンロード（ベースパス） */
   DOWNLOAD: '/download',
 } as const;
 
@@ -32,6 +37,8 @@ export const FIRESTORE_COLLECTIONS = {
   AUTOCOMPLETE_HISTORY: 'autocomplete_history',
   /** ユーザープロフィール */
   USER_PROFILES: 'user_profiles',
+  /** 帳合先プリセット */
+  SUPPLIER_PRESETS: 'supplier_presets',
 } as const;
 
 // ============================================================
@@ -53,56 +60,68 @@ export const INDEXEDDB_STORES = {
 // ============================================================
 
 /**
- * 36店舗の名前リスト
+ * 36店舗のデータ（店番と店舗名）
  */
-export const STORE_NAMES: readonly string[] = [
-  '阪急1',
-  '阪急2',
-  '阪急3',
-  '阪急4',
-  '阪急5',
-  '阪急6',
-  '阪急百貨店本店',
-  '阪急百貨店千里店',
-  '阪急百貨店西宮店',
-  '阪急百貨店川西店',
-  '阪急百貨店宝塚店',
-  '阪急百貨店博多店',
-  'イズミヤ1',
-  'イズミヤ2',
-  'イズミヤ3',
-  'イズミヤ4',
-  'イズミヤ5',
-  'イズミヤ6',
-  'ライフ1',
-  'ライフ2',
-  'ライフ3',
-  'ライフ4',
-  'ライフ5',
-  'ライフ6',
-  '万代1',
-  '万代2',
-  '万代3',
-  '万代4',
-  '万代5',
-  '万代6',
-  'コープ1',
-  'コープ2',
-  'コープ3',
-  'コープ4',
-  'コープ5',
-  'コープ6',
+export const STORE_DATA = [
+  { code: '01', name: '朝倉' },
+  { code: '02', name: '伊野' },
+  { code: '03', name: '高須' },
+  { code: '05', name: '愛宕' },
+  { code: '06', name: '神田' },
+  { code: '07', name: '毎日屋土佐道路' },
+  { code: '08', name: '山手' },
+  { code: '23', name: '桟橋' },
+  { code: '24', name: '大橋通' },
+  { code: '26', name: 'アクシス南国' },
+  { code: '28', name: '瀬戸' },
+  { code: '30', name: '清水' },
+  { code: '32', name: '四万十' },
+  { code: '34', name: 'アクシスいの' },
+  { code: '36', name: '土佐道路東' },
+  { code: '37', name: 'とさのさと御座' },
+  { code: '39', name: '六泉寺' },
+  { code: '40', name: '薊野' },
+  { code: '41', name: '中万々' },
+  { code: '43', name: '高岡' },
+  { code: '45', name: '久米' },
+  { code: '47', name: '森松' },
+  { code: '48', name: '束本' },
+  { code: '305', name: '仁井田' },
+  { code: '307', name: '窪川' },
+  { code: '308', name: 'さが' },
+  { code: '311', name: '丸味' },
+  { code: '313', name: 'ｻﾝｸﾞﾘｰﾝ' },
+  { code: '314', name: '大月' },
+  { code: '317', name: '西土佐' },
+  { code: '318', name: '十和' },
+  { code: '341', name: '吾川' },
+  { code: '342', name: '池川' },
+  { code: '343', name: '上八川' },
+  { code: '344', name: '下八川' },
+  { code: '911', name: '惣菜' },
 ] as const;
+
+/**
+ * 36店舗の名前リスト（後方互換性のため）
+ */
+export const STORE_NAMES: readonly string[] = STORE_DATA.map((store) => store.name);
+
+/**
+ * 36店舗のコードリスト
+ */
+export const STORE_CODES: readonly string[] = STORE_DATA.map((store) => store.code);
 
 /** 店舗数 */
 export const STORE_COUNT = 36;
 
 /** デフォルトの商品フォームデータ */
 export const DEFAULT_PRODUCT_FORM_DATA = {
+  categoryCode: '',
   name: '',
   origin: '',
   specification: '',
-  quantityPerPackage: 1,
+  quantityPerPackage: null,
+  unit: '',
   storeCost: 0,
   priceExcludingTax: 0,
   storeAllocations: new Array(STORE_COUNT).fill(0),

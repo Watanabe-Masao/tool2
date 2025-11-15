@@ -47,6 +47,7 @@ else
     echo "警告: .envファイルが見つかりません！"
     echo "環境変数から.envファイルを作成中..."
     {
+        echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}"
         echo "VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}"
         echo "VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}"
         echo "VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}"

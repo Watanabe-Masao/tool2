@@ -28,6 +28,29 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  /* モバイルでのピンチズーム・パンを防止 */
+  touch-action: pan-x pan-y;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+/* テキスト入力時のズームを防止 */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+  touch-action: manipulation;
+}
+
+/* MUIのTextFieldのフォントサイズも確実に16px以上にする */
+.MuiInputBase-input {
+  font-size: 16px !important;
+}
+
+/* ダブルタップズームを防止 */
+* {
+  touch-action: manipulation;
 }
 
 h1 {

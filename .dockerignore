@@ -1,69 +1,40 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+# Git
+.git
+.gitignore
 
-# Virtual environments
-venv/
-env/
-ENV/
-.venv
+# Node modules
+node_modules
+frontend/node_modules
+
+# Build artifacts
+frontend/dist
+frontend/build
+
+# Environment files
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # IDE
-.vscode/
-.idea/
+.vscode
+.idea
 *.swp
 *.swo
-*~
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# Temporary files
-temp_files/*.xlsx
-temp_files/*.pdf
-*.xlsx
-*.pdf
-!example_*.xlsx
-
-# Environment variables (root directory only, NOT subdirectories)
-/.env
-/.env.local
-backend/.env
-backend/.env.local
-# Note: frontend/.env is intentionally NOT excluded
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Documentation
-README.md
-*.md
+# Test files
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
-# Logs
-*.log
-logs/
-
-# Distribution / packaging
-build/
-# Note: dist/ is commented out to allow frontend/dist (React build output)
-# dist/
-*.egg-info/
-
-# CI/CD
-.github/
-render.yaml
-
-# Docker
-docker-compose.yml
-Dockerfile
-
-# Testing
-.pytest_cache/
-requirements-dev.txt
-test_*.py
+# Cache
+.cache

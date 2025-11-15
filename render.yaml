@@ -39,5 +39,8 @@ services:
         value: "742220611313"
       - key: VITE_FIREBASE_APP_ID
         value: 1:742220611313:web:bec0f006c4c648adcbb350
+      # フロントエンド用API Base URL（同じサーバーなので相対パス）
+      - key: VITE_API_BASE_URL
+        value: /api
     # 自動デプロイを有効化（デフォルトでtrue）
     autoDeploy: true

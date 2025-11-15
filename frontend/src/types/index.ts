@@ -6,6 +6,8 @@
  * 商品データ
  */
 export interface ProductData {
+  /** カテゴリーコード */
+  categoryCode?: string;
   /** 品名 */
   name: string;
   /** 産地 */
@@ -13,7 +15,9 @@ export interface ProductData {
   /** 規格 */
   specification: string;
   /** 1パックの数量 */
-  quantityPerPackage: number;
+  quantityPerPackage: number | null;
+  /** 単位 */
+  unit: string;
   /** 店原 */
   storeCost: number;
   /** 本体価格（税抜） */
@@ -127,18 +131,22 @@ export interface TemplateRequest {
     /** 産地 */
     origin: string;
     /** 規格 */
-    specification: string;
-    /** 1パックの数量 */
-    quantity_per_package: number;
-    /** 店原 */
+    standard: string;
+    /** 入数 */
+    quantity: number | null;
+    /** 単位 */
+    unit: string;
+    /** 店着原価 */
     store_cost: number;
-    /** 本体価格（税抜） */
-    price_excluding_tax: number;
-    /** 36店舗への配分数 */
-    store_allocations: number[];
+    /** 税抜売価 */
+    price: number;
+    /** 総納品数 */
+    total_delivery: number;
+    /** 納品先（帳合先） */
+    delivery_dest: string;
+    /** 店舗配分数（店舗コード→数量のマップ） */
+    store_quantities: Record<string, number>;
   }>;
-  /** 総納品数 */
-  total_delivery: number;
   /** カスタムファイル名（オプション） */
   custom_filename?: string;
 }
@@ -147,10 +155,14 @@ export interface TemplateRequest {
  * APIレスポンス: テンプレート生成成功
  */
 export interface TemplateResponse {
+  /** 成功フラグ */
+  success: boolean;
   /** 生成されたExcelファイル名 */
   filename: string;
-  /** 生成されたPDFファイル名 */
-  pdf_filename: string;
+  /** ダウンロードURL */
+  download_url: string;
+  /** 生成されたPDFファイル名（オプション） */
+  pdf_filename?: string;
   /** メッセージ */
   message: string;
 }
@@ -200,14 +212,15 @@ export interface FirestoreOrderData {
     name: string;
     origin: string;
     specification: string;
-    quantity_per_package: number;
+    quantity_per_package: number | null;
+    unit: string;
     store_cost: number;
     price_excluding_tax: number;
     store_allocations: number[];
   }>;
   buyer_name: string;
   timestamp: Date;
-  user_id: string;
+  userId: string; // user_id → userId に変更
 }
 
 /**
@@ -246,6 +259,8 @@ export interface OrderFormData {
  * React Hook Form用の商品フォームデータ
  */
 export interface ProductFormData {
+  /** カテゴリーコード */
+  categoryCode?: string;
   /** 品名 */
   name: string;
   /** 産地 */
@@ -253,7 +268,9 @@ export interface ProductFormData {
   /** 規格 */
   specification: string;
   /** 1パックの数量 */
-  quantityPerPackage: number;
+  quantityPerPackage: number | null;
+  /** 単位 */
+  unit: string;
   /** 店原 */
   storeCost: number;
   /** 本体価格（税抜） */
