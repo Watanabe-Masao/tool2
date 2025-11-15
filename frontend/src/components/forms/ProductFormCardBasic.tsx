@@ -18,11 +18,14 @@ import {
   DialogActions,
   Button,
   DialogContentText,
+  ButtonBase,
 } from '@mui/material';
 import { Delete, Category as CategoryIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import { useNotification } from '@/context/NotificationContext';
+import { useAuthContext } from '@/context/AuthContext';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { getCategoryName } from '@/utils/categories';
 
@@ -86,15 +89,21 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
   const { setValue } = useFormContext<OrderFormData>();
+  const { user } = useAuthContext();
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
   const currentName = useWatch({ control, name: `products.${index}.name` });
   const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
+  const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
+  const currentUnit = useWatch({ control, name: `products.${index}.unit` });
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+
+  // 商品保存確認ダイアログの状態
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // 商品履歴フック（帳合先とカテゴリーでフィルタ）
   const {
@@ -117,6 +126,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 長押し検出用のタイマー（履歴削除用）
   const longPressTimer = useRef<number | null>(null);
+  // 商品ヘッダー長押し検出用のタイマー（商品保存用）
+  const productHeaderLongPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -128,6 +139,67 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         e.preventDefault();
         onEnterPress();
       }
+    }
+  };
+
+  /**
+   * 商品ヘッダー長押し開始（商品保存）
+   */
+  const handleProductHeaderLongPressStart = () => {
+    productHeaderLongPressTimer.current = window.setTimeout(() => {
+      // 品名と産地が入力されているか確認
+      if (currentName && currentOrigin) {
+        setSaveDialogOpen(true);
+      } else {
+        showError('品名と産地を入力してください');
+      }
+    }, 500);
+  };
+
+  /**
+   * 商品ヘッダー長押し終了
+   */
+  const handleProductHeaderLongPressEnd = () => {
+    if (productHeaderLongPressTimer.current) {
+      window.clearTimeout(productHeaderLongPressTimer.current);
+      productHeaderLongPressTimer.current = null;
+    }
+  };
+
+  /**
+   * 商品情報を履歴として保存
+   */
+  const handleSaveProductToHistory = async () => {
+    if (!user || !supplier) {
+      showError('ユーザーまたは帳合先が設定されていません');
+      return;
+    }
+
+    if (!currentName || !currentOrigin) {
+      showError('品名と産地は必須です');
+      return;
+    }
+
+    try {
+      await FirestoreService.saveProductHistory(
+        user.uid,
+        supplier,
+        currentName,
+        currentOrigin,
+        currentSpecification || '',
+        currentQuantityPerPackage ?? null,
+        currentUnit || '',
+        currentCategoryCode
+      );
+
+      setSaveDialogOpen(false);
+      showSuccess('商品情報を履歴に保存しました');
+
+      // 履歴を再読み込み（次回のレンダリングで反映される）
+      // useProductHistoryフックが自動的に履歴を再取得します
+    } catch (error) {
+      console.error('[ProductFormCardBasic] Failed to save product history:', error);
+      showError('商品情報の保存に失敗しました');
     }
   };
 
@@ -238,9 +310,33 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           {/* ヘッダー: 商品番号 + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight="medium">
-              商品 {index + 1}
-            </Typography>
+            <ButtonBase
+              onTouchStart={handleProductHeaderLongPressStart}
+              onTouchEnd={handleProductHeaderLongPressEnd}
+              onMouseDown={handleProductHeaderLongPressStart}
+              onMouseUp={handleProductHeaderLongPressEnd}
+              onMouseLeave={handleProductHeaderLongPressEnd}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (currentName && currentOrigin) {
+                  setSaveDialogOpen(true);
+                } else {
+                  showError('品名と産地を入力してください');
+                }
+              }}
+              sx={{
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight="medium">
+                商品 {index + 1}
+              </Typography>
+            </ButtonBase>
             {showRemove && (
               <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
                 <Delete fontSize="small" />
@@ -644,6 +740,47 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           </Button>
           <Button onClick={handleDeleteHistory} color="error" variant="contained">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 商品保存確認ダイアログ */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>商品情報を保存</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            現在入力中の商品情報を履歴として保存しますか？
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            {currentCategoryCode && (
+              <Typography variant="body2" color="text.secondary">
+                カテゴリー: {getCategoryName(currentCategoryCode)}
+              </Typography>
+            )}
+            <Typography variant="body2" fontWeight="medium">
+              品名: {currentName}
+            </Typography>
+            <Typography variant="body2">
+              産地: {currentOrigin}
+            </Typography>
+            {currentSpecification && (
+              <Typography variant="body2">
+                規格: {currentSpecification}
+              </Typography>
+            )}
+            {currentQuantityPerPackage && (
+              <Typography variant="body2">
+                入数: {currentQuantityPerPackage}{currentUnit && ` ${currentUnit}`}
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleSaveProductToHistory} color="primary" variant="contained">
+            保存
           </Button>
         </DialogActions>
       </Dialog>
