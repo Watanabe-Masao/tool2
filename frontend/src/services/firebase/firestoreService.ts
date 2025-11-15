@@ -378,4 +378,122 @@ export class FirestoreService {
 
     console.log(`[Firestore] Supplier preset updated: ${presetId}`);
   }
+
+  /**
+   * 商品履歴を保存
+   *
+   * @param userId - ユーザーID
+   * @param supplier - 帳合先
+   * @param name - 品名
+   * @param origin - 産地
+   * @param specification - 規格
+   * @param quantityPerPackage - 入数
+   * @returns 履歴ID
+   */
+  static async saveProductHistory(
+    userId: string,
+    supplier: string,
+    name: string,
+    origin: string,
+    specification: string,
+    quantityPerPackage: number
+  ): Promise<string> {
+    const db = getFirebaseFirestore();
+    const historyRef = collection(db, 'product_history');
+
+    // 既存の同一レコードをチェック
+    const q = query(
+      historyRef,
+      where('userId', '==', userId),
+      where('supplier', '==', supplier),
+      where('name', '==', name),
+      where('origin', '==', origin),
+      where('specification', '==', specification),
+      where('quantityPerPackage', '==', quantityPerPackage)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      // 既存のレコードがあれば更新日時のみ更新
+      const docRef = snapshot.docs[0].ref;
+      await updateDoc(docRef, {
+        updatedAt: Timestamp.now(),
+        usageCount: (snapshot.docs[0].data().usageCount || 0) + 1,
+      });
+      console.log(`[Firestore] Product history updated: ${name}`);
+      return snapshot.docs[0].id;
+    }
+
+    // 新規作成
+    const docRef = await addDoc(historyRef, {
+      userId,
+      supplier,
+      name,
+      origin,
+      specification,
+      quantityPerPackage,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      usageCount: 1,
+    });
+
+    console.log(`[Firestore] Product history saved: ${name}`);
+    return docRef.id;
+  }
+
+  /**
+   * 商品履歴を取得（帳合先でフィルタ）
+   *
+   * @param userId - ユーザーID
+   * @param supplier - 帳合先（オプション）
+   * @returns 商品履歴配列
+   */
+  static async getProductHistory(
+    userId: string,
+    supplier?: string
+  ): Promise<
+    Array<{
+      id: string;
+      supplier: string;
+      name: string;
+      origin: string;
+      specification: string;
+      quantityPerPackage: number;
+      usageCount: number;
+    }>
+  > {
+    const db = getFirebaseFirestore();
+    const historyRef = collection(db, 'product_history');
+
+    let q;
+    if (supplier) {
+      q = query(
+        historyRef,
+        where('userId', '==', userId),
+        where('supplier', '==', supplier),
+        orderBy('updatedAt', 'desc')
+      );
+    } else {
+      q = query(historyRef, where('userId', '==', userId), orderBy('updatedAt', 'desc'));
+    }
+
+    const snapshot = await getDocs(q);
+
+    const history = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        supplier: data.supplier,
+        name: data.name,
+        origin: data.origin,
+        specification: data.specification,
+        quantityPerPackage: data.quantityPerPackage,
+        usageCount: data.usageCount || 1,
+      };
+    });
+
+    console.log(`[Firestore] Retrieved ${history.length} product history items`);
+    return history;
+  }
 }

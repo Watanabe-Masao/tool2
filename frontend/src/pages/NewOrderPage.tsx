@@ -17,6 +17,7 @@ import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSumm
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { TemplateService } from '@/services/api/templateService';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
@@ -122,6 +123,16 @@ export const NewOrderPage: React.FC = () => {
         for (const product of data.products) {
           await productNameAutocomplete.addToHistory(product.name);
           await originAutocomplete.addToHistory(product.origin);
+
+          // 商品履歴を保存
+          await FirestoreService.saveProductHistory(
+            user.uid,
+            data.supplier,
+            product.name,
+            product.origin,
+            product.specification || '',
+            product.quantityPerPackage
+          );
         }
       }
 
@@ -274,6 +285,7 @@ export const NewOrderPage: React.FC = () => {
                       errors={errors}
                       productNameOptions={productNameAutocomplete.options}
                       originOptions={originAutocomplete.options}
+                      supplier={formData.supplier}
                     />
                   </Box>
                 </SwiperSlide>

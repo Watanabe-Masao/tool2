@@ -21,6 +21,8 @@ interface ProductBasicInfoFormProps {
   originOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 帳合先（履歴フィルタ用） */
+  supplier?: string;
 }
 
 /**
@@ -35,6 +37,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   productNameOptions,
   originOptions,
   onEnterPress,
+  supplier,
 }) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -95,6 +98,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           productNameOptions={productNameOptions}
           originOptions={originOptions}
           onEnterPress={onEnterPress}
+          supplier={supplier}
         />
       ))}
 
