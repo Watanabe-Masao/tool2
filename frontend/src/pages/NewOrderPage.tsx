@@ -11,7 +11,8 @@ import { FormStepIndicator } from '@/components/forms/FormStepIndicator';
 import type { FormStep } from '@/components/forms/FormStepIndicator';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { SupplierForm } from '@/components/forms/SupplierForm';
-import { ProductForm } from '@/components/forms/ProductForm';
+import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
+import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
 import { TotalDeliveryForm } from '@/components/forms/TotalDeliveryForm';
 import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
 import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile';
@@ -33,6 +34,7 @@ const FORM_STEPS: FormStep[] = [
   { label: '店着日' },
   { label: '帳合先' },
   { label: '商品情報' },
+  { label: '商品情報2' },
   { label: '総納品数' },
   { label: '店舗配分' },
 ];
@@ -45,9 +47,10 @@ const FORM_STEPS: FormStep[] = [
  * ステップ:
  * 1. 店着日選択
  * 2. 帳合先入力
- * 3. 商品情報入力（複数商品対応）
- * 4. 総納品数入力
- * 5. 36店舗への配分入力
+ * 3. 商品情報入力（品名、産地、規格、入数）
+ * 4. 商品情報2入力（原価、売価）
+ * 5. 総納品数入力
+ * 6. 36店舗への配分入力
  */
 export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -284,10 +287,10 @@ export const NewOrderPage: React.FC = () => {
                   </Box>
                 </SwiperSlide>
 
-                {/* Step 3: 商品情報 */}
+                {/* Step 3: 商品情報（基本） */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    <ProductForm
+                    <ProductBasicInfoForm
                       control={control}
                       errors={errors}
                       productNameOptions={productNameAutocomplete.options}
@@ -296,14 +299,24 @@ export const NewOrderPage: React.FC = () => {
                   </Box>
                 </SwiperSlide>
 
-                {/* Step 4: 総納品数 */}
+                {/* Step 4: 商品情報2（価格） */}
+                <SwiperSlide>
+                  <Box sx={{ px: 1, pb: 4 }}>
+                    <ProductPricingForm
+                      control={control}
+                      errors={errors}
+                    />
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 5: 総納品数 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     <TotalDeliveryForm control={control} errors={errors} />
                   </Box>
                 </SwiperSlide>
 
-                {/* Step 5: 店舗配分 */}
+                {/* Step 6: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     {formData.products.map((_, index) =>
