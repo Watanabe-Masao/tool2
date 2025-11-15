@@ -108,7 +108,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   });
 
   // 長押し検出用のタイマー
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -131,7 +131,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     value: string | number,
     conditions: DeleteDialogState['conditions']
   ) => {
-    longPressTimer.current = setTimeout(() => {
+    longPressTimer.current = window.setTimeout(() => {
       setDeleteDialog({
         open: true,
         type,
@@ -146,7 +146,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleLongPressEnd = () => {
     if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
+      window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
   };
