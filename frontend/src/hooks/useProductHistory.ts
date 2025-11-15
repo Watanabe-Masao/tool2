@@ -15,6 +15,7 @@ export interface ProductHistoryItem {
   quantityPerPackage: number | null;
   unit: string;
   usageCount: number;
+  pinned?: boolean; // ピン留めフラグ
 }
 
 /**

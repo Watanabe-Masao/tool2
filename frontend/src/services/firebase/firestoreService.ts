@@ -472,6 +472,7 @@ export class FirestoreService {
       quantityPerPackage: number | null;
       unit: string;
       usageCount: number;
+      pinned?: boolean;
     }>
   > {
     const db = getFirebaseFirestore();
@@ -503,6 +504,7 @@ export class FirestoreService {
         quantityPerPackage: data.quantityPerPackage ?? null,
         unit: data.unit || '',
         usageCount: data.usageCount || 1,
+        pinned: data.pinned || false,
       };
     });
 
@@ -570,5 +572,26 @@ export class FirestoreService {
     await deleteDoc(historyRef);
 
     console.log(`[Firestore] Deleted product history item: ${historyId}`);
+  }
+
+  /**
+   * 商品履歴のピン留めをトグル
+   *
+   * @param historyId - 履歴ID
+   * @param pinned - ピン留め状態
+   */
+  static async toggleProductHistoryPinned(
+    historyId: string,
+    pinned: boolean
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+    const historyRef = doc(db, 'product_history', historyId);
+
+    await updateDoc(historyRef, {
+      pinned,
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`[Firestore] Toggled pinned status for ${historyId}: ${pinned}`);
   }
 }

@@ -15,10 +15,11 @@ import {
   DialogActions,
   DialogContentText,
 } from '@mui/material';
-import { Close, Inventory2, Delete } from '@mui/icons-material';
+import { Close, Inventory2, Delete, PushPin, PushPinOutlined } from '@mui/icons-material';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { getCategoryName, MAIN_CATEGORIES } from '@/utils/categories';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 
 /**
  * ProductPresetModalのProps
@@ -129,6 +130,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    * カテゴリーでフィルタリングしたプリセット
    */
   const filteredPresets = presets.filter((preset) => {
+    // ピン留めされているアイテムは常に表示
+    if (preset.pinned) return true;
+
     // 詳細カテゴリーが選択されている場合は、それでフィルタリング
     if (detailedCategoryCode) {
       return preset.categoryCode === detailedCategoryCode;
@@ -204,10 +208,10 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       setDeleteDialogOpen(true);
     }
 
-    // 右スワイプ（ピン留め）- 今後実装予定
-    // if (deltaX > threshold) {
-    //   // ピン留め処理
-    // }
+    // 右スワイプ（ピン留め/ピン留め解除）
+    if (deltaX > threshold) {
+      await handleTogglePin(preset);
+    }
 
     // スワイプ状態をリセット
     setSwipeState({
@@ -216,6 +220,20 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       currentX: 0,
       isSwiping: false,
     });
+  };
+
+  /**
+   * ピン留めをトグル
+   */
+  const handleTogglePin = async (preset: ProductHistoryItem) => {
+    try {
+      await FirestoreService.toggleProductHistoryPinned(preset.id, !preset.pinned);
+      // プリセット一覧を再読み込み（親コンポーネントで管理している場合は、親に通知する必要がある）
+      // ここでは直接onDeleteを使って再読み込みをトリガー
+      window.location.reload(); // 簡易的な実装
+    } catch (error) {
+      console.error('[ProductPresetModal] Failed to toggle pin:', error);
+    }
   };
 
   /**
@@ -322,6 +340,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                 const isCurrentSwiping = swipeState.id === preset.id;
                 const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
                 const showDeleteHint = deltaX < -30;
+                const showPinHint = deltaX > 30;
 
                 return (
                   <Box
@@ -329,8 +348,13 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                     sx={{
                       position: 'relative',
                       overflow: 'hidden',
-                      bgcolor: showDeleteHint ? 'error.light' : 'transparent',
-                      transition: showDeleteHint ? 'none' : 'background-color 0.2s',
+                      bgcolor: showDeleteHint
+                        ? 'error.light'
+                        : showPinHint
+                        ? 'primary.light'
+                        : 'transparent',
+                      transition:
+                        showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
                     }}
                   >
                     {/* 削除ヒント背景 */}
@@ -352,6 +376,25 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                       </Box>
                     )}
 
+                    {/* ピン留めヒント背景 */}
+                    {showPinHint && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 80,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'primary.contrastText',
+                        }}
+                      >
+                        {preset.pinned ? <PushPinOutlined /> : <PushPin />}
+                      </Box>
+                    )}
+
                     <ListItemButton
                       onClick={() => handleSelectPreset(preset)}
                       onTouchStart={(e) => handleSwipeStart(e, preset.id)}
@@ -370,37 +413,43 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                         cursor: isCurrentSwiping ? 'grabbing' : 'pointer',
                       }}
                     >
-                      <Box sx={{ flex: 1 }}>
-                        {/* 1行目: 品名 + カテゴリー */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Typography variant="body2" fontWeight="medium">
-                            {preset.name}
-                          </Typography>
-                          {preset.categoryCode && (
-                            <Chip
-                              label={getCategoryName(preset.categoryCode)}
-                              size="small"
-                              color="primary"
-                              sx={{ fontSize: '0.65rem', height: 18 }}
-                            />
-                          )}
-                        </Box>
-                        {/* 2行目: 産地、規格、入り数を横並び */}
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                          <Typography variant="caption" color="text.secondary">
-                            産地: {preset.origin}
-                          </Typography>
-                          {preset.specification && (
-                            <Typography variant="caption" color="text.secondary">
-                              規格: {preset.specification}
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {/* ピン留めアイコン */}
+                        {preset.pinned && (
+                          <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+                        )}
+                        <Box sx={{ flex: 1 }}>
+                          {/* 1行目: 品名 + カテゴリー */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              {preset.name}
                             </Typography>
-                          )}
-                          {preset.quantityPerPackage && (
+                            {preset.categoryCode && (
+                              <Chip
+                                label={getCategoryName(preset.categoryCode)}
+                                size="small"
+                                color="primary"
+                                sx={{ fontSize: '0.65rem', height: 18 }}
+                              />
+                            )}
+                          </Box>
+                          {/* 2行目: 産地、規格、入り数を横並び */}
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                             <Typography variant="caption" color="text.secondary">
-                              入数: {preset.quantityPerPackage}
-                              {preset.unit && ` ${preset.unit}`}
+                              産地: {preset.origin}
                             </Typography>
-                          )}
+                            {preset.specification && (
+                              <Typography variant="caption" color="text.secondary">
+                                規格: {preset.specification}
+                              </Typography>
+                            )}
+                            {preset.quantityPerPackage && (
+                              <Typography variant="caption" color="text.secondary">
+                                入数: {preset.quantityPerPackage}
+                                {preset.unit && ` ${preset.unit}`}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </Box>
                     </ListItemButton>

@@ -20,7 +20,7 @@ import {
   DialogContentText,
   ButtonBase,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2 } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -376,6 +376,9 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                   px: 1,
                   py: 0.5,
                   borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
                   '&:hover': {
                     bgcolor: 'action.hover',
                   },
@@ -384,6 +387,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 <Typography variant="subtitle1" fontWeight="medium">
                   商品 {index + 1}
                 </Typography>
+                <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
               </ButtonBase>
               <Chip
                 icon={<Inventory2 />}
