@@ -30,22 +30,23 @@ export const useProductHistory = (supplier?: string) => {
   /**
    * 履歴を読み込み
    */
+  const loadHistory = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const data = await FirestoreService.getProductHistory(user.uid, supplier);
+      setHistory(data);
+    } catch (error) {
+      console.error('[useProductHistory] Failed to load history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadHistory = async () => {
-      if (!user) return;
-
-      setLoading(true);
-      try {
-        const data = await FirestoreService.getProductHistory(user.uid, supplier);
-        setHistory(data);
-      } catch (error) {
-        console.error('[useProductHistory] Failed to load history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, supplier]);
 
   /**
@@ -132,6 +133,35 @@ export const useProductHistory = (supplier?: string) => {
       .map((entry) => entry[0]);
   };
 
+  /**
+   * 履歴を削除
+   */
+  const deleteHistory = async (conditions: {
+    name?: string;
+    origin?: string;
+    specification?: string;
+    quantityPerPackage?: number;
+    unit?: string;
+  }) => {
+    if (!user || !supplier) return;
+
+    try {
+      const count = await FirestoreService.deleteProductHistoryByCondition(user.uid, {
+        supplier,
+        ...conditions,
+      });
+      console.log(`[useProductHistory] Deleted ${count} items`);
+
+      // 履歴を再読み込み
+      await loadHistory();
+
+      return count;
+    } catch (error) {
+      console.error('[useProductHistory] Failed to delete history:', error);
+      throw error;
+    }
+  };
+
   return {
     history,
     loading,
@@ -140,5 +170,6 @@ export const useProductHistory = (supplier?: string) => {
     getUniqueSpecifications,
     getUniqueQuantities,
     getUniqueUnits,
+    deleteHistory,
   };
 };

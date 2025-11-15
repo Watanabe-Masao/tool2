@@ -504,4 +504,54 @@ export class FirestoreService {
     console.log(`[Firestore] Retrieved ${history.length} product history items`);
     return history;
   }
+
+  /**
+   * 条件に一致する商品履歴を削除
+   *
+   * @param userId - ユーザーID
+   * @param conditions - 削除条件
+   * @returns 削除されたドキュメント数
+   */
+  static async deleteProductHistoryByCondition(
+    userId: string,
+    conditions: {
+      supplier: string;
+      name?: string;
+      origin?: string;
+      specification?: string;
+      quantityPerPackage?: number | null;
+      unit?: string;
+    }
+  ): Promise<number> {
+    const db = getFirebaseFirestore();
+    const historyRef = collection(db, 'product_history');
+
+    // クエリを構築
+    let q = query(historyRef, where('userId', '==', userId), where('supplier', '==', conditions.supplier));
+
+    if (conditions.name !== undefined) {
+      q = query(q, where('name', '==', conditions.name));
+    }
+    if (conditions.origin !== undefined) {
+      q = query(q, where('origin', '==', conditions.origin));
+    }
+    if (conditions.specification !== undefined) {
+      q = query(q, where('specification', '==', conditions.specification));
+    }
+    if (conditions.quantityPerPackage !== undefined) {
+      q = query(q, where('quantityPerPackage', '==', conditions.quantityPerPackage));
+    }
+    if (conditions.unit !== undefined) {
+      q = query(q, where('unit', '==', conditions.unit));
+    }
+
+    const snapshot = await getDocs(q);
+
+    // 一致するドキュメントをすべて削除
+    const deletePromises = snapshot.docs.map((docSnapshot) => deleteDoc(docSnapshot.ref));
+    await Promise.all(deletePromises);
+
+    console.log(`[Firestore] Deleted ${snapshot.docs.length} product history items`);
+    return snapshot.docs.length;
+  }
 }
