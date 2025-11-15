@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { API_ENDPOINTS } from '@/utils/constants';
+import { API_ENDPOINTS, STORE_CODES } from '@/utils/constants';
 import type { TemplateRequest, TemplateResponse } from '@/types';
 import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -22,15 +22,33 @@ export class TemplateService {
       products: formData.products.map((product) => ({
         name: product.name,
         origin: product.origin,
-        standard: product.specification || '',  // specification → standard
-        quantity: product.quantityPerPackage,   // quantity_per_package → quantity
+        standard: product.specification || '',
+        quantity: product.quantityPerPackage,
         store_cost: product.storeCost,
-        price: product.priceExcludingTax,       // price_excluding_tax → price
-        total_delivery: formData.totalDelivery,  // 各商品にtotal_deliveryを追加
-        delivery_dest: formData.supplier,        // delivery_dest（帳合先）を追加
-        store_quantities: product.storeAllocations,  // store_allocations → store_quantities
+        price: product.priceExcludingTax,
+        total_delivery: formData.totalDelivery,
+        delivery_dest: formData.supplier,
+        store_quantities: this.convertStoreAllocations(product.storeAllocations),
       })),
     };
+  }
+
+  /**
+   * 店舗配分配列を店舗コードマップに変換
+   *
+   * @param allocations - 36店舗分の配分数配列
+   * @returns 店舗コード→配分数のマップ（0の値は除外）
+   */
+  private static convertStoreAllocations(allocations: number[]): Record<string, number> {
+    const storeQuantities: Record<string, number> = {};
+
+    allocations.forEach((quantity, index) => {
+      if (quantity > 0 && index < STORE_CODES.length) {
+        storeQuantities[STORE_CODES[index]] = quantity;
+      }
+    });
+
+    return storeQuantities;
   }
 
   /**

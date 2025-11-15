@@ -139,7 +139,7 @@ export interface TemplateRequest {
     /** 納品先（帳合先） */
     delivery_dest: string;
     /** 店舗配分数（店舗コード→数量のマップ） */
-    store_quantities: number[];
+    store_quantities: Record<string, number>;
   }>;
   /** カスタムファイル名（オプション） */
   custom_filename?: string;

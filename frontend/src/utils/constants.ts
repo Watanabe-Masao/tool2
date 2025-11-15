@@ -104,6 +104,11 @@ export const STORE_DATA = [
  */
 export const STORE_NAMES: readonly string[] = STORE_DATA.map((store) => store.name);
 
+/**
+ * 36店舗のコードリスト
+ */
+export const STORE_CODES: readonly string[] = STORE_DATA.map((store) => store.code);
+
 /** 店舗数 */
 export const STORE_COUNT = 36;
 
