@@ -106,7 +106,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueUnits,
     deleteHistory,
     getCategoryCodeByName,
-  } = useProductHistory(supplier, currentCategoryCode || '');
+  } = useProductHistory(supplier, currentCategoryCode || undefined);
 
   // 削除確認ダイアログの状態
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
