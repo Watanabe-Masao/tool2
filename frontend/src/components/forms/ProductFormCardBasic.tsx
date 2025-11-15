@@ -66,6 +66,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueOrigins,
     getUniqueSpecifications,
     getUniqueQuantities,
+    getUniqueUnits,
   } = useProductHistory(supplier);
 
   // 現在の値を監視
@@ -287,17 +288,40 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             <Controller
               name={`products.${index}.unit`}
               control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="単位"
-                  placeholder="例: 玉、g、個"
-                  error={!!productErrors?.unit}
-                  helperText={productErrors?.unit?.message}
-                  value={field.value || ''}
-                  fullWidth
-                />
-              )}
+              render={({ field }) => {
+                const units =
+                  currentName && currentOrigin && currentSpecification
+                    ? getUniqueUnits(currentName, currentOrigin, currentSpecification)
+                    : [];
+                return (
+                  <Box>
+                    <TextField
+                      {...field}
+                      label="単位"
+                      placeholder="例: 玉、g、個"
+                      error={!!productErrors?.unit}
+                      helperText={productErrors?.unit?.message}
+                      value={field.value || ''}
+                      fullWidth
+                    />
+                    {/* 単位履歴チップ */}
+                    {units.length > 0 && (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                        {units.slice(0, 10).map((unit) => (
+                          <Chip
+                            key={unit}
+                            label={unit}
+                            size="small"
+                            onClick={() => field.onChange(unit)}
+                            color={field.value === unit ? 'primary' : 'default'}
+                            sx={{ fontSize: '0.75rem' }}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </Box>
+                );
+              }}
             />
           </Grid>
         </Grid>

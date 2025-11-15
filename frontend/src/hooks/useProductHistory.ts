@@ -112,6 +112,26 @@ export const useProductHistory = (supplier?: string) => {
       .filter((qty): qty is number => qty !== null); // Filter out null values
   };
 
+  /**
+   * 指定した品名、産地、規格に基づいて、単位の一意のリストを取得
+   */
+  const getUniqueUnits = (name: string, origin: string, specification: string) => {
+    const filtered = history.filter(
+      (item) =>
+        item.name === name && item.origin === origin && item.specification === specification
+    );
+    const units = new Map<string, number>();
+    filtered.forEach((item) => {
+      if (item.unit) {
+        const current = units.get(item.unit) || 0;
+        units.set(item.unit, current + item.usageCount);
+      }
+    });
+    return Array.from(units.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map((entry) => entry[0]);
+  };
+
   return {
     history,
     loading,
@@ -119,5 +139,6 @@ export const useProductHistory = (supplier?: string) => {
     getUniqueOrigins,
     getUniqueSpecifications,
     getUniqueQuantities,
+    getUniqueUnits,
   };
 };
