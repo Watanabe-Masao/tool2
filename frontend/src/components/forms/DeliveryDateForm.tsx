@@ -116,10 +116,6 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
           </IconButton>
         </Box>
 
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-          プリセットボタンをタップするか、直接入力してください
-        </Typography>
-
         <Controller
           name="supplier"
           control={control}
@@ -128,9 +124,6 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
               {/* プリセットボタン */}
               {presets.length > 0 && (
                 <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                    プリセット
-                  </Typography>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                     {presets.map((preset) => (
                       <Chip

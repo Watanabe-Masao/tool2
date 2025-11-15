@@ -60,12 +60,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   return (
     <Box>
-      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1.5 }}>
         商品情報を入力してください
-      </Typography>
-
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-        品名、産地、規格、入数を入力してください。複数の商品を追加できます。
       </Typography>
 
       {/* エラー表示 */}
