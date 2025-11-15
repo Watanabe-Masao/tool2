@@ -12,6 +12,8 @@ import { SupplierForm } from '@/components/forms/SupplierForm';
 import { ProductForm } from '@/components/forms/ProductForm';
 import { TotalDeliveryForm } from '@/components/forms/TotalDeliveryForm';
 import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
+import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile';
+import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { TemplateService } from '@/services/api/templateService';
@@ -20,7 +22,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { isIPhoneSafari } from '@/utils/deviceDetection';
+import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
 
 /**
  * フォームのステップ定義
@@ -252,18 +254,29 @@ export const NewOrderPage: React.FC = () => {
         return <TotalDeliveryForm control={control} errors={errors} onEnterPress={handleNext} />;
 
       case 4:
-        // 各商品の店舗配分グリッド
+        // 各商品の店舗配分（モバイル/デスクトップ対応）
+        const isMobile = isMobileDevice();
         return (
           <Box>
-            {formData.products.map((_, index) => (
-              <StoreAllocationGrid
-                key={index}
-                productIndex={index}
-                control={control}
-                errors={errors}
-                totalDelivery={formData.totalDelivery}
-              />
-            ))}
+            {formData.products.map((_, index) =>
+              isMobile ? (
+                <StoreAllocationMobile
+                  key={index}
+                  productIndex={index}
+                  control={control}
+                  errors={errors}
+                  totalDelivery={formData.totalDelivery}
+                />
+              ) : (
+                <StoreAllocationGrid
+                  key={index}
+                  productIndex={index}
+                  control={control}
+                  errors={errors}
+                  totalDelivery={formData.totalDelivery}
+                />
+              )
+            )}
           </Box>
         );
 
@@ -344,6 +357,13 @@ export const NewOrderPage: React.FC = () => {
             filename={generatedFiles.filename}
           />
         )}
+
+        {/* フローティング進捗サマリー */}
+        <FloatingProgressSummary
+          formData={formData}
+          activeStep={activeStep}
+          totalSteps={FORM_STEPS.length}
+        />
       </IonContent>
     </IonPage>
   );
