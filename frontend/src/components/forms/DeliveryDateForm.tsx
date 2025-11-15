@@ -64,19 +64,22 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
             <Paper
               elevation={2}
               sx={{
-                p: 1.5,
+                p: 1,
                 display: 'flex',
                 justifyContent: 'center',
                 '& .rdp': {
                   margin: 0,
-                  fontSize: '1rem',
+                  fontSize: '0.85rem',
                 },
                 '& .rdp-day_button': {
-                  fontSize: '1rem',
-                  padding: '0.6rem',
+                  fontSize: '0.85rem',
+                  padding: '0.4rem',
                 },
                 '& .rdp-month': {
-                  margin: '0.5rem',
+                  margin: '0.3rem',
+                },
+                '& .rdp-caption': {
+                  marginBottom: '0.3rem',
                 },
               }}
             >
