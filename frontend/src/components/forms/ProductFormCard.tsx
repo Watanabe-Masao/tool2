@@ -68,18 +68,18 @@ export const ProductFormCard: React.FC<ProductFormCardProps> = ({
   };
 
   return (
-    <Card variant="outlined" sx={{ mb: 2 }} onKeyDown={handleKeyDown}>
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">商品 {index + 1}</Typography>
+    <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
+      <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight="medium">商品 {index + 1}</Typography>
           {showRemove && (
-            <IconButton onClick={onRemove} color="error" aria-label="商品を削除">
-              <Delete />
+            <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
+              <Delete fontSize="small" />
             </IconButton>
           )}
         </Box>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={1.5}>
           {/* 品名 */}
           <Grid item xs={12} sm={6}>
             <Controller

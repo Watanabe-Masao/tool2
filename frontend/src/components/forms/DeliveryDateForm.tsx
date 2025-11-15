@@ -28,8 +28,8 @@ interface DeliveryDateFormProps {
  */
 export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, errors }) => {
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', py: 2 }}>
-      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+    <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
         店着日を選択
       </Typography>
 
@@ -42,17 +42,17 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
             <Paper
               elevation={1}
               sx={{
-                p: 2,
-                mb: 2,
+                p: 1.5,
+                mb: 1.5,
                 textAlign: 'center',
                 bgcolor: 'primary.light',
                 color: 'primary.contrastText',
               }}
             >
-              <Typography variant="caption" display="block" sx={{ opacity: 0.8 }}>
+              <Typography variant="caption" display="block" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
                 選択された日付
               </Typography>
-              <Typography variant="h5" fontWeight="bold">
+              <Typography variant="h6" fontWeight="bold">
                 {field.value ? format(field.value, 'yyyy年M月d日(E)', { locale: ja }) : '未選択'}
               </Typography>
             </Paper>
@@ -61,15 +61,19 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
             <Paper
               elevation={2}
               sx={{
-                p: 2,
+                p: 1,
                 display: 'flex',
                 justifyContent: 'center',
                 '& .rdp': {
                   margin: 0,
+                  fontSize: '0.9rem',
                 },
                 '& .rdp-day_button': {
-                  fontSize: '1rem',
-                  padding: '0.75rem',
+                  fontSize: '0.9rem',
+                  padding: '0.5rem',
+                },
+                '& .rdp-month': {
+                  margin: '0.5rem',
                 },
               }}
             >
@@ -85,7 +89,7 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({ control, err
 
             {/* エラーメッセージ */}
             {errors.deliveryDate && (
-              <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
                 {errors.deliveryDate.message}
               </Typography>
             )}

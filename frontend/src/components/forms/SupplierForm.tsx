@@ -46,19 +46,19 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   const [showPresetManager, setShowPresetManager] = useState(false);
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', py: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">帳合先を入力</Typography>
+    <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="subtitle1" fontWeight="medium">帳合先を入力</Typography>
         <IconButton
           size="small"
           onClick={() => setShowPresetManager(true)}
           title="プリセット管理"
         >
-          <SettingsIcon />
+          <SettingsIcon fontSize="small" />
         </IconButton>
       </Box>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
         プリセットボタンをタップするか、直接入力してください
       </Typography>
 
@@ -69,22 +69,23 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
           <Box>
             {/* プリセットボタン */}
             {presets.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
                   プリセット
                 </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                   {presets.map((preset) => (
                     <Chip
                       key={preset.id}
                       label={preset.supplier}
                       onClick={() => field.onChange(preset.supplier)}
                       color={field.value === preset.supplier ? 'primary' : 'default'}
-                      sx={{ mb: 1 }}
+                      size="small"
+                      sx={{ mb: 0.5 }}
                     />
                   ))}
                 </Stack>
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 1.5 }} />
               </Box>
             )}
 

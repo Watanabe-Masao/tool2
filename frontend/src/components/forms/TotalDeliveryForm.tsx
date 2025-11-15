@@ -24,12 +24,12 @@ interface TotalDeliveryFormProps {
  */
 export const TotalDeliveryForm: React.FC<TotalDeliveryFormProps> = ({ control, errors, onEnterPress }) => {
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+    <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
         総納品数を入力してください
       </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
         全店舗への総納品数を入力してください。次のステップで各店舗への配分数を入力します。
       </Typography>
 

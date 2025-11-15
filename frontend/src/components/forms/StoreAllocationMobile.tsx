@@ -194,20 +194,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const quickValues = [0, 1, 2, 3, 5, 10];
 
   return (
-    <Box sx={{ pb: 4 }}>
+    <Box>
       {/* ヘッダー */}
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
         店舗への配分数を入力
       </Typography>
 
       {/* 統計情報 */}
       <Card
         sx={{
-          mb: 3,
+          mb: 2,
           bgcolor: remaining === 0 ? 'success.light' : remaining < 0 ? 'error.light' : 'info.light',
         }}
       >
-        <CardContent>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Stack direction="row" spacing={2} justifyContent="space-around">
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="caption" color="text.secondary">
@@ -249,7 +249,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       )}
 
       {/* 一括操作ボタン */}
-      <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
         <Button
           variant="outlined"
           size="small"
@@ -269,7 +269,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
         </Button>
       </Stack>
 
-      <Divider sx={{ my: 2 }} />
+      <Divider sx={{ my: 1.5 }} />
 
       {/* 店舗検索 */}
       <TextField
@@ -280,20 +280,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon />
+              <SearchIcon fontSize="small" />
             </InputAdornment>
           ),
         }}
-        sx={{ mb: 2 }}
+        sx={{ mb: 1.5 }}
       />
 
       {/* 検索結果 */}
       {filteredStores.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
             検索結果 ({filteredStores.length}件)
           </Typography>
-          <Stack spacing={1}>
+          <Stack spacing={0.5}>
             {filteredStores.map((store) => (
               <Button
                 key={store.index}
@@ -320,10 +320,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       {/* 選択中の店舗の入力 */}
       {selectedStoreIndex !== null && (
-        <Card sx={{ mb: 3, bgcolor: 'primary.light' }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
+        <Card sx={{ mb: 2, bgcolor: 'primary.light' }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="subtitle1" fontWeight="medium">
                 {STORE_DATA[selectedStoreIndex].code}: {STORE_DATA[selectedStoreIndex].name}
               </Typography>
               <IconButton
@@ -335,7 +335,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Box>
 
             {/* 数値入力 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <IconButton
                 color="primary"
                 onClick={() =>
@@ -400,7 +400,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               <Button
                 variant="contained"
                 fullWidth
-                sx={{ mt: 2 }}
+                sx={{ mt: 1.5 }}
                 onClick={() =>
                   handleChangeAllocation(
                     selectedStoreIndex,
@@ -417,10 +417,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       {/* 配分済み店舗一覧 */}
       <Box>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
           配分済み店舗 ({allocatedStores.length}店舗)
         </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
           {allocatedStores.map((store) => (
             <Chip
               key={store.index}
@@ -429,11 +429,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               onClick={() => handleSelectStore(store.index)}
               color="primary"
               variant="filled"
-              sx={{ mb: 1 }}
+              size="small"
+              sx={{ mb: 0.5 }}
             />
           ))}
           {allocatedStores.length === 0 && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="caption" color="text.secondary">
               まだ配分されていません
             </Typography>
           )}

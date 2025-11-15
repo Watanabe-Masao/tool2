@@ -59,18 +59,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   return (
-    <Box sx={{ py: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+    <Box>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
         商品情報を入力してください
       </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
         配分表に掲載する商品の情報を入力してください。複数の商品を追加できます。
       </Typography>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 1.5 }}>
           {errors.products.message}
         </Alert>
       )}
@@ -96,14 +96,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         startIcon={<Add />}
         onClick={handleAddProduct}
         fullWidth
-        sx={{ mt: 2 }}
+        sx={{ mt: 1.5 }}
         disabled={fields.length >= 10}
       >
         商品を追加
       </Button>
 
       {fields.length >= 10 && (
-        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           商品は最大10個まで追加できます
         </Typography>
       )}
