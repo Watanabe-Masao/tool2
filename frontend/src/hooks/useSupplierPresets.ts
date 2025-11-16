@@ -79,11 +79,28 @@ export const useSupplierPresets = () => {
     }
   };
 
-  // 初回読み込み
+  // 初回読み込みとリアルタイム同期
   useEffect(() => {
-    if (user) {
-      loadPresets();
-    }
+    if (!user) return;
+
+    // リアルタイムリスナーを設定
+    setLoading(true);
+    const unsubscribe = FirestoreService.subscribeToSupplierPresets(
+      user.uid,
+      (data) => {
+        setPresets(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Failed to subscribe to supplier presets:', error);
+        setLoading(false);
+      }
+    );
+
+    // クリーンアップ
+    return () => {
+      unsubscribe();
+    };
   }, [user]);
 
   return {

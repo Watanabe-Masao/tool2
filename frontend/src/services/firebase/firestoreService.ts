@@ -9,6 +9,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  onSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
@@ -359,6 +360,63 @@ export class FirestoreService {
 
     console.log(`[Firestore] Retrieved ${presets.length} supplier presets`);
     return presets;
+  }
+
+  /**
+   * 帳合先プリセット一覧をリアルタイムで監視
+   *
+   * @param userId - ユーザーID
+   * @param onSuccess - データ更新時のコールバック
+   * @param onError - エラー発生時のコールバック
+   * @returns アンサブスクライブ関数
+   */
+  static subscribeToSupplierPresets(
+    userId: string,
+    onSuccess: (presets: Array<{
+      id: string;
+      supplier: string;
+      displayOrder?: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>) => void,
+    onError: (error: Error) => void
+  ): () => void {
+    const db = getFirebaseFirestore();
+    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
+    const q = query(presetsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const presets = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            supplier: data.supplier,
+            displayOrder: data.displayOrder,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+          };
+        });
+
+        // displayOrderでソート（設定されていない場合は最後に）
+        presets.sort((a, b) => {
+          if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+            return a.displayOrder - b.displayOrder;
+          }
+          if (a.displayOrder !== undefined) return -1;
+          if (b.displayOrder !== undefined) return 1;
+          return 0;
+        });
+
+        onSuccess(presets);
+      },
+      (error) => {
+        onError(error as Error);
+      }
+    );
+
+    return unsubscribe;
   }
 
   /**

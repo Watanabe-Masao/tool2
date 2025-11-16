@@ -34,6 +34,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useSupplierPresets, type SupplierPreset } from '@/hooks/useSupplierPresets';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 
@@ -53,7 +54,9 @@ interface SortablePresetItemProps {
   swipeState: {
     id: string | null;
     startX: number;
+    startY: number;
     currentX: number;
+    currentY: number;
     isSwiping: boolean;
   };
 }
@@ -168,11 +171,12 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   // ドラッグ中のアイテムID (dnd-kit用)
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // dnd-kitのセンサー設定
+  // dnd-kitのセンサー設定（長押しでドラッグ開始）
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px以上動いたらドラッグ開始
+        delay: 500, // 500ms長押しでドラッグ開始
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -180,16 +184,20 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     })
   );
 
-  // スワイプ状態管理
+  // スワイプ状態管理（左右のみのスワイプ用）
   const [swipeState, setSwipeState] = useState<{
     id: string | null;
     startX: number;
+    startY: number;
     currentX: number;
+    currentY: number;
     isSwiping: boolean;
   }>({
     id: null,
     startX: 0,
+    startY: 0,
     currentX: 0,
+    currentY: 0,
     isSwiping: false,
   });
 
@@ -267,28 +275,47 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    */
   const handleSwipeStart = (e: React.TouchEvent | React.MouseEvent, presetId: string) => {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setSwipeState({
       id: presetId,
       startX: clientX,
+      startY: clientY,
       currentX: clientX,
+      currentY: clientY,
       isSwiping: false,
     });
   };
 
   /**
-   * スワイプ中
+   * スワイプ中（左右のみ、上下は固定）
    */
   const handleSwipeMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!swipeState.id) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const deltaX = clientX - swipeState.startX;
+    const deltaY = clientY - swipeState.startY;
 
-    // 5px以上動いたらスワイプとみなす
+    // 上下の動きが大きい場合（10px以上）はスワイプをキャンセル
+    if (Math.abs(deltaY) > 10) {
+      setSwipeState({
+        id: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        isSwiping: false,
+      });
+      return;
+    }
+
+    // 左右に5px以上動いたらスワイプとみなす
     if (Math.abs(deltaX) > 5) {
       setSwipeState((prev) => ({
         ...prev,
         currentX: clientX,
+        currentY: clientY,
         isSwiping: true,
       }));
     }
@@ -313,7 +340,9 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     setSwipeState({
       id: null,
       startX: 0,
+      startY: 0,
       currentX: 0,
+      currentY: 0,
       isSwiping: false,
     });
   };
@@ -486,6 +515,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
               collisionDetection={closestCenter}
               onDragStart={handleDndDragStart}
               onDragEnd={handleDndDragEnd}
+              modifiers={[restrictToVerticalAxis]}
             >
               <List sx={{ py: 0 }}>
                 <SortableContext

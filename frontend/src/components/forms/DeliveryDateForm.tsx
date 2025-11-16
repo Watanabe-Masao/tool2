@@ -11,8 +11,6 @@ import {
   Chip,
   Divider,
   IconButton,
-  Button,
-  ButtonGroup,
 } from '@mui/material';
 import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -63,33 +61,14 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
         control={control}
         render={({ field }) => (
           <Box sx={{ mb: 3 }}>
-            {/* ショートカットボタン */}
-            <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'center' }}>
-              <ButtonGroup size="small" variant="outlined">
-                <Button
-                  onClick={() => field.onChange(new Date())}
-                  color={checkIsToday(field.value) ? 'primary' : 'inherit'}
-                  variant={checkIsToday(field.value) ? 'contained' : 'outlined'}
-                >
-                  今日
-                </Button>
-                <Button
-                  onClick={() => field.onChange(addDays(new Date(), 1))}
-                  color={checkIsTomorrow(field.value) ? 'primary' : 'inherit'}
-                  variant={checkIsTomorrow(field.value) ? 'contained' : 'outlined'}
-                >
-                  明日
-                </Button>
-              </ButtonGroup>
-            </Box>
-
             {/* インラインカレンダー */}
             <Paper
               elevation={2}
               sx={{
                 p: 1,
                 display: 'flex',
-                justifyContent: 'center',
+                flexDirection: 'column',
+                alignItems: 'center',
                 '& .rdp': {
                   margin: 0,
                   fontSize: '0.85rem',
@@ -114,6 +93,26 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                 },
               }}
             >
+              {/* カレンダー内ショートカットチップ */}
+              <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                <Chip
+                  label="今日"
+                  size="small"
+                  onClick={() => field.onChange(new Date())}
+                  color={checkIsToday(field.value) ? 'primary' : 'default'}
+                  variant={checkIsToday(field.value) ? 'filled' : 'outlined'}
+                  sx={{ fontSize: '0.75rem' }}
+                />
+                <Chip
+                  label="明日"
+                  size="small"
+                  onClick={() => field.onChange(addDays(new Date(), 1))}
+                  color={checkIsTomorrow(field.value) ? 'primary' : 'default'}
+                  variant={checkIsTomorrow(field.value) ? 'filled' : 'outlined'}
+                  sx={{ fontSize: '0.75rem' }}
+                />
+              </Box>
+
               <DayPicker
                 mode="single"
                 selected={field.value}
