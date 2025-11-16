@@ -297,8 +297,9 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     const deltaX = clientX - swipeState.startX;
     const deltaY = clientY - swipeState.startY;
 
-    // 上下の動きが大きい場合（10px以上）はスワイプをキャンセル
-    if (Math.abs(deltaY) > 10) {
+    // 上下の動きが大きい場合（20px以上）はスワイプをキャンセル
+    // 許容範囲を広げて斜めスワイプにも対応
+    if (Math.abs(deltaY) > 20) {
       setSwipeState({
         id: null,
         startX: 0,
@@ -328,7 +329,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     if (!swipeState.id || swipeState.id !== preset.id) return;
 
     const deltaX = swipeState.currentX - swipeState.startX;
-    const threshold = 80; // スワイプ判定の閾値を80pxに調整
+    const threshold = 60; // スワイプ判定の閾値を60pxに短縮（より反応しやすく）
 
     // 左スワイプ（削除）
     if (deltaX < -threshold) {
