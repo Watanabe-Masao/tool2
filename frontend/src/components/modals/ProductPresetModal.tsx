@@ -16,10 +16,198 @@ import {
   DialogContentText,
 } from '@mui/material';
 import { Close, Inventory2, Delete, PushPin, PushPinOutlined } from '@mui/icons-material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { getCategoryName, MAIN_CATEGORIES } from '@/utils/categories';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { FirestoreService } from '@/services/firebase/firestoreService';
+
+/**
+ * ソート可能なプリセットアイテムのProps
+ */
+interface SortablePresetItemProps {
+  preset: ProductHistoryItem;
+  onSelect: (preset: ProductHistoryItem) => void;
+  onSwipeStart: (e: React.TouchEvent | React.MouseEvent, presetId: string) => void;
+  onSwipeMove: (e: React.TouchEvent | React.MouseEvent) => void;
+  onSwipeEnd: (preset: ProductHistoryItem) => void;
+  swipeState: {
+    id: string | null;
+    startX: number;
+    currentX: number;
+    isSwiping: boolean;
+  };
+}
+
+/**
+ * ソート可能なプリセットアイテムコンポーネント
+ */
+const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
+  preset,
+  onSelect,
+  onSwipeStart,
+  onSwipeMove,
+  onSwipeEnd,
+  swipeState,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: preset.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const isCurrentSwiping = swipeState.id === preset.id;
+  const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
+  const showDeleteHint = deltaX < -25;
+  const showPinHint = deltaX > 25;
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: showDeleteHint
+          ? 'error.light'
+          : showPinHint
+          ? 'primary.light'
+          : 'transparent',
+        transition: showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
+        opacity: isDragging ? 0.5 : 1,
+        cursor: preset.pinned ? 'grab' : 'pointer',
+        '&:active': {
+          cursor: preset.pinned ? 'grabbing' : 'pointer',
+        },
+      }}
+    >
+      {/* 削除ヒント背景 */}
+      {showDeleteHint && (
+        <Box
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 80,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'error.contrastText',
+          }}
+        >
+          <Delete />
+        </Box>
+      )}
+
+      {/* ピン留めヒント背景 */}
+      {showPinHint && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 80,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'primary.contrastText',
+          }}
+        >
+          {preset.pinned ? <PushPinOutlined /> : <PushPin />}
+        </Box>
+      )}
+
+      <ListItemButton
+        onClick={() => onSelect(preset)}
+        onTouchStart={(e) => onSwipeStart(e, preset.id)}
+        onTouchMove={onSwipeMove}
+        onTouchEnd={() => onSwipeEnd(preset)}
+        onMouseDown={(e) => onSwipeStart(e, preset.id)}
+        onMouseMove={onSwipeMove}
+        onMouseUp={() => onSwipeEnd(preset)}
+        onMouseLeave={() => onSwipeEnd(preset)}
+        {...(preset.pinned ? listeners : {})}
+        {...(preset.pinned ? attributes : {})}
+        sx={{
+          py: 1.5,
+          px: 2,
+          transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
+          transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
+          bgcolor: 'background.paper',
+          cursor: isCurrentSwiping ? 'grabbing' : preset.pinned ? 'grab' : 'pointer',
+          touchAction: 'none',
+        }}
+      >
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* ピン留めアイコン */}
+          {preset.pinned && (
+            <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+          )}
+          <Box sx={{ flex: 1 }}>
+            {/* 1行目: 品名 + カテゴリー */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography variant="body2" fontWeight="medium">
+                {preset.name}
+              </Typography>
+              {preset.categoryCode && (
+                <Chip
+                  label={getCategoryName(preset.categoryCode)}
+                  size="small"
+                  color="primary"
+                  sx={{ fontSize: '0.65rem', height: 18 }}
+                />
+              )}
+            </Box>
+            {/* 2行目: 産地、規格、入り数を横並び */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">
+                産地: {preset.origin}
+              </Typography>
+              {preset.specification && (
+                <Typography variant="caption" color="text.secondary">
+                  規格: {preset.specification}
+                </Typography>
+              )}
+              {preset.quantityPerPackage && (
+                <Typography variant="caption" color="text.secondary">
+                  入数: {preset.quantityPerPackage}
+                  {preset.unit && ` ${preset.unit}`}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Box>
+      </ListItemButton>
+    </Box>
+  );
+};
 
 /**
  * ProductPresetModalのProps
@@ -78,9 +266,20 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
 
-  // ドラッグ中のアイテム
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  // ドラッグ中のアイテムID (dnd-kit用)
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // dnd-kitのセンサー設定
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px以上動いたらドラッグ開始
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // スワイプ状態管理
   const [swipeState, setSwipeState] = useState<{
@@ -289,50 +488,35 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   };
 
   /**
-   * ドラッグ開始
+   * ドラッグ開始 (dnd-kit)
    */
-  const handleDragStart = (e: React.DragEvent, preset: ProductHistoryItem) => {
-    if (!preset.pinned) return; // ピン留めアイテムのみドラッグ可能
-    setDraggingId(preset.id);
-    e.dataTransfer.effectAllowed = 'move';
+  const handleDndDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
   };
 
   /**
-   * ドラッグオーバー
+   * ドラッグ終了 (dnd-kit)
    */
-  const handleDragOver = (e: React.DragEvent, preset: ProductHistoryItem) => {
-    e.preventDefault();
-    if (!preset.pinned) return; // ピン留めアイテム上のみドロップ可能
-    setDragOverId(preset.id);
-  };
+  const handleDndDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-  /**
-   * ドラッグ終了
-   */
-  const handleDrop = async (e: React.DragEvent, targetPreset: ProductHistoryItem) => {
-    e.preventDefault();
-
-    if (!draggingId || !targetPreset.pinned) {
-      setDraggingId(null);
-      setDragOverId(null);
+    if (!over || active.id === over.id) {
+      setActiveId(null);
       return;
     }
 
-    // ピン留めアイテムのみを取得して並び替え
+    // ピン留めアイテムのみを取得
     const pinnedItems = filteredPresets.filter((p) => p.pinned);
-    const draggedIndex = pinnedItems.findIndex((p) => p.id === draggingId);
-    const targetIndex = pinnedItems.findIndex((p) => p.id === targetPreset.id);
+    const oldIndex = pinnedItems.findIndex((p) => p.id === active.id);
+    const newIndex = pinnedItems.findIndex((p) => p.id === over.id);
 
-    if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
-      setDraggingId(null);
-      setDragOverId(null);
+    if (oldIndex === -1 || newIndex === -1) {
+      setActiveId(null);
       return;
     }
 
-    // 並び替え後の配列を作成
-    const reordered = [...pinnedItems];
-    const [removed] = reordered.splice(draggedIndex, 1);
-    reordered.splice(targetIndex, 0, removed);
+    // 並び替え
+    const reordered = arrayMove(pinnedItems, oldIndex, newIndex);
 
     // pinOrderを更新
     const updates = reordered.map((item, index) => ({
@@ -349,15 +533,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       console.error('[ProductPresetModal] Failed to reorder:', error);
     }
 
-    setDraggingId(null);
-    setDragOverId(null);
-  };
-
-  /**
-   * ドラッグリーブ
-   */
-  const handleDragLeave = () => {
-    setDragOverId(null);
+    setActiveId(null);
   };
 
   /**
@@ -459,142 +635,107 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
               </Typography>
             </Box>
           ) : (
-            <List sx={{ py: 0 }}>
-              {filteredPresets.map((preset) => {
-                const isCurrentSwiping = swipeState.id === preset.id;
-                const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
-                const showDeleteHint = deltaX < -25;
-                const showPinHint = deltaX > 25;
-                const isDragging = draggingId === preset.id;
-                const isDragOver = dragOverId === preset.id;
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDndDragStart}
+              onDragEnd={handleDndDragEnd}
+            >
+              <List sx={{ py: 0 }}>
+                {/* ピン留めアイテムをソート可能に */}
+                <SortableContext
+                  items={filteredPresets.filter((p) => p.pinned).map((p) => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {filteredPresets
+                    .filter((p) => p.pinned)
+                    .map((preset) => (
+                      <SortablePresetItem
+                        key={preset.id}
+                        preset={preset}
+                        onSelect={handleSelectPreset}
+                        onSwipeStart={handleSwipeStart}
+                        onSwipeMove={handleSwipeMove}
+                        onSwipeEnd={handleSwipeEnd}
+                        swipeState={swipeState}
+                      />
+                    ))}
+                </SortableContext>
 
-                return (
+                {/* 通常アイテム（ピン留めされていない） */}
+                {filteredPresets
+                  .filter((p) => !p.pinned)
+                  .map((preset) => (
+                    <SortablePresetItem
+                      key={preset.id}
+                      preset={preset}
+                      onSelect={handleSelectPreset}
+                      onSwipeStart={handleSwipeStart}
+                      onSwipeMove={handleSwipeMove}
+                      onSwipeEnd={handleSwipeEnd}
+                      swipeState={swipeState}
+                    />
+                  ))}
+              </List>
+
+              {/* ドラッグ中のオーバーレイ表示 */}
+              <DragOverlay>
+                {activeId ? (
                   <Box
-                    key={preset.id}
-                    draggable={preset.pinned}
-                    onDragStart={(e) => handleDragStart(e, preset)}
-                    onDragOver={(e) => handleDragOver(e, preset)}
-                    onDrop={(e) => handleDrop(e, preset)}
-                    onDragLeave={handleDragLeave}
                     sx={{
-                      position: 'relative',
-                      overflow: 'hidden',
-                      bgcolor: showDeleteHint
-                        ? 'error.light'
-                        : showPinHint
-                        ? 'primary.light'
-                        : 'transparent',
-                      transition:
-                        showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
-                      opacity: isDragging ? 0.5 : 1,
-                      borderTop: isDragOver && preset.pinned ? '2px solid' : 'none',
-                      borderColor: 'primary.main',
-                      cursor: preset.pinned ? 'grab' : 'pointer',
-                      '&:active': {
-                        cursor: preset.pinned ? 'grabbing' : 'pointer',
-                      },
+                      bgcolor: 'background.paper',
+                      boxShadow: 3,
+                      borderRadius: 1,
+                      opacity: 0.9,
                     }}
                   >
-                    {/* 削除ヒント背景 */}
-                    {showDeleteHint && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 80,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'error.contrastText',
-                        }}
-                      >
-                        <Delete />
-                      </Box>
-                    )}
+                    {(() => {
+                      const activePreset = filteredPresets.find((p) => p.id === activeId);
+                      if (!activePreset) return null;
 
-                    {/* ピン留めヒント背景 */}
-                    {showPinHint && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 80,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'primary.contrastText',
-                        }}
-                      >
-                        {preset.pinned ? <PushPinOutlined /> : <PushPin />}
-                      </Box>
-                    )}
-
-                    <ListItemButton
-                      onClick={() => handleSelectPreset(preset)}
-                      onTouchStart={(e) => handleSwipeStart(e, preset.id)}
-                      onTouchMove={handleSwipeMove}
-                      onTouchEnd={() => handleSwipeEnd(preset)}
-                      onMouseDown={(e) => handleSwipeStart(e, preset.id)}
-                      onMouseMove={handleSwipeMove}
-                      onMouseUp={() => handleSwipeEnd(preset)}
-                      onMouseLeave={() => handleSwipeEnd(preset)}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
-                        transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
-                        bgcolor: 'background.paper',
-                        cursor: isCurrentSwiping ? 'grabbing' : 'pointer',
-                      }}
-                    >
-                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {/* ピン留めアイコン */}
-                        {preset.pinned && (
-                          <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
-                        )}
-                        <Box sx={{ flex: 1 }}>
-                          {/* 1行目: 品名 + カテゴリー */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Typography variant="body2" fontWeight="medium">
-                              {preset.name}
-                            </Typography>
-                            {preset.categoryCode && (
-                              <Chip
-                                label={getCategoryName(preset.categoryCode)}
-                                size="small"
-                                color="primary"
-                                sx={{ fontSize: '0.65rem', height: 18 }}
-                              />
-                            )}
+                      return (
+                        <ListItemButton sx={{ py: 1.5, px: 2, cursor: 'grabbing' }}>
+                          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {activePreset.name}
+                                </Typography>
+                                {activePreset.categoryCode && (
+                                  <Chip
+                                    label={getCategoryName(activePreset.categoryCode)}
+                                    size="small"
+                                    color="primary"
+                                    sx={{ fontSize: '0.65rem', height: 18 }}
+                                  />
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  産地: {activePreset.origin}
+                                </Typography>
+                                {activePreset.specification && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    規格: {activePreset.specification}
+                                  </Typography>
+                                )}
+                                {activePreset.quantityPerPackage && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    入数: {activePreset.quantityPerPackage}
+                                    {activePreset.unit && ` ${activePreset.unit}`}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
                           </Box>
-                          {/* 2行目: 産地、規格、入り数を横並び */}
-                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                            <Typography variant="caption" color="text.secondary">
-                              産地: {preset.origin}
-                            </Typography>
-                            {preset.specification && (
-                              <Typography variant="caption" color="text.secondary">
-                                規格: {preset.specification}
-                              </Typography>
-                            )}
-                            {preset.quantityPerPackage && (
-                              <Typography variant="caption" color="text.secondary">
-                                入数: {preset.quantityPerPackage}
-                                {preset.unit && ` ${preset.unit}`}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Box>
-                      </Box>
-                    </ListItemButton>
+                        </ListItemButton>
+                      );
+                    })()}
                   </Box>
-                );
-              })}
-            </List>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           )}
         </DialogContent>
       </Dialog>
