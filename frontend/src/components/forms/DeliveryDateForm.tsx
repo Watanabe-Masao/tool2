@@ -91,12 +91,13 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                 },
               }}
             >
-              {/* 今日・明日チップを月表示の右側に配置 */}
+              {/* 今日・明日チップを月表示の横に配置 */}
               <Box
                 sx={{
                   position: 'absolute',
                   top: 12,
-                  right: 12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
                   display: 'flex',
                   gap: 0.5,
                   zIndex: 1,

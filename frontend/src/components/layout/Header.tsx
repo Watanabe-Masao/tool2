@@ -30,6 +30,7 @@ export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
 
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
@@ -62,11 +63,11 @@ export const Header: React.FC = () => {
   };
 
   /**
-   * オンラインチップ長押し開始
+   * オンラインチップ長押し開始（ページ更新用）
    */
   const handleChipLongPressStart = () => {
     longPressTimer.current = window.setTimeout(() => {
-      setLogoutDialogOpen(true);
+      setReloadDialogOpen(true);
     }, 500);
   };
 
@@ -78,6 +79,13 @@ export const Header: React.FC = () => {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+  };
+
+  /**
+   * ページを更新
+   */
+  const handleReload = () => {
+    window.location.reload();
   };
 
   /**
@@ -212,6 +220,27 @@ export const Header: React.FC = () => {
           </Button>
           <Button onClick={handleLogout} color="error" variant="contained">
             ログアウト
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ページ更新確認ダイアログ */}
+      <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
+        <DialogTitle>ページを更新</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ページを更新しますか？
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+            保存されていない変更は失われる可能性があります。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleReload} color="primary" variant="contained">
+            更新
           </Button>
         </DialogActions>
       </Dialog>
