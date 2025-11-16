@@ -862,6 +862,9 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         onSelect={handleSelectPreset}
         onDelete={handleDeletePreset}
         presets={history}
+        onReload={loadHistory}
+        userId={user?.uid}
+        supplier={supplier}
       />
     </>
   );

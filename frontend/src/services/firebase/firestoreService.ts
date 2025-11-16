@@ -473,6 +473,7 @@ export class FirestoreService {
       unit: string;
       usageCount: number;
       pinned?: boolean;
+      pinOrder?: number;
     }>
   > {
     const db = getFirebaseFirestore();
@@ -505,6 +506,7 @@ export class FirestoreService {
         unit: data.unit || '',
         usageCount: data.usageCount || 1,
         pinned: data.pinned || false,
+        pinOrder: data.pinOrder ?? 9999,
       };
     });
 
@@ -579,19 +581,70 @@ export class FirestoreService {
    *
    * @param historyId - 履歴ID
    * @param pinned - ピン留め状態
+   * @param userId - ユーザーID（ピン留め順序の計算に使用）
+   * @param supplier - 帳合先（ピン留め順序の計算に使用）
    */
   static async toggleProductHistoryPinned(
     historyId: string,
-    pinned: boolean
+    pinned: boolean,
+    userId?: string,
+    supplier?: string
   ): Promise<void> {
     const db = getFirebaseFirestore();
     const historyRef = doc(db, 'product_history', historyId);
 
-    await updateDoc(historyRef, {
+    const updateData: any = {
       pinned,
       updatedAt: Timestamp.now(),
-    });
+    };
+
+    // ピン留めを有効にする場合、現在のピン留めアイテムの最大pinOrderを取得して+1
+    if (pinned && userId && supplier) {
+      const q = query(
+        collection(db, 'product_history'),
+        where('userId', '==', userId),
+        where('supplier', '==', supplier),
+        where('pinned', '==', true)
+      );
+      const snapshot = await getDocs(q);
+      const maxPinOrder =
+        snapshot.docs.reduce((max, doc) => {
+          const order = doc.data().pinOrder ?? 0;
+          return Math.max(max, order);
+        }, 0) || 0;
+
+      updateData.pinOrder = maxPinOrder + 1;
+    } else if (!pinned) {
+      // ピン留め解除時はpinOrderを削除
+      updateData.pinOrder = null;
+    }
+
+    await updateDoc(historyRef, updateData);
 
     console.log(`[Firestore] Toggled pinned status for ${historyId}: ${pinned}`);
+  }
+
+  /**
+   * ピン留めアイテムの順序を更新
+   *
+   * @param reorderedItems - 並び替え後のアイテム配列（IDとpinOrderのペア）
+   */
+  static async reorderPinnedPresets(
+    reorderedItems: Array<{ id: string; pinOrder: number }>
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    // バッチで複数のドキュメントを更新
+    const updates = reorderedItems.map(async (item) => {
+      const historyRef = doc(db, 'product_history', item.id);
+      await updateDoc(historyRef, {
+        pinOrder: item.pinOrder,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await Promise.all(updates);
+
+    console.log(`[Firestore] Reordered ${reorderedItems.length} pinned items`);
   }
 }

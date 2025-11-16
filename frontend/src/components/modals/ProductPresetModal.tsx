@@ -35,6 +35,12 @@ interface ProductPresetModalProps {
   onDelete: (presetId: string) => Promise<void>;
   /** プリセット一覧 */
   presets: ProductHistoryItem[];
+  /** プリセット更新後のリロードハンドラー */
+  onReload?: () => Promise<void>;
+  /** ユーザーID */
+  userId?: string;
+  /** 帳合先 */
+  supplier?: string;
 }
 
 /**
@@ -48,6 +54,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   onSelect,
   onDelete,
   presets,
+  onReload,
+  userId,
+  supplier,
 }) => {
   // カテゴリーフィルターのタブ（0: 全て, 1: 果実, 2: 野菜）
   const [categoryFilter, setCategoryFilter] = useState(0);
@@ -62,8 +71,16 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [presetToDelete, setPresetToDelete] = useState<ProductHistoryItem | null>(null);
 
+  // ピン留め解除確認ダイアログの状態
+  const [unpinDialogOpen, setUnpinDialogOpen] = useState(false);
+  const [presetToUnpin, setPresetToUnpin] = useState<ProductHistoryItem | null>(null);
+
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
+
+  // ドラッグ中のアイテム
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // スワイプ状態管理
   const [swipeState, setSwipeState] = useState<{
@@ -130,25 +147,36 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    * カテゴリーでフィルタリングしたプリセット
    */
   const filteredPresets = presets.filter((preset) => {
-    // ピン留めされているアイテムは常に表示
-    if (preset.pinned) return true;
-
     // 詳細カテゴリーが選択されている場合は、それでフィルタリング
     if (detailedCategoryCode) {
       return preset.categoryCode === detailedCategoryCode;
     }
 
     // 大カテゴリーでフィルタリング
-    if (categoryFilter === 0) return true; // 全て表示
+    if (categoryFilter === 0) {
+      // 「全て」タブ：すべてのアイテムを表示
+      return true;
+    }
+
     if (categoryFilter === 1) {
-      // 果実（61）
+      // 果実（61）タブ：果実カテゴリーのアイテムのみ表示（ピン留めも含む）
       return preset.categoryCode?.startsWith('0006') && preset.categoryCode <= '000612';
     }
+
     if (categoryFilter === 2) {
-      // 野菜（62）
+      // 野菜（62）タブ：野菜カテゴリーのアイテムのみ表示（ピン留めも含む）
       return preset.categoryCode?.startsWith('0006') && preset.categoryCode >= '000620';
     }
+
     return true;
+  }).sort((a, b) => {
+    // ピン留めアイテムを上に、その中ではpinOrder順にソート
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    if (a.pinned && b.pinned) {
+      return (a.pinOrder ?? 9999) - (b.pinOrder ?? 9999);
+    }
+    return 0; // 通常アイテムは元の順序を維持
   });
 
   /**
@@ -200,7 +228,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
     if (!swipeState.id || swipeState.id !== preset.id) return;
 
     const deltaX = swipeState.currentX - swipeState.startX;
-    const threshold = 100; // スワイプ判定の閾値（ピクセル）
+    const threshold = 80; // スワイプ判定の閾値を80pxに調整
 
     // 左スワイプ（削除）
     if (deltaX < -threshold) {
@@ -210,7 +238,14 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
 
     // 右スワイプ（ピン留め/ピン留め解除）
     if (deltaX > threshold) {
-      await handleTogglePin(preset);
+      if (preset.pinned) {
+        // ピン留め済みの場合は解除確認ダイアログを表示
+        setPresetToUnpin(preset);
+        setUnpinDialogOpen(true);
+      } else {
+        // ピン留めしていない場合は直接ピン留め
+        await handleTogglePin(preset, true);
+      }
     }
 
     // スワイプ状態をリセット
@@ -225,15 +260,104 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   /**
    * ピン留めをトグル
    */
-  const handleTogglePin = async (preset: ProductHistoryItem) => {
+  const handleTogglePin = async (preset: ProductHistoryItem, pinned: boolean) => {
     try {
-      await FirestoreService.toggleProductHistoryPinned(preset.id, !preset.pinned);
-      // プリセット一覧を再読み込み（親コンポーネントで管理している場合は、親に通知する必要がある）
-      // ここでは直接onDeleteを使って再読み込みをトリガー
-      window.location.reload(); // 簡易的な実装
+      await FirestoreService.toggleProductHistoryPinned(
+        preset.id,
+        pinned,
+        userId,
+        supplier
+      );
+      // 親コンポーネントの状態を更新
+      if (onReload) {
+        await onReload();
+      }
     } catch (error) {
       console.error('[ProductPresetModal] Failed to toggle pin:', error);
     }
+  };
+
+  /**
+   * ピン留め解除を確定
+   */
+  const handleConfirmUnpin = async () => {
+    if (!presetToUnpin) return;
+
+    await handleTogglePin(presetToUnpin, false);
+    setUnpinDialogOpen(false);
+    setPresetToUnpin(null);
+  };
+
+  /**
+   * ドラッグ開始
+   */
+  const handleDragStart = (e: React.DragEvent, preset: ProductHistoryItem) => {
+    if (!preset.pinned) return; // ピン留めアイテムのみドラッグ可能
+    setDraggingId(preset.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  /**
+   * ドラッグオーバー
+   */
+  const handleDragOver = (e: React.DragEvent, preset: ProductHistoryItem) => {
+    e.preventDefault();
+    if (!preset.pinned) return; // ピン留めアイテム上のみドロップ可能
+    setDragOverId(preset.id);
+  };
+
+  /**
+   * ドラッグ終了
+   */
+  const handleDrop = async (e: React.DragEvent, targetPreset: ProductHistoryItem) => {
+    e.preventDefault();
+
+    if (!draggingId || !targetPreset.pinned) {
+      setDraggingId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    // ピン留めアイテムのみを取得して並び替え
+    const pinnedItems = filteredPresets.filter((p) => p.pinned);
+    const draggedIndex = pinnedItems.findIndex((p) => p.id === draggingId);
+    const targetIndex = pinnedItems.findIndex((p) => p.id === targetPreset.id);
+
+    if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+      setDraggingId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    // 並び替え後の配列を作成
+    const reordered = [...pinnedItems];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, removed);
+
+    // pinOrderを更新
+    const updates = reordered.map((item, index) => ({
+      id: item.id,
+      pinOrder: index,
+    }));
+
+    try {
+      await FirestoreService.reorderPinnedPresets(updates);
+      if (onReload) {
+        await onReload();
+      }
+    } catch (error) {
+      console.error('[ProductPresetModal] Failed to reorder:', error);
+    }
+
+    setDraggingId(null);
+    setDragOverId(null);
+  };
+
+  /**
+   * ドラッグリーブ
+   */
+  const handleDragLeave = () => {
+    setDragOverId(null);
   };
 
   /**
@@ -339,12 +463,19 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
               {filteredPresets.map((preset) => {
                 const isCurrentSwiping = swipeState.id === preset.id;
                 const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
-                const showDeleteHint = deltaX < -30;
-                const showPinHint = deltaX > 30;
+                const showDeleteHint = deltaX < -25;
+                const showPinHint = deltaX > 25;
+                const isDragging = draggingId === preset.id;
+                const isDragOver = dragOverId === preset.id;
 
                 return (
                   <Box
                     key={preset.id}
+                    draggable={preset.pinned}
+                    onDragStart={(e) => handleDragStart(e, preset)}
+                    onDragOver={(e) => handleDragOver(e, preset)}
+                    onDrop={(e) => handleDrop(e, preset)}
+                    onDragLeave={handleDragLeave}
                     sx={{
                       position: 'relative',
                       overflow: 'hidden',
@@ -355,6 +486,13 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                         : 'transparent',
                       transition:
                         showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
+                      opacity: isDragging ? 0.5 : 1,
+                      borderTop: isDragOver && preset.pinned ? '2px solid' : 'none',
+                      borderColor: 'primary.main',
+                      cursor: preset.pinned ? 'grab' : 'pointer',
+                      '&:active': {
+                        cursor: preset.pinned ? 'grabbing' : 'pointer',
+                      },
                     }}
                   >
                     {/* 削除ヒント背景 */}
@@ -493,6 +631,42 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
           </Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ピン留め解除確認ダイアログ */}
+      <Dialog open={unpinDialogOpen} onClose={() => setUnpinDialogOpen(false)}>
+        <DialogTitle>ピン留めを解除</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            このプリセットのピン留めを解除してもよろしいですか？
+          </DialogContentText>
+          {presetToUnpin && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="body2" fontWeight="medium">
+                {presetToUnpin.name}
+              </Typography>
+              {presetToUnpin.categoryCode && (
+                <Typography variant="body2" color="text.secondary">
+                  カテゴリー: {getCategoryName(presetToUnpin.categoryCode)}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                産地: {presetToUnpin.origin}
+              </Typography>
+            </Box>
+          )}
+          <DialogContentText sx={{ mt: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
+            ピン留めを解除すると、通常のプリセットとして表示されます。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUnpinDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmUnpin} color="primary" variant="contained">
+            ピン留め解除
           </Button>
         </DialogActions>
       </Dialog>
