@@ -11,10 +11,13 @@ import {
   Chip,
   Divider,
   IconButton,
+  Button,
+  ButtonGroup,
 } from '@mui/material';
 import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { ja } from 'date-fns/locale';
+import { addDays, isToday as checkIsToday, isTomorrow as checkIsTomorrow } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
@@ -60,6 +63,26 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
         control={control}
         render={({ field }) => (
           <Box sx={{ mb: 3 }}>
+            {/* ショートカットボタン */}
+            <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'center' }}>
+              <ButtonGroup size="small" variant="outlined">
+                <Button
+                  onClick={() => field.onChange(new Date())}
+                  color={checkIsToday(field.value) ? 'primary' : 'inherit'}
+                  variant={checkIsToday(field.value) ? 'contained' : 'outlined'}
+                >
+                  今日
+                </Button>
+                <Button
+                  onClick={() => field.onChange(addDays(new Date(), 1))}
+                  color={checkIsTomorrow(field.value) ? 'primary' : 'inherit'}
+                  variant={checkIsTomorrow(field.value) ? 'contained' : 'outlined'}
+                >
+                  明日
+                </Button>
+              </ButtonGroup>
+            </Box>
+
             {/* インラインカレンダー */}
             <Paper
               elevation={2}
@@ -80,6 +103,14 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                 },
                 '& .rdp-caption': {
                   marginBottom: '0.3rem',
+                },
+                // 日曜日を赤色に
+                '& .rdp-day_button[aria-label*="日曜日"]': {
+                  color: '#d32f2f',
+                },
+                // 土曜日を青色に
+                '& .rdp-day_button[aria-label*="土曜日"]': {
+                  color: '#1976d2',
                 },
               }}
             >

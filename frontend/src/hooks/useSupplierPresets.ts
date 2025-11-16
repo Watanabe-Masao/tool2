@@ -5,6 +5,7 @@ import { useAuthContext } from '@/context/AuthContext';
 export interface SupplierPreset {
   id: string;
   supplier: string;
+  displayOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }

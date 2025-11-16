@@ -324,6 +324,7 @@ export class FirestoreService {
     Array<{
       id: string;
       supplier: string;
+      displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
     }>
@@ -340,9 +341,20 @@ export class FirestoreService {
       return {
         id: doc.id,
         supplier: data.supplier,
+        displayOrder: data.displayOrder,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
       };
+    });
+
+    // displayOrderでソート（設定されていない場合は最後に）
+    presets.sort((a, b) => {
+      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+        return a.displayOrder - b.displayOrder;
+      }
+      if (a.displayOrder !== undefined) return -1;
+      if (b.displayOrder !== undefined) return 1;
+      return 0;
     });
 
     console.log(`[Firestore] Retrieved ${presets.length} supplier presets`);
@@ -379,6 +391,29 @@ export class FirestoreService {
     });
 
     console.log(`[Firestore] Supplier preset updated: ${presetId}`);
+  }
+
+  /**
+   * 帳合先プリセットの並び順を更新
+   *
+   * @param reorderedItems - 並び替え後のID配列とdisplayOrder
+   */
+  static async reorderSupplierPresets(
+    reorderedItems: Array<{ id: string; displayOrder: number }>
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    const updates = reorderedItems.map(async (item) => {
+      const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, item.id);
+      await updateDoc(presetRef, {
+        displayOrder: item.displayOrder,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await Promise.all(updates);
+
+    console.log(`[Firestore] Reordered ${reorderedItems.length} supplier presets`);
   }
 
   /**

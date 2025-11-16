@@ -20,7 +20,7 @@ import {
   DialogContentText,
   ButtonBase,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -109,6 +109,9 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 商品保存確認ダイアログの状態
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+  // 商品クリア確認ダイアログの状態
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   // 商品履歴フック（帳合先とカテゴリーでフィルタ）
   const {
@@ -333,6 +336,20 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   };
 
   /**
+   * 商品カードの値をクリア
+   */
+  const handleClearProduct = () => {
+    setValue(`products.${index}.categoryCode`, '');
+    setValue(`products.${index}.name`, '');
+    setValue(`products.${index}.origin`, '');
+    setValue(`products.${index}.specification`, '');
+    setValue(`products.${index}.quantityPerPackage`, null);
+    setValue(`products.${index}.unit`, '');
+    setClearDialogOpen(false);
+    showSuccess('商品情報をクリアしました');
+  };
+
+  /**
    * 削除メッセージの生成
    */
   const getDeleteMessage = () => {
@@ -355,7 +372,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     <>
       <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          {/* ヘッダー: 商品番号 + プリセットボタン + 削除ボタン */}
+          {/* ヘッダー: 商品番号 + プリセットボタン + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ButtonBase
@@ -391,7 +408,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               </ButtonBase>
               <Chip
                 icon={<Inventory2 />}
-                label="プリセット呼び出し"
+                label="PL呼び出し"
                 onClick={handlePresetButtonClick}
                 variant="outlined"
                 size="small"
@@ -399,11 +416,21 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 sx={{ fontSize: '0.75rem' }}
               />
             </Box>
-            {showRemove && (
-              <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
-                <Delete fontSize="small" />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <IconButton
+                onClick={() => setClearDialogOpen(true)}
+                size="small"
+                aria-label="商品情報をクリア"
+                title="商品情報をクリア"
+              >
+                <Clear fontSize="small" />
               </IconButton>
-            )}
+              {showRemove && (
+                <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
+                  <Delete fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
           </Box>
 
           {/* カテゴリーChip */}
@@ -843,6 +870,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           </Button>
           <Button onClick={handleSaveProductToHistory} color="primary" variant="contained">
             保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 商品クリア確認ダイアログ */}
+      <Dialog open={clearDialogOpen} onClose={() => setClearDialogOpen(false)}>
+        <DialogTitle>商品情報をクリア</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            この商品カード（商品 {index + 1}）の入力内容をすべてクリアしますか？
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+            カテゴリー、品名、産地、規格、入数、単位がクリアされます。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleClearProduct} color="warning" variant="contained">
+            クリア
           </Button>
         </DialogActions>
       </Dialog>
