@@ -273,8 +273,6 @@ export const NewOrderPage: React.FC = () => {
                 observer={true}
                 observeParents={true}
                 watchOverflow={true}
-                preloadImages={false}
-                lazy={false}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
