@@ -30,6 +30,9 @@ import {
   TableRow,
   Checkbox,
   Paper,
+  Popover,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,6 +40,7 @@ import {
   Delete as DeleteIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -66,6 +70,8 @@ export const StoreCategoryManagementPage: React.FC = () => {
 
   // 販売構成比設定用の状態
   const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string[]>([]);
+  const [categoryFilterAnchorEl, setCategoryFilterAnchorEl] = useState<null | HTMLElement>(null);
 
   // カテゴリーを読み込み
   const loadCategories = async () => {
@@ -268,10 +274,37 @@ export const StoreCategoryManagementPage: React.FC = () => {
     }
   };
 
+  // カテゴリーフィルターのトグル
+  const handleToggleCategoryFilter = (categoryId: string) => {
+    setSelectedCategoryFilter((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
   const uncategorizedStores = getUncategorizedStores();
   const categoryStores = selectedCategory
     ? STORE_DATA.filter((store) => selectedCategory.storeIds.includes(store.code))
     : [];
+
+  // 販売構成比設定タブで表示する店舗をフィルター
+  const getFilteredStoresForSettings = () => {
+    if (selectedCategoryFilter.length === 0) {
+      return STORE_DATA;
+    }
+
+    const filteredStoreIds = new Set<string>();
+    categories.forEach((category) => {
+      if (selectedCategoryFilter.includes(category.id)) {
+        category.storeIds.forEach((storeId) => filteredStoreIds.add(storeId));
+      }
+    });
+
+    return STORE_DATA.filter((store) => filteredStoreIds.has(store.code));
+  };
+
+  const filteredStoresForSettings = getFilteredStoresForSettings();
 
   return (
     <IonPage>
@@ -473,9 +506,32 @@ export const StoreCategoryManagementPage: React.FC = () => {
             {/* 販売構成比設定タブ */}
             {tabValue === 1 && (
               <>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  各店舗の販売構成比を設定します。配分画面で使用する店舗にチェックを入れてください。
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    各店舗の販売構成比を設定します。配分画面で使用する店舗にチェックを入れてください。
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {selectedCategoryFilter.length > 0 && (
+                      <Chip
+                        label={`${selectedCategoryFilter.length}件のカテゴリー`}
+                        size="small"
+                        onDelete={() => setSelectedCategoryFilter([])}
+                      />
+                    )}
+                    <IconButton
+                      onClick={(e) => {
+                        setCategoryFilterAnchorEl(e.currentTarget);
+                        if (tabValue === 1) {
+                          loadCategories();
+                        }
+                      }}
+                      color={selectedCategoryFilter.length > 0 ? 'primary' : 'default'}
+                      size="small"
+                    >
+                      <FilterListIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
 
                 <Card>
                   <CardContent>
@@ -486,11 +542,11 @@ export const StoreCategoryManagementPage: React.FC = () => {
                             <TableCell>使用</TableCell>
                             <TableCell>店番</TableCell>
                             <TableCell>店舗名</TableCell>
-                            <TableCell align="right">販売構成比（%）</TableCell>
+                            <TableCell align="right" sx={{ minWidth: { xs: 80, sm: 120 } }}>販売構成比（%）</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {STORE_DATA.map((store) => {
+                          {filteredStoresForSettings.map((store) => {
                             const setting = storeSettings[store.code];
                             const enabled = setting?.enabled ?? true;
                             const salesRatio = setting?.salesRatio ?? 0;
@@ -517,9 +573,14 @@ export const StoreCategoryManagementPage: React.FC = () => {
                                       min: 0,
                                       max: 100,
                                       step: 0.1,
-                                      style: { textAlign: 'right' },
+                                      style: { textAlign: 'right', fontSize: '0.875rem' },
                                     }}
-                                    sx={{ width: 100 }}
+                                    sx={{
+                                      width: { xs: 60, sm: 100 },
+                                      '& .MuiInputBase-input': {
+                                        py: { xs: 0.5, sm: 1 },
+                                      },
+                                    }}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -583,6 +644,52 @@ export const StoreCategoryManagementPage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* カテゴリーフィルターPopover */}
+        <Popover
+          open={Boolean(categoryFilterAnchorEl)}
+          anchorEl={categoryFilterAnchorEl}
+          onClose={() => setCategoryFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 200 }}>
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+              カテゴリーで絞り込み
+            </Typography>
+            {categories.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                カテゴリーがありません
+              </Typography>
+            ) : (
+              <FormGroup>
+                {categories.map((category) => (
+                  <FormControlLabel
+                    key={category.id}
+                    control={
+                      <Checkbox
+                        checked={selectedCategoryFilter.includes(category.id)}
+                        onChange={() => handleToggleCategoryFilter(category.id)}
+                        size="small"
+                      />
+                    }
+                    label={
+                      <Typography variant="body2">
+                        {category.name} ({category.storeIds.length})
+                      </Typography>
+                    }
+                  />
+                ))}
+              </FormGroup>
+            )}
+          </Box>
+        </Popover>
       </IonContent>
     </IonPage>
   );
