@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -16,18 +17,34 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { Logout, AccountCircle, Google, Email } from '@mui/icons-material';
+import {
+  Logout,
+  AccountCircle,
+  Google,
+  Email,
+  AddCircle,
+  CalendarToday,
+  Person,
+  Settings,
+} from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { APP_NAME } from '@/utils/constants';
 
 /**
  * ヘッダーコンポーネント
  *
- * アプリケーション名、ユーザー情報、ログアウト機能を提供します。
+ * アプリケーション名、ナビゲーションメニュー、ユーザー情報、ログアウト機能を提供します。
  */
 export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
+  const history = useHistory();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
@@ -101,6 +118,23 @@ export const Header: React.FC = () => {
     return 'email';
   };
 
+  /**
+   * ナビゲーションアイテムの定義
+   */
+  const navigationItems = [
+    { label: '新規作成', icon: <AddCircle />, path: '/new-order' },
+    { label: 'カレンダー', icon: <CalendarToday />, path: '/calendar' },
+    { label: 'ユーザー', icon: <Person />, path: '/profile' },
+    { label: '店舗管理', icon: <Settings />, path: '/store-categories' },
+  ];
+
+  /**
+   * ナビゲーション変更
+   */
+  const handleNavigationChange = (path: string) => {
+    history.push(path);
+  };
+
   const loginProvider = user ? getLoginProvider() : 'email';
 
   return (
@@ -108,44 +142,87 @@ export const Header: React.FC = () => {
       <AppBar position="static" elevation={1}>
         <Toolbar>
           {/* アプリケーション名 */}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600, mr: 2 }}>
             {APP_NAME}
           </Typography>
+
+          {/* ナビゲーションメニュー（モバイルではコンパクト表示） */}
+          {user && (
+            <Box sx={{ flexGrow: 1, display: 'flex', gap: isMobile ? 0.5 : 1 }}>
+              {navigationItems.map((item) => (
+                <IconButton
+                  key={item.path}
+                  onClick={() => handleNavigationChange(item.path)}
+                  color={location.pathname === item.path ? 'inherit' : 'default'}
+                  size="small"
+                  sx={{
+                    borderRadius: 1,
+                    px: isMobile ? 0.5 : 1.5,
+                    py: 0.5,
+                    color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                    bgcolor: location.pathname === item.path ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                  title={item.label}
+                >
+                  {React.cloneElement(item.icon, {
+                    fontSize: 'small',
+                    sx: { color: location.pathname === item.path ? 'primary.main' : 'inherit' }
+                  })}
+                  {!isMobile && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        ml: 0.5,
+                        fontWeight: location.pathname === item.path ? 600 : 400,
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  )}
+                </IconButton>
+              ))}
+            </Box>
+          )}
 
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* オンラインチップ（長押しでログアウト） */}
-              <Chip
-                icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
-                label={user.displayName || user.email}
-                color="success"
-                size="small"
-                onTouchStart={handleChipLongPressStart}
-                onTouchEnd={handleChipLongPressEnd}
-                onMouseDown={handleChipLongPressStart}
-                onMouseUp={handleChipLongPressEnd}
-                onMouseLeave={handleChipLongPressEnd}
-                sx={{
-                  cursor: 'pointer',
-                  '&:hover': {
-                    bgcolor: 'success.dark',
-                  },
-                }}
-              />
+              {!isMobile && (
+                <Chip
+                  icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
+                  label={user.displayName || user.email}
+                  color="success"
+                  size="small"
+                  onTouchStart={handleChipLongPressStart}
+                  onTouchEnd={handleChipLongPressEnd}
+                  onMouseDown={handleChipLongPressStart}
+                  onMouseUp={handleChipLongPressEnd}
+                  onMouseLeave={handleChipLongPressEnd}
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: 'success.dark',
+                    },
+                  }}
+                />
+              )}
 
               {/* アバター */}
               <IconButton
-                size="large"
+                size="small"
                 edge="end"
                 onClick={handleMenuOpen}
                 color="inherit"
                 aria-label="ユーザーメニュー"
               >
                 {user.photoURL ? (
-                  <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 32, height: 32 }} />
+                  <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 28, height: 28 }} />
                 ) : (
-                  <AccountCircle />
+                  <AccountCircle fontSize="small" />
                 )}
               </IconButton>
 
