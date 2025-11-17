@@ -272,6 +272,9 @@ export const NewOrderPage: React.FC = () => {
                 watchSlidesProgress={true}
                 observer={true}
                 observeParents={true}
+                watchOverflow={true}
+                preloadImages={false}
+                lazy={false}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
@@ -304,6 +307,7 @@ export const NewOrderPage: React.FC = () => {
                     <ProductPricingForm
                       control={control}
                       errors={errors}
+                      productCount={formData.products.length}
                     />
                   </Box>
                 </SwiperSlide>

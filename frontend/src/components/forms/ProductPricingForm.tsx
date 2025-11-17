@@ -15,6 +15,8 @@ interface ProductPricingFormProps {
   errors: FieldErrors<OrderFormData>;
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 商品数（親から渡される） */
+  productCount?: number;
 }
 
 /**
@@ -26,16 +28,25 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   control,
   errors,
   onEnterPress,
+  productCount = 1,
 }) => {
   const { fields } = useFieldArray({
     control,
     name: 'products',
   });
 
+  // デバッグ用ログ
+  React.useEffect(() => {
+    console.log('[ProductPricingForm] fields:', fields.length, 'productCount:', productCount);
+  }, [fields, productCount]);
+
+  // productCountとfields.lengthの大きい方を使用
+  const actualProductCount = Math.max(fields.length, productCount);
+
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-        商品情報2（価格）を入力してください（{fields.length}件の商品）
+        商品情報2（価格）を入力してください（{actualProductCount}件の商品）
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
@@ -50,9 +61,9 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       )}
 
       {/* 商品リスト */}
-      {fields.map((field, index) => (
+      {Array.from({ length: actualProductCount }, (_, index) => (
         <ProductFormCardPricing
-          key={field.id}
+          key={`product-${index}`}
           index={index}
           control={control}
           errors={errors}
