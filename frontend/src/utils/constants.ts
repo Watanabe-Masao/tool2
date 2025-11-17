@@ -39,6 +39,8 @@ export const FIRESTORE_COLLECTIONS = {
   USER_PROFILES: 'user_profiles',
   /** 帳合先プリセット */
   SUPPLIER_PRESETS: 'supplier_presets',
+  /** 店舗カテゴリー */
+  STORE_CATEGORIES: 'store_categories',
 } as const;
 
 // ============================================================
