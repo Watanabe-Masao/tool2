@@ -211,6 +211,17 @@ export const Header: React.FC = () => {
                 />
               )}
 
+              {/* ユーザー設定アイコン */}
+              <IconButton
+                size="small"
+                onClick={() => handleNavigationChange('/profile')}
+                color={location.pathname === '/profile' ? 'primary' : 'inherit'}
+                aria-label="ユーザー設定"
+                title="ユーザー設定"
+              >
+                <Settings fontSize="small" />
+              </IconButton>
+
               {/* アバター */}
               <IconButton
                 size="small"
