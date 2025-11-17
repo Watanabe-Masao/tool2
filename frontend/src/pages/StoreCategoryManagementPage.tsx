@@ -36,12 +36,10 @@ import {
   FormGroup,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
-  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
