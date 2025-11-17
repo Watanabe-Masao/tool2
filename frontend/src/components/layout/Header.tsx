@@ -17,8 +17,6 @@ import {
   DialogContentText,
   DialogActions,
   Button,
-  BottomNavigation,
-  BottomNavigationAction,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
