@@ -35,7 +35,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-        商品情報2（価格）を入力してください
+        商品情報2（価格）を入力してください（{fields.length}件の商品）
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>

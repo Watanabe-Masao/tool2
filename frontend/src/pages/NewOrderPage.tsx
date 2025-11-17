@@ -269,6 +269,9 @@ export const NewOrderPage: React.FC = () => {
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
+                watchSlidesProgress={true}
+                observer={true}
+                observeParents={true}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
