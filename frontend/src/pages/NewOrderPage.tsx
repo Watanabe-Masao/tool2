@@ -334,7 +334,6 @@ export const NewOrderPage: React.FC = () => {
               </Swiper>
             </Box>
           </Box>
-        </Container>
 
         {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (

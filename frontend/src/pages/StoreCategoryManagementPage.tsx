@@ -589,7 +589,6 @@ export const StoreCategoryManagementPage: React.FC = () => {
               </>
             )}
           </Box>
-        </Container>
 
         {/* カテゴリー追加ダイアログ */}
         <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)}>

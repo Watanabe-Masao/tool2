@@ -173,7 +173,6 @@ export const UserProfilePage: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        </Container>
 
         {/* ログアウト確認ダイアログ */}
         <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)}>
