@@ -53,6 +53,13 @@ export const productSchema = z.object({
     .min(NUMBER_RANGE.STORE_COST.min, `センター着原価は${NUMBER_RANGE.STORE_COST.min}以上で入力してください`)
     .max(NUMBER_RANGE.STORE_COST.max, `センター着原価は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`),
 
+  /** センターフィー率（%） */
+  centerFeeRate: z
+    .number()
+    .min(0, 'センターフィー率は0以上で入力してください')
+    .max(100, 'センターフィー率は100以下で入力してください')
+    .default(13),
+
   /** 店原 */
   storeCost: z
     .number()

@@ -41,14 +41,18 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
   // 各フィールドを監視
   const productName = useWatch({ control, name: `products.${index}.name` });
+  const origin = useWatch({ control, name: `products.${index}.origin` });
+  const specification = useWatch({ control, name: `products.${index}.specification` });
   const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
+  const unit = useWatch({ control, name: `products.${index}.unit` });
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
   const totalDelivery = useWatch({ control, name: 'totalDelivery' }) || 0;
+  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
 
-  // センターフィー込原価を計算（13%込）
-  const centerCostWithFee = centerCost ? Math.round(centerCost * 1.13) : 0;
+  // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
+  const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
 
   // 値入率を計算（(売価 - センターフィー込原価) / 売価 × 100）
   const profitMargin = priceExcludingTax && centerCostWithFee
@@ -75,11 +79,26 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   return (
     <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        {/* 1. 商品名のチップ表示 */}
+        {/* 1. 商品名のチップ表示: （産地）（商品名）（規格）（入数＋単位） */}
         <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
           <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 0.5 }}>
             商品 {index + 1}:
           </Typography>
+          {origin && (
+            <Box
+              component="span"
+              sx={{
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
+                fontSize: '0.75rem',
+              }}
+            >
+              {origin}
+            </Box>
+          )}
           {productName && (
             <Box
               component="span"
@@ -95,34 +114,91 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               {productName}
             </Box>
           )}
+          {specification && (
+            <Box
+              component="span"
+              sx={{
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
+                fontSize: '0.75rem',
+              }}
+            >
+              {specification}
+            </Box>
+          )}
+          {quantityPerPackage && (
+            <Box
+              component="span"
+              sx={{
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
+                fontSize: '0.75rem',
+              }}
+            >
+              {quantityPerPackage}{unit}
+            </Box>
+          )}
         </Box>
 
-        {/* 2. 総納品数入力欄 */}
-        <Box sx={{ mb: 1.5 }}>
-          <Controller
-            name="totalDelivery"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                type="number"
-                label="総納品数"
-                placeholder="例: 100"
-                size="small"
-                fullWidth
-                error={!!errors.totalDelivery}
-                helperText={errors.totalDelivery?.message}
-                required
-                inputProps={{ min: 1, step: 1 }}
-                value={field.value || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  field.onChange(value ? parseInt(value, 10) : 0);
-                }}
-              />
-            )}
-          />
-        </Box>
+        {/* 2. 総納品数 / センターフィー率 */}
+        <Grid container spacing={1} sx={{ mb: 1.5 }}>
+          <Grid item xs={6}>
+            <Controller
+              name="totalDelivery"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="総納品数"
+                  placeholder="例: 100"
+                  size="small"
+                  fullWidth
+                  error={!!errors.totalDelivery}
+                  helperText={errors.totalDelivery?.message}
+                  required
+                  inputProps={{ min: 1, step: 1 }}
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    field.onChange(value ? parseInt(value, 10) : 0);
+                  }}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <Controller
+              name={`products.${index}.centerFeeRate`}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="センターフィー（%）"
+                  placeholder="例: 13"
+                  size="small"
+                  fullWidth
+                  error={!!productErrors?.centerFeeRate}
+                  helperText={productErrors?.centerFeeRate?.message}
+                  required
+                  inputProps={{ min: 0, max: 100, step: 0.1 }}
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    field.onChange(value ? parseFloat(value) : 13);
+                  }}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
 
         {/* 3. センター着原価 / センターフィー込原価 */}
         <Grid container spacing={1} sx={{ mb: 1.5 }}>
@@ -160,7 +236,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
-              helperText="センター着原価 × 1.13"
+              helperText={`センター着原価 × ${(1 + centerFeeRate / 100).toFixed(2)}`}
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.50',

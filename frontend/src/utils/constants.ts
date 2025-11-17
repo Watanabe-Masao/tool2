@@ -123,6 +123,7 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   quantityPerPackage: null,
   unit: '',
   centerCost: 0,
+  centerFeeRate: 13,
   storeCost: 0,
   priceExcludingTax: 0,
   storeAllocations: new Array(STORE_COUNT).fill(0),
