@@ -157,8 +157,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         </Box>
 
         {/* 1行目: センター着原価 / センターフィー込原価 */}
-        <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-          <Grid item xs={12} sm={6}>
+        <Grid container spacing={1} sx={{ mb: 1.5 }}>
+          <Grid item xs={6}>
             <Controller
               name={`products.${index}.centerCost`}
               control={control}
@@ -183,7 +183,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               )}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <TextField
               label="センターフィー込原価"
               value={centerCostWithFee ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
@@ -203,8 +203,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         </Grid>
 
         {/* 2行目: 店原 / 売価 */}
-        <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-          <Grid item xs={12} sm={6}>
+        <Grid container spacing={1} sx={{ mb: 1.5 }}>
+          <Grid item xs={6}>
             <Controller
               name={`products.${index}.storeCost`}
               control={control}
@@ -229,7 +229,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               )}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <Controller
               name={`products.${index}.priceExcludingTax`}
               control={control}
@@ -257,8 +257,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         </Grid>
 
         {/* 3行目: 値入率 / 総納品数 */}
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6}>
+        <Grid container spacing={1}>
+          <Grid item xs={6}>
             <TextField
               label="値入率"
               value={`${profitMargin}%`}
@@ -275,7 +275,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <TextField
               label="総納品数"
               value={totalDelivery.toLocaleString()}
