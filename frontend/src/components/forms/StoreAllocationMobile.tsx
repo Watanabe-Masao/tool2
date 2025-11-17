@@ -126,7 +126,7 @@ interface StoreAllocationMobileContentProps {
   totalDelivery: number;
   errors: FieldErrors<OrderFormData>;
   productIndex: number;
-  enabledStores: typeof STORE_DATA;
+  enabledStores: Array<typeof STORE_DATA[number]>;
 }
 
 /**
