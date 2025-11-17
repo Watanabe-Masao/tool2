@@ -2,7 +2,7 @@ import React from 'react';
 import { Route, Switch, Redirect } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { IonApp, IonRouterOutlet } from '@ionic/react';
+import { IonApp } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { CircularProgress, Box } from '@mui/material';
 import { theme } from './theme';
@@ -37,19 +37,17 @@ const AppContent: React.FC = () => {
   return (
     <IonApp>
       <IonReactRouter>
-        <IonRouterOutlet>
-          <Switch>
-            {/* ログインページ（未認証のみ） */}
-            <Route exact path="/login">
-              {user ? <Redirect to="/new-order" /> : <LoginPage />}
-            </Route>
+        <Switch>
+          {/* ログインページ（未認証のみ） */}
+          <Route exact path="/login">
+            {user ? <Redirect to="/new-order" /> : <LoginPage />}
+          </Route>
 
-            {/* メインレイアウト（認証済みのみ） */}
-            <Route path="/">
-              {user ? <MainLayout /> : <Redirect to="/login" />}
-            </Route>
-          </Switch>
-        </IonRouterOutlet>
+          {/* メインレイアウト（認証済みのみ） */}
+          <Route path="/">
+            {user ? <MainLayout /> : <Redirect to="/login" />}
+          </Route>
+        </Switch>
       </IonReactRouter>
 
       {/* ネットワークステータス表示（認証後のみ） */}
