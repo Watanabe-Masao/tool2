@@ -1,7 +1,7 @@
 import React from 'react';
-import { useFieldArray, Controller } from 'react-hook-form';
+import { useFieldArray } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { Box, Typography, Alert, TextField } from '@mui/material';
+import { Box, Typography, Alert } from '@mui/material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -17,8 +17,6 @@ interface ProductPricingFormProps {
   onEnterPress?: () => void;
   /** 商品数（親から渡される） */
   productCount?: number;
-  /** 総納品数 */
-  totalDelivery?: number;
 }
 
 /**
@@ -31,7 +29,6 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   errors,
   onEnterPress,
   productCount = 1,
-  totalDelivery = 0,
 }) => {
   const { fields } = useFieldArray({
     control,
@@ -53,34 +50,8 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-        各商品の原価と売価を入力してください。
+        各商品の原価と売価、総納品数を入力してください。
       </Typography>
-
-      {/* 総納品数入力 */}
-      <Box sx={{ mb: 2 }}>
-        <Controller
-          name="totalDelivery"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              type="number"
-              label="総納品数"
-              placeholder="例: 100"
-              fullWidth
-              error={!!errors.totalDelivery}
-              helperText={errors.totalDelivery?.message}
-              required
-              inputProps={{ min: 1, step: 1 }}
-              value={field.value || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                field.onChange(value ? parseInt(value, 10) : 0);
-              }}
-            />
-          )}
-        />
-      </Box>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
@@ -97,7 +68,6 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           control={control}
           errors={errors}
           onEnterPress={onEnterPress}
-          totalDelivery={totalDelivery}
         />
       ))}
     </Box>

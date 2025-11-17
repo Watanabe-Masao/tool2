@@ -304,7 +304,6 @@ export const NewOrderPage: React.FC = () => {
                       control={control}
                       errors={errors}
                       productCount={formData.products.length}
-                      totalDelivery={formData.totalDelivery}
                     />
                   </Box>
                 </SwiperSlide>
