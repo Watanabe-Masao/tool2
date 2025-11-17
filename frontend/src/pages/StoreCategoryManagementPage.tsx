@@ -314,6 +314,43 @@ export const StoreCategoryManagementPage: React.FC = () => {
             <IonBackButton defaultHref="/" />
           </IonButtons>
           <IonTitle>店舗管理</IonTitle>
+          <IonButtons slot="end">
+            {/* カテゴリー管理タブの追加ボタン */}
+            {tabValue === 0 && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => setShowAddDialog(true)}
+                sx={{ mr: 1 }}
+              >
+                追加
+              </Button>
+            )}
+
+            {/* 販売構成比設定タブのフィルターボタン */}
+            {tabValue === 1 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {selectedCategoryFilter.length > 0 && (
+                  <Chip
+                    label={`${selectedCategoryFilter.length}件のカテゴリー`}
+                    size="small"
+                    onDelete={() => setSelectedCategoryFilter([])}
+                  />
+                )}
+                <IconButton
+                  onClick={(e) => {
+                    setCategoryFilterAnchorEl(e.currentTarget);
+                    loadCategories();
+                  }}
+                  color={selectedCategoryFilter.length > 0 ? 'primary' : 'default'}
+                  size="small"
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </Box>
+            )}
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -340,19 +377,9 @@ export const StoreCategoryManagementPage: React.FC = () => {
                   <Grid item xs={12} md={4}>
                     <Card>
                       <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" fontWeight="bold">
-                            カテゴリー
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<AddIcon />}
-                            onClick={() => setShowAddDialog(true)}
-                          >
-                            追加
-                          </Button>
-                        </Box>
+                        <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                          カテゴリー
+                        </Typography>
 
                         {categories.length === 0 ? (
                           <Alert severity="info">カテゴリーがありません</Alert>
@@ -506,32 +533,9 @@ export const StoreCategoryManagementPage: React.FC = () => {
             {/* 販売構成比設定タブ */}
             {tabValue === 1 && (
               <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    各店舗の販売構成比を設定します。配分画面で使用する店舗にチェックを入れてください。
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {selectedCategoryFilter.length > 0 && (
-                      <Chip
-                        label={`${selectedCategoryFilter.length}件のカテゴリー`}
-                        size="small"
-                        onDelete={() => setSelectedCategoryFilter([])}
-                      />
-                    )}
-                    <IconButton
-                      onClick={(e) => {
-                        setCategoryFilterAnchorEl(e.currentTarget);
-                        if (tabValue === 1) {
-                          loadCategories();
-                        }
-                      }}
-                      color={selectedCategoryFilter.length > 0 ? 'primary' : 'default'}
-                      size="small"
-                    >
-                      <FilterListIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  各店舗の販売構成比を設定します。配分画面で使用する店舗にチェックを入れてください。
+                </Typography>
 
                 <Card>
                   <CardContent>
