@@ -47,6 +47,19 @@ export const productSchema = z.object({
     .optional()
     .default(''),
 
+  /** センター着原価 */
+  centerCost: z
+    .number()
+    .min(NUMBER_RANGE.STORE_COST.min, `センター着原価は${NUMBER_RANGE.STORE_COST.min}以上で入力してください`)
+    .max(NUMBER_RANGE.STORE_COST.max, `センター着原価は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`),
+
+  /** センターフィー率（%） */
+  centerFeeRate: z
+    .number()
+    .min(0, 'センターフィー率は0以上で入力してください')
+    .max(100, 'センターフィー率は100以下で入力してください')
+    .default(13),
+
   /** 店原 */
   storeCost: z
     .number()
@@ -99,7 +112,7 @@ export const orderFormSchema = z
     products: z
       .array(productSchema)
       .min(1, '商品を少なくとも1つ追加してください')
-      .max(10, '商品は最大10個まで追加できます'),
+      .max(50, '商品は最大50個まで追加できます'),
   })
   .refine(
     (data) => {

@@ -39,6 +39,8 @@ export const FIRESTORE_COLLECTIONS = {
   USER_PROFILES: 'user_profiles',
   /** 帳合先プリセット */
   SUPPLIER_PRESETS: 'supplier_presets',
+  /** 店舗カテゴリー */
+  STORE_CATEGORIES: 'store_categories',
 } as const;
 
 // ============================================================
@@ -122,6 +124,8 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   specification: '',
   quantityPerPackage: null,
   unit: '',
+  centerCost: 0,
+  centerFeeRate: 13,
   storeCost: 0,
   priceExcludingTax: 0,
   storeAllocations: [] as number[],

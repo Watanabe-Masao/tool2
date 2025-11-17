@@ -154,6 +154,7 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
  * 帳合先プリセット管理モーダル
  *
  * プリセットの追加・編集・削除ができます。
+ * ドラッグ&ドロップで並び替え、スワイプで削除できます。
  */
 export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProps> = ({
   open,
