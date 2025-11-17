@@ -124,8 +124,8 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   unit: '',
   storeCost: 0,
   priceExcludingTax: 0,
-  storeAllocations: new Array(STORE_COUNT).fill(0),
-} as const;
+  storeAllocations: [] as number[],
+};
 
 // ============================================================
 // バリデーション関連

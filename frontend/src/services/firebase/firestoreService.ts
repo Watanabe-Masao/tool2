@@ -9,6 +9,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  onSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
@@ -324,6 +325,7 @@ export class FirestoreService {
     Array<{
       id: string;
       supplier: string;
+      displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
     }>
@@ -340,13 +342,81 @@ export class FirestoreService {
       return {
         id: doc.id,
         supplier: data.supplier,
+        displayOrder: data.displayOrder,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
       };
     });
 
+    // displayOrderでソート（設定されていない場合は最後に）
+    presets.sort((a, b) => {
+      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+        return a.displayOrder - b.displayOrder;
+      }
+      if (a.displayOrder !== undefined) return -1;
+      if (b.displayOrder !== undefined) return 1;
+      return 0;
+    });
+
     console.log(`[Firestore] Retrieved ${presets.length} supplier presets`);
     return presets;
+  }
+
+  /**
+   * 帳合先プリセット一覧をリアルタイムで監視
+   *
+   * @param userId - ユーザーID
+   * @param onSuccess - データ更新時のコールバック
+   * @param onError - エラー発生時のコールバック
+   * @returns アンサブスクライブ関数
+   */
+  static subscribeToSupplierPresets(
+    userId: string,
+    onSuccess: (presets: Array<{
+      id: string;
+      supplier: string;
+      displayOrder?: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>) => void,
+    onError: (error: Error) => void
+  ): () => void {
+    const db = getFirebaseFirestore();
+    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
+    const q = query(presetsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const presets = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            supplier: data.supplier,
+            displayOrder: data.displayOrder,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+          };
+        });
+
+        // displayOrderでソート（設定されていない場合は最後に）
+        presets.sort((a, b) => {
+          if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+            return a.displayOrder - b.displayOrder;
+          }
+          if (a.displayOrder !== undefined) return -1;
+          if (b.displayOrder !== undefined) return 1;
+          return 0;
+        });
+
+        onSuccess(presets);
+      },
+      (error) => {
+        onError(error as Error);
+      }
+    );
+
+    return unsubscribe;
   }
 
   /**
@@ -379,6 +449,29 @@ export class FirestoreService {
     });
 
     console.log(`[Firestore] Supplier preset updated: ${presetId}`);
+  }
+
+  /**
+   * 帳合先プリセットの並び順を更新
+   *
+   * @param reorderedItems - 並び替え後のID配列とdisplayOrder
+   */
+  static async reorderSupplierPresets(
+    reorderedItems: Array<{ id: string; displayOrder: number }>
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    const updates = reorderedItems.map(async (item) => {
+      const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, item.id);
+      await updateDoc(presetRef, {
+        displayOrder: item.displayOrder,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await Promise.all(updates);
+
+    console.log(`[Firestore] Reordered ${reorderedItems.length} supplier presets`);
   }
 
   /**
@@ -473,6 +566,7 @@ export class FirestoreService {
       unit: string;
       usageCount: number;
       pinned?: boolean;
+      pinOrder?: number;
     }>
   > {
     const db = getFirebaseFirestore();
@@ -505,6 +599,7 @@ export class FirestoreService {
         unit: data.unit || '',
         usageCount: data.usageCount || 1,
         pinned: data.pinned || false,
+        pinOrder: data.pinOrder ?? 9999,
       };
     });
 
@@ -579,19 +674,70 @@ export class FirestoreService {
    *
    * @param historyId - 履歴ID
    * @param pinned - ピン留め状態
+   * @param userId - ユーザーID（ピン留め順序の計算に使用）
+   * @param supplier - 帳合先（ピン留め順序の計算に使用）
    */
   static async toggleProductHistoryPinned(
     historyId: string,
-    pinned: boolean
+    pinned: boolean,
+    userId?: string,
+    supplier?: string
   ): Promise<void> {
     const db = getFirebaseFirestore();
     const historyRef = doc(db, 'product_history', historyId);
 
-    await updateDoc(historyRef, {
+    const updateData: any = {
       pinned,
       updatedAt: Timestamp.now(),
-    });
+    };
+
+    // ピン留めを有効にする場合、現在のピン留めアイテムの最大pinOrderを取得して+1
+    if (pinned && userId && supplier) {
+      const q = query(
+        collection(db, 'product_history'),
+        where('userId', '==', userId),
+        where('supplier', '==', supplier),
+        where('pinned', '==', true)
+      );
+      const snapshot = await getDocs(q);
+      const maxPinOrder =
+        snapshot.docs.reduce((max, doc) => {
+          const order = doc.data().pinOrder ?? 0;
+          return Math.max(max, order);
+        }, 0) || 0;
+
+      updateData.pinOrder = maxPinOrder + 1;
+    } else if (!pinned) {
+      // ピン留め解除時はpinOrderを削除
+      updateData.pinOrder = null;
+    }
+
+    await updateDoc(historyRef, updateData);
 
     console.log(`[Firestore] Toggled pinned status for ${historyId}: ${pinned}`);
+  }
+
+  /**
+   * ピン留めアイテムの順序を更新
+   *
+   * @param reorderedItems - 並び替え後のアイテム配列（IDとpinOrderのペア）
+   */
+  static async reorderPinnedPresets(
+    reorderedItems: Array<{ id: string; pinOrder: number }>
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    // バッチで複数のドキュメントを更新
+    const updates = reorderedItems.map(async (item) => {
+      const historyRef = doc(db, 'product_history', item.id);
+      await updateDoc(historyRef, {
+        pinOrder: item.pinOrder,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await Promise.all(updates);
+
+    console.log(`[Firestore] Reordered ${reorderedItems.length} pinned items`);
   }
 }

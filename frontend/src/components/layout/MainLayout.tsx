@@ -1,10 +1,11 @@
 import React from 'react';
 import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet } from '@ionic/react';
 import { Route, Redirect } from 'react-router-dom';
-import { addCircle, calendar } from 'ionicons/icons';
+import { addCircle, calendar, person } from 'ionicons/icons';
 import { Header } from '@/components/layout/Header';
 import { NewOrderPage } from '@/pages/NewOrderPage';
 import { CalendarPage } from '@/pages/CalendarPage';
+import { UserProfilePage } from '@/pages/UserProfilePage';
 
 /**
  * メインレイアウト（認証後）
@@ -27,6 +28,9 @@ export const MainLayout: React.FC = () => {
           {/* カレンダータブ */}
           <Route exact path="/calendar" component={CalendarPage} />
 
+          {/* ユーザープロフィールタブ */}
+          <Route exact path="/profile" component={UserProfilePage} />
+
           {/* デフォルトリダイレクト */}
           <Route exact path="/">
             <Redirect to="/new-order" />
@@ -43,6 +47,11 @@ export const MainLayout: React.FC = () => {
           <IonTabButton tab="calendar" href="/calendar">
             <IonIcon icon={calendar} />
             <IonLabel>カレンダー</IonLabel>
+          </IonTabButton>
+
+          <IonTabButton tab="profile" href="/profile">
+            <IonIcon icon={person} />
+            <IonLabel>ユーザー</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>

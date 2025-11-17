@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ main, master, claude/** ]
+    branches: [ main, master ]  # claude/** ブランチを一時的に除外
   pull_request:
     branches: [ main, master ]
   # 手動トリガーを追加

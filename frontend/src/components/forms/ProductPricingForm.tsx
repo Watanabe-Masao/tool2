@@ -39,7 +39,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-        各商品の原価と売価を入力してください。
+        各商品の原価と売価を入力してください。（{fields.length}件の商品）
       </Typography>
 
       {/* エラー表示 */}
@@ -50,15 +50,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       )}
 
       {/* 商品リスト */}
-      {fields.map((field, index) => (
-        <ProductFormCardPricing
-          key={field.id}
-          index={index}
-          control={control}
-          errors={errors}
-          onEnterPress={onEnterPress}
-        />
-      ))}
+      {fields.length === 0 ? (
+        <Alert severity="info" sx={{ mb: 1.5 }}>
+          まだ商品が追加されていません。前のステップで商品を追加してください。
+        </Alert>
+      ) : (
+        fields.map((field, index) => (
+          <ProductFormCardPricing
+            key={field.id}
+            index={index}
+            control={control}
+            errors={errors}
+            onEnterPress={onEnterPress}
+          />
+        ))
+      )}
     </Box>
   );
 };

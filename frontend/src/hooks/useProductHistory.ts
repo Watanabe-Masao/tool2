@@ -16,6 +16,7 @@ export interface ProductHistoryItem {
   unit: string;
   usageCount: number;
   pinned?: boolean; // ピン留めフラグ
+  pinOrder?: number; // ピン留めの順序（小さい方が上）
 }
 
 /**

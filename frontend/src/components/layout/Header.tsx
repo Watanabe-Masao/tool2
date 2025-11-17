@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -9,8 +9,15 @@ import {
   MenuItem,
   Box,
   Divider,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from '@mui/material';
-import { Logout, AccountCircle } from '@mui/icons-material';
+import { Logout, AccountCircle, Google, Email } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { APP_NAME } from '@/utils/constants';
 
@@ -22,6 +29,11 @@ import { APP_NAME } from '@/utils/constants';
 export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
+
+  // 長押し検出用のタイマー
+  const longPressTimer = useRef<number | null>(null);
 
   /**
    * ユーザーメニューを開く
@@ -44,83 +56,194 @@ export const Header: React.FC = () => {
     try {
       await signOut();
       handleMenuClose();
+      setLogoutDialogOpen(false);
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
   };
 
+  /**
+   * オンラインチップ長押し開始（ページ更新用）
+   */
+  const handleChipLongPressStart = () => {
+    longPressTimer.current = window.setTimeout(() => {
+      setReloadDialogOpen(true);
+    }, 500);
+  };
+
+  /**
+   * オンラインチップ長押し終了
+   */
+  const handleChipLongPressEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  /**
+   * ページを更新
+   */
+  const handleReload = () => {
+    window.location.reload();
+  };
+
+  /**
+   * ログインプロバイダーを判定
+   */
+  const getLoginProvider = (): 'google' | 'email' => {
+    if (user?.providerData && user.providerData.length > 0) {
+      const providerId = user.providerData[0].providerId;
+      if (providerId === 'google.com') {
+        return 'google';
+      }
+    }
+    return 'email';
+  };
+
+  const loginProvider = user ? getLoginProvider() : 'email';
+
   return (
-    <AppBar position="static" elevation={1}>
-      <Toolbar>
-        {/* アプリケーション名 */}
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-          {APP_NAME}
-        </Typography>
+    <>
+      <AppBar position="static" elevation={1}>
+        <Toolbar>
+          {/* アプリケーション名 */}
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            {APP_NAME}
+          </Typography>
 
-        {/* ユーザー情報 */}
-        {user && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* ユーザー名（デスクトップのみ） */}
-            <Typography
-              variant="body2"
-              sx={{
-                display: { xs: 'none', sm: 'block' },
-                mr: 1,
-              }}
-            >
-              {user.displayName || user.email}
-            </Typography>
+          {/* ユーザー情報 */}
+          {user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* オンラインチップ（長押しでログアウト） */}
+              <Chip
+                icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
+                label={user.displayName || user.email}
+                color="success"
+                size="small"
+                onTouchStart={handleChipLongPressStart}
+                onTouchEnd={handleChipLongPressEnd}
+                onMouseDown={handleChipLongPressStart}
+                onMouseUp={handleChipLongPressEnd}
+                onMouseLeave={handleChipLongPressEnd}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'success.dark',
+                  },
+                }}
+              />
 
-            {/* アバター */}
-            <IconButton
-              size="large"
-              edge="end"
-              onClick={handleMenuOpen}
-              color="inherit"
-              aria-label="ユーザーメニュー"
-            >
-              {user.photoURL ? (
-                <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 32, height: 32 }} />
-              ) : (
-                <AccountCircle />
-              )}
-            </IconButton>
+              {/* アバター */}
+              <IconButton
+                size="large"
+                edge="end"
+                onClick={handleMenuOpen}
+                color="inherit"
+                aria-label="ユーザーメニュー"
+              >
+                {user.photoURL ? (
+                  <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 32, height: 32 }} />
+                ) : (
+                  <AccountCircle />
+                )}
+              </IconButton>
 
-            {/* ユーザーメニュー */}
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-            >
-              {/* ユーザー情報 */}
-              <Box sx={{ px: 2, py: 1 }}>
-                <Typography variant="subtitle1" fontWeight={600}>
-                  {user.displayName}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {user.email}
+              {/* ユーザーメニュー */}
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+              >
+                {/* ユーザー情報 */}
+                <Box sx={{ px: 2, py: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {user.displayName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {user.email}
+                  </Typography>
+                </Box>
+
+                <Divider />
+
+                {/* ログアウト */}
+                <MenuItem onClick={handleLogout}>
+                  <Logout fontSize="small" sx={{ mr: 1 }} />
+                  ログアウト
+                </MenuItem>
+              </Menu>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
+
+      {/* ログアウト確認ダイアログ */}
+      <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)}>
+        <DialogTitle>ログアウト確認</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ログアウトしてもよろしいですか？
+          </DialogContentText>
+          {user && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                {loginProvider === 'google' ? (
+                  <Google fontSize="small" color="action" />
+                ) : (
+                  <Email fontSize="small" color="action" />
+                )}
+                <Typography variant="body2" fontWeight="medium">
+                  {loginProvider === 'google' ? 'Googleアカウント' : 'メールアカウント'}
                 </Typography>
               </Box>
+              <Typography variant="body2" color="text.secondary">
+                {user.displayName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user.email}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogoutDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleLogout} color="error" variant="contained">
+            ログアウト
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-              <Divider />
-
-              {/* ログアウト */}
-              <MenuItem onClick={handleLogout}>
-                <Logout fontSize="small" sx={{ mr: 1 }} />
-                ログアウト
-              </MenuItem>
-            </Menu>
-          </Box>
-        )}
-      </Toolbar>
-    </AppBar>
+      {/* ページ更新確認ダイアログ */}
+      <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
+        <DialogTitle>ページを更新</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ページを更新しますか？
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+            保存されていない変更は失われる可能性があります。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleReload} color="primary" variant="contained">
+            更新
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
