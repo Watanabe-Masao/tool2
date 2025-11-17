@@ -153,13 +153,13 @@ export const Header: React.FC = () => {
                 <IconButton
                   key={item.path}
                   onClick={() => handleNavigationChange(item.path)}
-                  color={location.pathname === item.path ? 'inherit' : 'default'}
+                  color="inherit"
                   size="small"
                   sx={{
                     borderRadius: 1,
                     px: isMobile ? 0.5 : 1.5,
                     py: 0.5,
-                    color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                    color: location.pathname === item.path ? 'primary.main' : 'white',
                     bgcolor: location.pathname === item.path ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                     '&:hover': {
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
@@ -169,7 +169,7 @@ export const Header: React.FC = () => {
                 >
                   {React.cloneElement(item.icon, {
                     fontSize: 'small',
-                    sx: { color: location.pathname === item.path ? 'primary.main' : 'inherit' }
+                    sx: { color: location.pathname === item.path ? 'primary.main' : 'white' }
                   })}
                   {!isMobile && (
                     <Typography
@@ -177,6 +177,7 @@ export const Header: React.FC = () => {
                       sx={{
                         ml: 0.5,
                         fontWeight: location.pathname === item.path ? 600 : 400,
+                        color: location.pathname === item.path ? 'primary.main' : 'white',
                       }}
                     >
                       {item.label}
