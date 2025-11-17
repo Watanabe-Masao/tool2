@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -6,24 +6,22 @@ import {
   Typography,
   TextField,
   Button,
-  ButtonGroup,
   Chip,
   Stack,
   Card,
   CardContent,
-  IconButton,
-  InputAdornment,
   Alert,
   Divider,
+  Checkbox,
+  FormControlLabel,
+  List,
+  ListItem,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Remove as RemoveIcon,
-  Close as CloseIcon,
-  Search as SearchIcon,
-} from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
+import { useAuthContext } from '@/context/AuthContext';
+import type { StoreSettings } from '@/types/storeSettings';
 
 /**
  * StoreAllocationMobileのProps
@@ -40,14 +38,13 @@ interface StoreAllocationMobileProps {
 }
 
 /**
- * 店舗配分入力（モバイル最適化版）
+ * 店舗配分入力（モバイル最適化版・チェックボックス方式）
  *
  * 機能:
- * - 店舗検索による選択的入力
- * - クイック配分ボタン（均等配分、前回コピーなど）
- * - クイック数値入力ボタン（0, 1, 2, 3, 5, 10）
+ * - 店舗設定で有効にした店舗のみ表示
+ * - チェックボックスで配分する店舗を選択
+ * - 選択した店舗の入力フィールドのみ表示
  * - 残り配分数のリアルタイム表示
- * - 配分済み店舗のチップ表示
  */
 export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   productIndex,
@@ -55,6 +52,48 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   errors,
   totalDelivery,
 }) => {
+  const { user } = useAuthContext();
+  const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
+  const [loading, setLoading] = useState(true);
+
+  // 店舗設定を読み込み
+  useEffect(() => {
+    const loadStoreSettings = async () => {
+      if (!user) return;
+
+      try {
+        const data = await StoreSettingsService.getAll(user.uid);
+        const settingsMap: Record<string, StoreSettings> = {};
+        data.forEach((setting) => {
+          settingsMap[setting.storeCode] = setting;
+        });
+        setStoreSettings(settingsMap);
+      } catch (error) {
+        console.error('Error loading store settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStoreSettings();
+  }, [user]);
+
+  // 有効な店舗のみフィルタ
+  const enabledStores = useMemo(() => {
+    return STORE_DATA.filter((store) => {
+      const setting = storeSettings[store.code];
+      return setting?.enabled ?? true; // デフォルトは有効
+    });
+  }, [storeSettings]);
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info">店舗設定を読み込んでいます...</Alert>
+      </Box>
+    );
+  }
+
   return (
     <Controller
       name={`products.${productIndex}.storeAllocations`}
@@ -63,13 +102,16 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
         const allocations = field.value || new Array(STORE_COUNT).fill(0);
         const onChange = field.onChange;
 
-        return <StoreAllocationMobileContent
-          allocations={allocations}
-          onChange={onChange}
-          totalDelivery={totalDelivery}
-          errors={errors}
-          productIndex={productIndex}
-        />;
+        return (
+          <StoreAllocationMobileContent
+            allocations={allocations}
+            onChange={onChange}
+            totalDelivery={totalDelivery}
+            errors={errors}
+            productIndex={productIndex}
+            enabledStores={enabledStores}
+          />
+        );
       }}
     />
   );
@@ -84,6 +126,7 @@ interface StoreAllocationMobileContentProps {
   totalDelivery: number;
   errors: FieldErrors<OrderFormData>;
   productIndex: number;
+  enabledStores: typeof STORE_DATA;
 }
 
 /**
@@ -93,9 +136,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   allocations,
   onChange,
   totalDelivery,
+  enabledStores,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStoreIndex, setSelectedStoreIndex] = useState<number | null>(null);
+  const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
+
+  // 初期選択状態を設定（配分数が0より大きい店舗）
+  useEffect(() => {
+    const initialSelected = new Set<string>();
+    STORE_DATA.forEach((store, index) => {
+      if (allocations[index] > 0) {
+        initialSelected.add(store.code);
+      }
+    });
+    setSelectedStores(initialSelected);
+  }, []); // 初回のみ実行
 
   /**
    * 合計配分数を計算
@@ -111,71 +165,62 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const remaining = totalDelivery - totalAllocated;
 
   /**
-   * 配分済み店舗を取得
+   * 選択した店舗のリスト
    */
-  const allocatedStores = useMemo(
-    () =>
-      STORE_DATA.map((store, index) => ({
-        ...store,
-        index,
-        quantity: allocations[index] || 0,
-      })).filter((store) => store.quantity > 0),
-    [allocations]
-  );
-
-  /**
-   * 検索フィルター
-   */
-  const filteredStores = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-
-    const query = searchQuery.toLowerCase();
-    return STORE_DATA.map((store, index) => ({ ...store, index })).filter(
-      (store) =>
-        store.name.toLowerCase().includes(query) ||
-        store.code.toLowerCase().includes(query)
-    );
-  }, [searchQuery]);
+  const selectedStoresList = useMemo(() => {
+    return enabledStores.filter((store) => selectedStores.has(store.code));
+  }, [enabledStores, selectedStores]);
 
   /**
    * 配分数変更ハンドラー
    */
-  const handleChangeAllocation = (index: number, value: number) => {
+  const handleChangeAllocation = (storeCode: string, value: number) => {
+    const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+    if (storeIndex === -1) return;
+
     const newAllocations = [...allocations];
-    newAllocations[index] = Math.max(0, value);
+    newAllocations[storeIndex] = Math.max(0, value);
     onChange(newAllocations);
   };
 
   /**
-   * 店舗選択ハンドラー
+   * 店舗選択トグル
    */
-  const handleSelectStore = (index: number) => {
-    setSelectedStoreIndex(index);
-    setSearchQuery('');
-  };
-
-  /**
-   * 配分削除ハンドラー
-   */
-  const handleRemoveAllocation = (index: number) => {
-    handleChangeAllocation(index, 0);
-    if (selectedStoreIndex === index) {
-      setSelectedStoreIndex(null);
+  const handleToggleStore = (storeCode: string) => {
+    const newSelected = new Set(selectedStores);
+    if (newSelected.has(storeCode)) {
+      newSelected.delete(storeCode);
+      // 選択解除時は配分数を0にする
+      handleChangeAllocation(storeCode, 0);
+    } else {
+      newSelected.add(storeCode);
     }
+    setSelectedStores(newSelected);
   };
 
   /**
-   * 均等配分
+   * 均等配分（選択した店舗のみ）
    */
   const handleEqualDistribution = () => {
-    const perStore = Math.floor(totalDelivery / STORE_COUNT);
-    const remainder = totalDelivery % STORE_COUNT;
+    if (selectedStores.size === 0) return;
 
-    const newAllocations = new Array(STORE_COUNT).fill(perStore);
-    // 余りを最初の店舗に追加
-    if (remainder > 0) {
-      newAllocations[0] += remainder;
-    }
+    const perStore = Math.floor(totalDelivery / selectedStores.size);
+    const remainder = totalDelivery % selectedStores.size;
+
+    const newAllocations = [...allocations];
+    let remainderDistributed = 0;
+
+    STORE_DATA.forEach((store, index) => {
+      if (selectedStores.has(store.code)) {
+        newAllocations[index] = perStore;
+        if (remainderDistributed < remainder) {
+          newAllocations[index] += 1;
+          remainderDistributed++;
+        }
+      } else {
+        newAllocations[index] = 0;
+      }
+    });
 
     onChange(newAllocations);
   };
@@ -185,13 +230,16 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    */
   const handleClearAll = () => {
     onChange(new Array(STORE_COUNT).fill(0));
-    setSelectedStoreIndex(null);
+    setSelectedStores(new Set());
   };
 
   /**
-   * クイック入力ボタンの値
+   * 全店舗選択
    */
-  const quickValues = [0, 1, 2, 3, 5, 10];
+  const handleSelectAll = () => {
+    const allCodes = new Set(enabledStores.map((s) => s.code));
+    setSelectedStores(allCodes);
+  };
 
   return (
     <Box>
@@ -250,196 +298,108 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       {/* 一括操作ボタン */}
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={handleEqualDistribution}
-          fullWidth
-        >
+        <Button variant="outlined" size="small" onClick={handleSelectAll} fullWidth>
+          全選択
+        </Button>
+        <Button variant="outlined" size="small" onClick={handleEqualDistribution} fullWidth disabled={selectedStores.size === 0}>
           均等配分
         </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={handleClearAll}
-          color="error"
-          fullWidth
-        >
+        <Button variant="outlined" size="small" onClick={handleClearAll} color="error" fullWidth>
           全クリア
         </Button>
       </Stack>
 
       <Divider sx={{ my: 1.5 }} />
 
-      {/* 店舗検索 */}
-      <TextField
-        fullWidth
-        placeholder="店舗を検索（店番または店舗名）"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
-        }}
-        sx={{ mb: 1.5 }}
-      />
-
-      {/* 検索結果 */}
-      {filteredStores.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-            検索結果 ({filteredStores.length}件)
+      {/* 店舗選択チェックボックス */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+            配分する店舗を選択 ({selectedStores.size}/{enabledStores.length})
           </Typography>
-          <Stack spacing={0.5}>
-            {filteredStores.map((store) => (
-              <Button
-                key={store.index}
-                variant="outlined"
-                onClick={() => handleSelectStore(store.index)}
-                sx={{
-                  justifyContent: 'space-between',
-                  textAlign: 'left',
-                }}
-              >
-                <Box>
-                  <Typography variant="body2">
+          <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+            {enabledStores.map((store) => {
+              const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+              const quantity = allocations[storeIndex] || 0;
+
+              return (
+                <FormControlLabel
+                  key={store.code}
+                  control={
+                    <Checkbox
+                      checked={selectedStores.has(store.code)}
+                      onChange={() => handleToggleStore(store.code)}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <Typography variant="body2">
+                        {store.code}: {store.name}
+                      </Typography>
+                      {quantity > 0 && (
+                        <Chip label={`${quantity}個`} size="small" color="primary" sx={{ ml: 1 }} />
+                      )}
+                    </Box>
+                  }
+                  sx={{ width: '100%', m: 0 }}
+                />
+              );
+            })}
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* 選択した店舗の入力フィールド */}
+      {selectedStoresList.length > 0 && (
+        <>
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+            配分数を入力 ({selectedStoresList.length}店舗)
+          </Typography>
+          <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+            {selectedStoresList.map((store) => {
+              const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+              const quantity = allocations[storeIndex] || 0;
+
+              return (
+                <ListItem
+                  key={store.code}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    '&:last-child': { borderBottom: 'none' },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ flex: 1 }}>
                     {store.code}: {store.name}
                   </Typography>
-                </Box>
-                {allocations[store.index] > 0 && (
-                  <Chip label={`${allocations[store.index]}個`} size="small" color="primary" />
-                )}
-              </Button>
-            ))}
-          </Stack>
-        </Box>
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={quantity}
+                    onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                    inputProps={{
+                      inputMode: 'numeric',
+                      pattern: '[0-9]*',
+                      min: 0,
+                      style: { textAlign: 'right' },
+                    }}
+                    sx={{ width: 80 }}
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+        </>
       )}
 
-      {/* 選択中の店舗の入力 */}
-      {selectedStoreIndex !== null && (
-        <Card sx={{ mb: 2, bgcolor: 'primary.light' }}>
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="subtitle1" fontWeight="medium">
-                {STORE_DATA[selectedStoreIndex].code}: {STORE_DATA[selectedStoreIndex].name}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={() => setSelectedStoreIndex(null)}
-              >
-                <CloseIcon />
-              </IconButton>
-            </Box>
-
-            {/* 数値入力 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-              <IconButton
-                color="primary"
-                onClick={() =>
-                  handleChangeAllocation(
-                    selectedStoreIndex,
-                    allocations[selectedStoreIndex] - 1
-                  )
-                }
-              >
-                <RemoveIcon />
-              </IconButton>
-
-              <TextField
-                type="number"
-                value={allocations[selectedStoreIndex] || ''}
-                onChange={(e) =>
-                  handleChangeAllocation(selectedStoreIndex, parseInt(e.target.value) || 0)
-                }
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                  min: 0,
-                  style: {
-                    fontSize: '1.5rem',
-                    textAlign: 'center',
-                    padding: '12px',
-                  },
-                }}
-                sx={{ flex: 1 }}
-              />
-
-              <IconButton
-                color="primary"
-                onClick={() =>
-                  handleChangeAllocation(
-                    selectedStoreIndex,
-                    allocations[selectedStoreIndex] + 1
-                  )
-                }
-              >
-                <AddIcon />
-              </IconButton>
-            </Box>
-
-            {/* クイック入力ボタン */}
-            <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-              クイック入力:
-            </Typography>
-            <ButtonGroup variant="outlined" size="small" fullWidth>
-              {quickValues.map((value) => (
-                <Button
-                  key={value}
-                  onClick={() => handleChangeAllocation(selectedStoreIndex, value)}
-                >
-                  {value}
-                </Button>
-              ))}
-            </ButtonGroup>
-
-            {/* 残り全部ボタン */}
-            {remaining > 0 && (
-              <Button
-                variant="contained"
-                fullWidth
-                sx={{ mt: 1.5 }}
-                onClick={() =>
-                  handleChangeAllocation(
-                    selectedStoreIndex,
-                    allocations[selectedStoreIndex] + remaining
-                  )
-                }
-              >
-                残り全部 (+{remaining}個)
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      {selectedStoresList.length === 0 && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          配分する店舗を選択してください
+        </Alert>
       )}
-
-      {/* 配分済み店舗一覧 */}
-      <Box>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-          配分済み店舗 ({allocatedStores.length}店舗)
-        </Typography>
-        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-          {allocatedStores.map((store) => (
-            <Chip
-              key={store.index}
-              label={`${store.code}: ${store.quantity}個`}
-              onDelete={() => handleRemoveAllocation(store.index)}
-              onClick={() => handleSelectStore(store.index)}
-              color="primary"
-              variant="filled"
-              size="small"
-              sx={{ mb: 0.5 }}
-            />
-          ))}
-          {allocatedStores.length === 0 && (
-            <Typography variant="caption" color="text.secondary">
-              まだ配分されていません
-            </Typography>
-          )}
-        </Stack>
-      </Box>
     </Box>
   );
 };

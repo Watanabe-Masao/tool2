@@ -120,6 +120,30 @@ service cloud.firestore {
                        resource.data.userId == request.auth.uid;
     }
 
+    // 店舗カテゴリー（ユーザーごとのサブコレクション）
+    match /users/{userId}/store_categories/{categoryId} {
+      // 読み取り: 本人のみ
+      allow read: if isOwner(userId);
+      // 作成: 本人のみ
+      allow create: if isOwner(userId);
+      // 更新: 本人のみ
+      allow update: if isOwner(userId);
+      // 削除: 本人のみ
+      allow delete: if isOwner(userId);
+    }
+
+    // 店舗設定（販売構成比など）
+    match /users/{userId}/store_settings/{storeCode} {
+      // 読み取り: 本人のみ
+      allow read: if isOwner(userId);
+      // 作成: 本人のみ
+      allow create: if isOwner(userId);
+      // 更新: 本人のみ
+      allow update: if isOwner(userId);
+      // 削除: 本人のみ
+      allow delete: if isOwner(userId);
+    }
+
     // デフォルト: すべて拒否
     match /{document=**} {
       allow read, write: if false;

@@ -10,7 +10,6 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
 import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
-import { TotalDeliveryForm } from '@/components/forms/TotalDeliveryForm';
 import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
 import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
@@ -28,19 +27,18 @@ import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
 /**
  * フォームのステップ数
  */
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 /**
  * 新規注文作成ページ
  *
- * 5ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
+ * 4ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
  *
  * ステップ:
  * 1. 店着日選択・帳合先入力
  * 2. 商品情報入力（品名、産地、規格、入数）
- * 3. 商品情報2入力（原価、売価）
- * 4. 総納品数入力
- * 5. 36店舗への配分入力
+ * 3. 商品情報2入力（原価、売価、総納品数）
+ * 4. 36店舗への配分入力
  */
 export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -269,6 +267,11 @@ export const NewOrderPage: React.FC = () => {
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
+                watchSlidesProgress={true}
+                observer={true}
+                observeParents={true}
+                watchOverflow={true}
+                autoHeight={true}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
@@ -295,24 +298,18 @@ export const NewOrderPage: React.FC = () => {
                   </Box>
                 </SwiperSlide>
 
-                {/* Step 3: 商品情報2（価格） */}
+                {/* Step 3: 商品情報2（価格・総納品数） */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     <ProductPricingForm
                       control={control}
                       errors={errors}
+                      productCount={formData.products.length}
                     />
                   </Box>
                 </SwiperSlide>
 
-                {/* Step 4: 総納品数 */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <TotalDeliveryForm control={control} errors={errors} />
-                  </Box>
-                </SwiperSlide>
-
-                {/* Step 5: 店舗配分 */}
+                {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     {formData.products.map((_, index) =>

@@ -1,11 +1,12 @@
 import React from 'react';
 import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet } from '@ionic/react';
 import { Route, Redirect } from 'react-router-dom';
-import { addCircle, calendar, person } from 'ionicons/icons';
+import { addCircle, calendar, person, settings } from 'ionicons/icons';
 import { Header } from '@/components/layout/Header';
 import { NewOrderPage } from '@/pages/NewOrderPage';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
+import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
 
 /**
  * メインレイアウト（認証後）
@@ -31,6 +32,9 @@ export const MainLayout: React.FC = () => {
           {/* ユーザープロフィールタブ */}
           <Route exact path="/profile" component={UserProfilePage} />
 
+          {/* 店舗カテゴリー管理 */}
+          <Route exact path="/store-categories" component={StoreCategoryManagementPage} />
+
           {/* デフォルトリダイレクト */}
           <Route exact path="/">
             <Redirect to="/new-order" />
@@ -52,6 +56,11 @@ export const MainLayout: React.FC = () => {
           <IonTabButton tab="profile" href="/profile">
             <IonIcon icon={person} />
             <IonLabel>ユーザー</IonLabel>
+          </IonTabButton>
+
+          <IonTabButton tab="settings" href="/store-categories">
+            <IonIcon icon={settings} />
+            <IonLabel>店舗管理</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>
