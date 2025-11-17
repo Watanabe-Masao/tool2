@@ -191,11 +191,11 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* オンラインチップ（長押しでログアウト） */}
+              {/* オンラインチップ（長押しで手動更新） */}
               {!isMobile && (
                 <Chip
                   icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
-                  label={user.displayName || user.email}
+                  label="オンライン"
                   color="success"
                   size="small"
                   onTouchStart={handleChipLongPressStart}
@@ -209,19 +209,9 @@ export const Header: React.FC = () => {
                       bgcolor: 'success.dark',
                     },
                   }}
+                  title="長押しでページを更新"
                 />
               )}
-
-              {/* ユーザー設定アイコン */}
-              <IconButton
-                size="small"
-                onClick={() => handleNavigationChange('/profile')}
-                color={location.pathname === '/profile' ? 'primary' : 'inherit'}
-                aria-label="ユーザー設定"
-                title="ユーザー設定"
-              >
-                <Settings fontSize="small" />
-              </IconButton>
 
               {/* アバター */}
               <IconButton
