@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton } from '@ionic/react';
+import { IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonButton, IonIcon } from '@ionic/react';
+import { addCircle, filterOutline } from 'ionicons/icons';
 import {
   Container,
   Box,
@@ -317,38 +318,27 @@ export const StoreCategoryManagementPage: React.FC = () => {
           <IonButtons slot="end">
             {/* カテゴリー管理タブの追加ボタン */}
             {tabValue === 0 && (
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => setShowAddDialog(true)}
-                sx={{ mr: 1 }}
-              >
+              <IonButton onClick={() => setShowAddDialog(true)}>
+                <IonIcon slot="start" icon={addCircle} />
                 追加
-              </Button>
+              </IonButton>
             )}
 
             {/* 販売構成比設定タブのフィルターボタン */}
             {tabValue === 1 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <>
                 {selectedCategoryFilter.length > 0 && (
-                  <Chip
-                    label={`${selectedCategoryFilter.length}件のカテゴリー`}
-                    size="small"
-                    onDelete={() => setSelectedCategoryFilter([])}
-                  />
+                  <span style={{ marginRight: '8px', fontSize: '0.875rem' }}>
+                    {selectedCategoryFilter.length}件
+                  </span>
                 )}
-                <IconButton
-                  onClick={(e) => {
-                    setCategoryFilterAnchorEl(e.currentTarget);
-                    loadCategories();
-                  }}
-                  color={selectedCategoryFilter.length > 0 ? 'primary' : 'default'}
-                  size="small"
-                >
-                  <FilterListIcon />
-                </IconButton>
-              </Box>
+                <IonButton onClick={(e) => {
+                  setCategoryFilterAnchorEl(e.currentTarget as any);
+                  loadCategories();
+                }}>
+                  <IonIcon icon={filterOutline} />
+                </IonButton>
+              </>
             )}
           </IonButtons>
         </IonToolbar>
