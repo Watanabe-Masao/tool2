@@ -139,7 +139,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <AppBar position="static" elevation={1}>
+      <AppBar position="sticky" elevation={1} sx={{ zIndex: 1300 }}>
         <Toolbar>
           {/* アプリケーション名 */}
           <Typography variant="h6" component="div" sx={{ fontWeight: 600, mr: 2 }}>

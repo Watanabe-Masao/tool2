@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton } from '@ionic/react';
 import {
   Container,
   Box,
@@ -307,17 +306,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const filteredStoresForSettings = getFilteredStoresForSettings();
 
   return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton defaultHref="/" />
-          </IonButtons>
-          <IonTitle>店舗管理</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent>
-        <Container maxWidth="lg">
+    <Container maxWidth="lg">
           <Box sx={{ py: 3 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
               店舗管理
@@ -690,7 +679,6 @@ export const StoreCategoryManagementPage: React.FC = () => {
             )}
           </Box>
         </Popover>
-      </IonContent>
-    </IonPage>
+    </Container>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IonPage, IonContent } from '@ionic/react';
 import { Container, Box, Alert, Chip, Button } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
@@ -222,9 +221,7 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      <IonPage>
-        <IonContent>
-          <Container maxWidth="lg">
+      <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
             {/* ネットワーク状態・同期状態の表示 */}
             <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -365,8 +362,7 @@ export const NewOrderPage: React.FC = () => {
           activeStep={activeStep}
           totalSteps={TOTAL_STEPS}
         />
-      </IonContent>
-    </IonPage>
+      </Container>
     </FormProvider>
   );
 };
