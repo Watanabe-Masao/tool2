@@ -17,6 +17,8 @@ interface ProductPricingFormProps {
   onEnterPress?: () => void;
   /** 商品数（親から渡される） */
   productCount?: number;
+  /** 総納品数 */
+  totalDelivery?: number;
 }
 
 /**
@@ -29,6 +31,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   errors,
   onEnterPress,
   productCount = 1,
+  totalDelivery = 0,
 }) => {
   const { fields } = useFieldArray({
     control,
@@ -68,6 +71,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           control={control}
           errors={errors}
           onEnterPress={onEnterPress}
+          totalDelivery={totalDelivery}
         />
       ))}
     </Box>
