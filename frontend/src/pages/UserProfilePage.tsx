@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { IonPage, IonContent } from '@ionic/react';
 import {
   Container,
   Box,
@@ -72,9 +71,7 @@ export const UserProfilePage: React.FC = () => {
   }
 
   return (
-    <IonPage>
-      <IonContent>
-        <Container maxWidth="sm">
+    <Container maxWidth="sm">
           <Box sx={{ py: 3 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
               ユーザー情報
@@ -176,7 +173,6 @@ export const UserProfilePage: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        </Container>
 
         {/* ログアウト確認ダイアログ */}
         <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)}>
@@ -213,7 +209,6 @@ export const UserProfilePage: React.FC = () => {
               </Button>
           </DialogActions>
         </Dialog>
-      </IonContent>
-    </IonPage>
+    </Container>
   );
 };

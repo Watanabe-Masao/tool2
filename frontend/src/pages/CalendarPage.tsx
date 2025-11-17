@@ -1,5 +1,4 @@
 import React from 'react';
-import { IonPage, IonContent } from '@ionic/react';
 import { Container, Typography, Box, Card, CardContent, Alert } from '@mui/material';
 import { CalendarMonth } from '@mui/icons-material';
 
@@ -21,9 +20,7 @@ import { CalendarMonth } from '@mui/icons-material';
  */
 export const CalendarPage: React.FC = () => {
   return (
-    <IonPage>
-      <IonContent>
-        <Container maxWidth="lg">
+    <Container maxWidth="lg">
           <Box sx={{ py: 4 }}>
             {/* ページヘッダー */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
@@ -80,7 +77,5 @@ export const CalendarPage: React.FC = () => {
             </Box>
           </Box>
         </Container>
-      </IonContent>
-    </IonPage>
   );
 };
