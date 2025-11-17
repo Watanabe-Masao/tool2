@@ -74,22 +74,21 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   return (
     <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        {/* 1行目: 商品情報をチップ形式で表示 */}
-        <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-          <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 1 }}>
+        {/* 商品情報をチップ形式で表示 */}
+        <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
+          <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 0.5 }}>
             商品 {index + 1}:
           </Typography>
           {origin && (
             <Box
               component="span"
               sx={{
-                px: 1,
+                px: 0.75,
                 py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'primary.lighter',
-                color: 'primary.main',
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
                 fontSize: '0.75rem',
-                fontWeight: 'medium',
               }}
             >
               {origin}
@@ -99,13 +98,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             <Box
               component="span"
               sx={{
-                px: 1,
+                px: 0.75,
                 py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'success.lighter',
-                color: 'success.main',
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
                 fontSize: '0.75rem',
-                fontWeight: 'medium',
               }}
             >
               {productName}
@@ -115,13 +113,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             <Box
               component="span"
               sx={{
-                px: 1,
+                px: 0.75,
                 py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'info.lighter',
-                color: 'info.main',
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
                 fontSize: '0.75rem',
-                fontWeight: 'medium',
               }}
             >
               {specification}
@@ -131,13 +128,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             <Box
               component="span"
               sx={{
-                px: 1,
+                px: 0.75,
                 py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'warning.lighter',
-                color: 'warning.main',
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
                 fontSize: '0.75rem',
-                fontWeight: 'medium',
               }}
             >
               {quantityPerPackage}入
@@ -147,13 +143,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             <Box
               component="span"
               sx={{
-                px: 1,
+                px: 0.75,
                 py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'secondary.lighter',
-                color: 'secondary.main',
+                borderRadius: 0.5,
+                bgcolor: 'grey.200',
+                color: 'text.primary',
                 fontSize: '0.75rem',
-                fontWeight: 'medium',
               }}
             >
               {unit}
@@ -161,9 +156,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           )}
         </Box>
 
-        {/* 2行目: センター着原価、センターフィー込原価、値入率 */}
+        {/* 1行目: センター着原価 / センターフィー込原価 */}
         <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <Controller
               name={`products.${index}.centerCost`}
               control={control}
@@ -188,7 +183,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               )}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <TextField
               label="センターフィー込原価"
               value={centerCostWithFee ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
@@ -197,38 +192,17 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
+              helperText="センター着原価 × 1.13"
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.50',
                 },
               }}
             />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              センター着原価 × 1.13
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="値入率"
-              value={`${profitMargin}%`}
-              size="small"
-              fullWidth
-              InputProps={{
-                readOnly: true,
-              }}
-              sx={{
-                '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
-                },
-              }}
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              (売価 - センターフィー込原価) / 売価 × 100
-            </Typography>
           </Grid>
         </Grid>
 
-        {/* 3行目: 店原、売価 */}
+        {/* 2行目: 店原 / 売価 */}
         <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
           <Grid item xs={12} sm={6}>
             <Controller
@@ -282,15 +256,42 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Grid>
         </Grid>
 
-        {/* 4行目: 総納品数 */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-            総納品数:
-          </Typography>
-          <Typography variant="body1" fontWeight="medium">
-            {totalDelivery.toLocaleString()}
-          </Typography>
-        </Box>
+        {/* 3行目: 値入率 / 総納品数 */}
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="値入率"
+              value={`${profitMargin}%`}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              helperText="(売価 - センターフィー込原価) / 売価 × 100"
+              sx={{
+                '& .MuiInputBase-input': {
+                  bgcolor: 'grey.50',
+                },
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="総納品数"
+              value={totalDelivery.toLocaleString()}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={{
+                '& .MuiInputBase-input': {
+                  bgcolor: 'grey.50',
+                },
+              }}
+            />
+          </Grid>
+        </Grid>
       </CardContent>
     </Card>
   );
