@@ -10,7 +10,7 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/services/firebase/firebaseConfig';
+import { getFirebaseFirestore } from './config';
 import type { StoreCategory, CreateStoreCategoryInput, UpdateStoreCategoryInput } from '@/types/storeCategory';
 
 const COLLECTION_NAME = 'store_categories';
@@ -24,6 +24,7 @@ export class StoreCategoryService {
    */
   static async getAll(userId: string): Promise<StoreCategory[]> {
     try {
+      const db = getFirebaseFirestore();
       const categoriesRef = collection(db, 'users', userId, COLLECTION_NAME);
       const q = query(categoriesRef, orderBy('order', 'asc'));
       const snapshot = await getDocs(q);
@@ -50,6 +51,7 @@ export class StoreCategoryService {
    */
   static async getById(userId: string, categoryId: string): Promise<StoreCategory | null> {
     try {
+      const db = getFirebaseFirestore();
       const docRef = doc(db, 'users', userId, COLLECTION_NAME, categoryId);
       const docSnap = await getDoc(docRef);
 
@@ -77,6 +79,7 @@ export class StoreCategoryService {
    */
   static async create(userId: string, input: CreateStoreCategoryInput): Promise<string> {
     try {
+      const db = getFirebaseFirestore();
       const categoriesRef = collection(db, 'users', userId, COLLECTION_NAME);
       const now = Timestamp.now();
 
@@ -100,6 +103,7 @@ export class StoreCategoryService {
    */
   static async update(userId: string, categoryId: string, input: UpdateStoreCategoryInput): Promise<void> {
     try {
+      const db = getFirebaseFirestore();
       const docRef = doc(db, 'users', userId, COLLECTION_NAME, categoryId);
       const now = Timestamp.now();
 
@@ -118,6 +122,7 @@ export class StoreCategoryService {
    */
   static async delete(userId: string, categoryId: string): Promise<void> {
     try {
+      const db = getFirebaseFirestore();
       const docRef = doc(db, 'users', userId, COLLECTION_NAME, categoryId);
       await deleteDoc(docRef);
     } catch (error) {
