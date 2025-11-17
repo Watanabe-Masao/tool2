@@ -112,7 +112,7 @@ export const orderFormSchema = z
     products: z
       .array(productSchema)
       .min(1, '商品を少なくとも1つ追加してください')
-      .max(10, '商品は最大10個まで追加できます'),
+      .max(50, '商品は最大50個まで追加できます'),
   })
   .refine(
     (data) => {

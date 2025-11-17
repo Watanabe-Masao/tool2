@@ -1,7 +1,7 @@
 import React from 'react';
-import { useFieldArray } from 'react-hook-form';
+import { useFieldArray, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
-import { Box, Typography, Alert } from '@mui/material';
+import { Box, Typography, Alert, Card, CardContent, Grid } from '@mui/material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -43,6 +43,49 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   // productCountとfields.lengthの大きい方を使用
   const actualProductCount = Math.max(fields.length, productCount);
 
+  // 全商品のデータを監視
+  const products = useWatch({ control, name: 'products' }) || [];
+  const totalDelivery = useWatch({ control, name: 'totalDelivery' }) || 0;
+
+  // 全体の集計を計算
+  const summary = React.useMemo(() => {
+    let totalCenterCost = 0;
+    let totalCenterCostWithFee = 0;
+    let totalStoreCost = 0;
+    let totalSellingPrice = 0;
+    let totalProfit = 0;
+
+    products.forEach((product) => {
+      const centerCost = product.centerCost || 0;
+      const centerFeeRate = product.centerFeeRate || 13;
+      const storeCost = product.storeCost || 0;
+      const sellingPrice = product.priceExcludingTax || 0;
+      const quantityPerPackage = product.quantityPerPackage || 0;
+
+      const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
+      const quantity = totalDelivery * quantityPerPackage;
+
+      totalCenterCost += centerCost * quantity;
+      totalCenterCostWithFee += centerCostWithFee * quantity;
+      totalStoreCost += storeCost * quantity;
+      totalSellingPrice += sellingPrice * quantity;
+      totalProfit += (storeCost - centerCostWithFee) * quantity;
+    });
+
+    const averageProfitMargin = totalSellingPrice > 0
+      ? ((totalSellingPrice - totalCenterCostWithFee) / totalSellingPrice * 100).toFixed(1)
+      : '0.0';
+
+    return {
+      totalCenterCost,
+      totalCenterCostWithFee,
+      totalStoreCost,
+      totalSellingPrice,
+      totalProfit,
+      averageProfitMargin,
+    };
+  }, [products, totalDelivery]);
+
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
@@ -70,6 +113,91 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           onEnterPress={onEnterPress}
         />
       ))}
+
+      {/* 全体集計サマリー */}
+      {actualProductCount > 0 && (
+        <Card variant="outlined" sx={{ mt: 2, bgcolor: 'primary.50', borderColor: 'primary.main', borderWidth: 2 }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: 'primary.main' }}>
+              全体集計
+            </Typography>
+
+            <Grid container spacing={2}>
+              {/* 1行目: 総原価 / 総売価 */}
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    総原価（センター着）
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    ¥{summary.totalCenterCost.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    総売価
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    ¥{summary.totalSellingPrice.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* 2行目: センターフィー込総原価 / 店着総原価 */}
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    総原価（センターフィー込）
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    ¥{summary.totalCenterCostWithFee.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    総原価（店着）
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    ¥{summary.totalStoreCost.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* 3行目: 全体差益 / 平均値入率 */}
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    全体差益
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold" color="success.main">
+                    ¥{summary.totalProfit.toLocaleString()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    (店着原価 - センターフィー込原価) の合計
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    平均値入率
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold" color="info.main">
+                    {summary.averageProfitMargin}%
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    (総売価 - センターフィー込総原価) / 総売価
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
     </Box>
   );
 };

@@ -70,7 +70,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Typography>
         <IconButton
           onClick={handleAddProduct}
-          disabled={fields.length >= 10}
+          disabled={fields.length >= 50}
           size="small"
           color="primary"
           aria-label="商品を追加"
@@ -103,9 +103,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       ))}
 
       {/* 最大数エラー */}
-      {fields.length >= 10 && (
+      {fields.length >= 50 && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-          商品は最大10個まで追加できます
+          商品は最大50個まで追加できます
         </Typography>
       )}
     </Box>
