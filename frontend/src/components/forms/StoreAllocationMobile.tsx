@@ -16,7 +16,11 @@ import {
   ListItem,
   ToggleButtonGroup,
   ToggleButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import { ExpandMore } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
@@ -158,8 +162,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   storeSettings,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    mode: true,
+    category: false,
+    stores: true,
+    input: true,
+  });
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
   useEffect(() => {
@@ -353,17 +363,69 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 表示する店舗リスト（カテゴリが選択されている場合はそのカテゴリの店舗のみ）
+   * 表示する店舗リスト（選択されたカテゴリの店舗のみ）
    */
   const availableStores = useMemo(() => {
-    if (selectedCategory === null) {
+    if (selectedCategories.size === 0) {
       return enabledStores;
-    } else if (selectedCategory === 'uncategorized') {
-      return getUncategorizedStores();
-    } else {
-      return getCategoryStores(selectedCategory);
     }
-  }, [selectedCategory, enabledStores, categories]);
+
+    const stores = new Set<typeof STORE_DATA[number]>();
+    selectedCategories.forEach((categoryId) => {
+      if (categoryId === 'uncategorized') {
+        getUncategorizedStores().forEach((store) => stores.add(store));
+      } else {
+        getCategoryStores(categoryId).forEach((store) => stores.add(store));
+      }
+    });
+
+    return Array.from(stores);
+  }, [selectedCategories, enabledStores, categories]);
+
+  /**
+   * カテゴリ選択をトグル
+   */
+  const handleToggleCategory = (categoryId: string) => {
+    const newSelectedCategories = new Set(selectedCategories);
+
+    if (newSelectedCategories.has(categoryId)) {
+      // カテゴリ選択解除時、そのカテゴリの店舗も選択解除
+      newSelectedCategories.delete(categoryId);
+
+      const categoryStores = categoryId === 'uncategorized'
+        ? getUncategorizedStores()
+        : getCategoryStores(categoryId);
+
+      const newSelectedStores = new Set(selectedStores);
+      const newAllocations = [...allocations];
+
+      categoryStores.forEach((store) => {
+        newSelectedStores.delete(store.code);
+        // 配分数も0にする
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+        if (storeIndex !== -1) {
+          newAllocations[storeIndex] = 0;
+        }
+      });
+
+      setSelectedStores(newSelectedStores);
+      onChange(newAllocations);
+    } else {
+      newSelectedCategories.add(categoryId);
+    }
+
+    setSelectedCategories(newSelectedCategories);
+  };
+
+  /**
+   * セクションの展開/折りたたみ
+   */
+  const handleToggleSection = (section: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   return (
     <Box>
@@ -421,11 +483,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       )}
 
       {/* 配分モード選択 */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-            配分方法
+      <Accordion
+        expanded={expandedSections.mode}
+        onChange={() => handleToggleSection('mode')}
+        sx={{ mb: 2 }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            配分方法: {distributionMode === 'equal' ? '均等配分' : '構成比配分'}
           </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
           <ToggleButtonGroup
             value={distributionMode}
             exclusive
@@ -437,12 +505,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             <ToggleButton value="ratio">構成比配分</ToggleButton>
           </ToggleButtonGroup>
           {distributionMode === 'ratio' && (
-            <Alert severity="info" sx={{ mt: 1 }}>
+            <Alert severity="info" sx={{ mt: 1, fontSize: '0.75rem' }}>
               選択した店舗の構成比を自動的に100%に正規化して配分します
             </Alert>
           )}
-        </CardContent>
-      </Card>
+        </AccordionDetails>
+      </Accordion>
 
       {/* 一括操作ボタン */}
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
@@ -467,45 +535,53 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       {/* カテゴリ選択 */}
       {categories.length > 0 && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-              カテゴリで絞り込み
+        <Accordion
+          expanded={expandedSections.category}
+          onChange={() => handleToggleSection('category')}
+          sx={{ mb: 2 }}
+        >
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              カテゴリで絞り込み ({selectedCategories.size}選択中)
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip
-                label="全て"
-                onClick={() => setSelectedCategory(null)}
-                color={selectedCategory === null ? 'primary' : 'default'}
-                variant={selectedCategory === null ? 'filled' : 'outlined'}
-              />
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {categories.map((category) => (
                 <Chip
                   key={category.id}
                   label={`${category.name} (${getCategoryStores(category.id).length})`}
-                  onClick={() => setSelectedCategory(category.id)}
-                  color={selectedCategory === category.id ? 'primary' : 'default'}
-                  variant={selectedCategory === category.id ? 'filled' : 'outlined'}
+                  onClick={() => handleToggleCategory(category.id)}
+                  color={selectedCategories.has(category.id) ? 'primary' : 'default'}
+                  variant={selectedCategories.has(category.id) ? 'filled' : 'outlined'}
+                  size="small"
                 />
               ))}
               <Chip
                 label={`未分類 (${getUncategorizedStores().length})`}
-                onClick={() => setSelectedCategory('uncategorized')}
-                color={selectedCategory === 'uncategorized' ? 'primary' : 'default'}
-                variant={selectedCategory === 'uncategorized' ? 'filled' : 'outlined'}
+                onClick={() => handleToggleCategory('uncategorized')}
+                color={selectedCategories.has('uncategorized') ? 'primary' : 'default'}
+                variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
+                size="small"
               />
             </Box>
-          </CardContent>
-        </Card>
+          </AccordionDetails>
+        </Accordion>
       )}
 
       {/* 店舗選択（チップ形式） */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-            配分する店舗を選択 ({selectedStores.size}/{enabledStores.length})
+      <Accordion
+        expanded={expandedSections.stores}
+        onChange={() => handleToggleSection('stores')}
+        sx={{ mb: 2 }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            配分する店舗を選択 ({selectedStores.size}/{availableStores.length})
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: 300, overflowY: 'auto' }}>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
             {availableStores.map((store) => {
               const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
               const quantity = allocations[storeIndex] || 0;
@@ -517,17 +593,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 <Chip
                   key={store.code}
                   label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="body2">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                      <Typography variant="caption">
                         {store.code}: {store.name}
                       </Typography>
                       {quantity > 0 && (
-                        <Typography variant="caption" sx={{ ml: 0.5, fontWeight: 'bold' }}>
+                        <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
                           ({quantity})
                         </Typography>
                       )}
                       {distributionMode === 'ratio' && ratio > 0 && (
-                        <Typography variant="caption" sx={{ ml: 0.5, color: 'text.secondary' }}>
+                        <Typography variant="caption" sx={{ ml: 0.25, color: 'text.secondary', fontSize: '0.65rem' }}>
                           [{ratio}%]
                         </Typography>
                       )}
@@ -536,58 +612,67 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   onClick={() => handleToggleStore(store.code)}
                   color={isSelected ? 'primary' : 'default'}
                   variant={isSelected ? 'filled' : 'outlined'}
-                  sx={{ fontSize: '0.875rem' }}
+                  size="small"
                 />
               );
             })}
           </Box>
-        </CardContent>
-      </Card>
+        </AccordionDetails>
+      </Accordion>
 
       {/* 選択した店舗の入力フィールド */}
       {selectedStoresList.length > 0 && (
-        <>
-          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-            配分数を入力 ({selectedStoresList.length}店舗)
-          </Typography>
-          <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
-            {selectedStoresList.map((store) => {
-              const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-              const quantity = allocations[storeIndex] || 0;
+        <Accordion
+          expanded={expandedSections.input}
+          onChange={() => handleToggleSection('input')}
+          sx={{ mb: 2 }}
+        >
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              配分数を入力 ({selectedStoresList.length}店舗)
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <List sx={{ width: '100%' }}>
+              {selectedStoresList.map((store) => {
+                const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+                const quantity = allocations[storeIndex] || 0;
 
-              return (
-                <ListItem
-                  key={store.code}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    '&:last-child': { borderBottom: 'none' },
-                  }}
-                >
-                  <Typography variant="body2" sx={{ flex: 1 }}>
-                    {store.code}: {store.name}
-                  </Typography>
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={quantity}
-                    onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
-                    inputProps={{
-                      inputMode: 'numeric',
-                      pattern: '[0-9]*',
-                      min: 0,
-                      style: { textAlign: 'right' },
+                return (
+                  <ListItem
+                    key={store.code}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid',
+                      borderColor: 'divider',
+                      '&:last-child': { borderBottom: 'none' },
+                      py: 1,
                     }}
-                    sx={{ width: 80 }}
-                  />
-                </ListItem>
-              );
-            })}
-          </List>
-        </>
+                  >
+                    <Typography variant="caption" sx={{ flex: 1 }}>
+                      {store.code}: {store.name}
+                    </Typography>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={quantity}
+                      onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        min: 0,
+                        style: { textAlign: 'right', fontSize: '0.875rem' },
+                      }}
+                      sx={{ width: 70 }}
+                    />
+                  </ListItem>
+                );
+              })}
+            </List>
+          </AccordionDetails>
+        </Accordion>
       )}
 
       {selectedStoresList.length === 0 && (
