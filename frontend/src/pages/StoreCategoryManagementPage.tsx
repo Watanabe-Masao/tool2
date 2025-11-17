@@ -20,6 +20,16 @@ import {
   Chip,
   Grid,
   Alert,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Checkbox,
+  Paper,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,8 +41,10 @@ import {
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
+import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
 import { STORE_DATA } from '@/utils/constants';
 import type { StoreCategory } from '@/types/storeCategory';
+import type { StoreSettings } from '@/types/storeSettings';
 
 /**
  * 店舗カテゴリー管理ページ
@@ -41,6 +53,9 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
+  const [tabValue, setTabValue] = useState(0);
+
+  // カテゴリー管理用の状態
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<StoreCategory | null>(null);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
@@ -48,6 +63,9 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<StoreCategory | null>(null);
+
+  // 販売構成比設定用の状態
+  const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
 
   // カテゴリーを読み込み
   const loadCategories = async () => {
@@ -65,9 +83,33 @@ export const StoreCategoryManagementPage: React.FC = () => {
     }
   };
 
+  // 店舗設定を読み込み
+  const loadStoreSettings = async () => {
+    if (!user) return;
+
+    try {
+      showLoading();
+      const data = await StoreSettingsService.getAll(user.uid);
+      const settingsMap: Record<string, StoreSettings> = {};
+      data.forEach((setting) => {
+        settingsMap[setting.storeCode] = setting;
+      });
+      setStoreSettings(settingsMap);
+    } catch (error) {
+      console.error('Error loading store settings:', error);
+      showError('店舗設定の読み込みに失敗しました');
+    } finally {
+      hideLoading();
+    }
+  };
+
   useEffect(() => {
-    loadCategories();
-  }, [user]);
+    if (tabValue === 0) {
+      loadCategories();
+    } else if (tabValue === 1) {
+      loadStoreSettings();
+    }
+  }, [user, tabValue]);
 
   // 未分類の店舗を取得
   const getUncategorizedStores = () => {
@@ -185,6 +227,47 @@ export const StoreCategoryManagementPage: React.FC = () => {
     }
   };
 
+  // 店舗設定の変更
+  const handleChangeStoreSetting = (storeCode: string, field: 'salesRatio' | 'enabled', value: number | boolean) => {
+    setStoreSettings((prev) => ({
+      ...prev,
+      [storeCode]: {
+        ...(prev[storeCode] || {
+          id: storeCode,
+          userId: user?.uid || '',
+          storeCode,
+          salesRatio: 0,
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+        [field]: value,
+      },
+    }));
+  };
+
+  // 販売構成比を保存
+  const handleSaveStoreSettings = async () => {
+    if (!user) return;
+
+    try {
+      showLoading();
+      const settingsToSave = Object.values(storeSettings).map((setting) => ({
+        storeCode: setting.storeCode,
+        salesRatio: setting.salesRatio,
+        enabled: setting.enabled,
+      }));
+
+      await StoreSettingsService.batchUpsert(user.uid, settingsToSave);
+      showSuccess('販売構成比を保存しました');
+    } catch (error) {
+      console.error('Error saving store settings:', error);
+      showError('販売構成比の保存に失敗しました');
+    } finally {
+      hideLoading();
+    }
+  };
+
   const uncategorizedStores = getUncategorizedStores();
   const categoryStores = selectedCategory
     ? STORE_DATA.filter((store) => selectedCategory.storeIds.includes(store.code))
@@ -197,184 +280,264 @@ export const StoreCategoryManagementPage: React.FC = () => {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/" />
           </IonButtons>
-          <IonTitle>店舗カテゴリー管理</IonTitle>
+          <IonTitle>店舗管理</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
         <Container maxWidth="lg">
           <Box sx={{ py: 3 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-              店舗カテゴリー管理
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              店舗を大型店、中型店などのカテゴリーに分類します。
+              店舗管理
             </Typography>
 
-            <Grid container spacing={3}>
-              {/* 左側：カテゴリーリスト */}
-              <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6" fontWeight="bold">
-                        カテゴリー
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<AddIcon />}
-                        onClick={() => setShowAddDialog(true)}
-                      >
-                        追加
-                      </Button>
-                    </Box>
+            <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+              <Tab label="カテゴリー管理" />
+              <Tab label="販売構成比設定" />
+            </Tabs>
 
-                    {categories.length === 0 ? (
-                      <Alert severity="info">カテゴリーがありません</Alert>
-                    ) : (
-                      <List>
-                        {categories.map((category) => (
-                          <ListItem
-                            key={category.id}
-                            disablePadding
-                            secondaryAction={
-                              <Box>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => {
-                                    setEditingCategory(category);
-                                    setNewCategoryName(category.name);
-                                    setShowEditDialog(true);
-                                  }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton size="small" onClick={() => handleDeleteCategory(category.id)}>
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            }
-                          >
-                            <ListItemButton
-                              selected={selectedCategory?.id === category.id}
-                              onClick={() => {
-                                setSelectedCategory(category);
-                                setSelectedStores([]);
-                              }}
-                            >
-                              <ListItemText
-                                primary={category.name}
-                                secondary={`${category.storeIds.length}店舗`}
-                              />
-                            </ListItemButton>
-                          </ListItem>
-                        ))}
-                      </List>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
+            {/* カテゴリー管理タブ */}
+            {tabValue === 0 && (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  店舗を大型店、中型店などのカテゴリーに分類します。
+                </Typography>
 
-              {/* 右側：店舗リスト */}
-              <Grid item xs={12} md={8}>
-                {selectedCategory ? (
-                  <Box>
-                    {/* カテゴリー内の店舗 */}
-                    <Card sx={{ mb: 2 }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" fontWeight="bold">
-                            {selectedCategory.name}の店舗
-                          </Typography>
-                          {selectedStores.length > 0 && (
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              size="small"
-                              startIcon={<ArrowBackIcon />}
-                              onClick={handleRemoveStoresFromCategory}
-                            >
-                              カテゴリーから削除 ({selectedStores.length})
-                            </Button>
-                          )}
-                        </Box>
-
-                        {categoryStores.length === 0 ? (
-                          <Alert severity="info">このカテゴリーに店舗がありません</Alert>
-                        ) : (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {categoryStores.map((store) => (
-                              <Chip
-                                key={store.code}
-                                label={`${store.code}: ${store.name}`}
-                                onClick={() => {
-                                  setSelectedStores((prev) =>
-                                    prev.includes(store.code)
-                                      ? prev.filter((id) => id !== store.code)
-                                      : [...prev, store.code]
-                                  );
-                                }}
-                                color={selectedStores.includes(store.code) ? 'primary' : 'default'}
-                                variant={selectedStores.includes(store.code) ? 'filled' : 'outlined'}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* 未分類の店舗 */}
+                <Grid container spacing={3}>
+                  {/* 左側：カテゴリーリスト */}
+                  <Grid item xs={12} md={4}>
                     <Card>
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                           <Typography variant="h6" fontWeight="bold">
-                            未分類の店舗
+                            カテゴリー
                           </Typography>
-                          {selectedStores.length > 0 && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              startIcon={<ArrowForwardIcon />}
-                              onClick={handleAddStoresToCategory}
-                            >
-                              {selectedCategory.name}に追加 ({selectedStores.length})
-                            </Button>
-                          )}
+                          <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={() => setShowAddDialog(true)}
+                          >
+                            追加
+                          </Button>
                         </Box>
 
-                        {uncategorizedStores.length === 0 ? (
-                          <Alert severity="success">全ての店舗がカテゴリーに割り当てられています</Alert>
+                        {categories.length === 0 ? (
+                          <Alert severity="info">カテゴリーがありません</Alert>
                         ) : (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {uncategorizedStores.map((store) => (
-                              <Chip
-                                key={store.code}
-                                label={`${store.code}: ${store.name}`}
-                                onClick={() => {
-                                  setSelectedStores((prev) =>
-                                    prev.includes(store.code)
-                                      ? prev.filter((id) => id !== store.code)
-                                      : [...prev, store.code]
-                                  );
-                                }}
-                                color={selectedStores.includes(store.code) ? 'primary' : 'default'}
-                                variant={selectedStores.includes(store.code) ? 'filled' : 'outlined'}
-                              />
+                          <List>
+                            {categories.map((category) => (
+                              <ListItem
+                                key={category.id}
+                                disablePadding
+                                secondaryAction={
+                                  <Box>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        setEditingCategory(category);
+                                        setNewCategoryName(category.name);
+                                        setShowEditDialog(true);
+                                      }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" onClick={() => handleDeleteCategory(category.id)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                }
+                              >
+                                <ListItemButton
+                                  selected={selectedCategory?.id === category.id}
+                                  onClick={() => {
+                                    setSelectedCategory(category);
+                                    setSelectedStores([]);
+                                  }}
+                                >
+                                  <ListItemText
+                                    primary={category.name}
+                                    secondary={`${category.storeIds.length}店舗`}
+                                  />
+                                </ListItemButton>
+                              </ListItem>
                             ))}
-                          </Box>
+                          </List>
                         )}
                       </CardContent>
                     </Card>
-                  </Box>
-                ) : (
-                  <Card>
-                    <CardContent>
-                      <Alert severity="info">左側からカテゴリーを選択してください</Alert>
-                    </CardContent>
-                  </Card>
-                )}
-              </Grid>
-            </Grid>
+                  </Grid>
+
+                  {/* 右側：店舗リスト */}
+                  <Grid item xs={12} md={8}>
+                    {selectedCategory ? (
+                      <Box>
+                        {/* カテゴリー内の店舗 */}
+                        <Card sx={{ mb: 2 }}>
+                          <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Typography variant="h6" fontWeight="bold">
+                                {selectedCategory.name}の店舗
+                              </Typography>
+                              {selectedStores.length > 0 && (
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  startIcon={<ArrowBackIcon />}
+                                  onClick={handleRemoveStoresFromCategory}
+                                >
+                                  カテゴリーから削除 ({selectedStores.length})
+                                </Button>
+                              )}
+                            </Box>
+
+                            {categoryStores.length === 0 ? (
+                              <Alert severity="info">このカテゴリーに店舗がありません</Alert>
+                            ) : (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {categoryStores.map((store) => (
+                                  <Chip
+                                    key={store.code}
+                                    label={`${store.code}: ${store.name}`}
+                                    onClick={() => {
+                                      setSelectedStores((prev) =>
+                                        prev.includes(store.code)
+                                          ? prev.filter((id) => id !== store.code)
+                                          : [...prev, store.code]
+                                      );
+                                    }}
+                                    color={selectedStores.includes(store.code) ? 'primary' : 'default'}
+                                    variant={selectedStores.includes(store.code) ? 'filled' : 'outlined'}
+                                  />
+                                ))}
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* 未分類の店舗 */}
+                        <Card>
+                          <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Typography variant="h6" fontWeight="bold">
+                                未分類の店舗
+                              </Typography>
+                              {selectedStores.length > 0 && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  startIcon={<ArrowForwardIcon />}
+                                  onClick={handleAddStoresToCategory}
+                                >
+                                  {selectedCategory.name}に追加 ({selectedStores.length})
+                                </Button>
+                              )}
+                            </Box>
+
+                            {uncategorizedStores.length === 0 ? (
+                              <Alert severity="success">全ての店舗がカテゴリーに割り当てられています</Alert>
+                            ) : (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {uncategorizedStores.map((store) => (
+                                  <Chip
+                                    key={store.code}
+                                    label={`${store.code}: ${store.name}`}
+                                    onClick={() => {
+                                      setSelectedStores((prev) =>
+                                        prev.includes(store.code)
+                                          ? prev.filter((id) => id !== store.code)
+                                          : [...prev, store.code]
+                                      );
+                                    }}
+                                    color={selectedStores.includes(store.code) ? 'primary' : 'default'}
+                                    variant={selectedStores.includes(store.code) ? 'filled' : 'outlined'}
+                                  />
+                                ))}
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Box>
+                    ) : (
+                      <Card>
+                        <CardContent>
+                          <Alert severity="info">左側からカテゴリーを選択してください</Alert>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </Grid>
+                </Grid>
+              </>
+            )}
+
+            {/* 販売構成比設定タブ */}
+            {tabValue === 1 && (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  各店舗の販売構成比を設定します。配分画面で使用する店舗にチェックを入れてください。
+                </Typography>
+
+                <Card>
+                  <CardContent>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>使用</TableCell>
+                            <TableCell>店番</TableCell>
+                            <TableCell>店舗名</TableCell>
+                            <TableCell align="right">販売構成比（%）</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {STORE_DATA.map((store) => {
+                            const setting = storeSettings[store.code];
+                            const enabled = setting?.enabled ?? true;
+                            const salesRatio = setting?.salesRatio ?? 0;
+
+                            return (
+                              <TableRow key={store.code}>
+                                <TableCell padding="checkbox">
+                                  <Checkbox
+                                    checked={enabled}
+                                    onChange={(e) => handleChangeStoreSetting(store.code, 'enabled', e.target.checked)}
+                                  />
+                                </TableCell>
+                                <TableCell>{store.code}</TableCell>
+                                <TableCell>{store.name}</TableCell>
+                                <TableCell align="right">
+                                  <TextField
+                                    type="number"
+                                    size="small"
+                                    value={salesRatio}
+                                    onChange={(e) =>
+                                      handleChangeStoreSetting(store.code, 'salesRatio', parseFloat(e.target.value) || 0)
+                                    }
+                                    inputProps={{
+                                      min: 0,
+                                      max: 100,
+                                      step: 0.1,
+                                      style: { textAlign: 'right' },
+                                    }}
+                                    sx={{ width: 100 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button variant="contained" onClick={handleSaveStoreSettings}>
+                        保存
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </Box>
         </Container>
 

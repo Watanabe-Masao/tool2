@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
   TextField,
   Box,
   Typography,
-  Divider,
   Alert,
+  Card,
+  CardContent,
+  CardActions,
+  IconButton,
+  Stack,
 } from '@mui/material';
 import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperType } from 'swiper';
+import { Navigation, Pagination } from 'swiper/modules';
 import { useSupplierPresets, type SupplierPreset } from '@/hooks/useSupplierPresets';
+
+// Swiper styles
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 
 interface SupplierPresetManagerModalProps {
   open: boolean;
@@ -25,9 +32,10 @@ interface SupplierPresetManagerModalProps {
 }
 
 /**
- * 帳合先プリセット管理モーダル
+ * 帳合先プリセット管理モーダル（スワイプ・カード形式）
  *
  * プリセットの追加・編集・削除ができます。
+ * カードをスワイプして切り替えます。
  */
 export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProps> = ({
   open,
@@ -38,6 +46,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const [isAdding, setIsAdding] = useState(false);
   const [presetValue, setPresetValue] = useState('');
   const [error, setError] = useState('');
+  const swiperRef = useRef<SwiperType | null>(null);
 
   /**
    * 新規プリセットを追加
@@ -53,6 +62,12 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
       setPresetValue('');
       setIsAdding(false);
       setError('');
+      // 最後のスライドに移動
+      setTimeout(() => {
+        if (swiperRef.current) {
+          swiperRef.current.slideTo(swiperRef.current.slides.length - 1);
+        }
+      }, 100);
     } else {
       setError('プリセットの追加に失敗しました');
     }
@@ -111,7 +126,21 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>帳合先プリセット管理</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">帳合先プリセット管理</Typography>
+          {!isAdding && !editingId && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setIsAdding(true)}
+            >
+              追加
+            </Button>
+          )}
+        </Box>
+      </DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -119,102 +148,130 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
           </Alert>
         )}
 
-        {/* プリセット一覧 */}
-        {presets.length === 0 && !isAdding && (
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
-            プリセットがまだ登録されていません。
-            <br />
-            「追加」ボタンから新しいプリセットを作成してください。
-          </Typography>
+        {/* 新規追加フォーム */}
+        {isAdding && (
+          <Card sx={{ mb: 2, bgcolor: 'primary.light' }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+                新規プリセット
+              </Typography>
+              <TextField
+                label="帳合先"
+                placeholder="例: ○○商事"
+                value={presetValue}
+                onChange={(e) => setPresetValue(e.target.value)}
+                fullWidth
+                size="small"
+                autoFocus
+              />
+            </CardContent>
+            <CardActions sx={{ justifyContent: 'flex-end', gap: 1 }}>
+              <Button size="small" onClick={handleCancelEdit}>
+                キャンセル
+              </Button>
+              <Button size="small" variant="contained" onClick={handleAdd}>
+                追加
+              </Button>
+            </CardActions>
+          </Card>
         )}
 
-        <List>
-          {presets.map((preset) => (
-            <React.Fragment key={preset.id}>
-              {editingId === preset.id ? (
-                // 編集モード
-                <ListItem>
-                  <Box sx={{ width: '100%' }}>
-                    <TextField
-                      label="帳合先"
-                      value={presetValue}
-                      onChange={(e) => setPresetValue(e.target.value)}
-                      fullWidth
-                      size="small"
-                      sx={{ mb: 1 }}
-                      placeholder="例: ○○商事"
-                    />
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                      <Button size="small" onClick={handleCancelEdit}>
-                        キャンセル
-                      </Button>
-                      <Button size="small" variant="contained" onClick={handleSaveEdit}>
-                        保存
-                      </Button>
-                    </Box>
-                  </Box>
-                </ListItem>
-              ) : (
-                // 表示モード
-                <ListItem>
-                  <ListItemText primary={preset.supplier} />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleStartEdit(preset)}
-                      sx={{ mr: 1 }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton edge="end" onClick={() => handleDelete(preset.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              )}
-              <Divider />
-            </React.Fragment>
-          ))}
-
-          {/* 新規追加フォーム */}
-          {isAdding && (
-            <ListItem>
-              <Box sx={{ width: '100%' }}>
-                <TextField
-                  label="帳合先"
-                  placeholder="例: ○○商事"
-                  value={presetValue}
-                  onChange={(e) => setPresetValue(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={{ mb: 1 }}
-                  autoFocus
-                />
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                  <Button size="small" onClick={handleCancelEdit}>
-                    キャンセル
-                  </Button>
-                  <Button size="small" variant="contained" onClick={handleAdd}>
-                    追加
-                  </Button>
-                </Box>
-              </Box>
-            </ListItem>
-          )}
-        </List>
-
-        {/* 追加ボタン */}
-        {!isAdding && !editingId && (
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={() => setIsAdding(true)}
-              fullWidth
-            >
-              新しいプリセットを追加
-            </Button>
+        {/* プリセット一覧（カード + スワイプ） */}
+        {presets.length === 0 && !isAdding ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              プリセットがまだ登録されていません。
+              <br />
+              「追加」ボタンから新しいプリセットを作成してください。
+            </Typography>
           </Box>
+        ) : (
+          presets.length > 0 && (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'center' }}>
+                {presets.length}件のプリセット（スワイプで切り替え）
+              </Typography>
+              <Box sx={{ position: 'relative' }}>
+                <Swiper
+                  modules={[Navigation, Pagination]}
+                  spaceBetween={16}
+                  slidesPerView={1}
+                  navigation
+                  pagination={{ clickable: true }}
+                  onSwiper={(swiper) => {
+                    swiperRef.current = swiper;
+                  }}
+                  style={{
+                    paddingBottom: '40px',
+                  }}
+                >
+                  {presets.map((preset) => (
+                    <SwiperSlide key={preset.id}>
+                      {editingId === preset.id ? (
+                        // 編集モード
+                        <Card sx={{ minHeight: 200, bgcolor: 'warning.light' }}>
+                          <CardContent>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+                              プリセット編集
+                            </Typography>
+                            <TextField
+                              label="帳合先"
+                              value={presetValue}
+                              onChange={(e) => setPresetValue(e.target.value)}
+                              fullWidth
+                              size="small"
+                              placeholder="例: ○○商事"
+                            />
+                          </CardContent>
+                          <CardActions sx={{ justifyContent: 'flex-end', gap: 1 }}>
+                            <Button size="small" onClick={handleCancelEdit}>
+                              キャンセル
+                            </Button>
+                            <Button size="small" variant="contained" onClick={handleSaveEdit}>
+                              保存
+                            </Button>
+                          </CardActions>
+                        </Card>
+                      ) : (
+                        // 表示モード
+                        <Card sx={{ minHeight: 200, display: 'flex', flexDirection: 'column' }}>
+                          <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <Typography variant="overline" color="text.secondary" sx={{ mb: 1 }}>
+                              帳合先
+                            </Typography>
+                            <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
+                              {preset.supplier}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              作成日: {preset.createdAt.toLocaleDateString('ja-JP')}
+                            </Typography>
+                          </CardContent>
+                          <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+                            <Stack direction="row" spacing={1}>
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleStartEdit(preset)}
+                                aria-label="編集"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                color="error"
+                                onClick={() => handleDelete(preset.id)}
+                                aria-label="削除"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Stack>
+                          </CardActions>
+                        </Card>
+                      )}
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              </Box>
+            </>
+          )
         )}
       </DialogContent>
 
