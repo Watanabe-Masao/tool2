@@ -465,14 +465,24 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
-            <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-              <Button variant="outlined" size="small" onClick={handleSelectAll} fullWidth>
-                全選択
-              </Button>
-              <Button variant="outlined" size="small" onClick={handleClearAll} color="error" fullWidth>
-                全クリア
-              </Button>
-            </Stack>
+            <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
+              <Chip
+                label="全選択"
+                onClick={handleSelectAll}
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ fontWeight: 'medium' }}
+              />
+              <Chip
+                label="全クリア"
+                onClick={handleClearAll}
+                color="error"
+                variant="outlined"
+                size="small"
+                sx={{ fontWeight: 'medium' }}
+              />
+            </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
               {availableStores.map((store) => {
                 const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
