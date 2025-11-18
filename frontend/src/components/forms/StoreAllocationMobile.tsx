@@ -320,14 +320,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 全店舗選択
-   */
-  const handleSelectAll = () => {
-    const allCodes = new Set(enabledStores.map((s) => s.code));
-    setSelectedStores(allCodes);
-  };
-
-  /**
    * カテゴリ内の店舗を取得
    */
   const getCategoryStores = (categoryId: string) => {
@@ -366,6 +358,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
     return Array.from(stores);
   }, [selectedCategories, enabledStores, categories]);
+
+  /**
+   * 全店舗選択（カテゴリ絞り込みが適用されている場合は絞り込まれた店舗のみ）
+   */
+  const handleSelectAll = () => {
+    const allCodes = new Set(availableStores.map((s) => s.code));
+    setSelectedStores(allCodes);
+  };
 
   /**
    * カテゴリ選択をトグル
@@ -562,65 +562,99 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </Typography>
 
           {selectedStoresList.length > 0 ? (
-            <Box
-              sx={{
-                display: 'flex',
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                gap: 1.5,
-                pb: 1.5,
-                WebkitOverflowScrolling: 'touch',
-                '&::-webkit-scrollbar': {
-                  height: 6,
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                  borderRadius: 3,
-                },
-              }}
-            >
-              {selectedStoresList.map((store) => {
-                const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-                const quantity = allocations[storeIndex] || 0;
+            <Box sx={{ position: 'relative' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  gap: 1,
+                  pb: 1.5,
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'thin',
+                  '&::-webkit-scrollbar': {
+                    height: 8,
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    borderRadius: 4,
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    borderRadius: 4,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0,0,0,0.6)',
+                    },
+                  },
+                }}
+              >
+                {selectedStoresList.map((store) => {
+                  const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+                  const quantity = allocations[storeIndex] || 0;
 
-                return (
-                  <Card
-                    key={store.code}
-                    variant="outlined"
-                    sx={{
-                      minWidth: 120,
-                      maxWidth: 120,
-                      flexShrink: 0,
-                      bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
-                    }}
-                  >
-                    <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                      <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
-                        {store.code}：{store.name}
-                      </Typography>
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={quantity}
-                        onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
-                        label="配分数"
-                        fullWidth
-                        inputProps={{
-                          inputMode: 'numeric',
-                          pattern: '[0-9]*',
-                          min: 0,
-                          style: { textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' },
-                        }}
-                        sx={{
-                          '& .MuiInputLabel-root': {
-                            fontSize: '0.75rem',
-                          },
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                  return (
+                    <Card
+                      key={store.code}
+                      variant="outlined"
+                      sx={{
+                        minWidth: 60,
+                        maxWidth: 60,
+                        flexShrink: 0,
+                        bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
+                      }}
+                    >
+                      <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
+                        <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.25, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                          {store.code}
+                        </Typography>
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={quantity}
+                          onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                          fullWidth
+                          inputProps={{
+                            inputMode: 'numeric',
+                            pattern: '[0-9]*',
+                            min: 0,
+                            style: { textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 2px' },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              fontSize: '0.7rem',
+                            },
+                            '& .MuiInputBase-input': {
+                              padding: '4px 2px',
+                            },
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+              {/* 右側のグラデーションインジケーター（スクロール可能を示す） */}
+              {selectedStoresList.length > 5 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 40,
+                    background: 'linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    pr: 0.5,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                    →
+                  </Typography>
+                </Box>
+              )}
             </Box>
           ) : (
             <Alert severity="info" sx={{ fontSize: '0.8rem', py: 0.5 }}>
