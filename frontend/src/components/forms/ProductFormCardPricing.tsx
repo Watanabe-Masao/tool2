@@ -239,7 +239,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText={`センター着原価 × ${(1 + centerFeeRate / 100).toFixed(2)}`}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: 'grey.200',
+                  fontWeight: 'medium',
                 },
               }}
             />
@@ -314,7 +315,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText="(売価 - 店着原価) / 売価 × 100"
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: 'grey.200',
+                  fontWeight: 'medium',
                 },
               }}
             />
@@ -331,7 +333,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: profitAmount < 0 ? 'error.light' : 'grey.200',
+                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
+                  fontWeight: 'medium',
                 },
               }}
             />
