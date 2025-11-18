@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Chip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
@@ -97,10 +97,67 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   /**
+   * フォームデータ変更時にSwiperの高さを更新
+   */
+  useEffect(() => {
+    if (swiperRef.current) {
+      // Swiperを更新して高さを再計算
+      setTimeout(() => {
+        swiperRef.current?.update();
+        swiperRef.current?.updateAutoHeight(300);
+      }, 100);
+    }
+  }, [formData.products?.length]); // 商品数が変更されたときに更新
+
+  /**
+   * コンテンツサイズ変更を監視してSwiperを更新
+   */
+  useEffect(() => {
+    if (!swiperRef.current) return;
+
+    const swiperEl = swiperRef.current.el;
+    if (!swiperEl) return;
+
+    // ResizeObserverでコンテンツのサイズ変更を検出
+    const resizeObserver = new ResizeObserver(() => {
+      if (swiperRef.current) {
+        swiperRef.current.update();
+        swiperRef.current.updateAutoHeight(300);
+      }
+    });
+
+    // すべてのスライドを監視
+    const slides = swiperEl.querySelectorAll('.swiper-slide');
+    slides.forEach((slide) => {
+      resizeObserver.observe(slide);
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [activeStep]); // アクティブステップが変わったときに再設定
+
+  /**
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
     setActiveStep(swiper.activeIndex);
+    // スライド変更時に高さを更新
+    setTimeout(() => {
+      swiper.update();
+      swiper.updateAutoHeight(300);
+    }, 50);
+  };
+
+  /**
+   * スライド遷移完了時の処理
+   */
+  const handleSlideChangeTransitionEnd = (swiper: SwiperType) => {
+    // 遷移完了後に高さを再計算
+    setTimeout(() => {
+      swiper.update();
+      swiper.updateAutoHeight(300);
+    }, 50);
   };
 
   /**
@@ -303,6 +360,7 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
+                onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
