@@ -126,55 +126,55 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '店着日',
         field: 'deliveryDate',
-        width: 110,
+        width: 90,
         pinned: 'left',
         cellStyle: { textAlign: 'center', fontWeight: '500' },
       },
       {
         headerName: '品名',
         field: 'productName',
-        width: 180,
+        width: 140,
         pinned: 'left',
         cellStyle: { fontWeight: '500' },
       },
       {
         headerName: '産地',
         field: 'origin',
-        width: 120,
+        width: 90,
       },
       {
         headerName: '規格',
         field: 'specification',
-        width: 100,
+        width: 70,
       },
       {
         headerName: '入数',
         field: 'quantityPerPackage',
-        width: 90,
+        width: 70,
         cellStyle: { textAlign: 'center' },
       },
       {
         headerName: '店着原価',
         field: 'storeCost',
-        width: 110,
+        width: 90,
         cellStyle: { textAlign: 'right', fontWeight: '500' },
       },
       {
         headerName: '税抜',
         field: 'priceExcludingTax',
-        width: 110,
+        width: 90,
         cellStyle: { textAlign: 'right' },
       },
       {
         headerName: '税込',
         field: 'priceIncludingTax',
-        width: 110,
+        width: 90,
         cellStyle: { textAlign: 'right', color: '#1976d2' },
       },
       {
         headerName: 'ケース',
         field: 'totalPackages',
-        width: 80,
+        width: 60,
         cellStyle: { textAlign: 'center', fontWeight: '500' },
       },
     ];
@@ -184,7 +184,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       cols.push({
         headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
-        width: 65,
+        width: 55,
         headerClass: 'store-header',
         cellStyle: (params) => {
           const value = params.value as number;
@@ -207,8 +207,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '合計',
         field: 'total',
-        width: 80,
-        pinned: 'right',
+        width: 60,
         cellStyle: {
           textAlign: 'center',
           backgroundColor: '#fff8e1',
@@ -219,8 +218,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '納品数',
         field: 'totalDelivery',
-        width: 80,
-        pinned: 'right',
+        width: 65,
         cellStyle: {
           textAlign: 'center',
           fontWeight: '600',
@@ -229,8 +227,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '差異',
         field: 'difference',
-        width: 80,
-        pinned: 'right',
+        width: 60,
         cellStyle: (params) => {
           const diff = params.value as number;
           return {
@@ -244,8 +241,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '帳合先',
         field: 'supplier',
-        width: 150,
-        pinned: 'right',
+        width: 120,
       }
     );
 
@@ -263,8 +259,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         filter: true,
         floatingFilter: false,
       },
-      rowHeight: 48,
-      headerHeight: 56,
+      rowHeight: 36,
+      headerHeight: 40,
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
@@ -323,24 +319,23 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
             },
             '& .ag-header-cell': {
               fontWeight: '600',
-              fontSize: '0.875rem',
+              fontSize: '0.75rem',
+              padding: '4px 8px',
             },
             '& .store-header': {
               backgroundColor: '#e8eaf6',
-              fontSize: '0.75rem',
+              fontSize: '0.7rem',
             },
             '& .ag-cell': {
-              fontSize: '0.875rem',
-              lineHeight: '48px',
+              fontSize: '0.8rem',
+              lineHeight: '36px',
+              padding: '0 8px',
             },
             '& .ag-row:hover': {
               backgroundColor: '#f5f5f5 !important',
             },
             '& .ag-pinned-left-header, & .ag-pinned-left-cols-container': {
               boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
-            },
-            '& .ag-pinned-right-header, & .ag-pinned-right-cols-container': {
-              boxShadow: '-2px 0 4px rgba(0,0,0,0.1)',
             },
           }}
         >
