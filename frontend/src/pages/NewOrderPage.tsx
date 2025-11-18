@@ -405,6 +405,8 @@ export const NewOrderPage: React.FC = () => {
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
+                noSwiping={true}
+                noSwipingClass="swiper-no-swiping"
                 watchSlidesProgress={true}
                 observer={true}
                 observeParents={true}

@@ -566,7 +566,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
         </Card>
 
         {/* 5. 配分数量入力（横スクロール形式） */}
-        <Box>
+        <Box className="swiper-no-swiping">
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
             <Typography variant="subtitle2" fontWeight="bold">
               配分数を入力 ({selectedStoresList.length}店舗)
@@ -582,6 +582,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
           {selectedStoresList.length > 0 ? (
             <Box
+              className="swiper-no-swiping"
               sx={{
                 position: 'relative',
                 border: '2px solid',
