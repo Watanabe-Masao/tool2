@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -67,6 +67,15 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   onClose,
   formData,
 }) => {
+  // 選択された行のデータ
+  const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
+
+  // モーダルを閉じる時に選択をリセット
+  const handleClose = () => {
+    setSelectedRow(null);
+    onClose();
+  };
+
   /**
    * グリッド行データを生成
    */
@@ -126,39 +135,10 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   const columnDefs = useMemo<ColDef<GridRowData>[]>(() => {
     const cols: ColDef<GridRowData>[] = [
       {
-        headerName: '商品情報',
+        headerName: '品名',
         field: 'productName',
-        width: 200,
+        width: 150,
         cellStyle: { fontWeight: '500', fontSize: '0.85rem' },
-        cellRenderer: (params: any) => {
-          const data = params.data as GridRowData;
-          return `
-            <div style="display: flex; flex-direction: column; padding: 4px 0;">
-              <div style="font-weight: 600; color: #1976d2;">${data.productName || '-'}</div>
-              <div style="font-size: 0.7rem; color: #666;">
-                ${data.origin || '-'} / ${data.specification || '-'} / ${data.quantityPerPackage || '-'}
-              </div>
-            </div>
-          `;
-        },
-      },
-      {
-        headerName: '店原',
-        field: 'storeCost',
-        width: 80,
-        cellStyle: { textAlign: 'right', fontWeight: '500' },
-      },
-      {
-        headerName: '税抜',
-        field: 'priceExcludingTax',
-        width: 80,
-        cellStyle: { textAlign: 'right' },
-      },
-      {
-        headerName: '税込',
-        field: 'priceIncludingTax',
-        width: 80,
-        cellStyle: { textAlign: 'right', color: '#1976d2', fontWeight: '500' },
       },
     ];
 
@@ -242,21 +222,24 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         filter: true,
         floatingFilter: false,
       },
-      rowHeight: 56,
+      rowHeight: 40,
       headerHeight: 42,
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
       animateRows: true,
-      enableRangeSelection: true,
+      rowSelection: 'single',
+      onRowClicked: (event) => {
+        setSelectedRow(event.data as GridRowData);
+      },
     }),
-    []
+    [setSelectedRow]
   );
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="xl"
       fullWidth
       PaperProps={{
@@ -268,13 +251,13 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
         <Typography variant="h6">配分表プレビュー</Typography>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent dividers sx={{ p: 0 }}>
-        {/* ヘッダー情報エリア */}
+        {/* グローバル情報エリア */}
         <Box sx={{ px: 2, py: 1.5, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             <Chip
@@ -295,11 +278,47 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
             />
           </Stack>
         </Box>
+
+        {/* 選択行の詳細情報エリア */}
+        {selectedRow && (
+          <Box sx={{ px: 2, py: 1.5, bgcolor: '#e3f2fd', borderBottom: '1px solid #90caf9' }}>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, color: '#1565c0' }}>
+              選択中の商品
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Chip
+                label={`品名: ${selectedRow.productName}`}
+                size="small"
+                color="primary"
+              />
+              <Chip
+                label={`店着日: ${selectedRow.deliveryDate}`}
+                size="small"
+                variant="outlined"
+              />
+              <Chip
+                label={`店着原価: ${selectedRow.storeCost}`}
+                size="small"
+                variant="outlined"
+              />
+              <Chip
+                label={`税抜売価: ${selectedRow.priceExcludingTax}`}
+                size="small"
+                variant="outlined"
+              />
+              <Chip
+                label={`帳合先: ${selectedRow.supplier}`}
+                size="small"
+                variant="outlined"
+              />
+            </Stack>
+          </Box>
+        )}
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: 'calc(90vh - 200px)',
+            height: selectedRow ? 'calc(90vh - 270px)' : 'calc(90vh - 200px)',
             '& .ag-header': {
               backgroundColor: '#f8f9fa',
               borderBottom: '2px solid #dee2e6',
@@ -315,10 +334,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
             },
             '& .ag-cell': {
               fontSize: '0.8rem',
-              lineHeight: '56px',
+              lineHeight: '40px',
               padding: '0 8px',
-              display: 'flex',
-              alignItems: 'center',
             },
             '& .ag-row:hover': {
               backgroundColor: '#f8f9fa !important',
@@ -340,7 +357,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 1.5 }}>
-        <Button onClick={onClose} variant="contained" fullWidth sx={{ maxWidth: 200 }}>
+        <Button onClick={handleClose} variant="contained" fullWidth sx={{ maxWidth: 200 }}>
           閉じる
         </Button>
       </DialogActions>
