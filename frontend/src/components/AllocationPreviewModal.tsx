@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -18,6 +19,9 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
+
+// AG Grid モジュールを登録
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
  * AllocationPreviewModalのProps
