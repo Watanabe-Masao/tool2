@@ -8,6 +8,8 @@ import {
   Box,
   Typography,
   IconButton,
+  Chip,
+  Stack,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
@@ -124,58 +126,39 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   const columnDefs = useMemo<ColDef<GridRowData>[]>(() => {
     const cols: ColDef<GridRowData>[] = [
       {
-        headerName: '店着日',
-        field: 'deliveryDate',
-        width: 90,
-        pinned: 'left',
-        cellStyle: { textAlign: 'center', fontWeight: '500' },
-      },
-      {
-        headerName: '品名',
+        headerName: '商品情報',
         field: 'productName',
-        width: 140,
-        pinned: 'left',
-        cellStyle: { fontWeight: '500' },
+        width: 200,
+        cellStyle: { fontWeight: '500', fontSize: '0.85rem' },
+        cellRenderer: (params: any) => {
+          const data = params.data as GridRowData;
+          return `
+            <div style="display: flex; flex-direction: column; padding: 4px 0;">
+              <div style="font-weight: 600; color: #1976d2;">${data.productName || '-'}</div>
+              <div style="font-size: 0.7rem; color: #666;">
+                ${data.origin || '-'} / ${data.specification || '-'} / ${data.quantityPerPackage || '-'}
+              </div>
+            </div>
+          `;
+        },
       },
       {
-        headerName: '産地',
-        field: 'origin',
-        width: 90,
-      },
-      {
-        headerName: '規格',
-        field: 'specification',
-        width: 70,
-      },
-      {
-        headerName: '入数',
-        field: 'quantityPerPackage',
-        width: 70,
-        cellStyle: { textAlign: 'center' },
-      },
-      {
-        headerName: '店着原価',
+        headerName: '店原',
         field: 'storeCost',
-        width: 90,
+        width: 80,
         cellStyle: { textAlign: 'right', fontWeight: '500' },
       },
       {
         headerName: '税抜',
         field: 'priceExcludingTax',
-        width: 90,
+        width: 80,
         cellStyle: { textAlign: 'right' },
       },
       {
         headerName: '税込',
         field: 'priceIncludingTax',
-        width: 90,
-        cellStyle: { textAlign: 'right', color: '#1976d2' },
-      },
-      {
-        headerName: 'ケース',
-        field: 'totalPackages',
-        width: 60,
-        cellStyle: { textAlign: 'center', fontWeight: '500' },
+        width: 80,
+        cellStyle: { textAlign: 'right', color: '#1976d2', fontWeight: '500' },
       },
     ];
 
@@ -259,21 +242,13 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         filter: true,
         floatingFilter: false,
       },
-      rowHeight: 36,
-      headerHeight: 40,
+      rowHeight: 56,
+      headerHeight: 42,
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
-      rowSelection: 'single',
       animateRows: true,
       enableRangeSelection: true,
-      // ストライプ行
-      getRowStyle: (params) => {
-        if (params.node.rowIndex! % 2 === 0) {
-          return { background: '#fafafa' };
-        }
-        return { background: '#ffffff' };
-      },
     }),
     []
   );
@@ -291,51 +266,68 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h6" component="span">
-            配分表プレビュー
-          </Typography>
-          {formData.deliveryDate && (
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-              店着日: {format(formData.deliveryDate, 'yyyy年M月d日(E)', { locale: ja })}
-            </Typography>
-          )}
-        </Box>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <Typography variant="h6">配分表プレビュー</Typography>
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent dividers sx={{ p: 0 }}>
+        {/* ヘッダー情報エリア */}
+        <Box sx={{ px: 2, py: 1.5, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Chip
+              label={`店着日: ${formData.deliveryDate ? format(formData.deliveryDate, 'M/d(E)', { locale: ja }) : '-'}`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+            <Chip
+              label={`帳合先: ${formData.supplier || '-'}`}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              label={`商品数: ${formData.products.length}件`}
+              size="small"
+              color="default"
+            />
+          </Stack>
+        </Box>
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: 'calc(90vh - 150px)',
+            height: 'calc(90vh - 200px)',
             '& .ag-header': {
-              backgroundColor: '#f5f5f5',
-              borderBottom: '2px solid #e0e0e0',
+              backgroundColor: '#f8f9fa',
+              borderBottom: '2px solid #dee2e6',
             },
             '& .ag-header-cell': {
               fontWeight: '600',
               fontSize: '0.75rem',
-              padding: '4px 8px',
+              padding: '6px 8px',
             },
             '& .store-header': {
-              backgroundColor: '#e8eaf6',
+              backgroundColor: '#e7f1ff',
               fontSize: '0.7rem',
             },
             '& .ag-cell': {
               fontSize: '0.8rem',
-              lineHeight: '36px',
+              lineHeight: '56px',
               padding: '0 8px',
+              display: 'flex',
+              alignItems: 'center',
             },
             '& .ag-row:hover': {
-              backgroundColor: '#f5f5f5 !important',
+              backgroundColor: '#f8f9fa !important',
             },
-            '& .ag-pinned-left-header, & .ag-pinned-left-cols-container': {
-              boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
+            '& .ag-row-even': {
+              backgroundColor: '#ffffff',
+            },
+            '& .ag-row-odd': {
+              backgroundColor: '#fafafa',
             },
           }}
         >
@@ -347,11 +339,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto' }}>
-          商品数: {formData.products.length}件
-        </Typography>
-        <Button onClick={onClose} variant="contained">
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
+        <Button onClick={onClose} variant="contained" fullWidth sx={{ maxWidth: 200 }}>
           閉じる
         </Button>
       </DialogActions>
