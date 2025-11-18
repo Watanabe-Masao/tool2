@@ -567,19 +567,30 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box>
-          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>
-            配分数を入力 ({selectedStoresList.length}店舗)
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              配分数を入力 ({selectedStoresList.length}店舗)
+            </Typography>
+            <Chip
+              label="← 横スワイプ →"
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ fontSize: '0.65rem', height: 20 }}
+            />
+          </Box>
 
           {selectedStoresList.length > 0 ? (
             <Box
               sx={{
                 position: 'relative',
-                border: '1px solid',
-                borderColor: 'divider',
+                border: '2px solid',
+                borderColor: 'primary.main',
                 borderRadius: 1,
                 bgcolor: 'background.paper',
                 p: 1,
+                // 横スワイプ専用エリアであることを視覚的に示す
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}
             >
               <Box
@@ -594,6 +605,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   scrollBehavior: 'smooth',
                   scrollSnapType: 'x proximity',
                   scrollbarWidth: 'thin',
+                  // 重要: 横スクロールのみを許可、縦スクロールを無効化
+                  touchAction: 'pan-x',
+                  // スクロール中は縦スクロールをブロック
+                  overscrollBehaviorX: 'contain',
+                  overscrollBehaviorY: 'none',
                   '&::-webkit-scrollbar': {
                     height: 8,
                   },
@@ -625,6 +641,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         scrollSnapAlign: 'start',
                         bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
                         transition: 'all 0.2s ease',
+                        touchAction: 'pan-x', // カード上でも横スワイプのみ許可
                         '&:hover': {
                           boxShadow: 1,
                         },
@@ -668,7 +685,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     right: 8,
                     top: 8,
                     bottom: 8,
-                    width: 50,
+                    width: 60,
                     background: 'linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0) 100%)',
                     pointerEvents: 'none',
                     display: 'flex',
@@ -677,9 +694,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     pr: 1,
                   }}
                 >
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 'bold' }}>
-                    →
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'primary.main', fontWeight: 'bold', lineHeight: 1 }}>
+                      スワイプ
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontSize: '0.8rem', color: 'primary.main', fontWeight: 'bold' }}>
+                      →
+                    </Typography>
+                  </Box>
                 </Box>
               )}
             </Box>
