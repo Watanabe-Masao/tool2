@@ -17,7 +17,7 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { ExpandMore } from '@mui/icons-material';
+import { ExpandMore, Clear, Lock } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
@@ -187,10 +187,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
+  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     category: true,  // デフォルトでオープン
     stores: false,   // デフォルトで閉じる
   });
+
+  // 長押し検出用のタイマー（固定機能用）
+  const longPressTimer = React.useRef<number | null>(null);
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
   useEffect(() => {
@@ -252,19 +256,48 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 均等配分
+   * 均等配分（固定店舗を除外）
    */
   const handleEqualDistribution = () => {
     if (selectedStores.size === 0) return;
 
-    const perStore = Math.floor(totalDelivery / selectedStores.size);
-    const remainder = totalDelivery % selectedStores.size;
-
     const newAllocations = [...allocations];
+
+    // 固定店舗の合計配分数を計算
+    let lockedTotal = 0;
+    STORE_DATA.forEach((store, index) => {
+      if (lockedStores.has(store.code)) {
+        lockedTotal += allocations[index] || 0;
+      }
+    });
+
+    // 固定されていない選択店舗
+    const unlockedSelectedStores = Array.from(selectedStores).filter(
+      (code) => !lockedStores.has(code)
+    );
+
+    if (unlockedSelectedStores.length === 0) {
+      // 全て固定されている場合は何もしない
+      return;
+    }
+
+    // 残りの配分数
+    const remainingDelivery = totalDelivery - lockedTotal;
+
+    if (remainingDelivery < 0) {
+      alert('固定された配分数が総納品数を超えています');
+      return;
+    }
+
+    const perStore = Math.floor(remainingDelivery / unlockedSelectedStores.length);
+    const remainder = remainingDelivery % unlockedSelectedStores.length;
     let remainderDistributed = 0;
 
     STORE_DATA.forEach((store, index) => {
-      if (selectedStores.has(store.code)) {
+      if (lockedStores.has(store.code)) {
+        // 固定店舗はそのまま
+        return;
+      } else if (selectedStores.has(store.code)) {
         newAllocations[index] = perStore;
         if (remainderDistributed < remainder) {
           newAllocations[index] += 1;
@@ -279,15 +312,43 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 構成比による配分
+   * 構成比による配分（固定店舗を除外）
    */
   const handleRatioDistribution = () => {
     if (selectedStores.size === 0) return;
 
+    const newAllocations = [...allocations];
+
+    // 固定店舗の合計配分数を計算
+    let lockedTotal = 0;
+    STORE_DATA.forEach((store, index) => {
+      if (lockedStores.has(store.code)) {
+        lockedTotal += allocations[index] || 0;
+      }
+    });
+
+    // 固定されていない選択店舗
+    const unlockedSelectedStores = Array.from(selectedStores).filter(
+      (code) => !lockedStores.has(code)
+    );
+
+    if (unlockedSelectedStores.length === 0) {
+      // 全て固定されている場合は何もしない
+      return;
+    }
+
+    // 残りの配分数
+    const remainingDelivery = totalDelivery - lockedTotal;
+
+    if (remainingDelivery < 0) {
+      alert('固定された配分数が総納品数を超えています');
+      return;
+    }
+
     const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
     let totalRatio = 0;
 
-    selectedStores.forEach((code) => {
+    unlockedSelectedStores.forEach((code) => {
       const setting = storeSettings[code];
       const ratio = setting?.salesRatio || 0;
       selectedStoresWithRatio.push({ code, ratio });
@@ -299,18 +360,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
-    const newAllocations = [...allocations];
     let allocated = 0;
 
     const distributionPlan: Array<{ code: string; quantity: number }> = [];
     selectedStoresWithRatio.forEach(({ code, ratio }) => {
       const normalizedRatio = ratio / totalRatio;
-      const quantity = Math.floor(totalDelivery * normalizedRatio);
+      const quantity = Math.floor(remainingDelivery * normalizedRatio);
       distributionPlan.push({ code, quantity });
       allocated += quantity;
     });
 
-    const remainingQty = totalDelivery - allocated;
+    const remainingQty = remainingDelivery - allocated;
     if (remainingQty > 0) {
       const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
       for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
@@ -322,6 +382,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     }
 
     STORE_DATA.forEach((store, index) => {
+      if (lockedStores.has(store.code)) {
+        // 固定店舗はそのまま
+        return;
+      }
       const planItem = distributionPlan.find((p) => p.code === store.code);
       newAllocations[index] = planItem ? planItem.quantity : 0;
     });
@@ -346,6 +410,54 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const handleClearAll = () => {
     onChange(new Array(STORE_COUNT).fill(0));
     setSelectedStores(new Set());
+    setLockedStores(new Set());
+  };
+
+  /**
+   * 選択店舗の配分をクリア
+   */
+  const handleClearAllocations = () => {
+    const newAllocations = [...allocations];
+    selectedStoresList.forEach((store) => {
+      const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+      if (storeIndex !== -1) {
+        newAllocations[storeIndex] = 0;
+      }
+    });
+    onChange(newAllocations);
+    setLockedStores(new Set());
+  };
+
+  /**
+   * 店舗の固定/解除をトグル
+   */
+  const handleToggleLock = (storeCode: string) => {
+    const newLockedStores = new Set(lockedStores);
+    if (newLockedStores.has(storeCode)) {
+      newLockedStores.delete(storeCode);
+    } else {
+      newLockedStores.add(storeCode);
+    }
+    setLockedStores(newLockedStores);
+  };
+
+  /**
+   * 長押し開始（固定機能）
+   */
+  const handleLongPressStart = (storeCode: string) => {
+    longPressTimer.current = window.setTimeout(() => {
+      handleToggleLock(storeCode);
+    }, 500); // 500ms長押しで固定/解除
+  };
+
+  /**
+   * 長押し終了
+   */
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
 
   /**
@@ -400,26 +512,48 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * プレビュー値を計算（均等配分または構成比配分）
+   * プレビュー値を計算（均等配分または構成比配分、固定店舗を除外）
    */
   const calculatePreview = useMemo(() => {
     if (selectedStores.size === 0) return {};
 
     const preview: Record<string, number> = {};
 
+    // 固定店舗の合計配分数を計算
+    let lockedTotal = 0;
+    STORE_DATA.forEach((store, index) => {
+      if (lockedStores.has(store.code)) {
+        lockedTotal += allocations[index] || 0;
+      }
+    });
+
+    // 固定されていない選択店舗
+    const unlockedSelectedStores = Array.from(selectedStores).filter(
+      (code) => !lockedStores.has(code)
+    );
+
+    if (unlockedSelectedStores.length === 0) {
+      return preview;
+    }
+
+    // 残りの配分数
+    const remainingDelivery = totalDelivery - lockedTotal;
+
+    if (remainingDelivery < 0) {
+      return preview;
+    }
+
     if (distributionMode === 'equal') {
       // 均等配分のプレビュー
-      const perStore = Math.floor(totalDelivery / selectedStores.size);
-      const remainder = totalDelivery % selectedStores.size;
+      const perStore = Math.floor(remainingDelivery / unlockedSelectedStores.length);
+      const remainder = remainingDelivery % unlockedSelectedStores.length;
       let remainderDistributed = 0;
 
-      STORE_DATA.forEach((store) => {
-        if (selectedStores.has(store.code)) {
-          preview[store.code] = perStore;
-          if (remainderDistributed < remainder) {
-            preview[store.code] += 1;
-            remainderDistributed++;
-          }
+      unlockedSelectedStores.forEach((code) => {
+        preview[code] = perStore;
+        if (remainderDistributed < remainder) {
+          preview[code] += 1;
+          remainderDistributed++;
         }
       });
     } else {
@@ -427,7 +561,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
       let totalRatio = 0;
 
-      selectedStores.forEach((code) => {
+      unlockedSelectedStores.forEach((code) => {
         const setting = storeSettings[code];
         const ratio = setting?.salesRatio || 0;
         selectedStoresWithRatio.push({ code, ratio });
@@ -436,17 +570,15 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       if (totalRatio === 0) {
         // 構成比が0の場合は均等配分にフォールバック
-        const perStore = Math.floor(totalDelivery / selectedStores.size);
-        const remainder = totalDelivery % selectedStores.size;
+        const perStore = Math.floor(remainingDelivery / unlockedSelectedStores.length);
+        const remainder = remainingDelivery % unlockedSelectedStores.length;
         let remainderDistributed = 0;
 
-        STORE_DATA.forEach((store) => {
-          if (selectedStores.has(store.code)) {
-            preview[store.code] = perStore;
-            if (remainderDistributed < remainder) {
-              preview[store.code] += 1;
-              remainderDistributed++;
-            }
+        unlockedSelectedStores.forEach((code) => {
+          preview[code] = perStore;
+          if (remainderDistributed < remainder) {
+            preview[code] += 1;
+            remainderDistributed++;
           }
         });
       } else {
@@ -455,12 +587,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
         selectedStoresWithRatio.forEach(({ code, ratio }) => {
           const normalizedRatio = ratio / totalRatio;
-          const quantity = Math.floor(totalDelivery * normalizedRatio);
+          const quantity = Math.floor(remainingDelivery * normalizedRatio);
           distributionPlan.push({ code, quantity });
           allocated += quantity;
         });
 
-        const remainingQty = totalDelivery - allocated;
+        const remainingQty = remainingDelivery - allocated;
         if (remainingQty > 0) {
           const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
           for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
@@ -478,7 +610,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     }
 
     return preview;
-  }, [selectedStores, distributionMode, totalDelivery, storeSettings]);
+  }, [selectedStores, distributionMode, totalDelivery, storeSettings, lockedStores, allocations]);
 
   /**
    * 全店舗選択（カテゴリ絞り込みが適用されている場合は絞り込まれた店舗のみ）
@@ -715,71 +847,84 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box className="swiper-no-swiping">
-          <Box sx={{ mb: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mr: 0.5 }}>
-              商品 {productIndex + 1}:
-            </Typography>
-            {origin && (
-              <Box
-                component="span"
-                sx={{
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 0.5,
-                  bgcolor: 'grey.200',
-                  color: 'text.primary',
-                  fontSize: '0.75rem',
-                }}
-              >
-                {origin}
-              </Box>
-            )}
-            {productName && (
-              <Box
-                component="span"
-                sx={{
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 0.5,
-                  bgcolor: 'primary.100',
-                  color: 'text.primary',
-                  fontSize: '0.75rem',
-                  fontWeight: 'medium',
-                }}
-              >
-                {productName}
-              </Box>
-            )}
-            {specification && (
-              <Box
-                component="span"
-                sx={{
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 0.5,
-                  bgcolor: 'grey.200',
-                  color: 'text.primary',
-                  fontSize: '0.75rem',
-                }}
-              >
-                {specification}
-              </Box>
-            )}
-            {quantityPerPackage && unit && (
-              <Box
-                component="span"
-                sx={{
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 0.5,
-                  bgcolor: 'grey.200',
-                  color: 'text.primary',
-                  fontSize: '0.75rem',
-                }}
-              >
-                {quantityPerPackage}
-                {unit}
-              </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center', flex: 1 }}>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mr: 0.5 }}>
+                商品 {productIndex + 1}:
+              </Typography>
+              {origin && (
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 0.5,
+                    bgcolor: 'grey.200',
+                    color: 'text.primary',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {origin}
+                </Box>
+              )}
+              {productName && (
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 0.5,
+                    bgcolor: 'primary.100',
+                    color: 'text.primary',
+                    fontSize: '0.75rem',
+                    fontWeight: 'medium',
+                  }}
+                >
+                  {productName}
+                </Box>
+              )}
+              {specification && (
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 0.5,
+                    bgcolor: 'grey.200',
+                    color: 'text.primary',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {specification}
+                </Box>
+              )}
+              {quantityPerPackage && unit && (
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 0.5,
+                    bgcolor: 'grey.200',
+                    color: 'text.primary',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {quantityPerPackage}
+                  {unit}
+                </Box>
+              )}
+            </Box>
+            {selectedStoresList.length > 0 && (
+              <Chip
+                icon={<Clear />}
+                label="クリア"
+                onClick={handleClearAllocations}
+                size="small"
+                color="error"
+                variant="outlined"
+                sx={{ fontSize: '0.7rem', height: 24 }}
+              />
             )}
           </Box>
 
@@ -835,17 +980,29 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   const quantity = allocations[storeIndex] || 0;
                   const previewValue = calculatePreview[store.code];
                   const hasPreview = previewValue !== undefined && quantity === 0;
+                  const isLocked = lockedStores.has(store.code);
 
                   return (
                     <Card
                       key={store.code}
                       variant="outlined"
+                      onTouchStart={() => handleLongPressStart(store.code)}
+                      onTouchEnd={handleLongPressEnd}
+                      onMouseDown={() => handleLongPressStart(store.code)}
+                      onMouseUp={handleLongPressEnd}
+                      onMouseLeave={handleLongPressEnd}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        handleToggleLock(store.code);
+                      }}
                       sx={{
                         minWidth: 70,
                         maxWidth: 70,
                         flexShrink: 0,
                         scrollSnapAlign: 'start',
-                        bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
+                        bgcolor: isLocked ? 'warning.50' : quantity > 0 ? 'success.50' : 'background.paper',
+                        borderColor: isLocked ? 'warning.main' : 'divider',
+                        borderWidth: isLocked ? 2 : 1,
                         transition: 'all 0.2s ease',
                         touchAction: 'pan-x', // カード上でも横スワイプのみ許可
                         '&:hover': {
@@ -854,9 +1011,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       }}
                     >
                       <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
-                        <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}>
-                          {store.code}
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography variant="caption" fontWeight="medium" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
+                            {store.code}
+                          </Typography>
+                          {isLocked && <Lock sx={{ fontSize: '0.8rem', color: 'warning.main' }} />}
+                        </Box>
                         <TextField
                           type="number"
                           size="small"

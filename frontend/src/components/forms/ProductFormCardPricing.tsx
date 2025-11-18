@@ -333,7 +333,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: profitAmount < 0 ? 'error.light' : 'grey.200',
+                  bgcolor: 'grey.200',
                   color: profitAmount < 0 ? 'error.dark' : 'text.primary',
                   fontWeight: 'medium',
                 },
