@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -9,7 +9,6 @@ import {
   MenuItem,
   Box,
   Divider,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -45,11 +44,6 @@ export const Header: React.FC = () => {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
-
-  // 長押し検出用のタイマーと状態
-  const longPressTimer = useRef<number | null>(null);
-  const [isLongPress, setIsLongPress] = useState(false);
 
   /**
    * ユーザーメニューを開く
@@ -76,40 +70,6 @@ export const Header: React.FC = () => {
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
-  };
-
-  /**
-   * オンラインチップ長押し開始（ページ更新用）
-   */
-  const handleChipLongPressStart = () => {
-    setIsLongPress(false);
-    longPressTimer.current = window.setTimeout(() => {
-      setIsLongPress(true);
-      setReloadDialogOpen(true);
-    }, 500);
-  };
-
-  /**
-   * オンラインチップ長押し終了
-   */
-  const handleChipLongPressEnd = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-
-    // 長押しでなければメニューを開く
-    if (!isLongPress) {
-      handleMenuOpen(event);
-    }
-    setIsLongPress(false);
-  };
-
-  /**
-   * ページを更新
-   */
-  const handleReload = () => {
-    window.location.reload();
   };
 
   /**
@@ -198,30 +158,29 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* オンラインチップ（クリックでメニュー、長押しで手動更新） */}
-              <Chip
-                icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
-                label={isMobile ? undefined : "オンライン"}
-                color="success"
+              {/* ユーザーメニューボタン */}
+              <IconButton
                 size="small"
-                onTouchStart={handleChipLongPressStart}
-                onTouchEnd={(e: any) => handleChipLongPressEnd(e)}
-                onMouseDown={handleChipLongPressStart}
-                onMouseUp={handleChipLongPressEnd}
-                onMouseLeave={() => {
-                  if (longPressTimer.current) {
-                    window.clearTimeout(longPressTimer.current);
-                    longPressTimer.current = null;
-                  }
-                }}
+                onClick={handleMenuOpen}
+                color="inherit"
+                aria-label="ユーザーメニュー"
                 sx={{
-                  cursor: 'pointer',
-                  '&:hover': {
-                    bgcolor: 'success.dark',
-                  },
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
                 }}
-                title="クリックでメニュー / 長押しでページを更新"
-              />
+              >
+                {loginProvider === 'google' ? (
+                  <Google fontSize="small" sx={{ color: 'white' }} />
+                ) : (
+                  <Email fontSize="small" sx={{ color: 'white' }} />
+                )}
+                {!isMobile && user.displayName && (
+                  <Typography variant="caption" sx={{ color: 'white' }}>
+                    {user.displayName}
+                  </Typography>
+                )}
+              </IconButton>
 
               {/* ユーザーメニュー */}
               <Menu
@@ -294,27 +253,6 @@ export const Header: React.FC = () => {
           </Button>
           <Button onClick={handleLogout} color="error" variant="contained">
             ログアウト
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ページ更新確認ダイアログ */}
-      <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
-        <DialogTitle>ページを更新</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            ページを更新しますか？
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-            保存されていない変更は失われる可能性があります。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleReload} color="primary" variant="contained">
-            更新
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Chip, Button } from '@mui/material';
+import { Container, Box, Alert, Chip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
@@ -43,6 +43,7 @@ export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -51,6 +52,9 @@ export const NewOrderPage: React.FC = () => {
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
+
+  // 長押し検出用のタイマー
+  const longPressTimer = useRef<number | null>(null);
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
@@ -219,18 +223,56 @@ export const NewOrderPage: React.FC = () => {
 
   const isMobile = isMobileDevice();
 
+  /**
+   * オンラインチップ長押し開始（ページ更新用）
+   */
+  const handleChipLongPressStart = () => {
+    longPressTimer.current = window.setTimeout(() => {
+      setReloadDialogOpen(true);
+    }, 500);
+  };
+
+  /**
+   * オンラインチップ長押し終了
+   */
+  const handleChipLongPressEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  /**
+   * ページを更新
+   */
+  const handleReload = () => {
+    window.location.reload();
+  };
+
   return (
     <FormProvider {...methods}>
       <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
             {/* ネットワーク状態・同期状態の表示 */}
             <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* オンライン/オフライン状態 */}
+              {/* オンライン/オフライン状態（長押しで手動更新） */}
               <Chip
                 label={isOnline ? 'オンライン' : 'オフライン'}
                 color={isOnline ? 'success' : 'warning'}
                 size="small"
                 variant="outlined"
+                onTouchStart={handleChipLongPressStart}
+                onTouchEnd={handleChipLongPressEnd}
+                onMouseDown={handleChipLongPressStart}
+                onMouseUp={handleChipLongPressEnd}
+                onMouseLeave={handleChipLongPressEnd}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    opacity: 0.8,
+                  },
+                }}
+                title="長押しでページを更新"
               />
 
               {/* 同期中表示 */}
@@ -361,6 +403,27 @@ export const NewOrderPage: React.FC = () => {
           activeStep={activeStep}
           totalSteps={TOTAL_STEPS}
         />
+
+        {/* ページ更新確認ダイアログ */}
+        <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
+          <DialogTitle>ページを更新</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              ページを更新しますか？
+            </DialogContentText>
+            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+              保存されていない変更は失われる可能性があります。
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleReload} color="primary" variant="contained">
+              更新
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </FormProvider>
   );
