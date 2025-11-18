@@ -68,6 +68,9 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   const rowData = useMemo<GridRowData[]>(() => {
     const rows: GridRowData[] = [];
 
+    console.log('Preview formData:', formData);
+    console.log('Products count:', formData.products.length);
+
     formData.products.forEach((product) => {
       // 総パッケージ数を計算
       const totalPackages = product.totalDelivery || 0;
@@ -123,6 +126,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       rows.push(dataRow, detailRow, blankRow);
     });
 
+    console.log('Generated rows:', rows);
+    console.log('Row count:', rows.length);
     return rows;
   }, [formData]);
 
@@ -314,19 +319,25 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent dividers sx={{ p: 0, overflow: 'hidden' }}>
+      <DialogContent dividers sx={{ p: 2 }}>
+        {/* デバッグ情報 */}
+        <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Typography variant="caption">
+            データ確認: {rowData.length}行, {columnDefs.length}列
+          </Typography>
+        </Box>
+
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: '100%',
+            height: 'calc(90vh - 220px)', // Dialog height - title - actions - debug
           }}
         >
           <AgGridReact<GridRowData>
             rowData={rowData}
             columnDefs={columnDefs}
             gridOptions={gridOptions}
-            domLayout="normal"
           />
         </Box>
       </DialogContent>
