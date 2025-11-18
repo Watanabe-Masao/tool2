@@ -281,44 +281,58 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
 
         {/* 選択行の詳細情報エリア */}
         {selectedRow && (
-          <Box sx={{ px: 2, py: 1.5, bgcolor: '#e3f2fd', borderBottom: '1px solid #90caf9' }}>
-            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, color: '#1565c0' }}>
-              選択中の商品
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Chip
-                label={`品名: ${selectedRow.productName}`}
-                size="small"
-                color="primary"
-              />
-              <Chip
-                label={`店着日: ${selectedRow.deliveryDate}`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`店着原価: ${selectedRow.storeCost}`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`税抜売価: ${selectedRow.priceExcludingTax}`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`帳合先: ${selectedRow.supplier}`}
-                size="small"
-                variant="outlined"
-              />
-            </Stack>
+          <Box sx={{ px: 2, py: 1, bgcolor: '#e3f2fd', borderBottom: '1px solid #90caf9' }}>
+            {/* 1行目: 店着日と集計情報 */}
+            <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
+                差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
+              </Typography>
+            </Box>
+
+            {/* 2行目: 商品基本情報 */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                産地: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.origin}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                品名: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.productName}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                規格: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.specification}</Box>
+              </Typography>
+            </Box>
+
+            {/* 3行目: 価格情報 */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                店着原価: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.storeCost}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                税抜売価: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.priceExcludingTax}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                入数: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.quantityPerPackage}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242' }}>
+                帳合先: <Box component="span" sx={{ fontWeight: 600 }}>{selectedRow.supplier}</Box>
+              </Typography>
+            </Box>
           </Box>
         )}
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: selectedRow ? 'calc(90vh - 270px)' : 'calc(90vh - 200px)',
+            height: selectedRow ? 'calc(90vh - 250px)' : 'calc(90vh - 200px)',
             '& .ag-header': {
               backgroundColor: '#f8f9fa',
               borderBottom: '2px solid #dee2e6',
