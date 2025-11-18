@@ -562,15 +562,27 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </Typography>
 
           {selectedStoresList.length > 0 ? (
-            <Box sx={{ position: 'relative' }}>
+            <Box
+              sx={{
+                position: 'relative',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                bgcolor: 'background.paper',
+                p: 1,
+              }}
+            >
               <Box
                 sx={{
                   display: 'flex',
                   overflowX: 'auto',
                   overflowY: 'hidden',
-                  gap: 1,
-                  pb: 1.5,
+                  gap: 1.5,
+                  px: 0.5,
+                  py: 1,
                   WebkitOverflowScrolling: 'touch',
+                  scrollBehavior: 'smooth',
+                  scrollSnapType: 'x proximity',
                   scrollbarWidth: 'thin',
                   '&::-webkit-scrollbar': {
                     height: 8,
@@ -597,14 +609,19 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       key={store.code}
                       variant="outlined"
                       sx={{
-                        minWidth: 60,
-                        maxWidth: 60,
+                        minWidth: 70,
+                        maxWidth: 70,
                         flexShrink: 0,
+                        scrollSnapAlign: 'start',
                         bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          boxShadow: 1,
+                        },
                       }}
                     >
-                      <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
-                        <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.25, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                        <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}>
                           {store.code}
                         </Typography>
                         <TextField
@@ -617,14 +634,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             inputMode: 'numeric',
                             pattern: '[0-9]*',
                             min: 0,
-                            style: { textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 2px' },
+                            style: { textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', padding: '6px 4px' },
                           }}
                           sx={{
                             '& .MuiOutlinedInput-root': {
-                              fontSize: '0.7rem',
+                              fontSize: '0.75rem',
                             },
                             '& .MuiInputBase-input': {
-                              padding: '4px 2px',
+                              padding: '6px 4px',
                             },
                           }}
                         />
@@ -634,23 +651,23 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 })}
               </Box>
               {/* 右側のグラデーションインジケーター（スクロール可能を示す） */}
-              {selectedStoresList.length > 5 && (
+              {selectedStoresList.length > 4 && (
                 <Box
                   sx={{
                     position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 40,
-                    background: 'linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
+                    right: 8,
+                    top: 8,
+                    bottom: 8,
+                    width: 50,
+                    background: 'linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0) 100%)',
                     pointerEvents: 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    pr: 0.5,
+                    pr: 1,
                   }}
                 >
-                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 'bold' }}>
                     →
                   </Typography>
                 </Box>
