@@ -10,7 +10,7 @@ import {
   Box,
   Alert,
 } from '@mui/material';
-import { Download, Info } from '@mui/icons-material';
+import { Download, Info, Email } from '@mui/icons-material';
 
 /**
  * DownloadModalのProps
@@ -24,6 +24,8 @@ interface DownloadModalProps {
   downloadUrl: string;
   /** ファイル名 */
   filename: string;
+  /** メール送信ハンドラ（オプション） */
+  onSendEmail?: () => void;
 }
 
 /**
@@ -49,6 +51,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   onClose,
   downloadUrl,
   filename,
+  onSendEmail,
 }) => {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -116,6 +119,15 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
       {/* フッター */}
       <DialogActions>
         <Button onClick={onClose}>閉じる</Button>
+        {onSendEmail && (
+          <Button
+            variant="outlined"
+            startIcon={<Email />}
+            onClick={onSendEmail}
+          >
+            メールで送信
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

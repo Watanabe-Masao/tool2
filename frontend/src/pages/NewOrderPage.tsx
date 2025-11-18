@@ -15,6 +15,7 @@ import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSumm
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
+import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
@@ -46,6 +47,7 @@ export const NewOrderPage: React.FC = () => {
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
@@ -53,6 +55,7 @@ export const NewOrderPage: React.FC = () => {
     downloadUrl: string;
     pdfFilename?: string;
   } | null>(null);
+  const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
@@ -63,7 +66,7 @@ export const NewOrderPage: React.FC = () => {
   // 初回ロードフラグ
   const isInitialLoad = useRef(true);
 
-  const { user } = useAuthContext();
+  const { user, googleAccessToken } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
   // オフライン同期
@@ -228,6 +231,17 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
+   * ExcelファイルをBlobとして取得
+   */
+  const fetchExcelAsBlob = async (url: string): Promise<Blob> => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Excelファイルの取得に失敗しました');
+    }
+    return await response.blob();
+  };
+
+  /**
    * フォーム送信
    */
   const onSubmit = async (data: OrderFormData) => {
@@ -277,6 +291,16 @@ export const NewOrderPage: React.FC = () => {
           downloadUrl: response.download_url,
           pdfFilename: response.pdf_filename,
         });
+
+        // ExcelファイルをBlobとして取得（メール送信用）
+        try {
+          const blob = await fetchExcelAsBlob(response.download_url);
+          setExcelBlob(blob);
+          console.log('Excel blob fetched successfully');
+        } catch (err) {
+          console.error('Failed to fetch Excel blob:', err);
+          // Blobの取得に失敗してもテンプレート生成は成功しているので続行
+        }
 
         hideLoading();
 
@@ -496,6 +520,7 @@ export const NewOrderPage: React.FC = () => {
             onClose={() => setShowPDFPreview(false)}
             pdfUrl={TemplateService.getDownloadUrl(generatedFiles.pdfFilename)}
             onDownloadExcel={handleDownloadExcel}
+            onSendEmail={() => setShowEmailModal(true)}
           />
         )}
 
@@ -506,6 +531,7 @@ export const NewOrderPage: React.FC = () => {
             onClose={() => setShowDownloadModal(false)}
             downloadUrl={generatedFiles.downloadUrl}
             filename={generatedFiles.filename}
+            onSendEmail={() => setShowEmailModal(true)}
           />
         )}
 
@@ -515,6 +541,17 @@ export const NewOrderPage: React.FC = () => {
           onClose={() => setShowPreviewModal(false)}
           formData={formData}
         />
+
+        {/* メール送信モーダル */}
+        {generatedFiles && (
+          <EmailSendModal
+            open={showEmailModal}
+            onClose={() => setShowEmailModal(false)}
+            accessToken={googleAccessToken}
+            attachment={excelBlob || undefined}
+            filename={generatedFiles.filename}
+          />
+        )}
 
         {/* フローティング進捗サマリー */}
         <FloatingProgressSummary

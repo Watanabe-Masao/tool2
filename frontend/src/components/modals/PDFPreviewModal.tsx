@@ -11,7 +11,7 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material';
-import { Close, Download } from '@mui/icons-material';
+import { Close, Download, Email } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
 /**
@@ -26,6 +26,8 @@ interface PDFPreviewModalProps {
   pdfUrl: string;
   /** Excelファイルダウンロードハンドラ */
   onDownloadExcel: () => void;
+  /** メール送信ハンドラ（オプション） */
+  onSendEmail?: () => void;
 }
 
 /**
@@ -49,6 +51,7 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
   onClose,
   pdfUrl,
   onDownloadExcel,
+  onSendEmail,
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +163,15 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
       {/* フッター */}
       <DialogActions>
         <Button onClick={onClose}>閉じる</Button>
+        {onSendEmail && (
+          <Button
+            variant="outlined"
+            startIcon={<Email />}
+            onClick={onSendEmail}
+          >
+            メールで送信
+          </Button>
+        )}
         {!isIPhone && (
           <Button
             variant="contained"
