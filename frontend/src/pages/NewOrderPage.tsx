@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Chip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
@@ -44,7 +44,6 @@ export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
@@ -56,9 +55,6 @@ export const NewOrderPage: React.FC = () => {
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
 
-  // 長押し検出用のタイマー
-  const longPressTimer = useRef<number | null>(null);
-
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -69,7 +65,7 @@ export const NewOrderPage: React.FC = () => {
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
   // オフライン同期
-  const { isOnline, isSyncing, unsyncedCount, saveOrder: saveOrderWithSync } = useDataSync();
+  const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
 
   // オートコンプリート
   const supplierAutocomplete = useAutocomplete('supplier');
@@ -362,32 +358,6 @@ export const NewOrderPage: React.FC = () => {
   const isMobile = isMobileDevice();
 
   /**
-   * オンラインチップ長押し開始（ページ更新用）
-   */
-  const handleChipLongPressStart = () => {
-    longPressTimer.current = window.setTimeout(() => {
-      setReloadDialogOpen(true);
-    }, 500);
-  };
-
-  /**
-   * オンラインチップ長押し終了
-   */
-  const handleChipLongPressEnd = () => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  /**
-   * ページを更新
-   */
-  const handleReload = () => {
-    window.location.reload();
-  };
-
-  /**
    * 下書きを復元
    */
   const handleRestoreDraft = () => {
@@ -419,55 +389,10 @@ export const NewOrderPage: React.FC = () => {
     <FormProvider {...methods}>
       <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
-            {/* ネットワーク状態・同期状態の表示 */}
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* オンライン/オフライン状態（長押しで手動更新） */}
-              <Chip
-                label={isOnline ? 'オンライン' : 'オフライン'}
-                color={isOnline ? 'success' : 'warning'}
-                size="small"
-                variant="outlined"
-                onTouchStart={handleChipLongPressStart}
-                onTouchEnd={handleChipLongPressEnd}
-                onMouseDown={handleChipLongPressStart}
-                onMouseUp={handleChipLongPressEnd}
-                onMouseLeave={handleChipLongPressEnd}
-                sx={{
-                  cursor: 'pointer',
-                  '&:hover': {
-                    opacity: 0.8,
-                  },
-                }}
-                title="長押しでページを更新"
-              />
-
-              {/* 同期中表示 */}
-              {isSyncing && (
-                <Chip label="同期中..." color="info" size="small" variant="outlined" />
-              )}
-
-              {/* 未同期データ数 */}
-              {unsyncedCount > 0 && (
-                <Chip
-                  label={`未同期: ${unsyncedCount}件`}
-                  color="warning"
-                  size="small"
-                  variant="filled"
-                />
-              )}
-            </Box>
-
             {/* オフライン時の警告 */}
             {!isOnline && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
-              </Alert>
-            )}
-
-            {/* 自動保存情報 */}
-            {hasUnsavedChanges && (
-              <Alert severity="info" sx={{ mb: 2, fontSize: '0.875rem', py: 0.5 }}>
-                入力内容は自動保存されています。リロード時に復元できます。
               </Alert>
             )}
 
@@ -577,27 +502,6 @@ export const NewOrderPage: React.FC = () => {
           activeStep={activeStep}
           totalSteps={TOTAL_STEPS}
         />
-
-        {/* ページ更新確認ダイアログ */}
-        <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
-          <DialogTitle>ページを更新</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              ページを更新しますか？
-            </DialogContentText>
-            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-              保存されていない変更は失われる可能性があります。
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
-              キャンセル
-            </Button>
-            <Button onClick={handleReload} color="primary" variant="contained">
-              更新
-            </Button>
-          </DialogActions>
-        </Dialog>
 
         {/* 下書き復元確認ダイアログ */}
         <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
