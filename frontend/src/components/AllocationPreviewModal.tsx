@@ -39,21 +39,20 @@ interface AllocationPreviewModalProps {
  * グリッド行データの型
  */
 interface GridRowData {
-  rowType: 'data' | 'detail' | 'blank';
-  deliveryDate?: string;
-  origin?: string;
-  specification?: string;
-  productName?: string;
-  storeCost?: string;
-  priceExcludingTax?: string;
-  priceIncludingTax?: string;
-  totalPackages?: string;
-  quantityPerPackage?: string;
-  supplier?: string;
-  total?: string;
-  totalDelivery?: string;
-  difference?: string;
-  [key: string]: string | undefined; // Store allocations (store_01, store_02, etc.)
+  deliveryDate: string;
+  origin: string;
+  specification: string;
+  productName: string;
+  storeCost: string;
+  priceExcludingTax: string;
+  priceIncludingTax: string;
+  totalPackages: string;
+  quantityPerPackage: string;
+  supplier: string;
+  total: string;
+  totalDelivery: string;
+  difference: number;
+  [key: string]: string | number; // Store allocations (store_01, store_02, etc.)
 }
 
 /**
@@ -72,9 +71,6 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   const rowData = useMemo<GridRowData[]>(() => {
     const rows: GridRowData[] = [];
 
-    console.log('Preview formData:', formData);
-    console.log('Products count:', formData.products.length);
-
     formData.products.forEach((product) => {
       // 総パッケージ数を計算
       const totalPackages = product.totalDelivery || 0;
@@ -85,53 +81,40 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       // 差異を計算
       const difference = totalPackages - totalAllocated;
 
-      // Row 1: データ行
-      const dataRow: GridRowData = {
-        rowType: 'data',
+      // 1行にまとめる
+      const row: GridRowData = {
         deliveryDate: formData.deliveryDate
           ? format(formData.deliveryDate, 'M/d(E)', { locale: ja })
           : '',
         origin: product.origin || '',
         specification: product.specification || '',
+        productName: product.name || '',
         storeCost: product.storeCost ? `¥${product.storeCost.toLocaleString()}` : '',
         priceExcludingTax: product.priceExcludingTax
           ? `¥${product.priceExcludingTax.toLocaleString()}`
           : '',
-        totalPackages: totalPackages ? totalPackages.toString() : '',
-        total: totalAllocated ? totalAllocated.toString() : '0',
-        totalDelivery: totalPackages ? totalPackages.toString() : '',
-        difference: difference.toString(),
-        supplier: formData.supplier || '',
-      };
-
-      // Row 2: 詳細行（商品名、税込価格、入数、店舗配分）
-      const detailRow: GridRowData = {
-        rowType: 'detail',
-        productName: product.name || '',
         priceIncludingTax: product.priceExcludingTax
           ? `¥${Math.round(product.priceExcludingTax * 1.08).toLocaleString()}`
           : '',
+        totalPackages: totalPackages ? totalPackages.toString() : '',
         quantityPerPackage: product.quantityPerPackage
           ? `${product.quantityPerPackage}${product.unit || ''}`
           : '',
+        total: totalAllocated.toString(),
+        totalDelivery: totalPackages.toString(),
+        difference: difference,
+        supplier: formData.supplier || '',
       };
 
       // 各店舗の配分数を追加
       STORE_DATA.forEach((store, index) => {
         const allocation = product.storeAllocations[index] || 0;
-        detailRow[`store_${store.code}`] = allocation > 0 ? allocation.toString() : '';
+        row[`store_${store.code}`] = allocation;
       });
 
-      // Row 3: 空白行（Excelではマージされる）
-      const blankRow: GridRowData = {
-        rowType: 'blank',
-      };
-
-      rows.push(dataRow, detailRow, blankRow);
+      rows.push(row);
     });
 
-    console.log('Generated rows:', rows);
-    console.log('Row count:', rows.length);
     return rows;
   }, [formData]);
 
@@ -143,71 +126,56 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       {
         headerName: '店着日',
         field: 'deliveryDate',
-        width: 100,
-        cellStyle: { textAlign: 'center' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.deliveryDate : '',
+        width: 110,
+        pinned: 'left',
+        cellStyle: { textAlign: 'center', fontWeight: '500' },
+      },
+      {
+        headerName: '品名',
+        field: 'productName',
+        width: 180,
+        pinned: 'left',
+        cellStyle: { fontWeight: '500' },
       },
       {
         headerName: '産地',
         field: 'origin',
         width: 120,
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.origin : '',
       },
       {
         headerName: '規格',
         field: 'specification',
         width: 100,
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.specification : '',
       },
       {
-        headerName: '品名',
-        field: 'productName',
-        width: 150,
-        valueGetter: (params) =>
-          params.data?.rowType === 'detail' ? params.data.productName : '',
+        headerName: '入数',
+        field: 'quantityPerPackage',
+        width: 90,
+        cellStyle: { textAlign: 'center' },
       },
       {
         headerName: '店着原価',
         field: 'storeCost',
-        width: 100,
-        cellStyle: { textAlign: 'right' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.storeCost : '',
+        width: 110,
+        cellStyle: { textAlign: 'right', fontWeight: '500' },
       },
       {
         headerName: '税抜',
         field: 'priceExcludingTax',
-        width: 100,
+        width: 110,
         cellStyle: { textAlign: 'right' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.priceExcludingTax : '',
       },
       {
         headerName: '税込',
         field: 'priceIncludingTax',
-        width: 100,
-        cellStyle: { textAlign: 'right' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'detail' ? params.data.priceIncludingTax : '',
+        width: 110,
+        cellStyle: { textAlign: 'right', color: '#1976d2' },
       },
       {
         headerName: 'ケース',
         field: 'totalPackages',
         width: 80,
-        cellStyle: { textAlign: 'center' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.totalPackages : '',
-      },
-      {
-        headerName: '入数',
-        field: 'quantityPerPackage',
-        width: 80,
-        cellStyle: { textAlign: 'center' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'detail' ? params.data.quantityPerPackage : '',
+        cellStyle: { textAlign: 'center', fontWeight: '500' },
       },
     ];
 
@@ -216,16 +184,21 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       cols.push({
         headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
-        width: 60,
+        width: 65,
+        headerClass: 'store-header',
         cellStyle: (params) => {
-          const hasValue = params.data?.rowType === 'detail' && params.value;
+          const value = params.value as number;
           return {
             textAlign: 'center',
-            backgroundColor: hasValue ? '#e3f2fd' : 'transparent',
+            backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
+            color: value > 0 ? '#1565c0' : '#bdbdbd',
+            fontWeight: value > 0 ? '600' : 'normal',
           };
         },
-        valueGetter: (params) =>
-          params.data?.rowType === 'detail' ? params.data[`store_${store.code}`] : '',
+        valueFormatter: (params) => {
+          const value = params.value as number;
+          return value > 0 ? value.toString() : '-';
+        },
       });
     });
 
@@ -235,40 +208,44 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         headerName: '合計',
         field: 'total',
         width: 80,
-        cellStyle: { textAlign: 'center', backgroundColor: '#fff3e0', fontWeight: 'bold' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.total : '',
+        pinned: 'right',
+        cellStyle: {
+          textAlign: 'center',
+          backgroundColor: '#fff8e1',
+          fontWeight: '700',
+          color: '#f57f17',
+        },
       },
       {
         headerName: '納品数',
         field: 'totalDelivery',
         width: 80,
-        cellStyle: { textAlign: 'center', fontWeight: 'bold' },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.totalDelivery : '',
+        pinned: 'right',
+        cellStyle: {
+          textAlign: 'center',
+          fontWeight: '600',
+        },
       },
       {
         headerName: '差異',
         field: 'difference',
         width: 80,
+        pinned: 'right',
         cellStyle: (params) => {
-          const diff = params.data?.rowType === 'data' ? parseInt(params.data.difference || '0', 10) : 0;
+          const diff = params.value as number;
           return {
             textAlign: 'center',
             backgroundColor: diff !== 0 ? '#ffebee' : '#e8f5e9',
-            color: diff !== 0 ? '#c62828' : '#2e7d32',
-            fontWeight: 'bold',
+            color: diff !== 0 ? '#d32f2f' : '#388e3c',
+            fontWeight: '700',
           };
         },
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.difference : '',
       },
       {
         headerName: '帳合先',
         field: 'supplier',
         width: 150,
-        valueGetter: (params) =>
-          params.data?.rowType === 'data' ? params.data.supplier : '',
+        pinned: 'right',
       }
     );
 
@@ -282,14 +259,25 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
     () => ({
       defaultColDef: {
         resizable: true,
-        sortable: false,
-        filter: false,
+        sortable: true,
+        filter: true,
+        floatingFilter: false,
       },
-      rowHeight: 35,
-      headerHeight: 50,
+      rowHeight: 48,
+      headerHeight: 56,
       suppressMovableColumns: true,
-      suppressCellFocus: true,
+      suppressCellFocus: false,
       enableCellTextSelection: true,
+      rowSelection: 'single',
+      animateRows: true,
+      enableRangeSelection: true,
+      // ストライプ行
+      getRowStyle: (params) => {
+        if (params.node.rowIndex! % 2 === 0) {
+          return { background: '#fafafa' };
+        }
+        return { background: '#ffffff' };
+      },
     }),
     []
   );
@@ -323,19 +311,37 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent dividers sx={{ p: 2 }}>
-        {/* デバッグ情報 */}
-        <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
-          <Typography variant="caption">
-            データ確認: {rowData.length}行, {columnDefs.length}列
-          </Typography>
-        </Box>
-
+      <DialogContent dividers sx={{ p: 0 }}>
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: 'calc(90vh - 220px)', // Dialog height - title - actions - debug
+            height: 'calc(90vh - 150px)',
+            '& .ag-header': {
+              backgroundColor: '#f5f5f5',
+              borderBottom: '2px solid #e0e0e0',
+            },
+            '& .ag-header-cell': {
+              fontWeight: '600',
+              fontSize: '0.875rem',
+            },
+            '& .store-header': {
+              backgroundColor: '#e8eaf6',
+              fontSize: '0.75rem',
+            },
+            '& .ag-cell': {
+              fontSize: '0.875rem',
+              lineHeight: '48px',
+            },
+            '& .ag-row:hover': {
+              backgroundColor: '#f5f5f5 !important',
+            },
+            '& .ag-pinned-left-header, & .ag-pinned-left-cols-container': {
+              boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
+            },
+            '& .ag-pinned-right-header, & .ag-pinned-right-cols-container': {
+              boxShadow: '-2px 0 4px rgba(0,0,0,0.1)',
+            },
           }}
         >
           <AgGridReact<GridRowData>
