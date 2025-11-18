@@ -11,7 +11,6 @@ import {
   Card,
   CardContent,
   Alert,
-  Divider,
   List,
   ListItem,
   ToggleButtonGroup,
@@ -44,12 +43,12 @@ interface StoreAllocationMobileProps {
 }
 
 /**
- * 店舗配分入力（モバイル最適化版・チェックボックス方式）
+ * 店舗配分入力（モバイル最適化版・横スクロール方式）
  *
  * 機能:
+ * - 横スクロール可能な列レイアウト
  * - 店舗設定で有効にした店舗のみ表示
  * - チェックボックスで配分する店舗を選択
- * - 選択した店舗の入力フィールドのみ表示
  * - 残り配分数のリアルタイム表示
  */
 export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
@@ -151,7 +150,7 @@ interface StoreAllocationMobileContentProps {
 type DistributionMode = 'equal' | 'ratio';
 
 /**
- * StoreAllocationMobileの内部コンテンツ
+ * StoreAllocationMobileの内部コンテンツ（横スクロール版）
  */
 const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> = ({
   allocations,
@@ -165,10 +164,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    mode: true,
-    category: false,
-    stores: true,
-    input: true,
+    category: true,  // デフォルトでオープン
+    stores: false,   // デフォルトで閉じる
   });
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
@@ -258,12 +255,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
   /**
    * 構成比による配分
-   * 選択した店舗の構成比を自動的に100%になるように再計算して配分
    */
   const handleRatioDistribution = () => {
     if (selectedStores.size === 0) return;
 
-    // 選択した店舗の構成比を取得
     const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
     let totalRatio = 0;
 
@@ -274,17 +269,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       totalRatio += ratio;
     });
 
-    // 構成比が全て0の場合は均等配分にフォールバック
     if (totalRatio === 0) {
       handleEqualDistribution();
       return;
     }
 
-    // 構成比を100%になるように正規化して配分
     const newAllocations = [...allocations];
     let allocated = 0;
 
-    // 正規化した構成比で配分を計算
     const distributionPlan: Array<{ code: string; quantity: number }> = [];
     selectedStoresWithRatio.forEach(({ code, ratio }) => {
       const normalizedRatio = ratio / totalRatio;
@@ -293,12 +285,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       allocated += quantity;
     });
 
-    // 残りを構成比が最も大きい店舗に配分
-    const remaining = totalDelivery - allocated;
-    if (remaining > 0) {
-      // 構成比が最も大きい店舗を見つける
+    const remainingQty = totalDelivery - allocated;
+    if (remainingQty > 0) {
       const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
-      for (let i = 0; i < remaining && i < sortedByRatio.length; i++) {
+      for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
         const planItem = distributionPlan.find((p) => p.code === sortedByRatio[i].code);
         if (planItem) {
           planItem.quantity += 1;
@@ -306,7 +296,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       }
     }
 
-    // 配分を適用
     STORE_DATA.forEach((store, index) => {
       const planItem = distributionPlan.find((p) => p.code === store.code);
       newAllocations[index] = planItem ? planItem.quantity : 0;
@@ -316,7 +305,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 配分実行（モードに応じて）
+   * 配分実行
    */
   const handleDistribute = () => {
     if (distributionMode === 'equal') {
@@ -389,7 +378,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     const newSelectedCategories = new Set(selectedCategories);
 
     if (newSelectedCategories.has(categoryId)) {
-      // カテゴリ選択解除時、そのカテゴリの店舗も選択解除
       newSelectedCategories.delete(categoryId);
 
       const categoryStores = categoryId === 'uncategorized'
@@ -401,7 +389,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
       categoryStores.forEach((store) => {
         newSelectedStores.delete(store.code);
-        // 配分数も0にする
         const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
         if (storeIndex !== -1) {
           newAllocations[storeIndex] = 0;
@@ -429,255 +416,271 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
   return (
     <Box>
-      {/* ヘッダー */}
-      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-        店舗への配分数を入力
-      </Typography>
-
-      {/* 統計情報 */}
-      <Card
+      {/* 横スクロールコンテナ */}
+      <Box
         sx={{
-          mb: 2,
-          bgcolor: remaining === 0 ? 'success.light' : remaining < 0 ? 'error.light' : 'info.light',
+          display: 'flex',
+          overflowX: 'auto',
+          gap: 2,
+          pb: 2,
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: 4,
+          },
         }}
       >
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Stack direction="row" spacing={2} justifyContent="space-around">
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary">
-                総納品数
+        {/* 1列目: タイトル + 総納品数チップ */}
+        <Box sx={{ minWidth: 200, flexShrink: 0 }}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                配分数量を振り分け
               </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {totalDelivery}
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary">
-                配分済み
-              </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {totalAllocated}
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary">
-                残り
-              </Typography>
-              <Typography
-                variant="h5"
-                fontWeight="bold"
-                color={remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'primary.main'}
+              <Chip
+                label={`総納品数: ${totalDelivery}個`}
+                color="primary"
+                variant="filled"
+                size="small"
+              />
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* 2列目: カテゴリー絞り込み（デフォルトオープン） */}
+        {categories.length > 0 && (
+          <Box sx={{ minWidth: 280, flexShrink: 0 }}>
+            <Card variant="outlined">
+              <Accordion
+                expanded={expandedSections.category}
+                onChange={() => handleToggleSection('category')}
               >
-                {remaining}
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    カテゴリで絞り込み ({selectedCategories.size}選択中)
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {categories.map((category) => (
+                      <Chip
+                        key={category.id}
+                        label={`${category.name} (${getCategoryStores(category.id).length})`}
+                        onClick={() => handleToggleCategory(category.id)}
+                        color={selectedCategories.has(category.id) ? 'primary' : 'default'}
+                        variant={selectedCategories.has(category.id) ? 'filled' : 'outlined'}
+                        size="small"
+                      />
+                    ))}
+                    <Chip
+                      label={`未分類 (${getUncategorizedStores().length})`}
+                      onClick={() => handleToggleCategory('uncategorized')}
+                      color={selectedCategories.has('uncategorized') ? 'primary' : 'default'}
+                      variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
+                      size="small"
+                    />
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Card>
+          </Box>
+        )}
+
+        {/* 3列目: 配分する店舗を選択（デフォルト閉じ） */}
+        <Box sx={{ minWidth: 300, flexShrink: 0 }}>
+          <Card variant="outlined">
+            <Accordion
+              expanded={expandedSections.stores}
+              onChange={() => handleToggleSection('stores')}
+            >
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle2" fontWeight="bold">
+                  配分する店舗を選択 ({selectedStores.size}/{availableStores.length})
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                  <Button variant="outlined" size="small" onClick={handleSelectAll} fullWidth>
+                    全選択
+                  </Button>
+                  <Button variant="outlined" size="small" onClick={handleClearAll} color="error" fullWidth>
+                    全クリア
+                  </Button>
+                </Stack>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
+                  {availableStores.map((store) => {
+                    const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+                    const quantity = allocations[storeIndex] || 0;
+                    const isSelected = selectedStores.has(store.code);
+                    const setting = storeSettings[store.code];
+                    const ratio = setting?.salesRatio || 0;
+
+                    return (
+                      <Chip
+                        key={store.code}
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                            <Typography variant="caption">
+                              {store.code}: {store.name}
+                            </Typography>
+                            {quantity > 0 && (
+                              <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
+                                ({quantity})
+                              </Typography>
+                            )}
+                            {distributionMode === 'ratio' && ratio > 0 && (
+                              <Typography variant="caption" sx={{ ml: 0.25, color: 'text.secondary', fontSize: '0.65rem' }}>
+                                [{ratio}%]
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                        onClick={() => handleToggleStore(store.code)}
+                        color={isSelected ? 'primary' : 'default'}
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        size="small"
+                      />
+                    );
+                  })}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          </Card>
+        </Box>
+
+        {/* 4列目: 統計情報（コンパクト表示） */}
+        <Box sx={{ minWidth: 180, flexShrink: 0 }}>
+          <Card
+            variant="outlined"
+            sx={{
+              bgcolor: remaining === 0 ? 'success.light' : remaining < 0 ? 'error.light' : 'warning.light',
+              height: '100%',
+            }}
+          >
+            <CardContent>
+              <Stack spacing={1}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">総納品数</Typography>
+                  <Typography variant="h6" fontWeight="bold">{totalDelivery}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">配分済み</Typography>
+                  <Typography variant="h6" fontWeight="bold">{totalAllocated}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">残り</Typography>
+                  <Typography
+                    variant="h6"
+                    fontWeight="bold"
+                    color={remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main'}
+                  >
+                    {remaining}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* 5列目: 配分方法選択 + 実行ボタン */}
+        <Box sx={{ minWidth: 220, flexShrink: 0 }}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                配分方法
               </Typography>
-            </Box>
-          </Stack>
-        </CardContent>
-      </Card>
+              <ToggleButtonGroup
+                value={distributionMode}
+                exclusive
+                onChange={(_, newMode) => newMode && setDistributionMode(newMode)}
+                fullWidth
+                size="small"
+                sx={{ mb: 1.5 }}
+              >
+                <ToggleButton value="equal">均等</ToggleButton>
+                <ToggleButton value="ratio">構成比</ToggleButton>
+              </ToggleButtonGroup>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleDistribute}
+                fullWidth
+                disabled={selectedStores.size === 0}
+              >
+                配分実行
+              </Button>
+              {distributionMode === 'ratio' && (
+                <Alert severity="info" sx={{ mt: 1, fontSize: '0.7rem', py: 0.5 }}>
+                  選択店舗の構成比を100%に正規化して配分
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* 6列目: 配分数量入力 */}
+        <Box sx={{ minWidth: 320, flexShrink: 0 }}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                配分数を入力 ({selectedStoresList.length}店舗)
+              </Typography>
+              {selectedStoresList.length > 0 ? (
+                <List sx={{ width: '100%', maxHeight: 400, overflowY: 'auto', p: 0 }}>
+                  {selectedStoresList.map((store) => {
+                    const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
+                    const quantity = allocations[storeIndex] || 0;
+
+                    return (
+                      <ListItem
+                        key={store.code}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          '&:last-child': { borderBottom: 'none' },
+                          py: 1,
+                          px: 0,
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem' }}>
+                          {store.code}: {store.name}
+                        </Typography>
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={quantity}
+                          onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                          inputProps={{
+                            inputMode: 'numeric',
+                            pattern: '[0-9]*',
+                            min: 0,
+                            style: { textAlign: 'right', fontSize: '0.875rem' },
+                          }}
+                          sx={{ width: 70 }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              ) : (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  配分する店舗を選択してください
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      </Box>
 
       {/* エラー表示 */}
       {remaining < 0 && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mt: 2 }}>
           配分数が総納品数を超えています！ {Math.abs(remaining)} 個減らしてください。
-        </Alert>
-      )}
-
-      {/* 配分モード選択 */}
-      <Accordion
-        expanded={expandedSections.mode}
-        onChange={() => handleToggleSection('mode')}
-        sx={{ mb: 2 }}
-      >
-        <AccordionSummary expandIcon={<ExpandMore />}>
-          <Typography variant="subtitle2" fontWeight="bold">
-            配分方法: {distributionMode === 'equal' ? '均等配分' : '構成比配分'}
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <ToggleButtonGroup
-            value={distributionMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setDistributionMode(newMode)}
-            fullWidth
-            size="small"
-          >
-            <ToggleButton value="equal">均等配分</ToggleButton>
-            <ToggleButton value="ratio">構成比配分</ToggleButton>
-          </ToggleButtonGroup>
-          {distributionMode === 'ratio' && (
-            <Alert severity="info" sx={{ mt: 1, fontSize: '0.75rem' }}>
-              選択した店舗の構成比を自動的に100%に正規化して配分します
-            </Alert>
-          )}
-        </AccordionDetails>
-      </Accordion>
-
-      {/* 一括操作ボタン */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button variant="outlined" size="small" onClick={handleSelectAll} fullWidth>
-          全選択
-        </Button>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={handleDistribute}
-          fullWidth
-          disabled={selectedStores.size === 0}
-        >
-          配分実行
-        </Button>
-        <Button variant="outlined" size="small" onClick={handleClearAll} color="error" fullWidth>
-          全クリア
-        </Button>
-      </Stack>
-
-      <Divider sx={{ my: 1.5 }} />
-
-      {/* カテゴリ選択 */}
-      {categories.length > 0 && (
-        <Accordion
-          expanded={expandedSections.category}
-          onChange={() => handleToggleSection('category')}
-          sx={{ mb: 2 }}
-        >
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="subtitle2" fontWeight="bold">
-              カテゴリで絞り込み ({selectedCategories.size}選択中)
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {categories.map((category) => (
-                <Chip
-                  key={category.id}
-                  label={`${category.name} (${getCategoryStores(category.id).length})`}
-                  onClick={() => handleToggleCategory(category.id)}
-                  color={selectedCategories.has(category.id) ? 'primary' : 'default'}
-                  variant={selectedCategories.has(category.id) ? 'filled' : 'outlined'}
-                  size="small"
-                />
-              ))}
-              <Chip
-                label={`未分類 (${getUncategorizedStores().length})`}
-                onClick={() => handleToggleCategory('uncategorized')}
-                color={selectedCategories.has('uncategorized') ? 'primary' : 'default'}
-                variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
-                size="small"
-              />
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      {/* 店舗選択（チップ形式） */}
-      <Accordion
-        expanded={expandedSections.stores}
-        onChange={() => handleToggleSection('stores')}
-        sx={{ mb: 2 }}
-      >
-        <AccordionSummary expandIcon={<ExpandMore />}>
-          <Typography variant="subtitle2" fontWeight="bold">
-            配分する店舗を選択 ({selectedStores.size}/{availableStores.length})
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
-            {availableStores.map((store) => {
-              const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-              const quantity = allocations[storeIndex] || 0;
-              const isSelected = selectedStores.has(store.code);
-              const setting = storeSettings[store.code];
-              const ratio = setting?.salesRatio || 0;
-
-              return (
-                <Chip
-                  key={store.code}
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                      <Typography variant="caption">
-                        {store.code}: {store.name}
-                      </Typography>
-                      {quantity > 0 && (
-                        <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
-                          ({quantity})
-                        </Typography>
-                      )}
-                      {distributionMode === 'ratio' && ratio > 0 && (
-                        <Typography variant="caption" sx={{ ml: 0.25, color: 'text.secondary', fontSize: '0.65rem' }}>
-                          [{ratio}%]
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                  onClick={() => handleToggleStore(store.code)}
-                  color={isSelected ? 'primary' : 'default'}
-                  variant={isSelected ? 'filled' : 'outlined'}
-                  size="small"
-                />
-              );
-            })}
-          </Box>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* 選択した店舗の入力フィールド */}
-      {selectedStoresList.length > 0 && (
-        <Accordion
-          expanded={expandedSections.input}
-          onChange={() => handleToggleSection('input')}
-          sx={{ mb: 2 }}
-        >
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="subtitle2" fontWeight="bold">
-              配分数を入力 ({selectedStoresList.length}店舗)
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ p: 0 }}>
-            <List sx={{ width: '100%' }}>
-              {selectedStoresList.map((store) => {
-                const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-                const quantity = allocations[storeIndex] || 0;
-
-                return (
-                  <ListItem
-                    key={store.code}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      '&:last-child': { borderBottom: 'none' },
-                      py: 1,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ flex: 1 }}>
-                      {store.code}: {store.name}
-                    </Typography>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={quantity}
-                      onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
-                      inputProps={{
-                        inputMode: 'numeric',
-                        pattern: '[0-9]*',
-                        min: 0,
-                        style: { textAlign: 'right', fontSize: '0.875rem' },
-                      }}
-                      sx={{ width: 70 }}
-                    />
-                  </ListItem>
-                );
-              })}
-            </List>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
-      {selectedStoresList.length === 0 && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          配分する店舗を選択してください
         </Alert>
       )}
     </Box>
