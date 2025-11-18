@@ -267,6 +267,12 @@ export const NewOrderPage: React.FC = () => {
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
+                touchStartPreventDefault={false}
+                touchStartForcePreventDefault={false}
+                threshold={10}
+                shortSwipes={true}
+                longSwipes={true}
+                longSwipesRatio={0.3}
                 watchSlidesProgress={true}
                 observer={true}
                 observeParents={true}

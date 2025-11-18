@@ -335,10 +335,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 全店舗選択
+   * 全店舗選択（現在表示されている店舗のみ）
    */
   const handleSelectAll = () => {
-    const allCodes = new Set(enabledStores.map((s) => s.code));
+    const allCodes = new Set(availableStores.map((s) => s.code));
     setSelectedStores(allCodes);
   };
 
@@ -665,7 +665,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         min: 0,
                         style: { textAlign: 'right', fontSize: '0.875rem' },
                       }}
-                      sx={{ width: 70 }}
+                      sx={{ width: 60 }}
                     />
                   </ListItem>
                 );
