@@ -75,10 +75,10 @@ export const NewOrderPage: React.FC = () => {
     defaultValues: {
       deliveryDate: new Date(),
       supplier: '',
-      totalDelivery: 0,
       products: [
         {
           ...DEFAULT_PRODUCT_FORM_DATA,
+          totalDelivery: 0,
           storeAllocations: new Array(STORE_COUNT).fill(0),
         },
       ],
@@ -409,14 +409,14 @@ export const NewOrderPage: React.FC = () => {
                 {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    {formData.products.map((_, index) =>
+                    {formData.products.map((product, index) =>
                       isMobile ? (
                         <StoreAllocationMobile
                           key={index}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={formData.totalDelivery}
+                          totalDelivery={product.totalDelivery || 0}
                         />
                       ) : (
                         <StoreAllocationGrid
@@ -424,7 +424,7 @@ export const NewOrderPage: React.FC = () => {
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={formData.totalDelivery}
+                          totalDelivery={product.totalDelivery || 0}
                         />
                       )
                     )}

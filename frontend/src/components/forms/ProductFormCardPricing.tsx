@@ -48,7 +48,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
-  const totalDelivery = useWatch({ control, name: 'totalDelivery' }) || 0;
+  const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
   const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
 
   // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
@@ -150,7 +150,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         <Grid container spacing={1} sx={{ mb: 1.5 }}>
           <Grid item xs={6}>
             <Controller
-              name="totalDelivery"
+              name={`products.${index}.totalDelivery`}
               control={control}
               render={({ field }) => (
                 <TextField
@@ -160,8 +160,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   placeholder="例: 100"
                   size="small"
                   fullWidth
-                  error={!!errors.totalDelivery}
-                  helperText={errors.totalDelivery?.message}
+                  error={!!productErrors?.totalDelivery}
+                  helperText={productErrors?.totalDelivery?.message}
                   required
                   inputProps={{ min: 1, step: 1 }}
                   value={field.value || ''}

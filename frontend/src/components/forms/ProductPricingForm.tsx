@@ -45,7 +45,6 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
 
   // 全商品のデータを監視
   const products = useWatch({ control, name: 'products' }) || [];
-  const totalDelivery = useWatch({ control, name: 'totalDelivery' }) || 0;
 
   // 全体の集計を計算
   const summary = React.useMemo(() => {
@@ -61,6 +60,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       const storeCost = product.storeCost || 0;
       const sellingPrice = product.priceExcludingTax || 0;
       const quantityPerPackage = product.quantityPerPackage || 0;
+      const totalDelivery = product.totalDelivery || 0;
 
       const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
       const quantity = totalDelivery * quantityPerPackage;
@@ -84,7 +84,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       totalProfit,
       averageProfitMargin,
     };
-  }, [products, totalDelivery]);
+  }, [products]);
 
   return (
     <Box>

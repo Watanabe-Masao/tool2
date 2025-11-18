@@ -22,6 +22,8 @@ export interface ProductData {
   storeCost: number;
   /** 本体価格（税抜） */
   priceExcludingTax: number;
+  /** 総納品数 */
+  totalDelivery: number;
   /** 36店舗への配分数 (length = 36) */
   storeAllocations: number[];
 }
@@ -40,8 +42,6 @@ export interface OrderData {
   deliveryDate: Date;
   /** 帳合先 */
   supplier: string;
-  /** 総納品数 */
-  totalDelivery: number;
   /** 商品リスト */
   products: ProductData[];
   /** バイヤー名 */
@@ -207,7 +207,6 @@ export interface FirebaseConfigResponse {
 export interface FirestoreOrderData {
   delivery_date: string;
   supplier: string;
-  total_delivery: number;
   products: Array<{
     name: string;
     origin: string;
@@ -216,6 +215,7 @@ export interface FirestoreOrderData {
     unit: string;
     store_cost: number;
     price_excluding_tax: number;
+    total_delivery: number;
     store_allocations: number[];
   }>;
   buyer_name: string;
@@ -243,20 +243,22 @@ export interface AutocompleteHistoryData {
 
 /**
  * React Hook Form用のフォームデータ
+ * Note: この型は orderSchema.ts から自動生成される型と重複しています
+ * 将来的には削除を検討してください
  */
 export interface OrderFormData {
   /** 店着日 */
   deliveryDate: Date;
   /** 帳合先 */
   supplier: string;
-  /** 総納品数 */
-  totalDelivery: number;
   /** 商品リスト */
   products: ProductFormData[];
 }
 
 /**
  * React Hook Form用の商品フォームデータ
+ * Note: この型は orderSchema.ts から自動生成される型と重複しています
+ * 将来的には削除を検討してください
  */
 export interface ProductFormData {
   /** カテゴリーコード */
@@ -275,6 +277,8 @@ export interface ProductFormData {
   storeCost: number;
   /** 本体価格（税抜） */
   priceExcludingTax: number;
+  /** 総納品数 */
+  totalDelivery: number;
   /** 36店舗への配分数 */
   storeAllocations: number[];
 }

@@ -32,7 +32,6 @@ export class FirestoreService {
     return {
       delivery_date: format(orderData.deliveryDate, 'yyyy-MM-dd'),
       supplier: orderData.supplier,
-      total_delivery: orderData.totalDelivery,
       products: orderData.products.map((product) => ({
         name: product.name,
         origin: product.origin,
@@ -41,6 +40,7 @@ export class FirestoreService {
         unit: product.unit || '',
         store_cost: product.storeCost,
         price_excluding_tax: product.priceExcludingTax,
+        total_delivery: product.totalDelivery,
         store_allocations: product.storeAllocations,
       })),
       buyer_name: orderData.buyerName,
@@ -60,7 +60,6 @@ export class FirestoreService {
       id,
       deliveryDate: new Date(firestoreData.delivery_date),
       supplier: firestoreData.supplier,
-      totalDelivery: firestoreData.total_delivery,
       products: firestoreData.products.map((product: any) => ({
         name: product.name,
         origin: product.origin,
@@ -69,6 +68,7 @@ export class FirestoreService {
         unit: product.unit || '',
         storeCost: product.store_cost,
         priceExcludingTax: product.price_excluding_tax,
+        totalDelivery: product.total_delivery,
         storeAllocations: product.store_allocations,
       })),
       buyerName: firestoreData.buyer_name,
