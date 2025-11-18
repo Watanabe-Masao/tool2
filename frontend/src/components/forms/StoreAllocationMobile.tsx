@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Box,
@@ -25,6 +25,23 @@ import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { useAuthContext } from '@/context/AuthContext';
 import type { StoreSettings } from '@/types/storeSettings';
 import type { StoreCategory } from '@/types/storeCategory';
+
+/**
+ * カテゴリの色を取得（落ち着いた色合い）
+ */
+const getCategoryColor = (index: number): { main: string; light: string } => {
+  const colors = [
+    { main: '#5c6bc0', light: '#e8eaf6' }, // Indigo
+    { main: '#66bb6a', light: '#e8f5e9' }, // Green
+    { main: '#ff9800', light: '#fff3e0' }, // Orange
+    { main: '#ec407a', light: '#fce4ec' }, // Pink
+    { main: '#26a69a', light: '#e0f2f1' }, // Teal
+    { main: '#ab47bc', light: '#f3e5f5' }, // Purple
+    { main: '#42a5f5', light: '#e3f2fd' }, // Blue
+    { main: '#8d6e63', light: '#efebe9' }, // Brown
+  ];
+  return colors[index % colors.length];
+};
 
 /**
  * StoreAllocationMobileのProps
@@ -119,6 +136,7 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             enabledStores={enabledStores}
             categories={categories}
             storeSettings={storeSettings}
+            control={control}
           />
         );
       }}
@@ -138,6 +156,7 @@ interface StoreAllocationMobileContentProps {
   enabledStores: Array<typeof STORE_DATA[number]>;
   categories: StoreCategory[];
   storeSettings: Record<string, StoreSettings>;
+  control: Control<OrderFormData>;
 }
 
 /**
@@ -156,7 +175,15 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   enabledStores,
   categories,
   storeSettings,
+  control,
 }) => {
+  // 商品情報を取得
+  const origin = useWatch({ control, name: `products.${productIndex}.origin` });
+  const productName = useWatch({ control, name: `products.${productIndex}.name` });
+  const specification = useWatch({ control, name: `products.${productIndex}.specification` });
+  const quantityPerPackage = useWatch({ control, name: `products.${productIndex}.quantityPerPackage` });
+  const unit = useWatch({ control, name: `products.${productIndex}.unit` });
+
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
@@ -190,10 +217,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const remaining = totalDelivery - totalAllocated;
 
   /**
-   * 選択した店舗のリスト
+   * 選択した店舗のリスト（店番でソート）
    */
   const selectedStoresList = useMemo(() => {
-    return enabledStores.filter((store) => selectedStores.has(store.code));
+    return enabledStores
+      .filter((store) => selectedStores.has(store.code))
+      .sort((a, b) => a.code.localeCompare(b.code));
   }, [enabledStores, selectedStores]);
 
   /**
@@ -340,24 +369,116 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 表示する店舗リスト
+   * 表示する店舗リスト（店番でソート）
    */
   const availableStores = useMemo(() => {
+    let stores: Array<typeof STORE_DATA[number]>;
+
     if (selectedCategories.size === 0) {
-      return enabledStores;
+      stores = enabledStores;
+    } else {
+      const storesSet = new Set<typeof STORE_DATA[number]>();
+      selectedCategories.forEach((categoryId) => {
+        if (categoryId === 'uncategorized') {
+          getUncategorizedStores().forEach((store) => storesSet.add(store));
+        } else {
+          getCategoryStores(categoryId).forEach((store) => storesSet.add(store));
+        }
+      });
+      stores = Array.from(storesSet);
     }
 
-    const stores = new Set<typeof STORE_DATA[number]>();
-    selectedCategories.forEach((categoryId) => {
-      if (categoryId === 'uncategorized') {
-        getUncategorizedStores().forEach((store) => stores.add(store));
-      } else {
-        getCategoryStores(categoryId).forEach((store) => stores.add(store));
-      }
-    });
-
-    return Array.from(stores);
+    // 店番でソート
+    return stores.sort((a, b) => a.code.localeCompare(b.code));
   }, [selectedCategories, enabledStores, categories]);
+
+  /**
+   * 店舗が属するカテゴリを取得
+   */
+  const getStoreCategory = (storeCode: string): StoreCategory | null => {
+    return categories.find((cat) => cat.storeIds.includes(storeCode)) || null;
+  };
+
+  /**
+   * プレビュー値を計算（均等配分または構成比配分）
+   */
+  const calculatePreview = useMemo(() => {
+    if (selectedStores.size === 0) return {};
+
+    const preview: Record<string, number> = {};
+
+    if (distributionMode === 'equal') {
+      // 均等配分のプレビュー
+      const perStore = Math.floor(totalDelivery / selectedStores.size);
+      const remainder = totalDelivery % selectedStores.size;
+      let remainderDistributed = 0;
+
+      STORE_DATA.forEach((store) => {
+        if (selectedStores.has(store.code)) {
+          preview[store.code] = perStore;
+          if (remainderDistributed < remainder) {
+            preview[store.code] += 1;
+            remainderDistributed++;
+          }
+        }
+      });
+    } else {
+      // 構成比配分のプレビュー
+      const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
+      let totalRatio = 0;
+
+      selectedStores.forEach((code) => {
+        const setting = storeSettings[code];
+        const ratio = setting?.salesRatio || 0;
+        selectedStoresWithRatio.push({ code, ratio });
+        totalRatio += ratio;
+      });
+
+      if (totalRatio === 0) {
+        // 構成比が0の場合は均等配分にフォールバック
+        const perStore = Math.floor(totalDelivery / selectedStores.size);
+        const remainder = totalDelivery % selectedStores.size;
+        let remainderDistributed = 0;
+
+        STORE_DATA.forEach((store) => {
+          if (selectedStores.has(store.code)) {
+            preview[store.code] = perStore;
+            if (remainderDistributed < remainder) {
+              preview[store.code] += 1;
+              remainderDistributed++;
+            }
+          }
+        });
+      } else {
+        let allocated = 0;
+        const distributionPlan: Array<{ code: string; quantity: number }> = [];
+
+        selectedStoresWithRatio.forEach(({ code, ratio }) => {
+          const normalizedRatio = ratio / totalRatio;
+          const quantity = Math.floor(totalDelivery * normalizedRatio);
+          distributionPlan.push({ code, quantity });
+          allocated += quantity;
+        });
+
+        const remainingQty = totalDelivery - allocated;
+        if (remainingQty > 0) {
+          const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
+          for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
+            const planItem = distributionPlan.find((p) => p.code === sortedByRatio[i].code);
+            if (planItem) {
+              planItem.quantity += 1;
+            }
+          }
+        }
+
+        distributionPlan.forEach(({ code, quantity }) => {
+          preview[code] = quantity;
+        });
+      }
+    }
+
+    return preview;
+  }, [selectedStores, distributionMode, totalDelivery, storeSettings]);
 
   /**
    * 全店舗選択（カテゴリ絞り込みが適用されている場合は絞り込まれた店舗のみ）
@@ -432,20 +553,32 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </AccordionSummary>
             <AccordionDetails>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {categories.map((category) => (
-                  <Chip
-                    key={category.id}
-                    label={`${category.name} (${getCategoryStores(category.id).length})`}
-                    onClick={() => handleToggleCategory(category.id)}
-                    color={selectedCategories.has(category.id) ? 'primary' : 'default'}
-                    variant={selectedCategories.has(category.id) ? 'filled' : 'outlined'}
-                    size="small"
-                  />
-                ))}
+                {categories.map((category, index) => {
+                  const color = getCategoryColor(index);
+                  const isSelected = selectedCategories.has(category.id);
+                  return (
+                    <Chip
+                      key={category.id}
+                      label={`${category.name} (${getCategoryStores(category.id).length})`}
+                      onClick={() => handleToggleCategory(category.id)}
+                      size="small"
+                      sx={{
+                        bgcolor: isSelected ? color.main : 'transparent',
+                        color: isSelected ? 'white' : color.main,
+                        borderColor: color.main,
+                        borderWidth: 1,
+                        borderStyle: 'solid',
+                        '&:hover': {
+                          bgcolor: isSelected ? color.main : color.light,
+                        },
+                      }}
+                    />
+                  );
+                })}
                 <Chip
                   label={`未分類 (${getUncategorizedStores().length})`}
                   onClick={() => handleToggleCategory('uncategorized')}
-                  color={selectedCategories.has('uncategorized') ? 'primary' : 'default'}
+                  color={selectedCategories.has('uncategorized') ? 'default' : 'default'}
                   variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
                   size="small"
                 />
@@ -490,6 +623,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 const isSelected = selectedStores.has(store.code);
                 const setting = storeSettings[store.code];
                 const ratio = setting?.salesRatio || 0;
+                const storeCategory = getStoreCategory(store.code);
+                const categoryIndex = storeCategory ? categories.findIndex((c) => c.id === storeCategory.id) : -1;
+                const color = categoryIndex >= 0 ? getCategoryColor(categoryIndex) : null;
 
                 return (
                   <Chip
@@ -512,9 +648,26 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       </Box>
                     }
                     onClick={() => handleToggleStore(store.code)}
-                    color={isSelected ? 'primary' : 'default'}
-                    variant={isSelected ? 'filled' : 'outlined'}
                     size="small"
+                    sx={
+                      color
+                        ? {
+                            bgcolor: isSelected ? color.main : 'transparent',
+                            color: isSelected ? 'white' : color.main,
+                            borderColor: color.main,
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                            '&:hover': {
+                              bgcolor: isSelected ? color.main : color.light,
+                            },
+                          }
+                        : {
+                            bgcolor: isSelected ? 'default' : 'transparent',
+                            borderColor: isSelected ? 'grey.400' : 'grey.300',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                          }
+                    }
                   />
                 );
               })}
@@ -557,27 +710,77 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             >
               配分実行
             </Button>
-            {distributionMode === 'ratio' && (
-              <Alert severity="info" sx={{ mt: 0.5, fontSize: '0.65rem', py: 0.25 }}>
-                選択店舗の構成比を100%に正規化して配分
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box className="swiper-no-swiping">
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-            <Typography variant="subtitle2" fontWeight="bold">
-              配分数を入力 ({selectedStoresList.length}店舗)
+          <Box sx={{ mb: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mr: 0.5 }}>
+              商品 {productIndex + 1}:
             </Typography>
-            <Chip
-              label="← 横スワイプ →"
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ fontSize: '0.65rem', height: 20 }}
-            />
+            {origin && (
+              <Box
+                component="span"
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  bgcolor: 'grey.200',
+                  color: 'text.primary',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {origin}
+              </Box>
+            )}
+            {productName && (
+              <Box
+                component="span"
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  bgcolor: 'primary.100',
+                  color: 'text.primary',
+                  fontSize: '0.75rem',
+                  fontWeight: 'medium',
+                }}
+              >
+                {productName}
+              </Box>
+            )}
+            {specification && (
+              <Box
+                component="span"
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  bgcolor: 'grey.200',
+                  color: 'text.primary',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {specification}
+              </Box>
+            )}
+            {quantityPerPackage && unit && (
+              <Box
+                component="span"
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  bgcolor: 'grey.200',
+                  color: 'text.primary',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {quantityPerPackage}
+                {unit}
+              </Box>
+            )}
           </Box>
 
           {selectedStoresList.length > 0 ? (
@@ -630,6 +833,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 {selectedStoresList.map((store) => {
                   const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
                   const quantity = allocations[storeIndex] || 0;
+                  const previewValue = calculatePreview[store.code];
+                  const hasPreview = previewValue !== undefined && quantity === 0;
 
                   return (
                     <Card
@@ -655,14 +860,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         <TextField
                           type="number"
                           size="small"
-                          value={quantity}
+                          value={quantity || ''}
+                          placeholder={hasPreview ? String(previewValue) : ''}
                           onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
                           fullWidth
                           inputProps={{
                             inputMode: 'numeric',
                             pattern: '[0-9]*',
                             min: 0,
-                            style: { textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', padding: '6px 4px' },
+                            style: {
+                              textAlign: 'center',
+                              fontSize: '0.85rem',
+                              fontWeight: quantity > 0 ? 'bold' : 'normal',
+                              padding: '6px 4px'
+                            },
                           }}
                           sx={{
                             '& .MuiOutlinedInput-root': {
@@ -670,6 +881,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             },
                             '& .MuiInputBase-input': {
                               padding: '6px 4px',
+                              '&::placeholder': {
+                                color: 'grey.400',
+                                opacity: 0.7,
+                                fontWeight: 'normal',
+                              },
                             },
                           }}
                         />
