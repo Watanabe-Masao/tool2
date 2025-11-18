@@ -14,6 +14,7 @@ import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile'
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
+import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
@@ -44,6 +45,7 @@ export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
@@ -339,7 +341,16 @@ export const NewOrderPage: React.FC = () => {
   const renderSubmitButton = () => {
     if (activeStep === TOTAL_STEPS - 1) {
       return (
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
+        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => setShowPreviewModal(true)}
+            fullWidth
+            sx={{ maxWidth: 400 }}
+          >
+            プレビュー
+          </Button>
           <Button
             variant="contained"
             size="large"
@@ -347,7 +358,7 @@ export const NewOrderPage: React.FC = () => {
             fullWidth
             sx={{ maxWidth: 400 }}
           >
-            テンプレート生成
+            配分表を作成
           </Button>
         </Box>
       );
@@ -497,6 +508,13 @@ export const NewOrderPage: React.FC = () => {
             filename={generatedFiles.filename}
           />
         )}
+
+        {/* 配分表プレビューモーダル */}
+        <AllocationPreviewModal
+          open={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          formData={formData}
+        />
 
         {/* フローティング進捗サマリー */}
         <FloatingProgressSummary
