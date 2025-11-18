@@ -22,6 +22,7 @@ import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
+import { SessionStorageService } from '@/utils/sessionStorageService';
 
 /**
  * フォームのステップ数
@@ -44,6 +45,8 @@ export const NewOrderPage: React.FC = () => {
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -55,6 +58,12 @@ export const NewOrderPage: React.FC = () => {
 
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
+
+  // 自動保存用のタイマー
+  const autoSaveTimer = useRef<number | null>(null);
+
+  // 初回ロードフラグ
+  const isInitialLoad = useRef(true);
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
@@ -90,11 +99,71 @@ export const NewOrderPage: React.FC = () => {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = methods;
 
   // フォームデータを監視
   const formData = watch();
+
+  /**
+   * ページロード時に下書きを復元
+   */
+  useEffect(() => {
+    if (!user || !isInitialLoad.current) return;
+
+    isInitialLoad.current = false;
+
+    const draft = SessionStorageService.loadDraft(user.uid);
+    if (draft) {
+      setRestoreDialogOpen(true);
+    }
+  }, [user]);
+
+  /**
+   * フォームデータの自動保存（debounce付き）
+   */
+  useEffect(() => {
+    if (!user || isInitialLoad.current) return;
+
+    // 変更があることをマーク
+    setHasUnsavedChanges(true);
+
+    // 既存のタイマーをクリア
+    if (autoSaveTimer.current) {
+      window.clearTimeout(autoSaveTimer.current);
+    }
+
+    // 2秒後に自動保存
+    autoSaveTimer.current = window.setTimeout(() => {
+      SessionStorageService.saveDraft(user.uid, formData);
+      console.log('Form auto-saved');
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimer.current) {
+        window.clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [formData, user]);
+
+  /**
+   * ページ離脱時の警告
+   */
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
 
   /**
    * フォームデータ変更時にSwiperの高さを更新
@@ -216,6 +285,12 @@ export const NewOrderPage: React.FC = () => {
         // 成功メッセージ
         showSuccess('テンプレートを生成しました');
 
+        // SessionStorageの下書きをクリア（成功時）
+        if (user) {
+          SessionStorageService.clearDraft(user.uid);
+          setHasUnsavedChanges(false);
+        }
+
         // PDFが生成されている場合とそうでない場合で分岐
         if (response.pdf_filename) {
           // PDFがある場合
@@ -232,6 +307,12 @@ export const NewOrderPage: React.FC = () => {
         // オフライン時
         hideLoading();
         showSuccess('データをローカルに保存しました。オンライン復帰時に自動同期されます。');
+
+        // オフライン時もSessionStorageの下書きをクリア
+        if (user) {
+          SessionStorageService.clearDraft(user.uid);
+          setHasUnsavedChanges(false);
+        }
       }
     } catch (error) {
       hideLoading();
@@ -306,6 +387,34 @@ export const NewOrderPage: React.FC = () => {
     window.location.reload();
   };
 
+  /**
+   * 下書きを復元
+   */
+  const handleRestoreDraft = () => {
+    if (!user) return;
+
+    const draft = SessionStorageService.loadDraft(user.uid);
+    if (draft) {
+      reset(draft);
+      setRestoreDialogOpen(false);
+      showSuccess('下書きを復元しました');
+      isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 1000);
+    }
+  };
+
+  /**
+   * 下書きを破棄
+   */
+  const handleDiscardDraft = () => {
+    if (!user) return;
+
+    SessionStorageService.clearDraft(user.uid);
+    setRestoreDialogOpen(false);
+  };
+
   return (
     <FormProvider {...methods}>
       <Container maxWidth="lg">
@@ -352,6 +461,13 @@ export const NewOrderPage: React.FC = () => {
             {!isOnline && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
+              </Alert>
+            )}
+
+            {/* 自動保存情報 */}
+            {hasUnsavedChanges && (
+              <Alert severity="info" sx={{ mb: 2, fontSize: '0.875rem', py: 0.5 }}>
+                入力内容は自動保存されています。リロード時に復元できます。
               </Alert>
             )}
 
@@ -479,6 +595,27 @@ export const NewOrderPage: React.FC = () => {
             </Button>
             <Button onClick={handleReload} color="primary" variant="contained">
               更新
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 下書き復元確認ダイアログ */}
+        <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
+          <DialogTitle>下書きを復元しますか？</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              前回の入力内容が見つかりました。続きから入力を再開できます。
+            </DialogContentText>
+            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+              下書きは24時間保存されます。復元しない場合、新規に入力を開始します。
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDiscardDraft} color="inherit">
+              新規入力
+            </Button>
+            <Button onClick={handleRestoreDraft} color="primary" variant="contained">
+              復元する
             </Button>
           </DialogActions>
         </Dialog>
