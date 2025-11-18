@@ -54,9 +54,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
   const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
 
-  // 値入率を計算（(売価 - センターフィー込原価) / 売価 × 100）
-  const profitMargin = priceExcludingTax && centerCostWithFee
-    ? ((priceExcludingTax - centerCostWithFee) / priceExcludingTax * 100).toFixed(1)
+  // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
+  const profitMargin = priceExcludingTax && storeCost
+    ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '0.0';
 
   // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 入数)）
@@ -311,7 +311,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
-              helperText="(売価 - センターフィー込原価) / 売価 × 100"
+              helperText="(売価 - 店着原価) / 売価 × 100"
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.50',

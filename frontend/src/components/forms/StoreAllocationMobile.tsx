@@ -16,7 +16,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Grid,
 } from '@mui/material';
 import { ExpandMore } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
@@ -413,20 +412,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
   return (
     <Box>
-      {/* 縦並びセクション（1-6項目） */}
-      <Stack spacing={2}>
-        {/* 1. タイトル + 総納品数チップ */}
-        <Box>
-          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-            商品{productIndex + 1}の配分数量を振り分け
-          </Typography>
-          <Chip
-            label={`総納品数: ${totalDelivery}個`}
-            color="primary"
-            variant="filled"
-            size="small"
-          />
-        </Box>
+      {/* 縦並びセクション（1-5項目） */}
+      <Stack spacing={1}>
+        {/* 1. タイトル + 総納品数統合 */}
+        <Typography variant="subtitle2" fontWeight="bold">
+          商品{productIndex + 1}：総納品数 {totalDelivery}個
+        </Typography>
 
         {/* 2. カテゴリー絞り込み（デフォルトオープン） */}
         {categories.length > 0 && (
@@ -521,48 +512,28 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </AccordionDetails>
         </Accordion>
 
-        {/* 4. 統計情報（コンパクト表示） */}
-        <Card
-          variant="outlined"
-          sx={{
-            bgcolor: remaining === 0 ? 'success.light' : remaining < 0 ? 'error.light' : 'warning.light',
-          }}
-        >
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Grid container spacing={1}>
-              <Grid item xs={4}>
-                <Typography variant="caption" color="text.secondary" display="block">総納品数</Typography>
-                <Chip label={totalDelivery} size="small" />
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="caption" color="text.secondary" display="block">配分済み</Typography>
-                <Chip label={totalAllocated} size="small" />
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="caption" color="text.secondary" display="block">残り</Typography>
-                <Chip
-                  label={remaining}
-                  size="small"
-                  color={remaining === 0 ? 'success' : remaining < 0 ? 'error' : 'warning'}
-                />
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-
-        {/* 5. 配分方法選択 + 実行ボタン */}
+        {/* 4. 配分方法選択 + 統計情報 + 実行ボタン */}
         <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-              配分方法を選択
-            </Typography>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2" fontWeight="bold">
+                配分方法を選択
+              </Typography>
+              <Chip label={`総: ${totalDelivery}`} size="small" variant="outlined" />
+              <Chip label={`済: ${totalAllocated}`} size="small" variant="outlined" />
+              <Chip
+                label={`残: ${remaining}`}
+                size="small"
+                color={remaining === 0 ? 'success' : remaining < 0 ? 'error' : 'warning'}
+              />
+            </Box>
             <ToggleButtonGroup
               value={distributionMode}
               exclusive
               onChange={(_, newMode) => newMode && setDistributionMode(newMode)}
               fullWidth
               size="small"
-              sx={{ mb: 1.5 }}
+              sx={{ mb: 1 }}
             >
               <ToggleButton value="equal">均等配分</ToggleButton>
               <ToggleButton value="ratio">構成比配分</ToggleButton>
@@ -577,16 +548,16 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               配分実行
             </Button>
             {distributionMode === 'ratio' && (
-              <Alert severity="info" sx={{ mt: 1, fontSize: '0.7rem', py: 0.5 }}>
+              <Alert severity="info" sx={{ mt: 0.5, fontSize: '0.65rem', py: 0.25 }}>
                 選択店舗の構成比を100%に正規化して配分
               </Alert>
             )}
           </CardContent>
         </Card>
 
-        {/* 6. 配分数量入力（横スクロール形式） */}
+        {/* 5. 配分数量入力（横スクロール形式） */}
         <Box>
-          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>
             配分数を入力 ({selectedStoresList.length}店舗)
           </Typography>
 
@@ -595,14 +566,16 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               sx={{
                 display: 'flex',
                 overflowX: 'auto',
-                gap: 2,
-                pb: 2,
+                overflowY: 'hidden',
+                gap: 1.5,
+                pb: 1.5,
+                WebkitOverflowScrolling: 'touch',
                 '&::-webkit-scrollbar': {
-                  height: 8,
+                  height: 6,
                 },
                 '&::-webkit-scrollbar-thumb': {
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  borderRadius: 4,
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  borderRadius: 3,
                 },
               }}
             >
@@ -615,17 +588,15 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     key={store.code}
                     variant="outlined"
                     sx={{
-                      minWidth: 160,
+                      minWidth: 120,
+                      maxWidth: 120,
                       flexShrink: 0,
                       bgcolor: quantity > 0 ? 'success.50' : 'background.paper',
                     }}
                   >
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                        {store.code}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" gutterBottom sx={{ minHeight: 40 }}>
-                        {store.name}
+                    <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                      <Typography variant="caption" fontWeight="medium" display="block" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
+                        {store.code}：{store.name}
                       </Typography>
                       <TextField
                         type="number"
@@ -638,7 +609,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                           inputMode: 'numeric',
                           pattern: '[0-9]*',
                           min: 0,
-                          style: { textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold' },
+                          style: { textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' },
+                        }}
+                        sx={{
+                          '& .MuiInputLabel-root': {
+                            fontSize: '0.75rem',
+                          },
                         }}
                       />
                     </CardContent>
@@ -647,7 +623,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               })}
             </Box>
           ) : (
-            <Alert severity="info">
+            <Alert severity="info" sx={{ fontSize: '0.8rem', py: 0.5 }}>
               配分する店舗を選択してください
             </Alert>
           )}
