@@ -5,7 +5,6 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  Avatar,
   Menu,
   MenuItem,
   Box,
@@ -22,7 +21,6 @@ import {
 } from '@mui/material';
 import {
   Logout,
-  AccountCircle,
   Google,
   Email,
   AddCircle,
@@ -49,8 +47,9 @@ export const Header: React.FC = () => {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
 
-  // 長押し検出用のタイマー
+  // 長押し検出用のタイマーと状態
   const longPressTimer = useRef<number | null>(null);
+  const [isLongPress, setIsLongPress] = useState(false);
 
   /**
    * ユーザーメニューを開く
@@ -83,7 +82,9 @@ export const Header: React.FC = () => {
    * オンラインチップ長押し開始（ページ更新用）
    */
   const handleChipLongPressStart = () => {
+    setIsLongPress(false);
     longPressTimer.current = window.setTimeout(() => {
+      setIsLongPress(true);
       setReloadDialogOpen(true);
     }, 500);
   };
@@ -91,11 +92,17 @@ export const Header: React.FC = () => {
   /**
    * オンラインチップ長押し終了
    */
-  const handleChipLongPressEnd = () => {
+  const handleChipLongPressEnd = (event: React.MouseEvent<HTMLDivElement>) => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+
+    // 長押しでなければメニューを開く
+    if (!isLongPress) {
+      handleMenuOpen(event);
+    }
+    setIsLongPress(false);
   };
 
   /**
@@ -191,42 +198,30 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* オンラインチップ（長押しで手動更新） */}
-              {!isMobile && (
-                <Chip
-                  icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
-                  label="オンライン"
-                  color="success"
-                  size="small"
-                  onTouchStart={handleChipLongPressStart}
-                  onTouchEnd={handleChipLongPressEnd}
-                  onMouseDown={handleChipLongPressStart}
-                  onMouseUp={handleChipLongPressEnd}
-                  onMouseLeave={handleChipLongPressEnd}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'success.dark',
-                    },
-                  }}
-                  title="長押しでページを更新"
-                />
-              )}
-
-              {/* アバター */}
-              <IconButton
+              {/* オンラインチップ（クリックでメニュー、長押しで手動更新） */}
+              <Chip
+                icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
+                label={isMobile ? undefined : "オンライン"}
+                color="success"
                 size="small"
-                edge="end"
-                onClick={handleMenuOpen}
-                color="inherit"
-                aria-label="ユーザーメニュー"
-              >
-                {user.photoURL ? (
-                  <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 28, height: 28 }} />
-                ) : (
-                  <AccountCircle fontSize="small" />
-                )}
-              </IconButton>
+                onTouchStart={handleChipLongPressStart}
+                onTouchEnd={(e: any) => handleChipLongPressEnd(e)}
+                onMouseDown={handleChipLongPressStart}
+                onMouseUp={handleChipLongPressEnd}
+                onMouseLeave={() => {
+                  if (longPressTimer.current) {
+                    window.clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                  }
+                }}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'success.dark',
+                  },
+                }}
+                title="クリックでメニュー / 長押しでページを更新"
+              />
 
               {/* ユーザーメニュー */}
               <Menu
