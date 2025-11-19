@@ -125,7 +125,7 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   // 商品フィールド配列
-  const { fields: productFields } = useFieldArray({
+  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
     control,
     name: 'products',
   });
@@ -636,6 +636,9 @@ export const NewOrderPage: React.FC = () => {
                       productNameOptions={productNameAutocomplete.options}
                       originOptions={originAutocomplete.options}
                       suppliers={formData.suppliers}
+                      fields={productFields}
+                      append={appendProduct}
+                      remove={removeProduct}
                     />
                   </Box>
                 </SwiperSlide>

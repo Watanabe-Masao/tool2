@@ -1,6 +1,6 @@
 import React from 'react';
-import { useFieldArray, useWatch } from 'react-hook-form';
-import type { Control, FieldErrors } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
+import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { Box, Button, Typography, Alert } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
@@ -23,6 +23,12 @@ interface ProductBasicInfoFormProps {
   onEnterPress?: () => void;
   /** 帳合先リスト（履歴フィルタ用） */
   suppliers?: string[];
+  /** 商品フィールド配列 */
+  fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
+  /** 商品追加関数 */
+  append: UseFieldArrayAppend<OrderFormData, 'products'>;
+  /** 商品削除関数 */
+  remove: UseFieldArrayRemove;
 }
 
 /**
@@ -38,11 +44,10 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   originOptions,
   onEnterPress,
   suppliers,
+  fields,
+  append,
+  remove,
 }) => {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'products',
-  });
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
