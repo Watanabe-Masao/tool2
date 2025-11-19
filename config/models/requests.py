@@ -90,3 +90,22 @@ class TemplateRequest(BaseModel):
 
     # Step 3-5: 商品情報（動的リスト）
     products: List[ProductDataRequest] = Field(default_factory=list, description="商品データリスト")
+
+
+class EmailRequest(BaseModel):
+    """
+    メール送信リクエスト（Resend API使用）
+
+    Attributes:
+        to: 送信先メールアドレス
+        subject: 件名
+        html: HTMLメール本文
+        attachment_data: 添付ファイルのBase64エンコードデータ（オプション）
+        attachment_filename: 添付ファイル名（オプション）
+    """
+
+    to: str = Field(..., description="送信先メールアドレス")
+    subject: str = Field(..., max_length=200, description="メール件名")
+    html: str = Field(..., description="HTML形式のメール本文")
+    attachment_data: Optional[str] = Field(default=None, description="Base64エンコードされた添付ファイル")
+    attachment_filename: Optional[str] = Field(default=None, description="添付ファイル名")

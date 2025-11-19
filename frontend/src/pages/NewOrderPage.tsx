@@ -66,7 +66,7 @@ export const NewOrderPage: React.FC = () => {
   // 初回ロードフラグ
   const isInitialLoad = useRef(true);
 
-  const { user, googleAccessToken } = useAuthContext();
+  const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
   // オフライン同期
@@ -547,7 +547,6 @@ export const NewOrderPage: React.FC = () => {
           <EmailSendModal
             open={showEmailModal}
             onClose={() => setShowEmailModal(false)}
-            accessToken={googleAccessToken}
             attachment={excelBlob || undefined}
             filename={generatedFiles.filename}
           />

@@ -21,8 +21,6 @@ interface EmailSendModalProps {
   open: boolean;
   /** モーダルを閉じる */
   onClose: () => void;
-  /** Googleアクセストークン */
-  accessToken: string | null;
   /** 添付ファイル（Excel Blob） */
   attachment?: Blob;
   /** 添付ファイル名 */
@@ -32,12 +30,11 @@ interface EmailSendModalProps {
 /**
  * メール送信モーダル
  *
- * Gmail APIを使用してExcelファイルを添付したメールを送信します。
+ * バックエンド（Resend API）を使用してExcelファイルを添付したメールを送信します。
  */
 export const EmailSendModal: React.FC<EmailSendModalProps> = ({
   open,
   onClose,
-  accessToken,
   attachment,
   filename,
 }) => {
@@ -52,15 +49,11 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
       setSending(true);
       setError(null);
 
-      if (!accessToken) {
-        throw new Error('アクセストークンが取得できていません。再度ログインしてください。');
-      }
-
       if (!to) {
         throw new Error('宛先メールアドレスを入力してください。');
       }
 
-      await sendEmail(accessToken, {
+      await sendEmail({
         to,
         subject,
         body,
@@ -94,12 +87,6 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
       <DialogTitle>メール送信</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          {!accessToken && (
-            <Alert severity="warning">
-              Gmail API権限が必要です。一度ログアウトして再度ログインしてください。
-            </Alert>
-          )}
-
           {error && <Alert severity="error">{error}</Alert>}
 
           <TextField
@@ -152,7 +139,7 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
         <Button
           onClick={handleSend}
           variant="contained"
-          disabled={sending || !accessToken || !to}
+          disabled={sending || !to}
           startIcon={sending && <CircularProgress size={16} />}
         >
           {sending ? '送信中...' : '送信'}

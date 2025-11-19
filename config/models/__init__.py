@@ -9,12 +9,13 @@
 - 利便性: from config.models import TemplateRequest で直接インポート可能
 """
 
-from config.models.requests import ProductDataRequest, TemplateRequest
+from config.models.requests import ProductDataRequest, TemplateRequest, EmailRequest
 from config.models.responses import TemplateResponse, ErrorResponse
 
 __all__ = [
     "ProductDataRequest",
     "TemplateRequest",
+    "EmailRequest",
     "TemplateResponse",
     "ErrorResponse",
 ]
