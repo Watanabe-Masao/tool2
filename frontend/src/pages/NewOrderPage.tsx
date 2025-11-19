@@ -59,6 +59,17 @@ export const NewOrderPage: React.FC = () => {
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [supplierRemovalDialog, setSupplierRemovalDialog] = useState<{
+    open: boolean;
+    suppliersToRemove: string[];
+    affectedProductsCount: number;
+    newSuppliers: string[];
+  }>({
+    open: false,
+    suppliersToRemove: [],
+    affectedProductsCount: 0,
+    newSuppliers: [],
+  });
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
@@ -164,48 +175,95 @@ export const NewOrderPage: React.FC = () => {
   }, [user]);
 
   /**
-   * 帳合先の変更を監視して削除された帳合先を使用している商品を自動削除
+   * 帳合先変更時のハンドラー
    */
-  useEffect(() => {
-    if (!suppliers || !products || isInitialLoad.current) {
-      // 初回ロード時は前回の帳合先リストを設定するだけ
-      if (suppliers) {
-        previousSuppliers.current = suppliers;
-      }
-      return;
+  const handleSuppliersChange = (newSuppliers: string[]) => {
+    // 初回ロード時や商品がない場合はそのまま適用
+    if (isInitialLoad.current || !products || products.length === 0) {
+      previousSuppliers.current = newSuppliers;
+      return newSuppliers;
     }
 
-    // 削除された帳合先を検出
-    const removedSuppliers = previousSuppliers.current.filter(
-      (prevSupplier) => !suppliers.includes(prevSupplier)
+    const currentSuppliers = suppliers || [];
+
+    // 削除される帳合先を検出
+    const removedSuppliers = currentSuppliers.filter(
+      (supplier) => !newSuppliers.includes(supplier)
     );
 
     if (removedSuppliers.length > 0) {
-      // 削除された帳合先を使用している商品のインデックスを取得
-      const productsToRemove: number[] = [];
-      products.forEach((product, index) => {
-        if (product.supplier && removedSuppliers.includes(product.supplier)) {
-          productsToRemove.push(index);
-        }
-      });
+      // 削除される帳合先を使用している商品を検出
+      const affectedProducts = products.filter(
+        (product) => product.supplier && removedSuppliers.includes(product.supplier)
+      );
 
-      if (productsToRemove.length > 0) {
-        // 警告メッセージを表示
-        const removedSupplierNames = removedSuppliers.join('、');
-        showError(
-          `帳合先「${removedSupplierNames}」を使用している商品カード${productsToRemove.length}件を削除しました`
-        );
-
-        // 後ろから削除（インデックスがずれないように）
-        productsToRemove.reverse().forEach((index) => {
-          remove(index);
+      if (affectedProducts.length > 0) {
+        // 確認ダイアログを表示
+        setSupplierRemovalDialog({
+          open: true,
+          suppliersToRemove: removedSuppliers,
+          affectedProductsCount: affectedProducts.length,
+          newSuppliers,
         });
+        // 変更を保留
+        return currentSuppliers;
       }
     }
 
-    // 前回の帳合先リストを更新
-    previousSuppliers.current = suppliers;
-  }, [suppliers, products, remove, showError]);
+    // 問題ない場合はそのまま適用
+    previousSuppliers.current = newSuppliers;
+    return newSuppliers;
+  };
+
+  /**
+   * 帳合先削除の確認
+   */
+  const handleConfirmSupplierRemoval = () => {
+    const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialog;
+
+    // 削除される帳合先を使用している商品のインデックスを取得
+    const productsToRemove: number[] = [];
+    products.forEach((product, index) => {
+      if (product.supplier && suppliersToRemove.includes(product.supplier)) {
+        productsToRemove.push(index);
+      }
+    });
+
+    // 後ろから削除（インデックスがずれないように）
+    productsToRemove.reverse().forEach((index) => {
+      remove(index);
+    });
+
+    // 帳合先を更新
+    methods.setValue('suppliers', newSuppliers);
+    previousSuppliers.current = newSuppliers;
+
+    // メッセージを表示
+    const removedSupplierNames = suppliersToRemove.join('、');
+    showSuccess(
+      `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
+    );
+
+    // ダイアログを閉じる
+    setSupplierRemovalDialog({
+      open: false,
+      suppliersToRemove: [],
+      affectedProductsCount: 0,
+      newSuppliers: [],
+    });
+  };
+
+  /**
+   * 帳合先削除のキャンセル
+   */
+  const handleCancelSupplierRemoval = () => {
+    setSupplierRemovalDialog({
+      open: false,
+      suppliersToRemove: [],
+      affectedProductsCount: 0,
+      newSuppliers: [],
+    });
+  };
 
   /**
    * フォームデータの自動保存（debounce付き）
@@ -560,6 +618,7 @@ export const NewOrderPage: React.FC = () => {
                       control={control}
                       errors={errors}
                       supplierOptions={supplierAutocomplete.options}
+                      onSuppliersChange={handleSuppliersChange}
                     />
                   </Box>
                 </SwiperSlide>
@@ -681,6 +740,28 @@ export const NewOrderPage: React.FC = () => {
             </Button>
             <Button onClick={handleRestoreDraft} color="primary" variant="contained">
               復元する
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 帳合先削除確認ダイアログ */}
+        <Dialog open={supplierRemovalDialog.open} onClose={handleCancelSupplierRemoval}>
+          <DialogTitle>帳合先の削除確認</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              削除しようとしている帳合先「{supplierRemovalDialog.suppliersToRemove.join('、')}」は
+              {supplierRemovalDialog.affectedProductsCount}件の商品カードで使用されています。
+            </DialogContentText>
+            <DialogContentText sx={{ mt: 1.5 }}>
+              帳合先を削除すると、これらの商品カードも削除されます。続行しますか？
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelSupplierRemoval} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleConfirmSupplierRemoval} color="error" variant="contained">
+              削除する
             </Button>
           </DialogActions>
         </Dialog>

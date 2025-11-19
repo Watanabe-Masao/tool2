@@ -8,7 +8,6 @@ import {
   Autocomplete,
   Stack,
   Chip,
-  Divider,
 } from '@mui/material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
@@ -25,6 +24,8 @@ interface SupplierFormProps {
   supplierOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 帳合先変更時のカスタムハンドラー */
+  onSuppliersChange?: (newValue: string[]) => string[];
 }
 
 /**
@@ -38,16 +39,13 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   errors,
   supplierOptions = [],
   onEnterPress,
+  onSuppliersChange,
 }) => {
   const { presets } = useSupplierPresets();
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>帳合先を選択</Typography>
-
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        複数の帳合先を選択できます
-      </Typography>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1.5 }}>帳合先を選択</Typography>
 
       <Controller
         name="suppliers"
@@ -56,11 +54,11 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
           <Box>
             {/* プリセットボタン */}
             {presets.length > 0 && (
-              <Box sx={{ mb: 1.5 }}>
+              <Box sx={{ mb: 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
                   プリセット
                 </Typography>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
                   {presets.map((preset) => {
                     const isSelected = field.value?.includes(preset.supplier);
                     return (
@@ -84,7 +82,6 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
                     );
                   })}
                 </Stack>
-                <Divider sx={{ my: 1.5 }} />
               </Box>
             )}
 
@@ -95,8 +92,11 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
               freeSolo
               value={field.value || []}
               onChange={(_, newValue) => {
-                field.onChange(newValue);
+                // カスタムハンドラーがあれば、それを使用して変更を処理
+                const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                field.onChange(finalValue);
               }}
+              size="small"
               renderInput={(params) => (
                 <TextField
                   {...params}

@@ -287,7 +287,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     if (!categorySwipeState.id || categorySwipeState.id !== category.id) return;
 
     const deltaX = categorySwipeState.currentX - categorySwipeState.startX;
-    const threshold = 80; // スワイプ感度を調整（60→80）
+    const threshold = 120; // スワイプ感度を調整（80→120）
 
     // 左スワイプ（編集）
     if (deltaX < -threshold) {
@@ -491,7 +491,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     if (!supplierSwipeState.id || supplierSwipeState.id !== supplier.id) return;
 
     const deltaX = supplierSwipeState.currentX - supplierSwipeState.startX;
-    const threshold = 80; // スワイプ感度を調整（60→80）
+    const threshold = 120; // スワイプ感度を調整（80→120）
 
     // 左スワイプ（編集）
     if (deltaX < -threshold) {

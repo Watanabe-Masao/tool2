@@ -33,6 +33,8 @@ interface DeliveryDateFormProps {
   supplierOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 帳合先変更時のカスタムハンドラー */
+  onSuppliersChange?: (newValue: string[]) => string[];
 }
 
 /**
@@ -46,6 +48,7 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
   errors,
   supplierOptions = [],
   onEnterPress,
+  onSuppliersChange,
 }) => {
   const { presets } = useSupplierPresets();
   const [showPresetManager, setShowPresetManager] = useState(false);
@@ -175,13 +178,17 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                           label={preset.supplier}
                           onClick={() => {
                             const currentValue = field.value || [];
+                            let newValue: string[];
                             if (isSelected) {
                               // 既に選択されている場合は削除
-                              field.onChange(currentValue.filter((s: string) => s !== preset.supplier));
+                              newValue = currentValue.filter((s: string) => s !== preset.supplier);
                             } else {
                               // 選択されていない場合は追加
-                              field.onChange([...currentValue, preset.supplier]);
+                              newValue = [...currentValue, preset.supplier];
                             }
+                            // カスタムハンドラーがあれば、それを使用して変更を処理
+                            const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                            field.onChange(finalValue);
                           }}
                           color={isSelected ? 'primary' : 'default'}
                           size="small"
@@ -201,7 +208,9 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                 freeSolo
                 value={field.value || []}
                 onChange={(_, newValue) => {
-                  field.onChange(newValue);
+                  // カスタムハンドラーがあれば、それを使用して変更を処理
+                  const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                  field.onChange(finalValue);
                 }}
                 renderInput={(params) => (
                   <TextField
