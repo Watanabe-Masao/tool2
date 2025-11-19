@@ -271,6 +271,20 @@ export const NewOrderPage: React.FC = () => {
 
       console.log('Form data:', data);
 
+      // バリデーション: すべての商品の帳合先がステップ1で選択された帳合先リストに含まれているかチェック
+      const invalidProducts = data.products.filter(
+        (product) => !data.suppliers.includes(product.supplier)
+      );
+
+      if (invalidProducts.length > 0) {
+        hideLoading();
+        showError(
+          `一部の商品の帳合先がステップ1で選択されていません。` +
+          `該当する商品の帳合先を修正してください。`
+        );
+        return;
+      }
+
       // バイヤー名を取得（ユーザー名またはメールアドレス）
       const buyerName = user?.displayName || user?.email || '匿名';
 
