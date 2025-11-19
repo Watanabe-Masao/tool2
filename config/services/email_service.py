@@ -33,6 +33,7 @@ class EmailService:
         to: str,
         subject: str,
         html: str,
+        sender_name: Optional[str] = None,
         attachment_data: Optional[str] = None,
         attachment_filename: Optional[str] = None
     ) -> dict:
@@ -43,6 +44,7 @@ class EmailService:
             to: 送信先メールアドレス
             subject: メール件名
             html: HTML形式のメール本文
+            sender_name: 送信元の表示名（オプション、未指定の場合は「配本管理システム」）
             attachment_data: Base64エンコードされた添付ファイルデータ（オプション）
             attachment_filename: 添付ファイル名（オプション）
 
@@ -64,12 +66,14 @@ class EmailService:
         # ResendクライアントのAPIキー設定
         resend.api_key = api_key
 
+        # 送信元の表示名を設定
+        # sender_nameが指定されていればそれを使用、なければデフォルト値
+        display_name = sender_name if sender_name else "配本管理システム"
+        from_address = f"{display_name} <onboarding@resend.dev>"
+
         # メールパラメータ
-        # 送信元の表示名を変更する場合はここを編集
-        # 例: "営業部 <onboarding@resend.dev>"
-        #     "株式会社◯◯ <onboarding@resend.dev>"
         params = {
-            "from": "配本管理システム <onboarding@resend.dev>",  # Resendの検証済みドメイン
+            "from": from_address,
             "to": [to],
             "subject": subject,
             "html": html,

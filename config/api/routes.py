@@ -302,6 +302,7 @@ async def send_email(request: EmailRequest):
             to=request.to,
             subject=request.subject,
             html=request.html,
+            sender_name=request.sender_name,
             attachment_data=request.attachment_data,
             attachment_filename=request.attachment_filename
         )

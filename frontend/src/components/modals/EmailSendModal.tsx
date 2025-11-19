@@ -21,6 +21,8 @@ interface EmailSendModalProps {
   open: boolean;
   /** モーダルを閉じる */
   onClose: () => void;
+  /** 送信元ユーザー名（バイヤー名など） */
+  userName?: string;
   /** 添付ファイル（Excel Blob） */
   attachment?: Blob;
   /** 添付ファイル名 */
@@ -35,6 +37,7 @@ interface EmailSendModalProps {
 export const EmailSendModal: React.FC<EmailSendModalProps> = ({
   open,
   onClose,
+  userName,
   attachment,
   filename,
 }) => {
@@ -57,6 +60,7 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
         to,
         subject,
         body,
+        senderName: userName,
         attachment,
         filename,
       });

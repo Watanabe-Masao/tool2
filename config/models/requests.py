@@ -100,6 +100,7 @@ class EmailRequest(BaseModel):
         to: 送信先メールアドレス
         subject: 件名
         html: HTMLメール本文
+        sender_name: 送信元の表示名（オプション、未指定の場合は「配本管理システム」）
         attachment_data: 添付ファイルのBase64エンコードデータ（オプション）
         attachment_filename: 添付ファイル名（オプション）
     """
@@ -107,5 +108,6 @@ class EmailRequest(BaseModel):
     to: str = Field(..., description="送信先メールアドレス")
     subject: str = Field(..., max_length=200, description="メール件名")
     html: str = Field(..., description="HTML形式のメール本文")
+    sender_name: Optional[str] = Field(default=None, max_length=50, description="送信元の表示名")
     attachment_data: Optional[str] = Field(default=None, description="Base64エンコードされた添付ファイル")
     attachment_filename: Optional[str] = Field(default=None, description="添付ファイル名")

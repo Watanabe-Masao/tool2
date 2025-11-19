@@ -14,6 +14,8 @@ export interface EmailSendOptions {
   subject: string;
   /** 本文（HTML形式） */
   body: string;
+  /** 送信元の表示名（オプション） */
+  senderName?: string;
   /** 添付ファイル（Blob） */
   attachment?: Blob;
   /** 添付ファイル名 */
@@ -67,6 +69,7 @@ export async function sendEmail(options: EmailSendOptions): Promise<void> {
         to: options.to,
         subject: options.subject,
         html: htmlBody,
+        sender_name: options.senderName,
         attachment_data: attachmentData,
         attachment_filename: options.filename,
       }),

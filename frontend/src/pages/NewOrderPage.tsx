@@ -547,6 +547,7 @@ export const NewOrderPage: React.FC = () => {
           <EmailSendModal
             open={showEmailModal}
             onClose={() => setShowEmailModal(false)}
+            userName={user?.displayName || user?.email || undefined}
             attachment={excelBlob || undefined}
             filename={generatedFiles.filename}
           />
