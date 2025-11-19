@@ -1,16 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
   Typography,
   IconButton,
-  Avatar,
   Menu,
   MenuItem,
   Box,
   Divider,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -19,10 +17,10 @@ import {
   Button,
   useMediaQuery,
   useTheme,
+  Chip,
 } from '@mui/material';
 import {
   Logout,
-  AccountCircle,
   Google,
   Email,
   AddCircle,
@@ -31,6 +29,7 @@ import {
   Settings,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
+import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 
 /**
@@ -40,6 +39,7 @@ import { APP_NAME } from '@/utils/constants';
  */
 export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
+  const { isOnline, isSyncing, unsyncedCount } = useDataSync();
   const history = useHistory();
   const location = useLocation();
   const theme = useTheme();
@@ -47,10 +47,6 @@ export const Header: React.FC = () => {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
-
-  // 長押し検出用のタイマー
-  const longPressTimer = useRef<number | null>(null);
 
   /**
    * ユーザーメニューを開く
@@ -77,32 +73,6 @@ export const Header: React.FC = () => {
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
-  };
-
-  /**
-   * オンラインチップ長押し開始（ページ更新用）
-   */
-  const handleChipLongPressStart = () => {
-    longPressTimer.current = window.setTimeout(() => {
-      setReloadDialogOpen(true);
-    }, 500);
-  };
-
-  /**
-   * オンラインチップ長押し終了
-   */
-  const handleChipLongPressEnd = () => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  /**
-   * ページを更新
-   */
-  const handleReload = () => {
-    window.location.reload();
   };
 
   /**
@@ -142,9 +112,70 @@ export const Header: React.FC = () => {
       <AppBar position="sticky" elevation={1} sx={{ zIndex: 1300 }}>
         <Toolbar>
           {/* アプリケーション名 */}
-          <Typography variant="h6" component="div" sx={{ fontWeight: 600, mr: 2 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600, mr: 1.5 }}>
             {APP_NAME}
           </Typography>
+
+          {/* オンライン/オフライン状態・同期状態 */}
+          {user && (
+            <Box sx={{ display: 'flex', gap: 0.5, mr: 2 }}>
+              {/* オンライン/オフライン */}
+              <Chip
+                label={isOnline ? 'オンライン' : 'オフライン'}
+                color={isOnline ? 'success' : 'warning'}
+                size="small"
+                variant="outlined"
+                sx={{
+                  height: 24,
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  borderColor: isOnline ? 'success.light' : 'warning.light',
+                  color: 'white',
+                  '& .MuiChip-label': {
+                    px: 1,
+                  },
+                }}
+              />
+
+              {/* 同期中 */}
+              {isSyncing && (
+                <Chip
+                  label="同期中"
+                  color="info"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    borderColor: 'info.light',
+                    color: 'white',
+                    '& .MuiChip-label': {
+                      px: 1,
+                    },
+                  }}
+                />
+              )}
+
+              {/* 未同期データ数 */}
+              {unsyncedCount > 0 && (
+                <Chip
+                  label={`未同期${unsyncedCount}`}
+                  color="warning"
+                  size="small"
+                  variant="filled"
+                  sx={{
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    '& .MuiChip-label': {
+                      px: 1,
+                    },
+                  }}
+                />
+              )}
+            </Box>
+          )}
 
           {/* ナビゲーションメニュー（モバイルではコンパクト表示） */}
           {user && (
@@ -191,50 +222,27 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* オンラインチップ（長押しでログアウト） */}
-              {!isMobile && (
-                <Chip
-                  icon={loginProvider === 'google' ? <Google fontSize="small" /> : <Email fontSize="small" />}
-                  label={user.displayName || user.email}
-                  color="success"
-                  size="small"
-                  onTouchStart={handleChipLongPressStart}
-                  onTouchEnd={handleChipLongPressEnd}
-                  onMouseDown={handleChipLongPressStart}
-                  onMouseUp={handleChipLongPressEnd}
-                  onMouseLeave={handleChipLongPressEnd}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'success.dark',
-                    },
-                  }}
-                />
-              )}
-
-              {/* ユーザー設定アイコン */}
+              {/* ユーザーメニューボタン */}
               <IconButton
                 size="small"
-                onClick={() => handleNavigationChange('/profile')}
-                color={location.pathname === '/profile' ? 'primary' : 'inherit'}
-                aria-label="ユーザー設定"
-                title="ユーザー設定"
-              >
-                <Settings fontSize="small" />
-              </IconButton>
-
-              {/* アバター */}
-              <IconButton
-                size="small"
-                edge="end"
                 onClick={handleMenuOpen}
                 color="inherit"
                 aria-label="ユーザーメニュー"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
               >
-                {user.photoURL ? (
-                  <Avatar src={user.photoURL} alt={user.displayName || ''} sx={{ width: 28, height: 28 }} />
+                {loginProvider === 'google' ? (
+                  <Google fontSize="small" sx={{ color: 'white' }} />
                 ) : (
-                  <AccountCircle fontSize="small" />
+                  <Email fontSize="small" sx={{ color: 'white' }} />
+                )}
+                {!isMobile && user.displayName && (
+                  <Typography variant="caption" sx={{ color: 'white' }}>
+                    {user.displayName}
+                  </Typography>
                 )}
               </IconButton>
 
@@ -309,27 +317,6 @@ export const Header: React.FC = () => {
           </Button>
           <Button onClick={handleLogout} color="error" variant="contained">
             ログアウト
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ページ更新確認ダイアログ */}
-      <Dialog open={reloadDialogOpen} onClose={() => setReloadDialogOpen(false)}>
-        <DialogTitle>ページを更新</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            ページを更新しますか？
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-            保存されていない変更は失われる可能性があります。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReloadDialogOpen(false)} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleReload} color="primary" variant="contained">
-            更新
           </Button>
         </DialogActions>
       </Dialog>

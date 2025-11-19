@@ -48,15 +48,15 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
-  const totalDelivery = useWatch({ control, name: 'totalDelivery' }) || 0;
+  const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
   const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
 
   // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
   const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
 
-  // 値入率を計算（(売価 - センターフィー込原価) / 売価 × 100）
-  const profitMargin = priceExcludingTax && centerCostWithFee
-    ? ((priceExcludingTax - centerCostWithFee) / priceExcludingTax * 100).toFixed(1)
+  // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
+  const profitMargin = priceExcludingTax && storeCost
+    ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '0.0';
 
   // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 入数)）
@@ -150,7 +150,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         <Grid container spacing={1} sx={{ mb: 1.5 }}>
           <Grid item xs={6}>
             <Controller
-              name="totalDelivery"
+              name={`products.${index}.totalDelivery`}
               control={control}
               render={({ field }) => (
                 <TextField
@@ -160,8 +160,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   placeholder="例: 100"
                   size="small"
                   fullWidth
-                  error={!!errors.totalDelivery}
-                  helperText={errors.totalDelivery?.message}
+                  error={!!productErrors?.totalDelivery}
+                  helperText={productErrors?.totalDelivery?.message}
                   required
                   inputProps={{ min: 1, step: 1 }}
                   value={field.value || ''}
@@ -239,7 +239,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText={`センター着原価 × ${(1 + centerFeeRate / 100).toFixed(2)}`}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: 'grey.200',
+                  fontWeight: 'medium',
                 },
               }}
             />
@@ -311,10 +312,11 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
-              helperText="(売価 - センターフィー込原価) / 売価 × 100"
+              helperText="(売価 - 店着原価) / 売価 × 100"
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: 'grey.200',
+                  fontWeight: 'medium',
                 },
               }}
             />
@@ -331,7 +333,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.50',
+                  bgcolor: 'grey.200',
+                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
+                  fontWeight: 'medium',
                 },
               }}
             />

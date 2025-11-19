@@ -47,6 +47,14 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const [expanded, setExpanded] = useState(false);
 
   /**
+   * 各商品の総納品数の合計を計算
+   */
+  const totalDeliverySum = formData.products.reduce(
+    (sum, product) => sum + (product.totalDelivery || 0),
+    0
+  );
+
+  /**
    * 配分済み数を計算
    */
   const totalAllocated = formData.products.reduce(
@@ -58,7 +66,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   /**
    * 残り配分数を計算
    */
-  const remaining = formData.totalDelivery - totalAllocated;
+  const remaining = totalDeliverySum - totalAllocated;
 
   /**
    * 各ステップの完了状態を判定
@@ -88,8 +96,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     },
     {
       label: '総納品数',
-      completed: formData.totalDelivery > 0,
-      value: formData.totalDelivery > 0 ? `${formData.totalDelivery}個` : null,
+      completed: totalDeliverySum > 0,
+      value: totalDeliverySum > 0 ? `${totalDeliverySum}個` : null,
     },
     {
       label: '店舗配分',

@@ -305,6 +305,20 @@ export const StoreCategoryManagementPage: React.FC = () => {
 
   const filteredStoresForSettings = getFilteredStoresForSettings();
 
+  // 販売構成比の合計を計算
+  const calculateTotalSalesRatio = (): number => {
+    let total = 0;
+    for (const store of filteredStoresForSettings) {
+      const setting = storeSettings[store.code];
+      const salesRatio = setting?.salesRatio ?? 0;
+      total += salesRatio;
+    }
+    return total;
+  };
+
+  const totalSalesRatio = calculateTotalSalesRatio();
+  const salesRatioDifference = 100 - totalSalesRatio;
+
   return (
     <Container maxWidth="lg">
           <Box sx={{ py: 3 }}>
@@ -578,6 +592,45 @@ export const StoreCategoryManagementPage: React.FC = () => {
                         </TableBody>
                       </Table>
                     </TableContainer>
+
+                    {/* 販売構成比の合計と差異 */}
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                      <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={6}>
+                          <Typography variant="body2" fontWeight="medium">
+                            販売構成比 合計:
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                          <Typography
+                            variant="body1"
+                            fontWeight="bold"
+                            color={Math.abs(salesRatioDifference) < 0.01 ? 'success.main' : 'text.primary'}
+                          >
+                            {totalSalesRatio.toFixed(1)}%
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" fontWeight="medium">
+                            100%との差異:
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                          <Typography
+                            variant="body1"
+                            fontWeight="bold"
+                            color={Math.abs(salesRatioDifference) < 0.01 ? 'success.main' : 'error.main'}
+                          >
+                            {salesRatioDifference > 0 ? '+' : ''}{salesRatioDifference.toFixed(1)}%
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                      {Math.abs(salesRatioDifference) >= 0.01 && (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                          販売構成比の合計が100%になるように調整してください。
+                        </Alert>
+                      )}
+                    </Box>
 
                     <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
                       <Button variant="contained" onClick={handleSaveStoreSettings}>

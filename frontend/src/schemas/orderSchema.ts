@@ -72,6 +72,13 @@ export const productSchema = z.object({
     .min(NUMBER_RANGE.PRICE_EXCLUDING_TAX.min, `本体価格は${NUMBER_RANGE.PRICE_EXCLUDING_TAX.min}以上で入力してください`)
     .max(NUMBER_RANGE.PRICE_EXCLUDING_TAX.max, `本体価格は${NUMBER_RANGE.PRICE_EXCLUDING_TAX.max}以下で入力してください`),
 
+  /** 総納品数（商品ごと） */
+  totalDelivery: z
+    .number()
+    .min(NUMBER_RANGE.TOTAL_DELIVERY.min, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.min}以上で入力してください`)
+    .max(NUMBER_RANGE.TOTAL_DELIVERY.max, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.max}以下で入力してください`)
+    .int('整数で入力してください'),
+
   /** 36店舗への配分数 */
   storeAllocations: z
     .array(
@@ -101,13 +108,6 @@ export const orderFormSchema = z
       .min(1, '帳合先を入力してください')
       .max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`),
 
-    /** 総納品数 */
-    totalDelivery: z
-      .number()
-      .min(NUMBER_RANGE.TOTAL_DELIVERY.min, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.min}以上で入力してください`)
-      .max(NUMBER_RANGE.TOTAL_DELIVERY.max, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.max}以下で入力してください`)
-      .int('整数で入力してください'),
-
     /** 商品リスト */
     products: z
       .array(productSchema)
@@ -116,14 +116,14 @@ export const orderFormSchema = z
   })
   .refine(
     (data) => {
-      // 各商品の配分合計が総納品数と一致しているか確認
+      // 各商品の配分合計がその商品の総納品数と一致しているか確認
       return data.products.every((product) => {
         const totalAllocation = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-        return totalAllocation === data.totalDelivery;
+        return totalAllocation === product.totalDelivery;
       });
     },
     {
-      message: '各商品の配分合計は総納品数と一致している必要があります',
+      message: '各商品の配分合計はその商品の総納品数と一致している必要があります',
       path: ['products'],
     }
   );

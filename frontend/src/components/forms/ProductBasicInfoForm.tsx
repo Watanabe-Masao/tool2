@@ -50,6 +50,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   const handleAddProduct = () => {
     append({
       ...DEFAULT_PRODUCT_FORM_DATA,
+      totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
   };

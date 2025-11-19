@@ -27,7 +27,7 @@ export class TemplateService {
         unit: product.unit || '',
         store_cost: product.storeCost,
         price: product.priceExcludingTax,
-        total_delivery: formData.totalDelivery,
+        total_delivery: product.totalDelivery,
         delivery_dest: formData.supplier,
         store_quantities: this.convertStoreAllocations(product.storeAllocations),
       })),

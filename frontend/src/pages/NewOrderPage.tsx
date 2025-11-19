@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Chip, Button } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
@@ -14,6 +14,8 @@ import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile'
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
+import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
+import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useNotification } from '@/context/NotificationContext';
@@ -22,6 +24,7 @@ import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
+import { SessionStorageService } from '@/utils/sessionStorageService';
 
 /**
  * フォームのステップ数
@@ -43,20 +46,31 @@ export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
     pdfFilename?: string;
   } | null>(null);
+  const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
 
-  const { user } = useAuthContext();
+  // 自動保存用のタイマー
+  const autoSaveTimer = useRef<number | null>(null);
+
+  // 初回ロードフラグ
+  const isInitialLoad = useRef(true);
+
+  const { user, googleAccessToken } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
   // オフライン同期
-  const { isOnline, isSyncing, unsyncedCount, saveOrder: saveOrderWithSync } = useDataSync();
+  const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
 
   // オートコンプリート
   const supplierAutocomplete = useAutocomplete('supplier');
@@ -71,10 +85,10 @@ export const NewOrderPage: React.FC = () => {
     defaultValues: {
       deliveryDate: new Date(),
       supplier: '',
-      totalDelivery: 0,
       products: [
         {
           ...DEFAULT_PRODUCT_FORM_DATA,
+          totalDelivery: 0,
           storeAllocations: new Array(STORE_COUNT).fill(0),
         },
       ],
@@ -86,6 +100,7 @@ export const NewOrderPage: React.FC = () => {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = methods;
 
@@ -93,10 +108,137 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   /**
+   * ページロード時に下書きを復元
+   */
+  useEffect(() => {
+    if (!user || !isInitialLoad.current) return;
+
+    isInitialLoad.current = false;
+
+    const draft = SessionStorageService.loadDraft(user.uid);
+    if (draft) {
+      setRestoreDialogOpen(true);
+    }
+  }, [user]);
+
+  /**
+   * フォームデータの自動保存（debounce付き）
+   */
+  useEffect(() => {
+    if (!user || isInitialLoad.current) return;
+
+    // 変更があることをマーク
+    setHasUnsavedChanges(true);
+
+    // 既存のタイマーをクリア
+    if (autoSaveTimer.current) {
+      window.clearTimeout(autoSaveTimer.current);
+    }
+
+    // 2秒後に自動保存
+    autoSaveTimer.current = window.setTimeout(() => {
+      SessionStorageService.saveDraft(user.uid, formData);
+      console.log('Form auto-saved');
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimer.current) {
+        window.clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [formData, user]);
+
+  /**
+   * ページ離脱時の警告
+   */
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  /**
+   * フォームデータ変更時にSwiperの高さを更新
+   */
+  useEffect(() => {
+    if (swiperRef.current) {
+      // Swiperを更新して高さを再計算
+      setTimeout(() => {
+        swiperRef.current?.update();
+        swiperRef.current?.updateAutoHeight(300);
+      }, 100);
+    }
+  }, [formData.products?.length]); // 商品数が変更されたときに更新
+
+  /**
+   * コンテンツサイズ変更を監視してSwiperを更新
+   */
+  useEffect(() => {
+    if (!swiperRef.current) return;
+
+    const swiperEl = swiperRef.current.el;
+    if (!swiperEl) return;
+
+    // ResizeObserverでコンテンツのサイズ変更を検出
+    const resizeObserver = new ResizeObserver(() => {
+      if (swiperRef.current) {
+        swiperRef.current.update();
+        swiperRef.current.updateAutoHeight(300);
+      }
+    });
+
+    // すべてのスライドを監視
+    const slides = swiperEl.querySelectorAll('.swiper-slide');
+    slides.forEach((slide) => {
+      resizeObserver.observe(slide);
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [activeStep]); // アクティブステップが変わったときに再設定
+
+  /**
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
     setActiveStep(swiper.activeIndex);
+    // スライド変更時に高さを更新
+    setTimeout(() => {
+      swiper.update();
+      swiper.updateAutoHeight(300);
+    }, 50);
+  };
+
+  /**
+   * スライド遷移完了時の処理
+   */
+  const handleSlideChangeTransitionEnd = (swiper: SwiperType) => {
+    // 遷移完了後に高さを再計算
+    setTimeout(() => {
+      swiper.update();
+      swiper.updateAutoHeight(300);
+    }, 50);
+  };
+
+  /**
+   * ExcelファイルをBlobとして取得
+   */
+  const fetchExcelAsBlob = async (url: string): Promise<Blob> => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Excelファイルの取得に失敗しました');
+    }
+    return await response.blob();
   };
 
   /**
@@ -150,10 +292,26 @@ export const NewOrderPage: React.FC = () => {
           pdfFilename: response.pdf_filename,
         });
 
+        // ExcelファイルをBlobとして取得（メール送信用）
+        try {
+          const blob = await fetchExcelAsBlob(response.download_url);
+          setExcelBlob(blob);
+          console.log('Excel blob fetched successfully');
+        } catch (err) {
+          console.error('Failed to fetch Excel blob:', err);
+          // Blobの取得に失敗してもテンプレート生成は成功しているので続行
+        }
+
         hideLoading();
 
         // 成功メッセージ
         showSuccess('テンプレートを生成しました');
+
+        // SessionStorageの下書きをクリア（成功時）
+        if (user) {
+          SessionStorageService.clearDraft(user.uid);
+          setHasUnsavedChanges(false);
+        }
 
         // PDFが生成されている場合とそうでない場合で分岐
         if (response.pdf_filename) {
@@ -171,6 +329,12 @@ export const NewOrderPage: React.FC = () => {
         // オフライン時
         hideLoading();
         showSuccess('データをローカルに保存しました。オンライン復帰時に自動同期されます。');
+
+        // オフライン時もSessionStorageの下書きをクリア
+        if (user) {
+          SessionStorageService.clearDraft(user.uid);
+          setHasUnsavedChanges(false);
+        }
       }
     } catch (error) {
       hideLoading();
@@ -201,7 +365,16 @@ export const NewOrderPage: React.FC = () => {
   const renderSubmitButton = () => {
     if (activeStep === TOTAL_STEPS - 1) {
       return (
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
+        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => setShowPreviewModal(true)}
+            fullWidth
+            sx={{ maxWidth: 400 }}
+          >
+            プレビュー
+          </Button>
           <Button
             variant="contained"
             size="large"
@@ -209,7 +382,7 @@ export const NewOrderPage: React.FC = () => {
             fullWidth
             sx={{ maxWidth: 400 }}
           >
-            テンプレート生成
+            配分表を作成
           </Button>
         </Box>
       );
@@ -219,36 +392,38 @@ export const NewOrderPage: React.FC = () => {
 
   const isMobile = isMobileDevice();
 
+  /**
+   * 下書きを復元
+   */
+  const handleRestoreDraft = () => {
+    if (!user) return;
+
+    const draft = SessionStorageService.loadDraft(user.uid);
+    if (draft) {
+      reset(draft);
+      setRestoreDialogOpen(false);
+      showSuccess('下書きを復元しました');
+      isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 1000);
+    }
+  };
+
+  /**
+   * 下書きを破棄
+   */
+  const handleDiscardDraft = () => {
+    if (!user) return;
+
+    SessionStorageService.clearDraft(user.uid);
+    setRestoreDialogOpen(false);
+  };
+
   return (
     <FormProvider {...methods}>
       <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
-            {/* ネットワーク状態・同期状態の表示 */}
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* オンライン/オフライン状態 */}
-              <Chip
-                label={isOnline ? 'オンライン' : 'オフライン'}
-                color={isOnline ? 'success' : 'warning'}
-                size="small"
-                variant="outlined"
-              />
-
-              {/* 同期中表示 */}
-              {isSyncing && (
-                <Chip label="同期中..." color="info" size="small" variant="outlined" />
-              )}
-
-              {/* 未同期データ数 */}
-              {unsyncedCount > 0 && (
-                <Chip
-                  label={`未同期: ${unsyncedCount}件`}
-                  color="warning"
-                  size="small"
-                  variant="filled"
-                />
-              )}
-            </Box>
-
             {/* オフライン時の警告 */}
             {!isOnline && (
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -261,9 +436,12 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
+                onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
+                noSwiping={true}
+                noSwipingClass="swiper-no-swiping"
                 watchSlidesProgress={true}
                 observer={true}
                 observeParents={true}
@@ -309,14 +487,14 @@ export const NewOrderPage: React.FC = () => {
                 {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    {formData.products.map((_, index) =>
+                    {formData.products.map((product, index) =>
                       isMobile ? (
                         <StoreAllocationMobile
                           key={index}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={formData.totalDelivery}
+                          totalDelivery={product.totalDelivery || 0}
                         />
                       ) : (
                         <StoreAllocationGrid
@@ -324,7 +502,7 @@ export const NewOrderPage: React.FC = () => {
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={formData.totalDelivery}
+                          totalDelivery={product.totalDelivery || 0}
                         />
                       )
                     )}
@@ -342,6 +520,7 @@ export const NewOrderPage: React.FC = () => {
             onClose={() => setShowPDFPreview(false)}
             pdfUrl={TemplateService.getDownloadUrl(generatedFiles.pdfFilename)}
             onDownloadExcel={handleDownloadExcel}
+            onSendEmail={() => setShowEmailModal(true)}
           />
         )}
 
@@ -352,6 +531,25 @@ export const NewOrderPage: React.FC = () => {
             onClose={() => setShowDownloadModal(false)}
             downloadUrl={generatedFiles.downloadUrl}
             filename={generatedFiles.filename}
+            onSendEmail={() => setShowEmailModal(true)}
+          />
+        )}
+
+        {/* 配分表プレビューモーダル */}
+        <AllocationPreviewModal
+          open={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          formData={formData}
+        />
+
+        {/* メール送信モーダル */}
+        {generatedFiles && (
+          <EmailSendModal
+            open={showEmailModal}
+            onClose={() => setShowEmailModal(false)}
+            accessToken={googleAccessToken}
+            attachment={excelBlob || undefined}
+            filename={generatedFiles.filename}
           />
         )}
 
@@ -361,6 +559,27 @@ export const NewOrderPage: React.FC = () => {
           activeStep={activeStep}
           totalSteps={TOTAL_STEPS}
         />
+
+        {/* 下書き復元確認ダイアログ */}
+        <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
+          <DialogTitle>下書きを復元しますか？</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              前回の入力内容が見つかりました。続きから入力を再開できます。
+            </DialogContentText>
+            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+              下書きは24時間保存されます。復元しない場合、新規に入力を開始します。
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDiscardDraft} color="inherit">
+              新規入力
+            </Button>
+            <Button onClick={handleRestoreDraft} color="primary" variant="contained">
+              復元する
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </FormProvider>
   );

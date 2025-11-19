@@ -469,6 +469,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                       {...field}
                       options={productNameOptions}
                       freeSolo
+                      size="small"
                       value={field.value || ''}
                       onChange={(_, newValue) => field.onChange(newValue || '')}
                       onInputChange={(_, newInputValue) => field.onChange(newInputValue)}
@@ -530,6 +531,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         {...field}
                         options={originOptions}
                         freeSolo
+                        size="small"
                         value={field.value || ''}
                         onChange={(_, newValue) => field.onChange(newValue || '')}
                         onInputChange={(_, newInputValue) => field.onChange(newInputValue)}
@@ -599,6 +601,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         {...field}
                         label="規格"
                         placeholder="例: L、2L"
+                        size="small"
                         error={!!productErrors?.specification}
                         helperText={productErrors?.specification?.message}
                         value={field.value || ''}
@@ -672,6 +675,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         type="number"
                         label="入数"
                         placeholder="例: 40"
+                        size="small"
                         error={!!productErrors?.quantityPerPackage}
                         helperText={productErrors?.quantityPerPackage?.message}
                         inputProps={{ min: 1, step: 1 }}
@@ -752,6 +756,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         {...field}
                         label="単位"
                         placeholder="例: 玉、g、個"
+                        size="small"
                         error={!!productErrors?.unit}
                         helperText={productErrors?.unit?.message}
                         value={field.value || ''}
