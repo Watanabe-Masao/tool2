@@ -24,10 +24,9 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Fade,
   Grow,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, Inventory2, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -271,16 +270,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   };
 
   /**
-   * 長押し開始（帳合先選択用）
+   * 帳合先チップをクリック
    */
-  const handleSupplierLongPressStart = () => {
+  const handleSupplierClick = () => {
     if (!suppliers || suppliers.length === 0) {
       showError('ステップ1で帳合先を選択してください');
       return;
     }
-    longPressTimer.current = window.setTimeout(() => {
-      setSupplierSelectOpen(true);
-    }, 500);
+    setSupplierSelectOpen(true);
   };
 
   /**
@@ -543,19 +540,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               <Chip
                 icon={<Business />}
                 label={currentSupplier || '帳合先'}
-                onTouchStart={handleSupplierLongPressStart}
-                onTouchEnd={handleLongPressEnd}
-                onMouseDown={handleSupplierLongPressStart}
-                onMouseUp={handleLongPressEnd}
-                onMouseLeave={handleLongPressEnd}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  if (suppliers && suppliers.length > 0) {
-                    setSupplierSelectOpen(true);
-                  } else {
-                    showError('ステップ1で帳合先を選択してください');
-                  }
-                }}
+                onClick={handleSupplierClick}
                 variant="outlined"
                 size="small"
                 color={currentSupplier ? 'primary' : 'default'}
