@@ -648,6 +648,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       onChange(newAllocations);
     } else {
       newSelectedCategories.add(categoryId);
+
+      // カテゴリーが選択されたら「配分する店舗を選択」セクションを自動的に開く
+      setExpandedSections((prev) => ({
+        ...prev,
+        stores: true,
+      }));
     }
 
     setSelectedCategories(newSelectedCategories);
@@ -765,7 +771,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                         <Typography variant="caption">
-                          {store.code}: {store.name}
+                          {store.code}店
                         </Typography>
                         {quantity > 0 && (
                           <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
@@ -1013,7 +1019,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                           <Typography variant="caption" fontWeight="medium" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
-                            {store.code}
+                            {store.code}店
                           </Typography>
                           {isLocked && <Lock sx={{ fontSize: '0.8rem', color: 'warning.main' }} />}
                         </Box>
