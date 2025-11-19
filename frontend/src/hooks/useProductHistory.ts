@@ -25,7 +25,7 @@ export interface ProductHistoryItem {
  * 帳合先に基づいた商品履歴を管理し、
  * 品名、産地、規格、入数の階層的なフィルタリングを提供します。
  */
-export const useProductHistory = (supplier?: string, categoryCode?: string) => {
+export const useProductHistory = (suppliers?: string | string[], categoryCode?: string) => {
   const { user } = useAuthContext();
   const [history, setHistory] = useState<ProductHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,8 +38,19 @@ export const useProductHistory = (supplier?: string, categoryCode?: string) => {
 
     setLoading(true);
     try {
-      const data = await FirestoreService.getProductHistory(user.uid, supplier);
-      setHistory(data);
+      // suppliers が配列の場合、supplier条件なしで取得してから複数の帳合先でフィルタリング
+      // suppliers が文字列の場合、その帳合先のみ取得
+      // suppliers が undefined の場合、すべての帳合先の履歴を取得
+      const supplierFilter = Array.isArray(suppliers) ? undefined : suppliers;
+      const data = await FirestoreService.getProductHistory(user.uid, supplierFilter);
+
+      // suppliers が配列の場合、配列内の帳合先でフィルタリング
+      if (Array.isArray(suppliers) && suppliers.length > 0) {
+        const filtered = data.filter(item => suppliers.includes(item.supplier));
+        setHistory(filtered);
+      } else {
+        setHistory(data);
+      }
     } catch (error) {
       console.error('[useProductHistory] Failed to load history:', error);
     } finally {
@@ -50,7 +61,7 @@ export const useProductHistory = (supplier?: string, categoryCode?: string) => {
   useEffect(() => {
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, supplier]);
+  }, [user, JSON.stringify(suppliers)]);
 
   /**
    * 品名の一意のリストを取得（カテゴリーフィルタリング適用）
@@ -144,14 +155,27 @@ export const useProductHistory = (supplier?: string, categoryCode?: string) => {
   /**
    * 履歴を削除
    */
-  const deleteHistory = async (conditions: {
-    name?: string;
-    origin?: string;
-    specification?: string;
-    quantityPerPackage?: number;
-    unit?: string;
-  }) => {
-    if (!user || !supplier) return;
+  const deleteHistory = async (
+    conditions: {
+      name?: string;
+      origin?: string;
+      specification?: string;
+      quantityPerPackage?: number;
+      unit?: string;
+    },
+    targetSupplier?: string
+  ) => {
+    if (!user) return;
+
+    // 削除対象の帳合先を決定
+    // targetSupplier が指定されていればそれを使用
+    // suppliers が文字列の場合はそれを使用
+    // それ以外の場合はエラー
+    const supplier = targetSupplier || (typeof suppliers === 'string' ? suppliers : undefined);
+
+    if (!supplier) {
+      throw new Error('削除する履歴の帳合先を指定してください');
+    }
 
     try {
       const count = await FirestoreService.deleteProductHistoryByCondition(user.uid, {

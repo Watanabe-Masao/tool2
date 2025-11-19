@@ -123,6 +123,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
 
   // 商品履歴フック（この商品の帳合先とカテゴリーでフィルタ）
+  // currentSupplier が設定されている場合はそれを使用、
+  // 未設定の場合はステップ1で選択された全帳合先の履歴を読み込む
   const {
     history,
     getUniqueNames,
@@ -133,7 +135,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     deleteHistory,
     getCategoryCodeByName,
     loadHistory,
-  } = useProductHistory(currentSupplier, currentCategoryCode || undefined);
+  } = useProductHistory(
+    currentSupplier || suppliers || undefined,
+    currentCategoryCode || undefined
+  );
 
   // 削除確認ダイアログの状態
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
@@ -295,7 +300,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleDeleteNameHistory = async (name: string) => {
     try {
-      const count = await deleteHistory({ name });
+      const count = await deleteHistory({ name }, currentSupplier);
       showSuccess(`${count}件の履歴を削除しました`);
     } catch (error) {
       showError('履歴の削除に失敗しました');
@@ -364,7 +369,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleDeleteHistory = async () => {
     try {
-      const count = await deleteHistory(deleteDialog.conditions);
+      const count = await deleteHistory(deleteDialog.conditions, currentSupplier);
       setDeleteDialog({ ...deleteDialog, open: false });
       showSuccess(`${count}件の履歴を削除しました`);
     } catch (error) {
