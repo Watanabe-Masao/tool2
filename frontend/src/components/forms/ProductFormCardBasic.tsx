@@ -277,8 +277,9 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * プリセット選択ボタンをクリック
    */
   const handlePresetButtonClick = () => {
-    if (!currentSupplier) {
-      showError('帳合先を先に選択してください');
+    // ステップ1で帳合先が選択されていればモーダルを開く
+    if (!suppliers || suppliers.length === 0) {
+      showError('ステップ1で帳合先を選択してください');
       return;
     }
     setPresetModalOpen(true);

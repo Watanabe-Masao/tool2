@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFieldArray } from 'react-hook-form';
+import { useFieldArray, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import { Box, Button, Typography, Alert } from '@mui/material';
 import { Add } from '@mui/icons-material';
@@ -44,14 +44,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     name: 'products',
   });
 
+  // 全商品の実際のフォームデータを監視
+  const products = useWatch({ control, name: 'products' });
+
   /**
    * 最後に選択された帳合先を取得
    */
   const getLastSelectedSupplier = (): string => {
-    if (!fields.length || !suppliers?.length) return suppliers?.[0] || '';
-    // 最後の商品の帳合先を取得
-    const lastProduct = fields[fields.length - 1] as any;
-    return lastProduct.supplier || suppliers[0];
+    if (!suppliers?.length) return '';
+    if (!products || products.length === 0) return suppliers[0];
+    // 最後の商品の帳合先を取得（実際のフォームデータから）
+    const lastProduct = products[products.length - 1];
+    return lastProduct?.supplier || suppliers[0];
   };
 
   /**
