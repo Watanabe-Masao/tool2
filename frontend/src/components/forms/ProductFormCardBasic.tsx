@@ -20,8 +20,14 @@ import {
   DialogContentText,
   ButtonBase,
   InputAdornment,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Fade,
+  Grow,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear, History, Business } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -116,11 +122,15 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   // 商品保存確認ダイアログの状態
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 商品クリア確認ダイアログの状態
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
-
   // 帳合先選択モーダルの状態
   const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
+
+  // カード長押しメニューの状態
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const cardMenuOpen = Boolean(cardMenuAnchor);
+
+  // カード長押しタイマー
+  const cardLongPressTimer = useRef<number | null>(null);
 
   // プリセットモーダル用の商品履歴フック（ステップ1で選択された全帳合先の履歴）
   // PL呼び出し時は必ずステップ1の選択リスト全体を読み込む
@@ -398,8 +408,50 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.specification`, '');
     setValue(`products.${index}.quantityPerPackage`, null);
     setValue(`products.${index}.unit`, '');
-    setClearDialogOpen(false);
+    setCardMenuAnchor(null);
     showSuccess('商品情報をクリアしました');
+  };
+
+  /**
+   * カード長押し開始
+   */
+  const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    cardLongPressTimer.current = window.setTimeout(() => {
+      setCardMenuAnchor(target);
+    }, 500); // 500ms長押しでメニュー表示
+  };
+
+  /**
+   * カード長押し終了
+   */
+  const handleCardLongPressEnd = () => {
+    if (cardLongPressTimer.current) {
+      window.clearTimeout(cardLongPressTimer.current);
+      cardLongPressTimer.current = null;
+    }
+  };
+
+  /**
+   * カードメニューを閉じる
+   */
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
+
+  /**
+   * カードメニューから削除
+   */
+  const handleCardMenuDelete = () => {
+    setCardMenuAnchor(null);
+    onRemove();
+  };
+
+  /**
+   * カードメニューからクリア
+   */
+  const handleCardMenuClear = () => {
+    handleClearProduct();
   };
 
   /**
@@ -423,7 +475,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   return (
     <>
-      <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
+      <Card
+        variant="outlined"
+        sx={{
+          mb: 1.5,
+          transition: 'all 0.2s ease-in-out',
+          '&:active': {
+            transform: 'scale(0.98)',
+            boxShadow: 2,
+          },
+        }}
+        onKeyDown={handleKeyDown}
+        onTouchStart={handleCardLongPressStart}
+        onTouchEnd={handleCardLongPressEnd}
+        onMouseDown={handleCardLongPressStart}
+        onMouseUp={handleCardLongPressEnd}
+        onMouseLeave={handleCardLongPressEnd}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCardMenuAnchor(e.currentTarget);
+        }}
+      >
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           {/* ヘッダー: 商品番号 + プリセットボタン + 帳合先ツールチップ + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -461,7 +533,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               </ButtonBase>
               <Chip
                 icon={<Inventory2 />}
-                label="PL呼び出し"
+                label="PL"
                 onClick={handlePresetButtonClick}
                 variant="outlined"
                 size="small"
@@ -489,21 +561,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 color={currentSupplier ? 'primary' : 'default'}
                 sx={{ fontSize: '0.75rem' }}
               />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <IconButton
-                onClick={() => setClearDialogOpen(true)}
-                size="small"
-                aria-label="商品情報をクリア"
-                title="商品情報をクリア"
-              >
-                <Clear fontSize="small" />
-              </IconButton>
-              {showRemove && (
-                <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
-                  <Delete fontSize="small" />
-                </IconButton>
-              )}
             </Box>
           </Box>
 
@@ -942,27 +999,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* 商品クリア確認ダイアログ */}
-      <Dialog open={clearDialogOpen} onClose={() => setClearDialogOpen(false)}>
-        <DialogTitle>商品情報をクリア</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            この商品カード（商品 {index + 1}）の入力内容をすべてクリアしますか？
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-            カテゴリー、品名、産地、規格、入数、単位がクリアされます。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setClearDialogOpen(false)} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleClearProduct} color="warning" variant="contained">
-            クリア
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* カテゴリー選択モーダル */}
       <CategorySelectModal
         open={categoryModalOpen}
@@ -1021,6 +1057,82 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* カード長押しメニュー */}
+      <Menu
+        anchorEl={cardMenuAnchor}
+        open={cardMenuOpen}
+        onClose={handleCardMenuClose}
+        TransitionComponent={Grow}
+        anchorOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        PaperProps={{
+          elevation: 8,
+          sx: {
+            minWidth: 200,
+            borderRadius: 2,
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiMenuItem-root': {
+              borderRadius: 1,
+              mx: 1,
+              my: 0.5,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateX(4px)',
+              },
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={handleCardMenuClear}
+          sx={{
+            color: 'warning.main',
+            '&:hover': {
+              bgcolor: 'warning.lighter',
+            },
+          }}
+        >
+          <ListItemIcon>
+            <ClearAll sx={{ color: 'warning.main' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="フィールドをクリア"
+            secondary="入力内容を消去"
+            primaryTypographyProps={{ fontWeight: 'medium' }}
+            secondaryTypographyProps={{ variant: 'caption' }}
+          />
+        </MenuItem>
+        {showRemove && (
+          <MenuItem
+            onClick={handleCardMenuDelete}
+            sx={{
+              color: 'error.main',
+              '&:hover': {
+                bgcolor: 'error.lighter',
+              },
+            }}
+          >
+            <ListItemIcon>
+              <DeleteOutline sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="商品を削除"
+              secondary="この商品カードを削除"
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
     </>
   );
 };
