@@ -21,8 +21,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 
 from config.config import settings
-from config.models import TemplateRequest, TemplateResponse
-from config.services import ExcelService, PDFService
+from config.models import TemplateRequest, TemplateResponse, EmailRequest
+from config.services import ExcelService, PDFService, EmailService
 from config.exceptions import (
     TemplateCreationError,
     PDFConversionError,
@@ -279,3 +279,46 @@ async def get_firebase_config():
     }
 
     return firebase_config
+
+
+@router.post("/send-email")
+async def send_email(request: EmailRequest):
+    """
+    Resend APIを使用してメールを送信
+
+    Args:
+        request: メール送信リクエスト
+
+    Returns:
+        dict: 送信結果
+
+    Raises:
+        ConfigurationError: RESEND_API_KEYが未設定の場合
+        HTTPException: メール送信失敗時
+    """
+    try:
+        # メール送信
+        result = EmailService.send_email(
+            to=request.to,
+            subject=request.subject,
+            html=request.html,
+            sender_name=request.sender_name,
+            attachment_data=request.attachment_data,
+            attachment_filename=request.attachment_filename
+        )
+
+        return {
+            "success": True,
+            "message": "メールを送信しました",
+            "email_id": result.get("id")
+        }
+
+    except ConfigurationError:
+        # カスタム例外をそのまま伝播
+        raise
+    except Exception as e:
+        logger.error(f"Email sending failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"メール送信中にエラーが発生しました: {str(e)}"
+        )

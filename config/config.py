@@ -55,6 +55,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         env_prefix="",  # 環境変数の接頭辞
+        extra="ignore",  # 追加フィールドを無視
     ) if SettingsConfigDict else None
 
     # Pydantic V1 互換性（SettingsConfigDictがない場合）
@@ -63,6 +64,7 @@ class Settings(BaseSettings):
             env_file = ".env"
             env_file_encoding = "utf-8"
             env_prefix = ""
+            extra = "ignore"  # 追加フィールドを無視
 
     def __init__(self, **kwargs):
         """

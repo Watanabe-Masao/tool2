@@ -18,8 +18,6 @@ export interface UseAuthReturn {
   loading: boolean;
   /** エラー */
   error: Error | null;
-  /** GoogleアクセストークンGmail API用) */
-  googleAccessToken: string | null;
   /** Googleでサインイン */
   signInWithGoogle: () => Promise<void>;
   /** サインアウト */
@@ -42,7 +40,6 @@ export const useAuth = (): UseAuthReturn => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -83,23 +80,12 @@ export const useAuth = (): UseAuthReturn => {
       const auth = getFirebaseAuth();
       const provider = new GoogleAuthProvider();
 
-      // Gmail API用のスコープを追加
-      provider.addScope('https://www.googleapis.com/auth/gmail.send');
-      provider.addScope('https://www.googleapis.com/auth/gmail.compose');
-
       // 日本語を優先言語として設定
       provider.setCustomParameters({
         locale: 'ja',
       });
 
-      const result = await signInWithPopup(auth, provider);
-
-      // GoogleAuthProviderのcredentialからアクセストークンを取得
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential && credential.accessToken) {
-        setGoogleAccessToken(credential.accessToken);
-        console.log('Google access token取得成功');
-      }
+      await signInWithPopup(auth, provider);
       // onAuthStateChangedが自動的にuserを更新する
     } catch (err) {
       console.error('Sign in error:', err);
@@ -120,7 +106,6 @@ export const useAuth = (): UseAuthReturn => {
 
       const auth = getFirebaseAuth();
       await firebaseSignOut(auth);
-      setGoogleAccessToken(null); // アクセストークンもクリア
       // onAuthStateChangedが自動的にuserをnullに更新する
     } catch (err) {
       console.error('Sign out error:', err);
@@ -135,7 +120,6 @@ export const useAuth = (): UseAuthReturn => {
     user,
     loading,
     error,
-    googleAccessToken,
     signInWithGoogle,
     signOut,
   };

@@ -11,8 +11,10 @@
 
 from config.services.excel_service import ExcelService
 from config.services.pdf_service import PDFService
+from config.services.email_service import EmailService
 
 __all__ = [
     "ExcelService",
     "PDFService",
+    "EmailService",
 ]

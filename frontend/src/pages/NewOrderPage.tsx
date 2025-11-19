@@ -18,6 +18,8 @@ import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
+import { UserSettingsService } from '@/services/firebase/userSettingsService';
+import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
@@ -56,6 +58,7 @@ export const NewOrderPage: React.FC = () => {
     pdfFilename?: string;
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
@@ -66,7 +69,7 @@ export const NewOrderPage: React.FC = () => {
   // 初回ロードフラグ
   const isInitialLoad = useRef(true);
 
-  const { user, googleAccessToken } = useAuthContext();
+  const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
   // オフライン同期
@@ -119,6 +122,24 @@ export const NewOrderPage: React.FC = () => {
     if (draft) {
       setRestoreDialogOpen(true);
     }
+  }, [user]);
+
+  /**
+   * ユーザー設定を読み込み
+   */
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      if (!user) return;
+
+      try {
+        const settings = await UserSettingsService.getOrCreate(user.uid);
+        setUserSettings(settings);
+      } catch (error) {
+        console.error('Error loading user settings:', error);
+      }
+    };
+
+    loadUserSettings();
   }, [user]);
 
   /**
@@ -547,7 +568,7 @@ export const NewOrderPage: React.FC = () => {
           <EmailSendModal
             open={showEmailModal}
             onClose={() => setShowEmailModal(false)}
-            accessToken={googleAccessToken}
+            userName={userSettings?.emailSenderName || user?.displayName || user?.email || undefined}
             attachment={excelBlob || undefined}
             filename={generatedFiles.filename}
           />

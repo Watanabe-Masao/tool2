@@ -1,29 +1,25 @@
-import { getFirebaseAuth } from '@/services/firebase/config';
+/**
+ * メール送信サービス（Resend API経由）
+ *
+ * Gmail API依存を削除し、バックエンド（Resend）経由でメール送信を行います
+ */
 
 /**
- * Gmail API送信オプション
+ * メール送信オプション
  */
-export interface GmailSendOptions {
+export interface EmailSendOptions {
   /** 宛先メールアドレス */
   to: string;
   /** 件名 */
   subject: string;
-  /** 本文 */
+  /** 本文（HTML形式） */
   body: string;
+  /** 送信元の表示名（オプション） */
+  senderName?: string;
   /** 添付ファイル（Blob） */
   attachment?: Blob;
   /** 添付ファイル名 */
   filename?: string;
-}
-
-/**
- * Base64エンコード（URL-safe）
- */
-function base64UrlEncode(str: string): string {
-  return btoa(str)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
 }
 
 /**
@@ -44,89 +40,49 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * MIME メッセージを作成
+ * バックエンドAPI経由でメールを送信
  */
-async function createMimeMessage(options: GmailSendOptions, fromEmail: string): Promise<string> {
-  const boundary = '----=_Part_' + Date.now();
-  const { to, subject, body, attachment, filename } = options;
-
-  let message = '';
-
-  // ヘッダー
-  message += `From: ${fromEmail}\r\n`;
-  message += `To: ${to}\r\n`;
-  message += `Subject: ${subject}\r\n`;
-  message += `MIME-Version: 1.0\r\n`;
-
-  if (attachment && filename) {
-    // 添付ファイルがある場合
-    message += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n\r\n`;
-
-    // 本文パート
-    message += `--${boundary}\r\n`;
-    message += `Content-Type: text/plain; charset="UTF-8"\r\n`;
-    message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
-    message += `${body}\r\n\r\n`;
-
-    // 添付ファイルパート
-    message += `--${boundary}\r\n`;
-    message += `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n`;
-    message += `Content-Transfer-Encoding: base64\r\n`;
-    message += `Content-Disposition: attachment; filename="${filename}"\r\n\r\n`;
-
-    const base64Data = await blobToBase64(attachment);
-    message += `${base64Data}\r\n\r\n`;
-
-    message += `--${boundary}--`;
-  } else {
-    // 添付ファイルがない場合
-    message += `Content-Type: text/plain; charset="UTF-8"\r\n\r\n`;
-    message += `${body}`;
-  }
-
-  return message;
-}
-
-/**
- * Gmail APIを使ってメールを送信
- */
-export async function sendEmail(
-  accessToken: string,
-  options: GmailSendOptions
-): Promise<void> {
+export async function sendEmail(options: EmailSendOptions): Promise<void> {
   try {
-    const auth = getFirebaseAuth();
-    const user = auth.currentUser;
-
-    if (!user || !user.email) {
-      throw new Error('ユーザーがログインしていないか、メールアドレスが取得できません');
+    // 添付ファイルをBase64に変換
+    let attachmentData: string | undefined;
+    if (options.attachment && options.filename) {
+      attachmentData = await blobToBase64(options.attachment);
     }
 
-    // MIMEメッセージを作成
-    const mimeMessage = await createMimeMessage(options, user.email);
+    // HTMLメール本文を生成
+    const htmlBody = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <p>${options.body.replace(/\n/g, '<br>')}</p>
+        </body>
+      </html>
+    `;
 
-    // Base64エンコード（URL-safe）
-    const encodedMessage = base64UrlEncode(mimeMessage);
-
-    // Gmail API呼び出し
-    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    // バックエンドAPIを呼び出し
+    const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        raw: encodedMessage,
+        to: options.to,
+        subject: options.subject,
+        html: htmlBody,
+        sender_name: options.senderName,
+        attachment_data: attachmentData,
+        attachment_filename: options.filename,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Gmail API error:', errorData);
-      throw new Error(`メール送信に失敗しました: ${errorData.error?.message || response.statusText}`);
+      console.error('Email API error:', errorData);
+      throw new Error(`メール送信に失敗しました: ${errorData.detail || response.statusText}`);
     }
 
-    console.log('メールが正常に送信されました');
+    const result = await response.json();
+    console.log('メールが正常に送信されました', result);
   } catch (error) {
     console.error('sendEmail error:', error);
     throw error;

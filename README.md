@@ -26,6 +26,12 @@
 - **Safari日付対応**: 日本語曜日付き日付表示
 - **モバイルフォールバック**: PDFが表示できない場合のダウンロード対応
 
+### 📧 メール送信機能 (v2.4.0)
+- **Resend API統合**: Googleアプリ検証不要の簡単メール送信
+- **Excel添付**: 生成した配分表を自動添付
+- **カスタマイズ可能**: 宛先、件名、本文を自由に編集
+- **無料枠充実**: 月3,000通まで無料
+
 ### 📊 データ入力補助
 - **オートコンプリート**: 過去の入力履歴から自動補完
 - **商品名・産地の履歴**: よく使うデータをすぐに入力
@@ -291,6 +297,7 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 - [技術詳細](docs/TECHNICAL_DETAILS.md) - PDFプレビュー問題と解決策
 - [開発ガイド](docs/DEVELOPMENT.md) - 開発手順と今後の計画
 - [Firebase セットアップ](FIREBASE_SETUP.md) - Firebase プロジェクト設定
+- [Resend メール設定](docs/RESEND_SETUP.md) - メール送信機能の設定（推奨）
 - [セキュリティポリシー](SECURITY.md) - セキュリティ対策
 
 ## 🚢 デプロイ
@@ -309,12 +316,17 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 本番環境では以下の環境変数が必要：
 
 ```bash
+# Resend API設定（メール送信用）
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+
 # Firebase設定（Firestoreで管理）
 # .env ファイルは不要（クライアント側で直接Firebase接続）
 
 # LibreOffice（Renderで自動インストール）
 # apt-get install -y libreoffice
 ```
+
+詳細は [docs/RESEND_SETUP.md](docs/RESEND_SETUP.md) を参照
 
 ## 🔐 セキュリティ
 
@@ -353,6 +365,13 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 - **解決**: Firebase ConsoleでRender.comのドメインを承認済みドメインに追加
 
 詳細な手順は [docs/FIX_AUTH_DOMAIN_ERROR.md](docs/FIX_AUTH_DOMAIN_ERROR.md) を参照
+
+### Gmail API依存の削除 ✅ 解決済み（v2.4.0）
+- **問題**: Gmail API使用時にGoogle OAuth同意画面で警告が表示される
+- **原因**: Gmail APIの機密スコープ（gmail.send, gmail.compose）が未検証
+- **解決**: Resend APIに移行し、Google OAuth検証プロセスが不要に
+
+詳細な手順は [docs/RESEND_SETUP.md](docs/RESEND_SETUP.md) を参照
 
 ## 🗺️ ロードマップ
 

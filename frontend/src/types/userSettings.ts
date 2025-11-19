@@ -1,0 +1,37 @@
+/**
+ * ユーザー設定の型定義
+ */
+
+/**
+ * ユーザー設定
+ */
+export interface UserSettings {
+  /** ドキュメントID */
+  id: string;
+  /** ユーザーID */
+  userId: string;
+  /** メール送信時の表示名 */
+  emailSenderName?: string;
+  /** 作成日時 */
+  createdAt: Date;
+  /** 更新日時 */
+  updatedAt: Date;
+}
+
+/**
+ * ユーザー設定作成入力
+ */
+export interface CreateUserSettingsInput {
+  /** ユーザーID */
+  userId: string;
+  /** メール送信時の表示名 */
+  emailSenderName?: string;
+}
+
+/**
+ * ユーザー設定更新入力
+ */
+export interface UpdateUserSettingsInput {
+  /** メール送信時の表示名 */
+  emailSenderName?: string;
+}

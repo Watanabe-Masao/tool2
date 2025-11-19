@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -17,6 +17,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  TextField,
+  Alert,
 } from '@mui/material';
 import {
   Logout,
@@ -24,9 +26,13 @@ import {
   Email,
   AccountCircle,
   Info,
+  Edit,
+  MailOutline,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useHistory } from 'react-router-dom';
+import { UserSettingsService } from '@/services/firebase/userSettingsService';
+import type { UserSettings } from '@/types/userSettings';
 
 /**
  * ユーザープロフィール・管理ページ
@@ -37,6 +43,11 @@ export const UserProfilePage: React.FC = () => {
   const { user, signOut } = useAuthContext();
   const history = useHistory();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [emailSettingsDialogOpen, setEmailSettingsDialogOpen] = useState(false);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [emailSenderName, setEmailSenderName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   /**
    * ログインプロバイダーを判定
@@ -52,6 +63,63 @@ export const UserProfilePage: React.FC = () => {
   };
 
   const loginProvider = user ? getLoginProvider() : 'email';
+
+  /**
+   * ユーザー設定を読み込み
+   */
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      if (!user) return;
+
+      try {
+        const settings = await UserSettingsService.getOrCreate(user.uid);
+        setUserSettings(settings);
+        setEmailSenderName(settings.emailSenderName || user.displayName || user.email || '');
+      } catch (error) {
+        console.error('Error loading user settings:', error);
+      }
+    };
+
+    loadUserSettings();
+  }, [user]);
+
+  /**
+   * メール設定を開く
+   */
+  const handleOpenEmailSettings = () => {
+    setEmailSenderName(userSettings?.emailSenderName || user?.displayName || user?.email || '');
+    setSaveSuccess(false);
+    setEmailSettingsDialogOpen(true);
+  };
+
+  /**
+   * メール設定を保存
+   */
+  const handleSaveEmailSettings = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      if (userSettings) {
+        await UserSettingsService.update(user.uid, { emailSenderName });
+      } else {
+        await UserSettingsService.create({ userId: user.uid, emailSenderName });
+      }
+
+      const updatedSettings = await UserSettingsService.get(user.uid);
+      setUserSettings(updatedSettings);
+      setSaveSuccess(true);
+
+      setTimeout(() => {
+        setEmailSettingsDialogOpen(false);
+        setSaveSuccess(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving email settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /**
    * ログアウト処理
@@ -152,6 +220,43 @@ export const UserProfilePage: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* メール設定カード */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    メール設定
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<Edit />}
+                    onClick={handleOpenEmailSettings}
+                  >
+                    編集
+                  </Button>
+                </Box>
+                <List disablePadding>
+                  <ListItem>
+                    <ListItemIcon>
+                      <MailOutline color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="送信者名"
+                      secondary={userSettings?.emailSenderName || user.displayName || user.email || '未設定'}
+                      secondaryTypographyProps={{
+                        sx: {
+                          wordBreak: 'break-all',
+                        },
+                      }}
+                    />
+                  </ListItem>
+                </List>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, px: 2 }}>
+                  メール送信時に表示される送信者名を設定できます
+                </Typography>
+              </CardContent>
+            </Card>
+
             {/* アクションボタン */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Button
@@ -207,6 +312,49 @@ export const UserProfilePage: React.FC = () => {
             <Button onClick={handleLogout} color="error" variant="contained">
               ログアウト
               </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* メール設定編集ダイアログ */}
+        <Dialog
+          open={emailSettingsDialogOpen}
+          onClose={() => !loading && setEmailSettingsDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>メール設定</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              メール送信時に表示される送信者名を設定できます。
+            </DialogContentText>
+            {saveSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                保存しました
+              </Alert>
+            )}
+            <TextField
+              autoFocus
+              fullWidth
+              label="送信者名"
+              value={emailSenderName}
+              onChange={(e) => setEmailSenderName(e.target.value)}
+              placeholder={user?.displayName || user?.email || ''}
+              helperText="例: 山田 太郎、株式会社〇〇 など"
+              disabled={loading}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEmailSettingsDialogOpen(false)} color="inherit" disabled={loading}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleSaveEmailSettings}
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '保存'}
+            </Button>
           </DialogActions>
         </Dialog>
     </Container>
