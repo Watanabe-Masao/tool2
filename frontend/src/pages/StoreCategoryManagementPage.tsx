@@ -56,7 +56,7 @@ import type { StoreSettings } from '@/types/storeSettings';
 export const StoreCategoryManagementPage: React.FC = () => {
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
-  const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
+  const { presets, addPreset, deletePreset, updatePreset, reorderPresets, loadPresets } = useSupplierPresets();
 
   const [tabValue, setTabValue] = useState(0);
 
@@ -113,6 +113,21 @@ export const StoreCategoryManagementPage: React.FC = () => {
   });
   const [supplierToDelete, setSupplierToDelete] = useState<SupplierPreset | null>(null);
   const [showSupplierDeleteDialog, setShowSupplierDeleteDialog] = useState(false);
+
+  // 帳合先ドラッグ&ドロップ用の状態
+  const [supplierDragState, setSupplierDragState] = useState<{
+    draggingId: string | null;
+    longPressTimer: number | null;
+    startY: number;
+    currentY: number;
+    dragOverIndex: number | null;
+  }>({
+    draggingId: null,
+    longPressTimer: null,
+    startY: 0,
+    currentY: 0,
+    dragOverIndex: null,
+  });
 
   // カテゴリーを読み込み
   const loadCategories = async () => {
@@ -514,6 +529,107 @@ export const StoreCategoryManagementPage: React.FC = () => {
       currentY: 0,
       isSwiping: false,
     });
+  };
+
+  // 帳合先の長押しドラッグハンドラー
+  const handleSupplierLongPressStart = (e: React.TouchEvent | React.MouseEvent, supplierId: string) => {
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const timer = window.setTimeout(() => {
+      setSupplierDragState({
+        draggingId: supplierId,
+        longPressTimer: null,
+        startY: clientY,
+        currentY: clientY,
+        dragOverIndex: null,
+      });
+    }, 500); // 500ms長押しで掴む
+
+    setSupplierDragState((prev) => ({
+      ...prev,
+      longPressTimer: timer,
+      startY: clientY,
+    }));
+  };
+
+  const handleSupplierLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (supplierDragState.longPressTimer) {
+      // 長押し判定前に移動したらキャンセル
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const deltaY = Math.abs(clientY - supplierDragState.startY);
+
+      if (deltaY > 10) {
+        window.clearTimeout(supplierDragState.longPressTimer);
+        setSupplierDragState({
+          draggingId: null,
+          longPressTimer: null,
+          startY: 0,
+          currentY: 0,
+          dragOverIndex: null,
+        });
+      }
+      return;
+    }
+
+    if (!supplierDragState.draggingId) return;
+
+    // ドラッグ中
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setSupplierDragState((prev) => ({
+      ...prev,
+      currentY: clientY,
+    }));
+  };
+
+  const handleSupplierLongPressEnd = async () => {
+    if (supplierDragState.longPressTimer) {
+      window.clearTimeout(supplierDragState.longPressTimer);
+    }
+
+    if (!supplierDragState.draggingId) {
+      setSupplierDragState({
+        draggingId: null,
+        longPressTimer: null,
+        startY: 0,
+        currentY: 0,
+        dragOverIndex: null,
+      });
+      return;
+    }
+
+    // ドロップ処理
+    const dragIndex = presets.findIndex((p) => p.id === supplierDragState.draggingId);
+    const dropIndex = supplierDragState.dragOverIndex;
+
+    if (dragIndex !== -1 && dropIndex !== null && dragIndex !== dropIndex) {
+      const newPresets = [...presets];
+      const [removed] = newPresets.splice(dragIndex, 1);
+      newPresets.splice(dropIndex, 0, removed);
+
+      const success = await reorderPresets(newPresets);
+      if (success) {
+        showSuccess('並び順を更新しました');
+      } else {
+        showError('並び順の更新に失敗しました');
+      }
+    }
+
+    setSupplierDragState({
+      draggingId: null,
+      longPressTimer: null,
+      startY: 0,
+      currentY: 0,
+      dragOverIndex: null,
+    });
+  };
+
+  const handleSupplierDragOver = (index: number) => {
+    if (supplierDragState.draggingId) {
+      setSupplierDragState((prev) => ({
+        ...prev,
+        dragOverIndex: index,
+      }));
+    }
   };
 
   const uncategorizedStores = getUncategorizedStores();
@@ -930,7 +1046,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
             {tabValue === 2 && (
               <>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  帳合先を管理します。左にスワイプで編集、右にスワイプで削除できます。
+                  帳合先を管理します。長押しで並び替え、左にスワイプで編集、右にスワイプで削除できます。
                 </Typography>
 
                 <Card>
@@ -953,20 +1069,26 @@ export const StoreCategoryManagementPage: React.FC = () => {
                       <Alert severity="info">帳合先がまだ登録されていません</Alert>
                     ) : (
                       <List sx={{ py: 0 }}>
-                        {presets.map((preset) => {
+                        {presets.map((preset, index) => {
                           const isCurrentSwiping = supplierSwipeState.id === preset.id;
                           const deltaX = isCurrentSwiping ? supplierSwipeState.currentX - supplierSwipeState.startX : 0;
                           const showEditHint = deltaX < -25;
                           const showDeleteHint = deltaX > 25;
+                          const isDragging = supplierDragState.draggingId === preset.id;
+                          const isDragOver = supplierDragState.dragOverIndex === index;
 
                           return (
                             <Box
                               key={preset.id}
+                              onMouseEnter={() => handleSupplierDragOver(index)}
                               sx={{
                                 position: 'relative',
                                 overflow: 'hidden',
-                                bgcolor: showDeleteHint ? 'error.light' : showEditHint ? 'info.light' : 'transparent',
-                                transition: showDeleteHint || showEditHint ? 'none' : 'background-color 0.2s',
+                                bgcolor: showDeleteHint ? 'error.light' : showEditHint ? 'info.light' : isDragOver ? 'primary.light' : 'transparent',
+                                transition: showDeleteHint || showEditHint || isDragging ? 'none' : 'background-color 0.2s',
+                                opacity: isDragging ? 0.5 : 1,
+                                borderTop: isDragOver ? '3px solid' : 'none',
+                                borderColor: 'primary.main',
                               }}
                             >
                               {/* 編集ヒント背景（左） */}
@@ -1008,19 +1130,41 @@ export const StoreCategoryManagementPage: React.FC = () => {
                               )}
 
                               <ListItemButton
-                                onTouchStart={(e) => handleSupplierSwipeStart(e, preset.id)}
-                                onTouchMove={handleSupplierSwipeMove}
-                                onTouchEnd={() => handleSupplierSwipeEnd(preset)}
-                                onMouseDown={(e) => handleSupplierSwipeStart(e, preset.id)}
-                                onMouseMove={handleSupplierSwipeMove}
-                                onMouseUp={() => handleSupplierSwipeEnd(preset)}
-                                onMouseLeave={() => handleSupplierSwipeEnd(preset)}
+                                onTouchStart={(e) => {
+                                  handleSupplierSwipeStart(e, preset.id);
+                                  handleSupplierLongPressStart(e, preset.id);
+                                }}
+                                onTouchMove={(e) => {
+                                  handleSupplierSwipeMove(e);
+                                  handleSupplierLongPressMove(e);
+                                }}
+                                onTouchEnd={() => {
+                                  handleSupplierSwipeEnd(preset);
+                                  handleSupplierLongPressEnd();
+                                }}
+                                onMouseDown={(e) => {
+                                  handleSupplierSwipeStart(e, preset.id);
+                                  handleSupplierLongPressStart(e, preset.id);
+                                }}
+                                onMouseMove={(e) => {
+                                  handleSupplierSwipeMove(e);
+                                  handleSupplierLongPressMove(e);
+                                }}
+                                onMouseUp={() => {
+                                  handleSupplierSwipeEnd(preset);
+                                  handleSupplierLongPressEnd();
+                                }}
+                                onMouseLeave={() => {
+                                  handleSupplierSwipeEnd(preset);
+                                  handleSupplierLongPressEnd();
+                                }}
                                 sx={{
                                   py: 1.5,
                                   px: 2,
                                   transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
                                   transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
                                   bgcolor: 'background.paper',
+                                  cursor: isDragging ? 'grabbing' : 'grab',
                                 }}
                               >
                                 <ListItemText primary={preset.supplier} />
