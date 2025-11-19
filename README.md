@@ -291,6 +291,7 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 - [技術詳細](docs/TECHNICAL_DETAILS.md) - PDFプレビュー問題と解決策
 - [開発ガイド](docs/DEVELOPMENT.md) - 開発手順と今後の計画
 - [Firebase セットアップ](FIREBASE_SETUP.md) - Firebase プロジェクト設定
+- [Google OAuth設定](docs/GOOGLE_OAUTH_SETUP.md) - OAuth同意画面の設定とエラー対処
 - [セキュリティポリシー](SECURITY.md) - セキュリティ対策
 
 ## 🚢 デプロイ
@@ -353,6 +354,14 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 - **解決**: Firebase ConsoleでRender.comのドメインを承認済みドメインに追加
 
 詳細な手順は [docs/FIX_AUTH_DOMAIN_ERROR.md](docs/FIX_AUTH_DOMAIN_ERROR.md) を参照
+
+### Google OAuth 警告「このアプリは Google で確認されていません」
+- **問題**: Gmail API使用時にGoogle OAuth同意画面で警告が表示される
+- **原因**: Gmail APIの機密スコープ（gmail.send, gmail.compose）が未検証
+- **開発環境での解決**: Google Cloud Consoleでテストユーザーを追加
+- **本番環境での解決**: Googleアプリ検証プロセスを申請
+
+詳細な手順は [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md) を参照
 
 ## 🗺️ ロードマップ
 
