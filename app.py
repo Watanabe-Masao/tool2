@@ -11,10 +11,14 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Response, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from apscheduler.schedulers.background import BackgroundScheduler
+
+# 環境変数を.envファイルから読み込み
+load_dotenv()
 
 # APIルーターのインポート (Phase 1.4: APIエンドポイントの分離)
 from config.api import router
