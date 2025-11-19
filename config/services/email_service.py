@@ -65,6 +65,9 @@ class EmailService:
         resend.api_key = api_key
 
         # メールパラメータ
+        # 送信元の表示名を変更する場合はここを編集
+        # 例: "営業部 <onboarding@resend.dev>"
+        #     "株式会社◯◯ <onboarding@resend.dev>"
         params = {
             "from": "配本管理システム <onboarding@resend.dev>",  # Resendの検証済みドメイン
             "to": [to],
