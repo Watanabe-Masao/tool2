@@ -646,6 +646,7 @@ export const NewOrderPage: React.FC = () => {
                     <ProductPricingForm
                       control={control}
                       errors={errors}
+                      fields={productFields}
                     />
                   </Box>
                 </SwiperSlide>

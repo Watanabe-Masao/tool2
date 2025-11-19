@@ -1,6 +1,6 @@
 import React from 'react';
-import { useFieldArray, useWatch } from 'react-hook-form';
-import type { Control, FieldErrors } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
+import type { Control, FieldErrors, FieldArrayWithId } from 'react-hook-form';
 import { Box, Typography, Alert, Card, CardContent, Grid } from '@mui/material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -15,6 +15,8 @@ interface ProductPricingFormProps {
   errors: FieldErrors<OrderFormData>;
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 商品フィールド配列 */
+  fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
 }
 
 /**
@@ -26,11 +28,8 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   control,
   errors,
   onEnterPress,
+  fields,
 }) => {
-  const { fields } = useFieldArray({
-    control,
-    name: 'products',
-  });
 
   // 全商品のデータを監視
   const products = useWatch({ control, name: 'products' }) || [];
