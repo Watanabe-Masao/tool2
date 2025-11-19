@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -9,12 +9,9 @@ import {
   Stack,
   Chip,
   Divider,
-  IconButton,
 } from '@mui/material';
-import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
-import { SupplierPresetManagerModal } from '@/components/modals/SupplierPresetManagerModal';
 
 /**
  * SupplierFormのProps
@@ -43,20 +40,10 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   onEnterPress,
 }) => {
   const { presets } = useSupplierPresets();
-  const [showPresetManager, setShowPresetManager] = useState(false);
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle1" fontWeight="medium">帳合先を選択</Typography>
-        <IconButton
-          size="small"
-          onClick={() => setShowPresetManager(true)}
-          title="プリセット管理"
-        >
-          <SettingsIcon fontSize="small" />
-        </IconButton>
-      </Box>
+      <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>帳合先を選択</Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
         複数の帳合先を選択できます
@@ -129,12 +116,6 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
             />
           </Box>
         )}
-      />
-
-      {/* プリセット管理モーダル */}
-      <SupplierPresetManagerModal
-        open={showPresetManager}
-        onClose={() => setShowPresetManager(false)}
       />
     </Box>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -69,6 +69,9 @@ export const NewOrderPage: React.FC = () => {
   // 初回ロードフラグ
   const isInitialLoad = useRef(true);
 
+  // 前回の帳合先リスト
+  const previousSuppliers = useRef<string[]>([]);
+
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
 
@@ -110,6 +113,24 @@ export const NewOrderPage: React.FC = () => {
   // フォームデータを監視
   const formData = watch();
 
+  // 商品フィールド配列の操作
+  const { remove } = useFieldArray({
+    control,
+    name: 'products',
+  });
+
+  // 帳合先を監視
+  const suppliers = useWatch({
+    control,
+    name: 'suppliers',
+  });
+
+  // 商品を監視
+  const products = useWatch({
+    control,
+    name: 'products',
+  });
+
   /**
    * ページロード時に下書きを復元
    */
@@ -141,6 +162,50 @@ export const NewOrderPage: React.FC = () => {
 
     loadUserSettings();
   }, [user]);
+
+  /**
+   * 帳合先の変更を監視して削除された帳合先を使用している商品を自動削除
+   */
+  useEffect(() => {
+    if (!suppliers || !products || isInitialLoad.current) {
+      // 初回ロード時は前回の帳合先リストを設定するだけ
+      if (suppliers) {
+        previousSuppliers.current = suppliers;
+      }
+      return;
+    }
+
+    // 削除された帳合先を検出
+    const removedSuppliers = previousSuppliers.current.filter(
+      (prevSupplier) => !suppliers.includes(prevSupplier)
+    );
+
+    if (removedSuppliers.length > 0) {
+      // 削除された帳合先を使用している商品のインデックスを取得
+      const productsToRemove: number[] = [];
+      products.forEach((product, index) => {
+        if (product.supplier && removedSuppliers.includes(product.supplier)) {
+          productsToRemove.push(index);
+        }
+      });
+
+      if (productsToRemove.length > 0) {
+        // 警告メッセージを表示
+        const removedSupplierNames = removedSuppliers.join('、');
+        showError(
+          `帳合先「${removedSupplierNames}」を使用している商品カード${productsToRemove.length}件を削除しました`
+        );
+
+        // 後ろから削除（インデックスがずれないように）
+        productsToRemove.reverse().forEach((index) => {
+          remove(index);
+        });
+      }
+    }
+
+    // 前回の帳合先リストを更新
+    previousSuppliers.current = suppliers;
+  }, [suppliers, products, remove, showError]);
 
   /**
    * フォームデータの自動保存（debounce付き）

@@ -91,7 +91,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string[]>([]);
   const [categoryFilterAnchorEl, setCategoryFilterAnchorEl] = useState<null | HTMLElement>(null);
 
-  // 帳合い先管理用の状態
+  // 帳合先管理用の状態
   const [showSupplierAddDialog, setShowSupplierAddDialog] = useState(false);
   const [showSupplierEditDialog, setShowSupplierEditDialog] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
@@ -287,7 +287,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     if (!categorySwipeState.id || categorySwipeState.id !== category.id) return;
 
     const deltaX = categorySwipeState.currentX - categorySwipeState.startX;
-    const threshold = 60;
+    const threshold = 80; // スワイプ感度を調整（60→80）
 
     // 左スワイプ（編集）
     if (deltaX < -threshold) {
@@ -402,7 +402,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     );
   };
 
-  // 帳合い先管理のハンドラー
+  // 帳合先管理のハンドラー
   const handleAddSupplier = async () => {
     if (!newSupplierName.trim()) return;
 
@@ -491,7 +491,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     if (!supplierSwipeState.id || supplierSwipeState.id !== supplier.id) return;
 
     const deltaX = supplierSwipeState.currentX - supplierSwipeState.startX;
-    const threshold = 60;
+    const threshold = 80; // スワイプ感度を調整（60→80）
 
     // 左スワイプ（編集）
     if (deltaX < -threshold) {
@@ -563,7 +563,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
             <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
               <Tab label="カテゴリー管理" />
               <Tab label="販売構成比設定" />
-              <Tab label="帳合い先管理" />
+              <Tab label="帳合先管理" />
             </Tabs>
 
             {/* カテゴリー管理タブ */}
@@ -671,7 +671,6 @@ export const StoreCategoryManagementPage: React.FC = () => {
                                       transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
                                       transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
                                       bgcolor: 'background.paper',
-                                      touchAction: 'none',
                                     }}
                                   >
                                     <ListItemText
@@ -927,7 +926,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
               </>
             )}
 
-            {/* 帳合い先管理タブ */}
+            {/* 帳合先管理タブ */}
             {tabValue === 2 && (
               <>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -1022,7 +1021,6 @@ export const StoreCategoryManagementPage: React.FC = () => {
                                   transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
                                   transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
                                   bgcolor: 'background.paper',
-                                  touchAction: 'none',
                                 }}
                               >
                                 <ListItemText primary={preset.supplier} />

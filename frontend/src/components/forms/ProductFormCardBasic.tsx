@@ -130,6 +130,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // カード長押しタイマー
   const cardLongPressTimer = useRef<number | null>(null);
+  const cardLongPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
   // プリセットモーダル用の商品履歴フック（ステップ1で選択された全帳合先の履歴）
   // PL呼び出し時は必ずステップ1の選択リスト全体を読み込む
@@ -414,9 +415,37 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent) => {
     const target = e.currentTarget as HTMLElement;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // タッチ開始位置を保存
+    cardLongPressStartPos.current = { x: clientX, y: clientY };
+
     cardLongPressTimer.current = window.setTimeout(() => {
       setCardMenuAnchor(target);
     }, 500); // 500ms長押しでメニュー表示
+  };
+
+  /**
+   * カード長押し中の移動（スクロール検出）
+   */
+  const handleCardLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!cardLongPressStartPos.current || !cardLongPressTimer.current) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = Math.abs(clientX - cardLongPressStartPos.current.x);
+    const deltaY = Math.abs(clientY - cardLongPressStartPos.current.y);
+
+    // 5px以上移動したらスクロールとみなして長押しをキャンセル
+    if (deltaX > 5 || deltaY > 5) {
+      if (cardLongPressTimer.current) {
+        window.clearTimeout(cardLongPressTimer.current);
+        cardLongPressTimer.current = null;
+      }
+      cardLongPressStartPos.current = null;
+    }
   };
 
   /**
@@ -427,6 +456,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       window.clearTimeout(cardLongPressTimer.current);
       cardLongPressTimer.current = null;
     }
+    cardLongPressStartPos.current = null;
   };
 
   /**
@@ -484,8 +514,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         }}
         onKeyDown={handleKeyDown}
         onTouchStart={handleCardLongPressStart}
+        onTouchMove={handleCardLongPressMove}
         onTouchEnd={handleCardLongPressEnd}
         onMouseDown={handleCardLongPressStart}
+        onMouseMove={handleCardLongPressMove}
         onMouseUp={handleCardLongPressEnd}
         onMouseLeave={handleCardLongPressEnd}
         onContextMenu={(e) => {
