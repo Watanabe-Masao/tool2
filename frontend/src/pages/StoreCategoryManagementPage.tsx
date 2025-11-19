@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   List,
-  ListItem,
   ListItemText,
   ListItemButton,
   TextField,
@@ -45,6 +44,8 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import type { SupplierPreset } from '@/hooks/useSupplierPresets';
 import { STORE_DATA } from '@/utils/constants';
 import type { StoreCategory } from '@/types/storeCategory';
 import type { StoreSettings } from '@/types/storeSettings';
@@ -55,6 +56,7 @@ import type { StoreSettings } from '@/types/storeSettings';
 export const StoreCategoryManagementPage: React.FC = () => {
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+  const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
 
   const [tabValue, setTabValue] = useState(0);
 
@@ -66,11 +68,51 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<StoreCategory | null>(null);
+  const [categorySwipeState, setCategorySwipeState] = useState<{
+    id: string | null;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    isSwiping: boolean;
+  }>({
+    id: null,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    isSwiping: false,
+  });
+  const [categoryToDelete, setCategoryToDelete] = useState<StoreCategory | null>(null);
+  const [showCategoryDeleteDialog, setShowCategoryDeleteDialog] = useState(false);
 
   // 販売構成比設定用の状態
   const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string[]>([]);
   const [categoryFilterAnchorEl, setCategoryFilterAnchorEl] = useState<null | HTMLElement>(null);
+
+  // 帳合い先管理用の状態
+  const [showSupplierAddDialog, setShowSupplierAddDialog] = useState(false);
+  const [showSupplierEditDialog, setShowSupplierEditDialog] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [editingSupplier, setEditingSupplier] = useState<SupplierPreset | null>(null);
+  const [supplierSwipeState, setSupplierSwipeState] = useState<{
+    id: string | null;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    isSwiping: boolean;
+  }>({
+    id: null,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    isSwiping: false,
+  });
+  const [supplierToDelete, setSupplierToDelete] = useState<SupplierPreset | null>(null);
+  const [showSupplierDeleteDialog, setShowSupplierDeleteDialog] = useState(false);
 
   // カテゴリーを読み込み
   const loadCategories = async () => {
@@ -113,6 +155,8 @@ export const StoreCategoryManagementPage: React.FC = () => {
       loadCategories();
     } else if (tabValue === 1) {
       loadStoreSettings();
+    } else if (tabValue === 2) {
+      loadPresets();
     }
   }, [user, tabValue]);
 
@@ -172,15 +216,14 @@ export const StoreCategoryManagementPage: React.FC = () => {
   };
 
   // カテゴリー削除
-  const handleDeleteCategory = async (categoryId: string) => {
-    if (!user) return;
-    if (!confirm('このカテゴリーを削除しますか？店舗は未分類に戻ります。')) return;
+  const handleDeleteCategory = async () => {
+    if (!user || !categoryToDelete) return;
 
     try {
       showLoading();
-      await StoreCategoryService.delete(user.uid, categoryId);
+      await StoreCategoryService.delete(user.uid, categoryToDelete.id);
       await loadCategories();
-      if (selectedCategory?.id === categoryId) {
+      if (selectedCategory?.id === categoryToDelete.id) {
         setSelectedCategory(null);
       }
       showSuccess('カテゴリーを削除しました');
@@ -189,7 +232,84 @@ export const StoreCategoryManagementPage: React.FC = () => {
       showError('カテゴリーの削除に失敗しました');
     } finally {
       hideLoading();
+      setShowCategoryDeleteDialog(false);
+      setCategoryToDelete(null);
     }
+  };
+
+  // カテゴリースワイプ開始
+  const handleCategorySwipeStart = (e: React.TouchEvent | React.MouseEvent, categoryId: string) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setCategorySwipeState({
+      id: categoryId,
+      startX: clientX,
+      startY: clientY,
+      currentX: clientX,
+      currentY: clientY,
+      isSwiping: false,
+    });
+  };
+
+  // カテゴリースワイプ中
+  const handleCategorySwipeMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!categorySwipeState.id) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const deltaX = clientX - categorySwipeState.startX;
+    const deltaY = clientY - categorySwipeState.startY;
+
+    if (Math.abs(deltaY) > 20) {
+      setCategorySwipeState({
+        id: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        isSwiping: false,
+      });
+      return;
+    }
+
+    if (Math.abs(deltaX) > 5) {
+      setCategorySwipeState((prev) => ({
+        ...prev,
+        currentX: clientX,
+        currentY: clientY,
+        isSwiping: true,
+      }));
+    }
+  };
+
+  // カテゴリースワイプ終了
+  const handleCategorySwipeEnd = (category: StoreCategory) => {
+    if (!categorySwipeState.id || categorySwipeState.id !== category.id) return;
+
+    const deltaX = categorySwipeState.currentX - categorySwipeState.startX;
+    const threshold = 60;
+
+    // 左スワイプ（編集）
+    if (deltaX < -threshold) {
+      setEditingCategory(category);
+      setNewCategoryName(category.name);
+      setShowEditDialog(true);
+    }
+
+    // 右スワイプ（削除）
+    if (deltaX > threshold) {
+      setCategoryToDelete(category);
+      setShowCategoryDeleteDialog(true);
+    }
+
+    setCategorySwipeState({
+      id: null,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      isSwiping: false,
+    });
   };
 
   // 店舗をカテゴリーに追加
@@ -282,6 +402,120 @@ export const StoreCategoryManagementPage: React.FC = () => {
     );
   };
 
+  // 帳合い先管理のハンドラー
+  const handleAddSupplier = async () => {
+    if (!newSupplierName.trim()) return;
+
+    const success = await addPreset(newSupplierName.trim());
+    if (success) {
+      setNewSupplierName('');
+      setShowSupplierAddDialog(false);
+      showSuccess('帳合先を追加しました');
+    } else {
+      showError('帳合先の追加に失敗しました');
+    }
+  };
+
+  const handleEditSupplier = async () => {
+    if (!editingSupplier || !newSupplierName.trim()) return;
+
+    const success = await updatePreset(editingSupplier.id, newSupplierName.trim());
+    if (success) {
+      setNewSupplierName('');
+      setEditingSupplier(null);
+      setShowSupplierEditDialog(false);
+      showSuccess('帳合先を更新しました');
+    } else {
+      showError('帳合先の更新に失敗しました');
+    }
+  };
+
+  const handleDeleteSupplier = async () => {
+    if (!supplierToDelete) return;
+
+    const success = await deletePreset(supplierToDelete.id);
+    if (success) {
+      showSuccess('帳合先を削除しました');
+    } else {
+      showError('帳合先の削除に失敗しました');
+    }
+
+    setShowSupplierDeleteDialog(false);
+    setSupplierToDelete(null);
+  };
+
+  const handleSupplierSwipeStart = (e: React.TouchEvent | React.MouseEvent, supplierId: string) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setSupplierSwipeState({
+      id: supplierId,
+      startX: clientX,
+      startY: clientY,
+      currentX: clientX,
+      currentY: clientY,
+      isSwiping: false,
+    });
+  };
+
+  const handleSupplierSwipeMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!supplierSwipeState.id) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const deltaX = clientX - supplierSwipeState.startX;
+    const deltaY = clientY - supplierSwipeState.startY;
+
+    if (Math.abs(deltaY) > 20) {
+      setSupplierSwipeState({
+        id: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        isSwiping: false,
+      });
+      return;
+    }
+
+    if (Math.abs(deltaX) > 5) {
+      setSupplierSwipeState((prev) => ({
+        ...prev,
+        currentX: clientX,
+        currentY: clientY,
+        isSwiping: true,
+      }));
+    }
+  };
+
+  const handleSupplierSwipeEnd = (supplier: SupplierPreset) => {
+    if (!supplierSwipeState.id || supplierSwipeState.id !== supplier.id) return;
+
+    const deltaX = supplierSwipeState.currentX - supplierSwipeState.startX;
+    const threshold = 60;
+
+    // 左スワイプ（編集）
+    if (deltaX < -threshold) {
+      setEditingSupplier(supplier);
+      setNewSupplierName(supplier.supplier);
+      setShowSupplierEditDialog(true);
+    }
+
+    // 右スワイプ（削除）
+    if (deltaX > threshold) {
+      setSupplierToDelete(supplier);
+      setShowSupplierDeleteDialog(true);
+    }
+
+    setSupplierSwipeState({
+      id: null,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      isSwiping: false,
+    });
+  };
+
   const uncategorizedStores = getUncategorizedStores();
   const categoryStores = selectedCategory
     ? STORE_DATA.filter((store) => selectedCategory.storeIds.includes(store.code))
@@ -323,12 +557,13 @@ export const StoreCategoryManagementPage: React.FC = () => {
     <Container maxWidth="lg">
           <Box sx={{ py: 3 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-              店舗管理
+              各種管理
             </Typography>
 
             <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
               <Tab label="カテゴリー管理" />
               <Tab label="販売構成比設定" />
+              <Tab label="帳合い先管理" />
             </Tabs>
 
             {/* カテゴリー管理タブ */}
@@ -360,43 +595,93 @@ export const StoreCategoryManagementPage: React.FC = () => {
                         {categories.length === 0 ? (
                           <Alert severity="info">カテゴリーがありません</Alert>
                         ) : (
-                          <List>
-                            {categories.map((category) => (
-                              <ListItem
-                                key={category.id}
-                                disablePadding
-                                secondaryAction={
-                                  <Box>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => {
-                                        setEditingCategory(category);
-                                        setNewCategoryName(category.name);
-                                        setShowEditDialog(true);
-                                      }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                    <IconButton size="small" onClick={() => handleDeleteCategory(category.id)}>
-                                      <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                  </Box>
-                                }
-                              >
-                                <ListItemButton
-                                  selected={selectedCategory?.id === category.id}
-                                  onClick={() => {
-                                    setSelectedCategory(category);
-                                    setSelectedStores([]);
+                          <List sx={{ py: 0 }}>
+                            {categories.map((category) => {
+                              const isCurrentSwiping = categorySwipeState.id === category.id;
+                              const deltaX = isCurrentSwiping ? categorySwipeState.currentX - categorySwipeState.startX : 0;
+                              const showEditHint = deltaX < -25;
+                              const showDeleteHint = deltaX > 25;
+
+                              return (
+                                <Box
+                                  key={category.id}
+                                  sx={{
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    bgcolor: showDeleteHint ? 'error.light' : showEditHint ? 'info.light' : 'transparent',
+                                    transition: showDeleteHint || showEditHint ? 'none' : 'background-color 0.2s',
                                   }}
                                 >
-                                  <ListItemText
-                                    primary={category.name}
-                                    secondary={`${category.storeIds.length}店舗`}
-                                  />
-                                </ListItemButton>
-                              </ListItem>
-                            ))}
+                                  {/* 編集ヒント背景（左） */}
+                                  {showEditHint && (
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: 80,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'info.contrastText',
+                                      }}
+                                    >
+                                      <EditIcon />
+                                    </Box>
+                                  )}
+
+                                  {/* 削除ヒント背景（右） */}
+                                  {showDeleteHint && (
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: 80,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'error.contrastText',
+                                      }}
+                                    >
+                                      <DeleteIcon />
+                                    </Box>
+                                  )}
+
+                                  <ListItemButton
+                                    selected={selectedCategory?.id === category.id}
+                                    onClick={() => {
+                                      if (!categorySwipeState.isSwiping) {
+                                        setSelectedCategory(category);
+                                        setSelectedStores([]);
+                                      }
+                                    }}
+                                    onTouchStart={(e) => handleCategorySwipeStart(e, category.id)}
+                                    onTouchMove={handleCategorySwipeMove}
+                                    onTouchEnd={() => handleCategorySwipeEnd(category)}
+                                    onMouseDown={(e) => handleCategorySwipeStart(e, category.id)}
+                                    onMouseMove={handleCategorySwipeMove}
+                                    onMouseUp={() => handleCategorySwipeEnd(category)}
+                                    onMouseLeave={() => handleCategorySwipeEnd(category)}
+                                    sx={{
+                                      py: 1.5,
+                                      px: 2,
+                                      transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
+                                      transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
+                                      bgcolor: 'background.paper',
+                                      touchAction: 'none',
+                                    }}
+                                  >
+                                    <ListItemText
+                                      primary={category.name}
+                                      secondary={`${category.storeIds.length}店舗`}
+                                    />
+                                  </ListItemButton>
+                                </Box>
+                              );
+                            })}
                           </List>
                         )}
                       </CardContent>
@@ -641,6 +926,116 @@ export const StoreCategoryManagementPage: React.FC = () => {
                 </Card>
               </>
             )}
+
+            {/* 帳合い先管理タブ */}
+            {tabValue === 2 && (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  帳合先を管理します。左にスワイプで編集、右にスワイプで削除できます。
+                </Typography>
+
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" fontWeight="bold">
+                        帳合先一覧
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => setShowSupplierAddDialog(true)}
+                      >
+                        追加
+                      </Button>
+                    </Box>
+
+                    {presets.length === 0 ? (
+                      <Alert severity="info">帳合先がまだ登録されていません</Alert>
+                    ) : (
+                      <List sx={{ py: 0 }}>
+                        {presets.map((preset) => {
+                          const isCurrentSwiping = supplierSwipeState.id === preset.id;
+                          const deltaX = isCurrentSwiping ? supplierSwipeState.currentX - supplierSwipeState.startX : 0;
+                          const showEditHint = deltaX < -25;
+                          const showDeleteHint = deltaX > 25;
+
+                          return (
+                            <Box
+                              key={preset.id}
+                              sx={{
+                                position: 'relative',
+                                overflow: 'hidden',
+                                bgcolor: showDeleteHint ? 'error.light' : showEditHint ? 'info.light' : 'transparent',
+                                transition: showDeleteHint || showEditHint ? 'none' : 'background-color 0.2s',
+                              }}
+                            >
+                              {/* 編集ヒント背景（左） */}
+                              {showEditHint && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 80,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'info.contrastText',
+                                  }}
+                                >
+                                  <EditIcon />
+                                </Box>
+                              )}
+
+                              {/* 削除ヒント背景（右） */}
+                              {showDeleteHint && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 80,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'error.contrastText',
+                                  }}
+                                >
+                                  <DeleteIcon />
+                                </Box>
+                              )}
+
+                              <ListItemButton
+                                onTouchStart={(e) => handleSupplierSwipeStart(e, preset.id)}
+                                onTouchMove={handleSupplierSwipeMove}
+                                onTouchEnd={() => handleSupplierSwipeEnd(preset)}
+                                onMouseDown={(e) => handleSupplierSwipeStart(e, preset.id)}
+                                onMouseMove={handleSupplierSwipeMove}
+                                onMouseUp={() => handleSupplierSwipeEnd(preset)}
+                                onMouseLeave={() => handleSupplierSwipeEnd(preset)}
+                                sx={{
+                                  py: 1.5,
+                                  px: 2,
+                                  transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
+                                  transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
+                                  bgcolor: 'background.paper',
+                                  touchAction: 'none',
+                                }}
+                              >
+                                <ListItemText primary={preset.supplier} />
+                              </ListItemButton>
+                            </Box>
+                          );
+                        })}
+                      </List>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </Box>
 
         {/* カテゴリー追加ダイアログ */}
@@ -682,6 +1077,37 @@ export const StoreCategoryManagementPage: React.FC = () => {
             <Button onClick={() => setShowEditDialog(false)}>キャンセル</Button>
             <Button onClick={handleEditCategory} variant="contained">
               更新
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* カテゴリー削除確認ダイアログ */}
+        <Dialog open={showCategoryDeleteDialog} onClose={() => setShowCategoryDeleteDialog(false)}>
+          <DialogTitle>カテゴリーを削除</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              このカテゴリーを削除してもよろしいですか？店舗は未分類に戻ります。
+            </Typography>
+            {categoryToDelete && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="medium">
+                  {categoryToDelete.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {categoryToDelete.storeIds.length}店舗
+                </Typography>
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              この操作は元に戻せません。
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowCategoryDeleteDialog(false)} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleDeleteCategory} color="error" variant="contained">
+              削除
             </Button>
           </DialogActions>
         </Dialog>
@@ -731,6 +1157,77 @@ export const StoreCategoryManagementPage: React.FC = () => {
             )}
           </Box>
         </Popover>
+
+        {/* 帳合先追加ダイアログ */}
+        <Dialog open={showSupplierAddDialog} onClose={() => setShowSupplierAddDialog(false)}>
+          <DialogTitle>帳合先を追加</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="帳合先"
+              placeholder="例: ○○商事"
+              fullWidth
+              value={newSupplierName}
+              onChange={(e) => setNewSupplierName(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSupplierAddDialog(false)}>キャンセル</Button>
+            <Button onClick={handleAddSupplier} variant="contained">
+              追加
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 帳合先編集ダイアログ */}
+        <Dialog open={showSupplierEditDialog} onClose={() => setShowSupplierEditDialog(false)}>
+          <DialogTitle>帳合先を編集</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="帳合先"
+              fullWidth
+              value={newSupplierName}
+              onChange={(e) => setNewSupplierName(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSupplierEditDialog(false)}>キャンセル</Button>
+            <Button onClick={handleEditSupplier} variant="contained">
+              更新
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 帳合先削除確認ダイアログ */}
+        <Dialog open={showSupplierDeleteDialog} onClose={() => setShowSupplierDeleteDialog(false)}>
+          <DialogTitle>帳合先を削除</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              この帳合先を削除してもよろしいですか？
+            </Typography>
+            {supplierToDelete && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="medium">
+                  {supplierToDelete.supplier}
+                </Typography>
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              この操作は元に戻せません。
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSupplierDeleteDialog(false)} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleDeleteSupplier} color="error" variant="contained">
+              削除
+            </Button>
+          </DialogActions>
+        </Dialog>
     </Container>
   );
 };

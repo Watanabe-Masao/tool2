@@ -81,7 +81,7 @@ export const Header: React.FC = () => {
     { label: '新規作成', icon: <AddCircle />, path: '/new-order' },
     { label: 'カレンダー', icon: <CalendarToday />, path: '/calendar' },
     { label: 'ユーザー', icon: <Person />, path: '/profile' },
-    { label: '店舗管理', icon: <Settings />, path: '/store-categories' },
+    { label: '各種管理', icon: <Settings />, path: '/store-categories' },
   ];
 
   /**
