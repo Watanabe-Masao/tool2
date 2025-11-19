@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,7 +12,7 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, GridOptions } from 'ag-grid-community';
+import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { format } from 'date-fns';
@@ -65,6 +65,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   onClose,
   formData,
 }) => {
+  // 選択された行データ
+  const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
 
   /**
    * グリッド行データを生成
@@ -202,6 +204,13 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   }, []);
 
   /**
+   * 行クリック時のハンドラー
+   */
+  const handleRowClicked = (event: RowClickedEvent<GridRowData>) => {
+    setSelectedRow(event.data || null);
+  };
+
+  /**
    * グリッドオプション
    */
   const gridOptions = useMemo<GridOptions<GridRowData>>(
@@ -218,6 +227,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       suppressCellFocus: false,
       enableCellTextSelection: true,
       animateRows: true,
+      onRowClicked: handleRowClicked,
+      rowSelection: 'single',
     }),
     []
   );
@@ -243,11 +254,61 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       </DialogTitle>
 
       <DialogContent dividers sx={{ p: 0 }}>
+        {/* 選択行の詳細情報エリア */}
+        {selectedRow && (
+          <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+            {/* 1行目: 店着日と集計情報 */}
+            <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
+                差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
+              </Typography>
+            </Box>
+
+            {/* 2行目: 商品基本情報 */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">
+                産地: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.origin}</Box>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                品名: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.productName}</Box>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                規格: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.specification}</Box>
+              </Typography>
+            </Box>
+
+            {/* 3行目: 価格情報 */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">
+                店着原価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.storeCost}</Box>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                税抜売価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.priceExcludingTax}</Box>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                入数: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.quantityPerPackage}</Box>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                帳合先: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.supplier}</Box>
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
         <Box
           className="ag-theme-alpine"
           sx={{
             width: '100%',
-            height: 'calc(90vh - 140px)',
+            height: selectedRow ? 'calc(90vh - 260px)' : 'calc(90vh - 140px)',
             '& .ag-header': {
               backgroundColor: '#f8f9fa',
               borderBottom: '2px solid #dee2e6',
@@ -274,6 +335,9 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
             },
             '& .ag-row-odd': {
               backgroundColor: '#fafafa',
+            },
+            '& .ag-row-selected': {
+              backgroundColor: '#e3f2fd !important',
             },
           }}
         >
