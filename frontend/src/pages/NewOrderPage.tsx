@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useForm, FormProvider, useWatch } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -123,6 +123,12 @@ export const NewOrderPage: React.FC = () => {
 
   // フォームデータを監視
   const formData = watch();
+
+  // 商品フィールド配列
+  const { fields: productFields } = useFieldArray({
+    control,
+    name: 'products',
+  });
 
   // 帳合先を監視
   const suppliers = useWatch({
@@ -640,7 +646,6 @@ export const NewOrderPage: React.FC = () => {
                     <ProductPricingForm
                       control={control}
                       errors={errors}
-                      productCount={formData.products.length}
                     />
                   </Box>
                 </SwiperSlide>
@@ -648,25 +653,26 @@ export const NewOrderPage: React.FC = () => {
                 {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    {formData.products.map((product, index) =>
-                      isMobile ? (
+                    {productFields.map((field, index) => {
+                      const product = formData.products[index];
+                      return isMobile ? (
                         <StoreAllocationMobile
-                          key={index}
+                          key={field.id}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={product.totalDelivery || 0}
+                          totalDelivery={product?.totalDelivery || 0}
                         />
                       ) : (
                         <StoreAllocationGrid
-                          key={index}
+                          key={field.id}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={product.totalDelivery || 0}
+                          totalDelivery={product?.totalDelivery || 0}
                         />
-                      )
-                    )}
+                      );
+                    })}
                     {renderSubmitButton()}
                   </Box>
                 </SwiperSlide>
