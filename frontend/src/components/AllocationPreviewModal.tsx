@@ -106,7 +106,7 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         total: totalAllocated.toString(),
         totalDelivery: totalPackages.toString(),
         difference: difference,
-        supplier: formData.supplier || '',
+        supplier: product.supplier || '',
       };
 
       // 各店舗の配分数を追加

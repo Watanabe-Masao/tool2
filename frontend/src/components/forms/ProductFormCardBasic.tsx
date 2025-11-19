@@ -189,7 +189,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * 商品情報を履歴として保存
    */
   const handleSaveProductToHistory = async () => {
-    if (!user || !supplier) {
+    if (!user || !currentSupplier) {
       showError('ユーザーまたは帳合先が設定されていません');
       return;
     }
@@ -202,7 +202,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     try {
       await FirestoreService.saveProductHistory(
         user.uid,
-        supplier,
+        currentSupplier,
         currentName,
         currentOrigin,
         currentSpecification || '',

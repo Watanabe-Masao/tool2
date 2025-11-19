@@ -39,7 +39,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   onEnterPress,
   suppliers,
 }) => {
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: 'products',
   });

@@ -14,7 +14,7 @@ import {
   Button,
   DialogContentText,
 } from '@mui/material';
-import { Close, Search, Delete, History } from '@mui/icons-material';
+import { Close, Search, History } from '@mui/icons-material';
 
 /**
  * ProductNameHistoryModalのProps
