@@ -21,8 +21,6 @@ import {
 } from '@mui/material';
 import {
   Logout,
-  Google,
-  Email,
   AddCircle,
   CalendarToday,
   Person,
@@ -75,18 +73,6 @@ export const Header: React.FC = () => {
     }
   };
 
-  /**
-   * ログインプロバイダーを判定
-   */
-  const getLoginProvider = (): 'google' | 'email' => {
-    if (user?.providerData && user.providerData.length > 0) {
-      const providerId = user.providerData[0].providerId;
-      if (providerId === 'google.com') {
-        return 'google';
-      }
-    }
-    return 'email';
-  };
 
   /**
    * ナビゲーションアイテムの定義
@@ -104,8 +90,6 @@ export const Header: React.FC = () => {
   const handleNavigationChange = (path: string) => {
     history.push(path);
   };
-
-  const loginProvider = user ? getLoginProvider() : 'email';
 
   return (
     <>
@@ -234,11 +218,7 @@ export const Header: React.FC = () => {
                   gap: 0.5,
                 }}
               >
-                {loginProvider === 'google' ? (
-                  <Google fontSize="small" sx={{ color: 'white' }} />
-                ) : (
-                  <Email fontSize="small" sx={{ color: 'white' }} />
-                )}
+                <Person fontSize="small" sx={{ color: 'white' }} />
                 {!isMobile && user.displayName && (
                   <Typography variant="caption" sx={{ color: 'white' }}>
                     {user.displayName}
@@ -292,17 +272,7 @@ export const Header: React.FC = () => {
           </DialogContentText>
           {user && (
             <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                {loginProvider === 'google' ? (
-                  <Google fontSize="small" color="action" />
-                ) : (
-                  <Email fontSize="small" color="action" />
-                )}
-                <Typography variant="body2" fontWeight="medium">
-                  {loginProvider === 'google' ? 'Googleアカウント' : 'メールアカウント'}
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
                 {user.displayName}
               </Typography>
               <Typography variant="body2" color="text.secondary">

@@ -31,9 +31,9 @@ interface SupplierFormProps {
 }
 
 /**
- * Step 2: 帳合先入力フォーム
+ * Step 1: 帳合先入力フォーム
  *
- * 商品の帳合先（仕入先）を入力します。
+ * 商品の帳合先（仕入先）を複数入力します。
  * プリセット機能で頻繁に使う帳合先を素早く選択できます。
  */
 export const SupplierForm: React.FC<SupplierFormProps> = ({
@@ -48,7 +48,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle1" fontWeight="medium">帳合先を入力</Typography>
+        <Typography variant="subtitle1" fontWeight="medium">帳合先を選択</Typography>
         <IconButton
           size="small"
           onClick={() => setShowPresetManager(true)}
@@ -59,11 +59,11 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        プリセットボタンをタップするか、直接入力してください
+        複数の帳合先を選択できます
       </Typography>
 
       <Controller
-        name="supplier"
+        name="suppliers"
         control={control}
         render={({ field }) => (
           <Box>
@@ -74,40 +74,49 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
                   プリセット
                 </Typography>
                 <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                  {presets.map((preset) => (
-                    <Chip
-                      key={preset.id}
-                      label={preset.supplier}
-                      onClick={() => field.onChange(preset.supplier)}
-                      color={field.value === preset.supplier ? 'primary' : 'default'}
-                      size="small"
-                      sx={{ mb: 0.5 }}
-                    />
-                  ))}
+                  {presets.map((preset) => {
+                    const isSelected = field.value?.includes(preset.supplier);
+                    return (
+                      <Chip
+                        key={preset.id}
+                        label={preset.supplier}
+                        onClick={() => {
+                          const currentValue = field.value || [];
+                          if (isSelected) {
+                            // 既に選択されている場合は削除
+                            field.onChange(currentValue.filter((s: string) => s !== preset.supplier));
+                          } else {
+                            // 選択されていない場合は追加
+                            field.onChange([...currentValue, preset.supplier]);
+                          }
+                        }}
+                        color={isSelected ? 'primary' : 'default'}
+                        size="small"
+                        sx={{ mb: 0.5 }}
+                      />
+                    );
+                  })}
                 </Stack>
                 <Divider sx={{ my: 1.5 }} />
               </Box>
             )}
 
-            {/* 入力フィールド */}
+            {/* 入力フィールド（複数選択対応） */}
             <Autocomplete
-              {...field}
+              multiple
               options={supplierOptions}
               freeSolo
-              value={field.value || ''}
+              value={field.value || []}
               onChange={(_, newValue) => {
-                field.onChange(newValue || '');
-              }}
-              onInputChange={(_, newInputValue) => {
-                field.onChange(newInputValue);
+                field.onChange(newValue);
               }}
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="帳合先"
                   placeholder="例: ○○商事"
-                  error={!!errors.supplier}
-                  helperText={errors.supplier?.message}
+                  error={!!errors.suppliers}
+                  helperText={errors.suppliers?.message}
                   fullWidth
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && onEnterPress) {

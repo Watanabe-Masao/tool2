@@ -87,7 +87,7 @@ export const NewOrderPage: React.FC = () => {
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       deliveryDate: new Date(),
-      supplier: '',
+      suppliers: [],
       products: [
         {
           ...DEFAULT_PRODUCT_FORM_DATA,
@@ -281,15 +281,19 @@ export const NewOrderPage: React.FC = () => {
 
       // オートコンプリート履歴に追加
       if (user) {
-        await supplierAutocomplete.addToHistory(data.supplier);
+        // 複数の帳合先を履歴に追加
+        for (const supplier of data.suppliers) {
+          await supplierAutocomplete.addToHistory(supplier);
+        }
+
         for (const product of data.products) {
           await productNameAutocomplete.addToHistory(product.name);
           await originAutocomplete.addToHistory(product.origin);
 
-          // 商品履歴を保存
+          // 商品履歴を保存（各商品の帳合先ごとに）
           await FirestoreService.saveProductHistory(
             user.uid,
-            data.supplier,
+            product.supplier,
             product.name,
             product.origin,
             product.specification || '',
@@ -489,7 +493,7 @@ export const NewOrderPage: React.FC = () => {
                       errors={errors}
                       productNameOptions={productNameAutocomplete.options}
                       originOptions={originAutocomplete.options}
-                      supplier={formData.supplier}
+                      suppliers={formData.suppliers}
                     />
                   </Box>
                 </SwiperSlide>

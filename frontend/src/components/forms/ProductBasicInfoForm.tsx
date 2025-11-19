@@ -21,12 +21,12 @@ interface ProductBasicInfoFormProps {
   originOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
-  /** 帳合先（履歴フィルタ用） */
-  supplier?: string;
+  /** 帳合先リスト（履歴フィルタ用） */
+  suppliers?: string[];
 }
 
 /**
- * Step 3: 商品基本情報フォーム
+ * Step 2: 商品基本情報フォーム
  *
  * 商品の基本情報（品名、産地、規格、入数）を入力します。
  * 商品の追加・削除が可能です。
@@ -37,19 +37,32 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   productNameOptions,
   originOptions,
   onEnterPress,
-  supplier,
+  suppliers,
 }) => {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control,
     name: 'products',
   });
 
   /**
+   * 最後に選択された帳合先を取得
+   */
+  const getLastSelectedSupplier = (): string => {
+    if (!fields.length || !suppliers?.length) return suppliers?.[0] || '';
+    // 最後の商品の帳合先を取得
+    const lastProduct = fields[fields.length - 1] as any;
+    return lastProduct.supplier || suppliers[0];
+  };
+
+  /**
    * 商品を追加
    */
   const handleAddProduct = () => {
+    // 手前で選択している帳合先をデフォルトとして設定
+    const defaultSupplier = getLastSelectedSupplier();
     append({
       ...DEFAULT_PRODUCT_FORM_DATA,
+      supplier: defaultSupplier,
       totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
@@ -93,7 +106,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           productNameOptions={productNameOptions}
           originOptions={originOptions}
           onEnterPress={onEnterPress}
-          supplier={supplier}
+          suppliers={suppliers}
         />
       ))}
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -230,8 +230,10 @@ interface ProductPresetModalProps {
   onReload?: () => Promise<void>;
   /** ユーザーID */
   userId?: string;
-  /** 帳合先 */
+  /** 現在選択されている帳合先（この帳合先のプリセットを表示） */
   supplier?: string;
+  /** 利用可能な帳合先リスト（複数帳合先対応） - オプション */
+  suppliers?: string[];
 }
 
 /**
@@ -248,7 +250,11 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   onReload,
   userId,
   supplier,
+  suppliers,
 }) => {
+  // 選択された帳合先（複数帳合先対応）
+  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+
   // カテゴリーフィルターのタブ（0: 全て, 1: 果実, 2: 野菜）
   const [categoryFilter, setCategoryFilter] = useState(0);
 
@@ -257,6 +263,13 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+
+  // モーダルが開いたときに初期帳合先を設定
+  useEffect(() => {
+    if (open) {
+      setSelectedSupplier(supplier || suppliers?.[0] || '');
+    }
+  }, [open, supplier, suppliers]);
 
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -351,9 +364,14 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   };
 
   /**
-   * カテゴリーでフィルタリングしたプリセット
+   * カテゴリーと帳合先でフィルタリングしたプリセット
    */
   const filteredPresets = presets.filter((preset) => {
+    // 帳合先でフィルタリング
+    if (selectedSupplier && preset.supplier !== selectedSupplier) {
+      return false;
+    }
+
     // 詳細カテゴリーが選択されている場合は、それでフィルタリング
     if (detailedCategoryCode) {
       return preset.categoryCode === detailedCategoryCode;
@@ -613,6 +631,22 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
             <Close />
           </IconButton>
         </DialogTitle>
+
+        {/* 帳合先選択タブ（複数帳合先対応） */}
+        {suppliers && suppliers.length > 1 && (
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+            <Tabs
+              value={selectedSupplier}
+              onChange={(_, newValue) => setSelectedSupplier(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              {suppliers.map((sup) => (
+                <Tab key={sup} label={sup} value={sup} />
+              ))}
+            </Tabs>
+          </Box>
+        )}
 
         {/* カテゴリーフィルタータブ */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

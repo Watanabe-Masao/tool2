@@ -19,8 +19,9 @@ import {
   Button,
   DialogContentText,
   ButtonBase,
+  InputAdornment,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear } from '@mui/icons-material';
+import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear, History, Business } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -29,6 +30,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
+import { ProductNameHistoryModal } from '@/components/modals/ProductNameHistoryModal';
 import { getCategoryName } from '@/utils/categories';
 
 /**
@@ -51,8 +53,8 @@ interface ProductFormCardBasicProps {
   originOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
-  /** 帳合先（履歴フィルタ用） */
-  supplier?: string;
+  /** 帳合先リスト（ステップ1で選択された帳合先） */
+  suppliers?: string[];
 }
 
 /**
@@ -86,7 +88,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   productNameOptions = [],
   originOptions = [],
   onEnterPress,
-  supplier,
+  suppliers,
 }) => {
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
@@ -95,6 +97,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
+  const currentSupplier = useWatch({ control, name: `products.${index}.supplier` });
   const currentName = useWatch({ control, name: `products.${index}.name` });
   const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
@@ -107,13 +110,19 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   // プリセット選択モーダルの状態
   const [presetModalOpen, setPresetModalOpen] = useState(false);
 
+  // 品名履歴モーダルの状態
+  const [nameHistoryModalOpen, setNameHistoryModalOpen] = useState(false);
+
   // 商品保存確認ダイアログの状態
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // 商品クリア確認ダイアログの状態
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
-  // 商品履歴フック（帳合先とカテゴリーでフィルタ）
+  // 帳合先選択モーダルの状態
+  const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
+
+  // 商品履歴フック（この商品の帳合先とカテゴリーでフィルタ）
   const {
     history,
     getUniqueNames,
@@ -124,7 +133,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     deleteHistory,
     getCategoryCodeByName,
     loadHistory,
-  } = useProductHistory(supplier, currentCategoryCode || undefined);
+  } = useProductHistory(currentSupplier, currentCategoryCode || undefined);
 
   // 削除確認ダイアログの状態
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
@@ -236,11 +245,32 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   };
 
   /**
+   * 帳合先を選択
+   */
+  const handleSelectSupplier = (supplier: string) => {
+    setValue(`products.${index}.supplier`, supplier);
+    setSupplierSelectOpen(false);
+  };
+
+  /**
+   * 長押し開始（帳合先選択用）
+   */
+  const handleSupplierLongPressStart = () => {
+    if (!suppliers || suppliers.length === 0) {
+      showError('ステップ1で帳合先を選択してください');
+      return;
+    }
+    longPressTimer.current = window.setTimeout(() => {
+      setSupplierSelectOpen(true);
+    }, 500);
+  };
+
+  /**
    * プリセット選択ボタンをクリック
    */
   const handlePresetButtonClick = () => {
-    if (!supplier) {
-      showError('帳合先を先に入力してください');
+    if (!currentSupplier) {
+      showError('帳合先を先に選択してください');
       return;
     }
     setPresetModalOpen(true);
@@ -251,12 +281,26 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
     setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
+    setValue(`products.${index}.supplier`, preset.supplier);
     setValue(`products.${index}.name`, preset.name);
     setValue(`products.${index}.origin`, preset.origin);
     setValue(`products.${index}.specification`, preset.specification);
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
     showSuccess('プリセットを読み込みました');
+  };
+
+  /**
+   * 品名履歴から削除
+   */
+  const handleDeleteNameHistory = async (name: string) => {
+    try {
+      const count = await deleteHistory({ name });
+      showSuccess(`${count}件の履歴を削除しました`);
+    } catch (error) {
+      showError('履歴の削除に失敗しました');
+      throw error;
+    }
   };
 
   /**
@@ -372,7 +416,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     <>
       <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          {/* ヘッダー: 商品番号 + プリセットボタン + クリアボタン + 削除ボタン */}
+          {/* ヘッダー: 商品番号 + プリセットボタン + 帳合先ツールチップ + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ButtonBase
@@ -413,6 +457,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 variant="outlined"
                 size="small"
                 color="secondary"
+                sx={{ fontSize: '0.75rem' }}
+              />
+              <Chip
+                icon={<Business />}
+                label={currentSupplier || '帳合先'}
+                onTouchStart={handleSupplierLongPressStart}
+                onTouchEnd={handleLongPressEnd}
+                onMouseDown={handleSupplierLongPressStart}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (suppliers && suppliers.length > 0) {
+                    setSupplierSelectOpen(true);
+                  } else {
+                    showError('ステップ1で帳合先を選択してください');
+                  }
+                }}
+                variant="outlined"
+                size="small"
+                color={currentSupplier ? 'primary' : 'default'}
                 sx={{ fontSize: '0.75rem' }}
               />
             </Box>
@@ -481,38 +546,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                           error={!!productErrors?.name}
                           helperText={productErrors?.name?.message}
                           required
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <InputAdornment position="start">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => setNameHistoryModalOpen(true)}
+                                    edge="start"
+                                    title="品名履歴を表示"
+                                  >
+                                    <History fontSize="small" />
+                                  </IconButton>
+                                </InputAdornment>
+                                {params.InputProps.startAdornment}
+                              </>
+                            ),
+                          }}
                         />
                       )}
                     />
-                    {/* 品名履歴チップ */}
-                    {supplier && getUniqueNames.length > 0 && (
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                        {getUniqueNames.slice(0, 10).map((name) => (
-                          <Chip
-                            key={name}
-                            label={name}
-                            size="small"
-                            onClick={() => field.onChange(name)}
-                            onTouchStart={() => handleLongPressStart('name', name, { name })}
-                            onTouchEnd={handleLongPressEnd}
-                            onMouseDown={() => handleLongPressStart('name', name, { name })}
-                            onMouseUp={handleLongPressEnd}
-                            onMouseLeave={handleLongPressEnd}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setDeleteDialog({
-                                open: true,
-                                type: 'name',
-                                value: name,
-                                conditions: { name },
-                              });
-                            }}
-                            color={field.value === name ? 'primary' : 'default'}
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                        ))}
-                      </Stack>
-                    )}
                   </Box>
                 )}
               />
@@ -917,8 +971,47 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         presets={history}
         onReload={loadHistory}
         userId={user?.uid}
-        supplier={supplier}
+        supplier={currentSupplier}
+        suppliers={suppliers}
       />
+
+      {/* 品名履歴モーダル */}
+      <ProductNameHistoryModal
+        open={nameHistoryModalOpen}
+        onClose={() => setNameHistoryModalOpen(false)}
+        onSelect={(name) => {
+          setValue(`products.${index}.name`, name);
+        }}
+        names={getUniqueNames}
+        onDelete={handleDeleteNameHistory}
+      />
+
+      {/* 帳合先選択ダイアログ */}
+      <Dialog open={supplierSelectOpen} onClose={() => setSupplierSelectOpen(false)}>
+        <DialogTitle>帳合先を選択</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            この商品の帳合先を選択してください
+          </DialogContentText>
+          <Stack spacing={1}>
+            {suppliers?.map((supplier) => (
+              <Button
+                key={supplier}
+                variant={currentSupplier === supplier ? 'contained' : 'outlined'}
+                onClick={() => handleSelectSupplier(supplier)}
+                fullWidth
+              >
+                {supplier}
+              </Button>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
