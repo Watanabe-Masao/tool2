@@ -122,11 +122,15 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   // 帳合先選択モーダルの状態
   const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
 
-  // 商品履歴フック（この商品の帳合先とカテゴリーでフィルタ）
-  // currentSupplier が設定されている場合はそれを使用、
-  // 未設定の場合はステップ1で選択された全帳合先の履歴を読み込む
+  // プリセットモーダル用の商品履歴フック（ステップ1で選択された全帳合先の履歴）
+  // PL呼び出し時は必ずステップ1の選択リスト全体を読み込む
   const {
-    history,
+    history: presetHistory,
+    loadHistory: reloadPresetHistory,
+  } = useProductHistory(suppliers, undefined);
+
+  // オートコンプリート用の商品履歴フック（現在の商品の帳合先とカテゴリーでフィルタ）
+  const {
     getUniqueNames,
     getUniqueOrigins,
     getUniqueSpecifications,
@@ -134,9 +138,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueUnits,
     deleteHistory,
     getCategoryCodeByName,
-    loadHistory,
   } = useProductHistory(
-    currentSupplier || suppliers || undefined,
+    currentSupplier || undefined,
     currentCategoryCode || undefined
   );
 
@@ -316,7 +319,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       await FirestoreService.deleteProductHistoryById(presetId);
       showSuccess('プリセットを削除しました');
       // 履歴を再読み込み
-      await loadHistory();
+      await reloadPresetHistory();
     } catch (error) {
       console.error('[ProductFormCardBasic] Failed to delete preset:', error);
       showError('プリセットの削除に失敗しました');
@@ -973,8 +976,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         onClose={() => setPresetModalOpen(false)}
         onSelect={handleSelectPreset}
         onDelete={handleDeletePreset}
-        presets={history}
-        onReload={loadHistory}
+        presets={presetHistory}
+        onReload={reloadPresetHistory}
         userId={user?.uid}
         supplier={currentSupplier}
         suppliers={suppliers}
