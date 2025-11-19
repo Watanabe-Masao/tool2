@@ -79,23 +79,6 @@ export const useSupplierPresets = () => {
     }
   };
 
-  /**
-   * プリセットの並び順を変更
-   */
-  const reorderPresets = async (reorderedPresets: SupplierPreset[]): Promise<boolean> => {
-    try {
-      const updates = reorderedPresets.map((preset, index) => ({
-        id: preset.id,
-        displayOrder: index,
-      }));
-      await FirestoreService.reorderSupplierPresets(updates);
-      return true;
-    } catch (error) {
-      console.error('Failed to reorder supplier presets:', error);
-      return false;
-    }
-  };
-
   // 初回読み込みとリアルタイム同期
   useEffect(() => {
     if (!user) return;
@@ -127,6 +110,5 @@ export const useSupplierPresets = () => {
     addPreset,
     deletePreset,
     updatePreset,
-    reorderPresets,
   };
 };
