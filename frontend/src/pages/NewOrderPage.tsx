@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
+import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -124,12 +124,6 @@ export const NewOrderPage: React.FC = () => {
   // フォームデータを監視
   const formData = watch();
 
-  // 商品フィールド配列の操作
-  const { remove } = useFieldArray({
-    control,
-    name: 'products',
-  });
-
   // 帳合先を監視
   const suppliers = useWatch({
     control,
@@ -221,18 +215,22 @@ export const NewOrderPage: React.FC = () => {
     // 最新の商品データを取得
     const currentProducts = methods.getValues('products');
 
-    // 削除される帳合先を使用している商品のインデックスを取得
-    const productsToRemove: number[] = [];
-    currentProducts.forEach((product, index) => {
-      if (product.supplier && suppliersToRemove.includes(product.supplier)) {
-        productsToRemove.push(index);
-      }
-    });
+    // 削除される帳合先を使用していない商品のみを残す
+    const remainingProducts = currentProducts.filter(
+      (product) => !product.supplier || !suppliersToRemove.includes(product.supplier)
+    );
 
-    // 後ろから削除（インデックスがずれないように）
-    productsToRemove.reverse().forEach((index) => {
-      remove(index);
-    });
+    // 残った商品がない場合は、デフォルトの空の商品を1つ追加
+    const newProducts = remainingProducts.length > 0
+      ? remainingProducts
+      : [{
+          ...DEFAULT_PRODUCT_FORM_DATA,
+          totalDelivery: 0,
+          storeAllocations: new Array(STORE_COUNT).fill(0),
+        }];
+
+    // 商品配列を更新
+    methods.setValue('products', newProducts);
 
     // 帳合先を更新
     methods.setValue('suppliers', newSuppliers);
