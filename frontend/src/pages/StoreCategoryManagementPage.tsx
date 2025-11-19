@@ -124,13 +124,18 @@ export const StoreCategoryManagementPage: React.FC = () => {
     startY: number;
     currentY: number;
     dragOverIndex: number | null;
+    isDragging: boolean;
   }>({
     draggingId: null,
     longPressTimer: null,
     startY: 0,
     currentY: 0,
     dragOverIndex: null,
+    isDragging: false,
   });
+
+  // 各帳合先アイテムのrefを保持
+  const supplierItemRefs = React.useRef<Map<string, HTMLElement>>(new Map());
 
   // カテゴリーを読み込み
   const loadCategories = async () => {
@@ -575,20 +580,34 @@ export const StoreCategoryManagementPage: React.FC = () => {
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
     const timer = window.setTimeout(() => {
+      // 長押し判定成功 - ドラッグ開始
       setSupplierDragState({
         draggingId: supplierId,
         longPressTimer: null,
         startY: clientY,
         currentY: clientY,
         dragOverIndex: null,
+        isDragging: true,
+      });
+      // スワイプ状態をリセット（ドラッグ中はスワイプを無効化）
+      setSupplierSwipeState({
+        id: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        isSwiping: false,
       });
     }, 500); // 500ms長押しで掴む
 
-    setSupplierDragState((prev) => ({
-      ...prev,
+    setSupplierDragState({
+      draggingId: null,
       longPressTimer: timer,
       startY: clientY,
-    }));
+      currentY: clientY,
+      dragOverIndex: null,
+      isDragging: false,
+    });
   };
 
   const handleSupplierLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
@@ -605,33 +624,59 @@ export const StoreCategoryManagementPage: React.FC = () => {
           startY: 0,
           currentY: 0,
           dragOverIndex: null,
+          isDragging: false,
         });
       }
       return;
     }
 
-    if (!supplierDragState.draggingId) return;
+    if (!supplierDragState.isDragging || !supplierDragState.draggingId) return;
 
-    // ドラッグ中
+    // ドラッグ中 - Y座標を更新
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // 各アイテムの位置を確認してドラッグオーバーを判定
+    let newDragOverIndex: number | null = null;
+    orderedPresets.forEach((preset, index) => {
+      const element = supplierItemRefs.current.get(preset.id);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        if (clientY >= rect.top && clientY <= rect.bottom) {
+          newDragOverIndex = clientY < centerY ? index : index;
+        }
+      }
+    });
+
     setSupplierDragState((prev) => ({
       ...prev,
       currentY: clientY,
+      dragOverIndex: newDragOverIndex,
     }));
   };
 
   const handleSupplierLongPressEnd = () => {
     if (supplierDragState.longPressTimer) {
       window.clearTimeout(supplierDragState.longPressTimer);
-    }
-
-    if (!supplierDragState.draggingId) {
       setSupplierDragState({
         draggingId: null,
         longPressTimer: null,
         startY: 0,
         currentY: 0,
         dragOverIndex: null,
+        isDragging: false,
+      });
+      return;
+    }
+
+    if (!supplierDragState.isDragging || !supplierDragState.draggingId) {
+      setSupplierDragState({
+        draggingId: null,
+        longPressTimer: null,
+        startY: 0,
+        currentY: 0,
+        dragOverIndex: null,
+        isDragging: false,
       });
       return;
     }
@@ -660,16 +705,8 @@ export const StoreCategoryManagementPage: React.FC = () => {
       startY: 0,
       currentY: 0,
       dragOverIndex: null,
+      isDragging: false,
     });
-  };
-
-  const handleSupplierDragOver = (index: number) => {
-    if (supplierDragState.draggingId) {
-      setSupplierDragState((prev) => ({
-        ...prev,
-        dragOverIndex: index,
-      }));
-    }
   };
 
   const uncategorizedStores = getUncategorizedStores();
@@ -1108,27 +1145,36 @@ export const StoreCategoryManagementPage: React.FC = () => {
                     {orderedPresets.length === 0 ? (
                       <Alert severity="info">帳合先がまだ登録されていません</Alert>
                     ) : (
-                      <List sx={{ py: 0 }}>
+                      <List sx={{ py: 0, position: 'relative' }}>
                         {orderedPresets.map((preset, index) => {
-                          const isCurrentSwiping = supplierSwipeState.id === preset.id;
+                          const isCurrentSwiping = supplierSwipeState.id === preset.id && !supplierDragState.isDragging;
                           const deltaX = isCurrentSwiping ? supplierSwipeState.currentX - supplierSwipeState.startX : 0;
                           const showEditHint = deltaX < -25;
                           const showDeleteHint = deltaX > 25;
-                          const isDragging = supplierDragState.draggingId === preset.id;
-                          const isDragOver = supplierDragState.dragOverIndex === index;
+                          const isDragging = supplierDragState.isDragging && supplierDragState.draggingId === preset.id;
+                          const isDragOver = supplierDragState.isDragging && supplierDragState.dragOverIndex === index && !isDragging;
+
+                          // ドラッグ中のY座標の変化量を計算
+                          const deltaY = isDragging ? supplierDragState.currentY - supplierDragState.startY : 0;
 
                           return (
                             <Box
                               key={preset.id}
-                              onMouseEnter={() => handleSupplierDragOver(index)}
+                              ref={(el: HTMLElement | null) => {
+                                if (el) {
+                                  supplierItemRefs.current.set(preset.id, el);
+                                } else {
+                                  supplierItemRefs.current.delete(preset.id);
+                                }
+                              }}
                               sx={{
                                 position: 'relative',
-                                overflow: 'hidden',
+                                overflow: isDragging ? 'visible' : 'hidden',
                                 bgcolor: showDeleteHint ? 'error.light' : showEditHint ? 'info.light' : isDragOver ? 'primary.light' : 'transparent',
                                 transition: showDeleteHint || showEditHint || isDragging ? 'none' : 'background-color 0.2s',
-                                opacity: isDragging ? 0.5 : 1,
-                                borderTop: isDragOver ? '3px solid' : 'none',
+                                borderTop: isDragOver && !isDragging ? '3px solid' : 'none',
                                 borderColor: 'primary.main',
+                                zIndex: isDragging ? 1000 : 1,
                               }}
                             >
                               {/* 編集ヒント背景（左） */}
@@ -1171,40 +1217,64 @@ export const StoreCategoryManagementPage: React.FC = () => {
 
                               <ListItemButton
                                 onTouchStart={(e) => {
-                                  handleSupplierSwipeStart(e, preset.id);
+                                  if (!supplierDragState.isDragging) {
+                                    handleSupplierSwipeStart(e, preset.id);
+                                  }
                                   handleSupplierLongPressStart(e, preset.id);
                                 }}
                                 onTouchMove={(e) => {
-                                  handleSupplierSwipeMove(e);
-                                  handleSupplierLongPressMove(e);
+                                  if (supplierDragState.isDragging) {
+                                    handleSupplierLongPressMove(e);
+                                  } else {
+                                    handleSupplierSwipeMove(e);
+                                    handleSupplierLongPressMove(e);
+                                  }
                                 }}
                                 onTouchEnd={() => {
-                                  handleSupplierSwipeEnd(preset);
+                                  if (!supplierDragState.isDragging) {
+                                    handleSupplierSwipeEnd(preset);
+                                  }
                                   handleSupplierLongPressEnd();
                                 }}
                                 onMouseDown={(e) => {
-                                  handleSupplierSwipeStart(e, preset.id);
+                                  if (!supplierDragState.isDragging) {
+                                    handleSupplierSwipeStart(e, preset.id);
+                                  }
                                   handleSupplierLongPressStart(e, preset.id);
                                 }}
                                 onMouseMove={(e) => {
-                                  handleSupplierSwipeMove(e);
-                                  handleSupplierLongPressMove(e);
+                                  if (supplierDragState.isDragging) {
+                                    handleSupplierLongPressMove(e);
+                                  } else {
+                                    handleSupplierSwipeMove(e);
+                                    handleSupplierLongPressMove(e);
+                                  }
                                 }}
                                 onMouseUp={() => {
-                                  handleSupplierSwipeEnd(preset);
+                                  if (!supplierDragState.isDragging) {
+                                    handleSupplierSwipeEnd(preset);
+                                  }
                                   handleSupplierLongPressEnd();
                                 }}
                                 onMouseLeave={() => {
-                                  handleSupplierSwipeEnd(preset);
+                                  if (!supplierDragState.isDragging) {
+                                    handleSupplierSwipeEnd(preset);
+                                  }
                                   handleSupplierLongPressEnd();
                                 }}
                                 sx={{
                                   py: 1.5,
                                   px: 2,
-                                  transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
-                                  transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
+                                  transform: isDragging
+                                    ? `translateY(${deltaY}px)`
+                                    : isCurrentSwiping
+                                      ? `translateX(${deltaX}px)`
+                                      : 'translate(0, 0)',
+                                  transition: isDragging || isCurrentSwiping ? 'none' : 'transform 0.2s',
                                   bgcolor: 'background.paper',
                                   cursor: isDragging ? 'grabbing' : 'grab',
+                                  opacity: isDragging ? 0.9 : 1,
+                                  boxShadow: isDragging ? 4 : 0,
                                 }}
                               >
                                 <ListItemText primary={preset.supplier} />
