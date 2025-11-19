@@ -136,12 +136,6 @@ export const NewOrderPage: React.FC = () => {
     name: 'suppliers',
   });
 
-  // 商品を監視
-  const products = useWatch({
-    control,
-    name: 'products',
-  });
-
   /**
    * ページロード時に下書きを復元
    */
@@ -178,8 +172,11 @@ export const NewOrderPage: React.FC = () => {
    * 帳合先変更時のハンドラー
    */
   const handleSuppliersChange = (newSuppliers: string[]) => {
+    // 最新の商品データを取得
+    const currentProducts = methods.getValues('products');
+
     // 初回ロード時や商品がない場合はそのまま適用
-    if (isInitialLoad.current || !products || products.length === 0) {
+    if (isInitialLoad.current || !currentProducts || currentProducts.length === 0) {
       previousSuppliers.current = newSuppliers;
       return newSuppliers;
     }
@@ -193,7 +190,7 @@ export const NewOrderPage: React.FC = () => {
 
     if (removedSuppliers.length > 0) {
       // 削除される帳合先を使用している商品を検出
-      const affectedProducts = products.filter(
+      const affectedProducts = currentProducts.filter(
         (product) => product.supplier && removedSuppliers.includes(product.supplier)
       );
 
@@ -221,9 +218,12 @@ export const NewOrderPage: React.FC = () => {
   const handleConfirmSupplierRemoval = () => {
     const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialog;
 
+    // 最新の商品データを取得
+    const currentProducts = methods.getValues('products');
+
     // 削除される帳合先を使用している商品のインデックスを取得
     const productsToRemove: number[] = [];
-    products.forEach((product, index) => {
+    currentProducts.forEach((product, index) => {
       if (product.supplier && suppliersToRemove.includes(product.supplier)) {
         productsToRemove.push(index);
       }
