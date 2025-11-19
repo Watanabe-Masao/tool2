@@ -69,17 +69,7 @@ class EmailService:
         # 送信元の表示名を設定
         # sender_nameが指定されていればそれを使用、なければデフォルト値
         display_name = sender_name if sender_name else "配本管理システム"
-        from_address = f"{display_name} <onboarding@resend.dev>"
-
-        # テスト制限: 無料プランでは登録済みメールアドレスのみに送信可能
-        # TODO: ドメイン検証後にこのチェックを削除してください
-        allowed_test_email = "watanabe.masao0804@gmail.com"
-        if to.lower() != allowed_test_email.lower():
-            logger.warning(f"Test mode: Redirecting email from {to} to {allowed_test_email}")
-            # テストモードでは、すべてのメールを登録済みアドレスに送信
-            # 実際の送信先を件名に追加して識別できるようにする
-            subject = f"[本来の送信先: {to}] {subject}"
-            to = allowed_test_email
+        from_address = f"{display_name} <noreply@madevtest.app>"
 
         # メールパラメータ
         params = {
