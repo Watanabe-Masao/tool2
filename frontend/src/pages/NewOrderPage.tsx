@@ -28,6 +28,7 @@ import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { isMobileDevice } from '@/utils/deviceDetection';
 import { SessionStorageService } from '@/utils/sessionStorageService';
+import { format } from 'date-fns';
 
 /**
  * フォームのステップ数
@@ -520,14 +521,49 @@ export const NewOrderPage: React.FC = () => {
   /**
    * PDFファイルをダウンロード
    */
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (generatedFiles && generatedFiles.pdfFilename) {
-      const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `${generatedFiles.pdfFilename}.pdf`;
-      link.click();
+      try {
+        showLoading();
+        const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
+
+        // PDFをfetchしてblobとして取得
+        const response = await fetch(pdfUrl);
+        if (!response.ok) {
+          throw new Error('PDFのダウンロードに失敗しました');
+        }
+
+        const blob = await response.blob();
+
+        // Blobからダウンロードリンクを作成
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `配分表_${format(formData.deliveryDate || new Date(), 'yyyyMMdd')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Blob URLをクリーンアップ
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideLoading();
+        showSuccess('PDFをダウンロードしました');
+      } catch (error) {
+        hideLoading();
+        console.error('PDF download error:', error);
+        showError(error instanceof Error ? error.message : 'PDFのダウンロードに失敗しました');
+      }
     }
+  };
+
+  /**
+   * プレビュー画面から戻る
+   */
+  const handleBackFromPreview = () => {
+    setShowGeneratedPreview(false);
+    setGeneratedFiles(null);
+    setExcelBlob(null);
   };
 
   /**
@@ -603,6 +639,7 @@ export const NewOrderPage: React.FC = () => {
               onDownloadExcel={handleDownloadExcel}
               onDownloadPdf={handleDownloadPdf}
               onSendEmail={() => setShowEmailModal(true)}
+              onBack={handleBackFromPreview}
             />
           </Box>
         ) : (

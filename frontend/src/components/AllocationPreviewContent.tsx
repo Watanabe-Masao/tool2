@@ -9,7 +9,7 @@ import {
   Button,
   Paper,
 } from '@mui/material';
-import { PictureAsPdf, TableChart, Download, Email } from '@mui/icons-material';
+import { PictureAsPdf, TableChart, Download, Email, ArrowBack, Description, Send } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
@@ -39,6 +39,8 @@ interface AllocationPreviewContentProps {
   onDownloadPdf?: () => void;
   /** メール送信ハンドラ */
   onSendEmail?: () => void;
+  /** 戻るボタンハンドラ */
+  onBack?: () => void;
 }
 
 /**
@@ -73,6 +75,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onDownloadExcel,
   onDownloadPdf,
   onSendEmail,
+  onBack,
 }) => {
   // タブの選択状態（0: 配分表、1: PDFプレビュー）
   const [tabValue, setTabValue] = useState(0);
@@ -281,24 +284,21 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   );
 
   return (
-    <Paper elevation={3} sx={{ width: '100%', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ヘッダー */}
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6">配分表プレビュー</Typography>
-      </Box>
-
-      {/* タブ */}
-      {pdfFilename && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+    <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+      {/* ヘッダーとタブを同じ行に配置 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h6" sx={{ mr: 3 }}>配分表プレビュー</Typography>
+        {/* タブ */}
+        {pdfFilename && (
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab icon={<TableChart />} iconPosition="start" label="配分表" />
             <Tab icon={<PictureAsPdf />} iconPosition="start" label="PDFプレビュー" />
           </Tabs>
-        </Box>
-      )}
+        )}
+      </Box>
 
       {/* コンテンツ */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(70vh - 200px)' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
         {/* 配分表タブ */}
         {tabValue === 0 && (
           <>
@@ -356,8 +356,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               className="ag-theme-alpine"
               sx={{
                 width: '100%',
-                height: selectedRow ? 'calc(70vh - 400px)' : 'calc(70vh - 280px)',
-                minHeight: 300,
+                height: selectedRow ? 'calc(85vh - 350px)' : 'calc(85vh - 230px)',
+                minHeight: 400,
                 '& .ag-header': {
                   backgroundColor: '#f8f9fa',
                   borderBottom: '2px solid #dee2e6',
@@ -401,7 +401,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
         {/* PDFプレビュータブ */}
         {tabValue === 1 && pdfFilename && (
-          <Box sx={{ width: '100%', height: 'calc(70vh - 280px)', minHeight: 400, position: 'relative' }}>
+          <Box sx={{ width: '100%', height: 'calc(85vh - 230px)', minHeight: 500, position: 'relative' }}>
             {isIPhone ? (
               /* iPhone Safari: PDFを開くボタン */
               <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
@@ -489,25 +489,41 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       </Box>
 
       {/* アクションボタン */}
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-        {onDownloadExcel && (
-          <Button
-            variant="contained"
-            startIcon={<Download />}
-            onClick={onDownloadExcel}
-          >
-            Excelをダウンロード
-          </Button>
-        )}
-        {onSendEmail && (
-          <Button
-            variant="outlined"
-            startIcon={<Email />}
-            onClick={onSendEmail}
-          >
-            メールで送信
-          </Button>
-        )}
+      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* 左側：戻るボタン */}
+        <Box>
+          {onBack && (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={onBack}
+            >
+              戻る
+            </Button>
+          )}
+        </Box>
+
+        {/* 右側：ダウンロードと送信ボタン */}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {onDownloadExcel && (
+            <Button
+              variant="contained"
+              startIcon={<Description />}
+              onClick={onDownloadExcel}
+            >
+              ダウンロード
+            </Button>
+          )}
+          {onSendEmail && (
+            <Button
+              variant="outlined"
+              startIcon={<Send />}
+              onClick={onSendEmail}
+            >
+              送信
+            </Button>
+          )}
+        </Box>
       </Box>
     </Paper>
   );
