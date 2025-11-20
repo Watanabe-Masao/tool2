@@ -518,6 +518,19 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
+   * PDFファイルをダウンロード
+   */
+  const handleDownloadPdf = () => {
+    if (generatedFiles && generatedFiles.pdfFilename) {
+      const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `${generatedFiles.pdfFilename}.pdf`;
+      link.click();
+    }
+  };
+
+  /**
    * 最終ステップで送信ボタンを表示
    */
   const renderSubmitButton = () => {
@@ -527,7 +540,7 @@ export const NewOrderPage: React.FC = () => {
           <Button
             variant="outlined"
             size="large"
-            onClick={() => setShowPreviewModal(true)}
+            onClick={handleSubmit(onSubmit)}
             fullWidth
             sx={{ maxWidth: 400 }}
           >
@@ -588,6 +601,7 @@ export const NewOrderPage: React.FC = () => {
               formData={formData}
               pdfFilename={generatedFiles.pdfFilename}
               onDownloadExcel={handleDownloadExcel}
+              onDownloadPdf={handleDownloadPdf}
               onSendEmail={() => setShowEmailModal(true)}
             />
           </Box>

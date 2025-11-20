@@ -35,6 +35,8 @@ interface AllocationPreviewContentProps {
   pdfFilename?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
+  /** PDFダウンロードハンドラ */
+  onDownloadPdf?: () => void;
   /** メール送信ハンドラ */
   onSendEmail?: () => void;
 }
@@ -69,6 +71,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   formData,
   pdfFilename,
   onDownloadExcel,
+  onDownloadPdf,
   onSendEmail,
 }) => {
   // タブの選択状態（0: 配分表、1: PDFプレビュー）
@@ -419,16 +422,16 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   >
                     PDFを開く
                   </Button>
-                  {onDownloadExcel && (
+                  {onDownloadPdf && (
                     <Button
                       variant="outlined"
                       startIcon={<Download />}
-                      onClick={onDownloadExcel}
+                      onClick={onDownloadPdf}
                       size="large"
                       fullWidth
                       sx={{ maxWidth: 300 }}
                     >
-                      Excelをダウンロード
+                      PDFをダウンロード
                     </Button>
                   )}
                 </Box>
@@ -454,13 +457,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                     <Alert severity="error" sx={{ mb: 3 }}>
                       {pdfError}
                     </Alert>
-                    {onDownloadExcel && (
+                    {onDownloadPdf && (
                       <Button
                         variant="contained"
                         startIcon={<Download />}
-                        onClick={onDownloadExcel}
+                        onClick={onDownloadPdf}
                       >
-                        Excelをダウンロード
+                        PDFをダウンロード
                       </Button>
                     )}
                   </Box>
