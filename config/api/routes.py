@@ -65,11 +65,24 @@ async def generate_template(req: TemplateRequest):
         # ダウンロードURL生成
         download_url = f"/api/download/{file_id}?filename={filename}"
 
+        # PDF生成
+        pdf_filename = None
+        try:
+            pdf_path = settings.temp_dir / f"{file_id}.pdf"
+            PDFService.prepare_for_conversion(output_path)
+            PDFService.convert_to_pdf(output_path, pdf_path)
+            pdf_filename = file_id
+            logger.info(f"PDF generated successfully: {pdf_path}")
+        except Exception as pdf_error:
+            # PDF生成エラーはログに記録するが、Excelの生成は成功しているので続行
+            logger.warning(f"PDF generation failed: {pdf_error}")
+
         return TemplateResponse(
             success=True,
             message="テンプレートの生成に成功しました",
             download_url=download_url,
-            filename=filename
+            filename=filename,
+            pdf_filename=pdf_filename
         )
 
     except Exception as e:
