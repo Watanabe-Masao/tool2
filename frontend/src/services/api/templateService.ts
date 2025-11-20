@@ -86,19 +86,31 @@ export class TemplateService {
    * ファイルをダウンロード
    *
    * @param filename - ダウンロードするファイル名
+   * @param ext - ファイル拡張子 ("xlsx" または "pdf")
    * @returns ダウンロードURL
    */
-  static getDownloadUrl(filename: string): string {
-    return `${API_ENDPOINTS.DOWNLOAD}/${filename}`;
+  static getDownloadUrl(filename: string, ext: string = 'xlsx'): string {
+    return `${API_ENDPOINTS.DOWNLOAD}/${filename}?ext=${ext}`;
+  }
+
+  /**
+   * PDFファイルのプレビューURL取得
+   *
+   * @param fileId - ファイルID
+   * @returns PDFプレビューURL
+   */
+  static getPdfPreviewUrl(fileId: string): string {
+    return this.getDownloadUrl(fileId, 'pdf');
   }
 
   /**
    * ファイルをダウンロード（ブラウザ）
    *
    * @param filename - ダウンロードするファイル名
+   * @param ext - ファイル拡張子
    */
-  static downloadFile(filename: string): void {
-    const url = this.getDownloadUrl(filename);
+  static downloadFile(filename: string, ext: string = 'xlsx'): void {
+    const url = this.getDownloadUrl(filename, ext);
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;

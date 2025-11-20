@@ -689,7 +689,7 @@ export const NewOrderPage: React.FC = () => {
           <PDFPreviewModal
             open={showPDFPreview}
             onClose={() => setShowPDFPreview(false)}
-            pdfUrl={TemplateService.getDownloadUrl(generatedFiles.pdfFilename)}
+            pdfUrl={TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename)}
             onDownloadExcel={handleDownloadExcel}
             onSendEmail={() => setShowEmailModal(true)}
           />
