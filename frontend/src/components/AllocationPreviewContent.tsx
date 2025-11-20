@@ -278,7 +278,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   );
 
   return (
-    <Paper elevation={3} sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Paper elevation={3} sx={{ width: '100%', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
       {/* ヘッダー */}
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Typography variant="h6">配分表プレビュー</Typography>
@@ -295,7 +295,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       )}
 
       {/* コンテンツ */}
-      <Box sx={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(70vh - 200px)' }}>
         {/* 配分表タブ */}
         {tabValue === 0 && (
           <>
@@ -353,7 +353,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               className="ag-theme-alpine"
               sx={{
                 width: '100%',
-                height: selectedRow ? 'calc(100% - 120px)' : '100%',
+                height: selectedRow ? 'calc(70vh - 400px)' : 'calc(70vh - 280px)',
+                minHeight: 300,
                 '& .ag-header': {
                   backgroundColor: '#f8f9fa',
                   borderBottom: '2px solid #dee2e6',
@@ -397,7 +398,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
         {/* PDFプレビュータブ */}
         {tabValue === 1 && pdfFilename && (
-          <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+          <Box sx={{ width: '100%', height: 'calc(70vh - 280px)', minHeight: 400, position: 'relative' }}>
             {isIPhone ? (
               /* iPhone Safari: PDFを開くボタン */
               <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
