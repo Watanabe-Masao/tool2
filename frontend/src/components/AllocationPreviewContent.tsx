@@ -9,7 +9,7 @@ import {
   Button,
   Paper,
 } from '@mui/material';
-import { PictureAsPdf, TableChart, Download, Email, ArrowBack, Description, Send } from '@mui/icons-material';
+import { PictureAsPdf, TableChart, Download, ArrowBack, Description, Send } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
