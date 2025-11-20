@@ -26,7 +26,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
+import { isMobileDevice } from '@/utils/deviceDetection';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 
 /**
