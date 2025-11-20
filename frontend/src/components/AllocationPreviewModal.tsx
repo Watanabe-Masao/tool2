@@ -71,6 +71,9 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   onShowPDF,
   hasPDF = false,
 }) => {
+  // デバッグ: PDFボタンの表示条件を確認
+  console.log('AllocationPreviewModal - hasPDF:', hasPDF, 'onShowPDF:', !!onShowPDF);
+
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
 
@@ -356,18 +359,21 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 1.5, justifyContent: 'space-between' }}>
-        {hasPDF && onShowPDF ? (
-          <Button
-            onClick={onShowPDF}
-            variant="outlined"
-            startIcon={<PictureAsPdf />}
-            sx={{ maxWidth: 200 }}
-          >
-            PDFプレビュー
-          </Button>
-        ) : (
-          <Box />
-        )}
+        {(() => {
+          console.log('DialogActions render - hasPDF:', hasPDF, 'onShowPDF:', !!onShowPDF, 'show button:', hasPDF && onShowPDF);
+          return hasPDF && onShowPDF ? (
+            <Button
+              onClick={onShowPDF}
+              variant="outlined"
+              startIcon={<PictureAsPdf />}
+              sx={{ maxWidth: 200 }}
+            >
+              PDFプレビュー
+            </Button>
+          ) : (
+            <Box />
+          );
+        })()}
         <Button onClick={onClose} variant="contained" sx={{ maxWidth: 200 }}>
           閉じる
         </Button>

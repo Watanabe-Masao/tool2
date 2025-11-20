@@ -712,10 +712,15 @@ export const NewOrderPage: React.FC = () => {
           onClose={() => setShowPreviewModal(false)}
           formData={formData}
           onShowPDF={() => {
+            console.log('PDFプレビューボタンがクリックされました');
             setShowPreviewModal(false);
             setShowPDFPreview(true);
           }}
-          hasPDF={!!generatedFiles?.pdfFilename}
+          hasPDF={(() => {
+            const hasPdf = !!generatedFiles?.pdfFilename;
+            console.log('NewOrderPage - generatedFiles:', generatedFiles, 'hasPDF:', hasPdf);
+            return hasPdf;
+          })()}
         />
 
         {/* メール送信モーダル */}
