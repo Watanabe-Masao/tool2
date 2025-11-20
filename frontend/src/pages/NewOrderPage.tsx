@@ -574,22 +574,13 @@ export const NewOrderPage: React.FC = () => {
       return (
         <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
           <Button
-            variant="outlined"
-            size="large"
-            onClick={handleSubmit(onSubmit)}
-            fullWidth
-            sx={{ maxWidth: 400 }}
-          >
-            プレビュー
-          </Button>
-          <Button
             variant="contained"
             size="large"
             onClick={handleSubmit(onSubmit)}
             fullWidth
             sx={{ maxWidth: 400 }}
           >
-            配分表を作成
+            プレビュー
           </Button>
         </Box>
       );

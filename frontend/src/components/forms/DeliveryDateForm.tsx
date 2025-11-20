@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -10,16 +10,13 @@ import {
   Stack,
   Chip,
   Divider,
-  IconButton,
 } from '@mui/material';
-import { Settings as SettingsIcon } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { ja } from 'date-fns/locale';
 import { addDays, isToday as checkIsToday, isTomorrow as checkIsTomorrow } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
-import { SupplierPresetManagerModal } from '@/components/modals/SupplierPresetManagerModal';
 
 /**
  * DeliveryDateFormのProps
@@ -51,7 +48,6 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
   onSuppliersChange,
 }) => {
   const { presets } = useSupplierPresets();
-  const [showPresetManager, setShowPresetManager] = useState(false);
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
@@ -146,16 +142,9 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
 
       {/* 帳合先入力セクション */}
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="subtitle1" fontWeight="medium">帳合先を選択</Typography>
-          <IconButton
-            size="small"
-            onClick={() => setShowPresetManager(true)}
-            title="プリセット管理"
-          >
-            <SettingsIcon fontSize="small" />
-          </IconButton>
-        </Box>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+          帳合先を選択
+        </Typography>
 
         <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
           複数の帳合先を選択できます
@@ -233,12 +222,6 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
           )}
         />
       </Box>
-
-      {/* プリセット管理モーダル */}
-      <SupplierPresetManagerModal
-        open={showPresetManager}
-        onClose={() => setShowPresetManager(false)}
-      />
     </Box>
   );
 };
