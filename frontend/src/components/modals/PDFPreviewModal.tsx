@@ -96,22 +96,37 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 
       {/* コンテンツ */}
       <DialogContent dividers>
-        {/* iPhone Safariの場合はダウンロードリンクを表示 */}
+        {/* iPhone Safariの場合はPDFを開くボタンを表示 */}
         {isIPhone ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Alert severity="info" sx={{ mb: 3 }}>
-              iPhone SafariではPDFプレビューがサポートされていません。
+              iPhone Safariでは、iframe内でのPDFプレビューはサポートされていません。
               <br />
-              ファイルをダウンロードしてご確認ください。
+              下のボタンからPDFを開いて表示できます。
             </Alert>
-            <Button
-              variant="contained"
-              startIcon={<Download />}
-              onClick={onDownloadExcel}
-              size="large"
-            >
-              Excelファイルをダウンロード
-            </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Download />}
+                onClick={() => window.open(pdfUrl, '_blank')}
+                size="large"
+                fullWidth
+                sx={{ maxWidth: 300 }}
+              >
+                PDFを開く
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={onDownloadExcel}
+                size="large"
+                fullWidth
+                sx={{ maxWidth: 300 }}
+              >
+                Excelをダウンロード
+              </Button>
+            </Box>
           </Box>
         ) : (
           <>
