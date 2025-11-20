@@ -19,8 +19,14 @@ import {
   Button,
   DialogContentText,
   ButtonBase,
+  InputAdornment,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Grow,
 } from '@mui/material';
-import { Delete, Category as CategoryIcon, Inventory2, BookmarkBorder, Clear } from '@mui/icons-material';
+import { Category as CategoryIcon, Inventory2, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -29,6 +35,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
+import { ProductNameHistoryModal } from '@/components/modals/ProductNameHistoryModal';
 import { getCategoryName } from '@/utils/categories';
 
 /**
@@ -51,8 +58,8 @@ interface ProductFormCardBasicProps {
   originOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
-  /** 帳合先（履歴フィルタ用） */
-  supplier?: string;
+  /** 帳合先リスト（ステップ1で選択された帳合先） */
+  suppliers?: string[];
 }
 
 /**
@@ -86,7 +93,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   productNameOptions = [],
   originOptions = [],
   onEnterPress,
-  supplier,
+  suppliers,
 }) => {
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
@@ -95,6 +102,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
+  const currentSupplier = useWatch({ control, name: `products.${index}.supplier` });
   const currentName = useWatch({ control, name: `products.${index}.name` });
   const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
@@ -107,15 +115,32 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   // プリセット選択モーダルの状態
   const [presetModalOpen, setPresetModalOpen] = useState(false);
 
+  // 品名履歴モーダルの状態
+  const [nameHistoryModalOpen, setNameHistoryModalOpen] = useState(false);
+
   // 商品保存確認ダイアログの状態
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 商品クリア確認ダイアログの状態
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  // 帳合先選択モーダルの状態
+  const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
 
-  // 商品履歴フック（帳合先とカテゴリーでフィルタ）
+  // カード長押しメニューの状態
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const cardMenuOpen = Boolean(cardMenuAnchor);
+
+  // カード長押しタイマー
+  const cardLongPressTimer = useRef<number | null>(null);
+  const cardLongPressStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  // プリセットモーダル用の商品履歴フック（ステップ1で選択された全帳合先の履歴）
+  // PL呼び出し時は必ずステップ1の選択リスト全体を読み込む
   const {
-    history,
+    history: presetHistory,
+    loadHistory: reloadPresetHistory,
+  } = useProductHistory(suppliers, undefined);
+
+  // オートコンプリート用の商品履歴フック（現在の商品の帳合先とカテゴリーでフィルタ）
+  const {
     getUniqueNames,
     getUniqueOrigins,
     getUniqueSpecifications,
@@ -123,8 +148,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     getUniqueUnits,
     deleteHistory,
     getCategoryCodeByName,
-    loadHistory,
-  } = useProductHistory(supplier, currentCategoryCode || undefined);
+  } = useProductHistory(
+    currentSupplier || undefined,
+    currentCategoryCode || undefined
+  );
 
   // 削除確認ダイアログの状態
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
@@ -180,7 +207,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * 商品情報を履歴として保存
    */
   const handleSaveProductToHistory = async () => {
-    if (!user || !supplier) {
+    if (!user || !currentSupplier) {
       showError('ユーザーまたは帳合先が設定されていません');
       return;
     }
@@ -193,7 +220,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     try {
       await FirestoreService.saveProductHistory(
         user.uid,
-        supplier,
+        currentSupplier,
         currentName,
         currentOrigin,
         currentSpecification || '',
@@ -236,11 +263,31 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   };
 
   /**
+   * 帳合先を選択
+   */
+  const handleSelectSupplier = (supplier: string) => {
+    setValue(`products.${index}.supplier`, supplier);
+    setSupplierSelectOpen(false);
+  };
+
+  /**
+   * 帳合先チップをクリック
+   */
+  const handleSupplierClick = () => {
+    if (!suppliers || suppliers.length === 0) {
+      showError('ステップ1で帳合先を選択してください');
+      return;
+    }
+    setSupplierSelectOpen(true);
+  };
+
+  /**
    * プリセット選択ボタンをクリック
    */
   const handlePresetButtonClick = () => {
-    if (!supplier) {
-      showError('帳合先を先に入力してください');
+    // ステップ1で帳合先が選択されていればモーダルを開く
+    if (!suppliers || suppliers.length === 0) {
+      showError('ステップ1で帳合先を選択してください');
       return;
     }
     setPresetModalOpen(true);
@@ -251,12 +298,26 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
     setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
+    setValue(`products.${index}.supplier`, preset.supplier);
     setValue(`products.${index}.name`, preset.name);
     setValue(`products.${index}.origin`, preset.origin);
     setValue(`products.${index}.specification`, preset.specification);
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
     showSuccess('プリセットを読み込みました');
+  };
+
+  /**
+   * 品名履歴から削除
+   */
+  const handleDeleteNameHistory = async (name: string) => {
+    try {
+      const count = await deleteHistory({ name }, currentSupplier);
+      showSuccess(`${count}件の履歴を削除しました`);
+    } catch (error) {
+      showError('履歴の削除に失敗しました');
+      throw error;
+    }
   };
 
   /**
@@ -267,7 +328,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       await FirestoreService.deleteProductHistoryById(presetId);
       showSuccess('プリセットを削除しました');
       // 履歴を再読み込み
-      await loadHistory();
+      await reloadPresetHistory();
     } catch (error) {
       console.error('[ProductFormCardBasic] Failed to delete preset:', error);
       showError('プリセットの削除に失敗しました');
@@ -320,7 +381,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleDeleteHistory = async () => {
     try {
-      const count = await deleteHistory(deleteDialog.conditions);
+      const count = await deleteHistory(deleteDialog.conditions, currentSupplier);
       setDeleteDialog({ ...deleteDialog, open: false });
       showSuccess(`${count}件の履歴を削除しました`);
     } catch (error) {
@@ -345,8 +406,79 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.specification`, '');
     setValue(`products.${index}.quantityPerPackage`, null);
     setValue(`products.${index}.unit`, '');
-    setClearDialogOpen(false);
+    setCardMenuAnchor(null);
     showSuccess('商品情報をクリアしました');
+  };
+
+  /**
+   * カード長押し開始
+   */
+  const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // タッチ開始位置を保存
+    cardLongPressStartPos.current = { x: clientX, y: clientY };
+
+    cardLongPressTimer.current = window.setTimeout(() => {
+      setCardMenuAnchor(target);
+    }, 500); // 500ms長押しでメニュー表示
+  };
+
+  /**
+   * カード長押し中の移動（スクロール検出）
+   */
+  const handleCardLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!cardLongPressStartPos.current || !cardLongPressTimer.current) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = Math.abs(clientX - cardLongPressStartPos.current.x);
+    const deltaY = Math.abs(clientY - cardLongPressStartPos.current.y);
+
+    // 5px以上移動したらスクロールとみなして長押しをキャンセル
+    if (deltaX > 5 || deltaY > 5) {
+      if (cardLongPressTimer.current) {
+        window.clearTimeout(cardLongPressTimer.current);
+        cardLongPressTimer.current = null;
+      }
+      cardLongPressStartPos.current = null;
+    }
+  };
+
+  /**
+   * カード長押し終了
+   */
+  const handleCardLongPressEnd = () => {
+    if (cardLongPressTimer.current) {
+      window.clearTimeout(cardLongPressTimer.current);
+      cardLongPressTimer.current = null;
+    }
+    cardLongPressStartPos.current = null;
+  };
+
+  /**
+   * カードメニューを閉じる
+   */
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+  };
+
+  /**
+   * カードメニューから削除
+   */
+  const handleCardMenuDelete = () => {
+    setCardMenuAnchor(null);
+    onRemove();
+  };
+
+  /**
+   * カードメニューからクリア
+   */
+  const handleCardMenuClear = () => {
+    handleClearProduct();
   };
 
   /**
@@ -370,9 +502,31 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   return (
     <>
-      <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
+      <Card
+        variant="outlined"
+        sx={{
+          mb: 1.5,
+          transition: 'all 0.2s ease-in-out',
+          '&:active': {
+            transform: 'scale(0.98)',
+            boxShadow: 2,
+          },
+        }}
+        onKeyDown={handleKeyDown}
+        onTouchStart={handleCardLongPressStart}
+        onTouchMove={handleCardLongPressMove}
+        onTouchEnd={handleCardLongPressEnd}
+        onMouseDown={handleCardLongPressStart}
+        onMouseMove={handleCardLongPressMove}
+        onMouseUp={handleCardLongPressEnd}
+        onMouseLeave={handleCardLongPressEnd}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCardMenuAnchor(e.currentTarget);
+        }}
+      >
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          {/* ヘッダー: 商品番号 + プリセットボタン + クリアボタン + 削除ボタン */}
+          {/* ヘッダー: 商品番号 + プリセットボタン + 帳合先ツールチップ + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ButtonBase
@@ -408,28 +562,22 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               </ButtonBase>
               <Chip
                 icon={<Inventory2 />}
-                label="PL呼び出し"
+                label="PL"
                 onClick={handlePresetButtonClick}
                 variant="outlined"
                 size="small"
                 color="secondary"
                 sx={{ fontSize: '0.75rem' }}
               />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <IconButton
-                onClick={() => setClearDialogOpen(true)}
+              <Chip
+                icon={<Business />}
+                label={currentSupplier || '帳合先'}
+                onClick={handleSupplierClick}
+                variant="outlined"
                 size="small"
-                aria-label="商品情報をクリア"
-                title="商品情報をクリア"
-              >
-                <Clear fontSize="small" />
-              </IconButton>
-              {showRemove && (
-                <IconButton onClick={onRemove} color="error" size="small" aria-label="商品を削除">
-                  <Delete fontSize="small" />
-                </IconButton>
-              )}
+                color={currentSupplier ? 'primary' : 'default'}
+                sx={{ fontSize: '0.75rem' }}
+              />
             </Box>
           </Box>
 
@@ -481,38 +629,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                           error={!!productErrors?.name}
                           helperText={productErrors?.name?.message}
                           required
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <InputAdornment position="start">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => setNameHistoryModalOpen(true)}
+                                    edge="start"
+                                    title="品名履歴を表示"
+                                  >
+                                    <History fontSize="small" />
+                                  </IconButton>
+                                </InputAdornment>
+                                {params.InputProps.startAdornment}
+                              </>
+                            ),
+                          }}
                         />
                       )}
                     />
-                    {/* 品名履歴チップ */}
-                    {supplier && getUniqueNames.length > 0 && (
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                        {getUniqueNames.slice(0, 10).map((name) => (
-                          <Chip
-                            key={name}
-                            label={name}
-                            size="small"
-                            onClick={() => field.onChange(name)}
-                            onTouchStart={() => handleLongPressStart('name', name, { name })}
-                            onTouchEnd={handleLongPressEnd}
-                            onMouseDown={() => handleLongPressStart('name', name, { name })}
-                            onMouseUp={handleLongPressEnd}
-                            onMouseLeave={handleLongPressEnd}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setDeleteDialog({
-                                open: true,
-                                type: 'name',
-                                value: name,
-                                conditions: { name },
-                              });
-                            }}
-                            color={field.value === name ? 'primary' : 'default'}
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                        ))}
-                      </Stack>
-                    )}
                   </Box>
                 )}
               />
@@ -879,27 +1016,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* 商品クリア確認ダイアログ */}
-      <Dialog open={clearDialogOpen} onClose={() => setClearDialogOpen(false)}>
-        <DialogTitle>商品情報をクリア</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            この商品カード（商品 {index + 1}）の入力内容をすべてクリアしますか？
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-            カテゴリー、品名、産地、規格、入数、単位がクリアされます。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setClearDialogOpen(false)} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleClearProduct} color="warning" variant="contained">
-            クリア
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* カテゴリー選択モーダル */}
       <CategorySelectModal
         open={categoryModalOpen}
@@ -914,11 +1030,126 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         onClose={() => setPresetModalOpen(false)}
         onSelect={handleSelectPreset}
         onDelete={handleDeletePreset}
-        presets={history}
-        onReload={loadHistory}
+        presets={presetHistory}
+        onReload={reloadPresetHistory}
         userId={user?.uid}
-        supplier={supplier}
+        supplier={currentSupplier}
+        suppliers={suppliers}
       />
+
+      {/* 品名履歴モーダル */}
+      <ProductNameHistoryModal
+        open={nameHistoryModalOpen}
+        onClose={() => setNameHistoryModalOpen(false)}
+        onSelect={(name) => {
+          setValue(`products.${index}.name`, name);
+        }}
+        names={getUniqueNames}
+        onDelete={handleDeleteNameHistory}
+      />
+
+      {/* 帳合先選択ダイアログ */}
+      <Dialog open={supplierSelectOpen} onClose={() => setSupplierSelectOpen(false)}>
+        <DialogTitle>帳合先を選択</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            この商品の帳合先を選択してください
+          </DialogContentText>
+          <Stack spacing={1}>
+            {suppliers?.map((supplier) => (
+              <Button
+                key={supplier}
+                variant={currentSupplier === supplier ? 'contained' : 'outlined'}
+                onClick={() => handleSelectSupplier(supplier)}
+                fullWidth
+              >
+                {supplier}
+              </Button>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* カード長押しメニュー */}
+      <Menu
+        anchorEl={cardMenuAnchor}
+        open={cardMenuOpen}
+        onClose={handleCardMenuClose}
+        TransitionComponent={Grow}
+        anchorOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        PaperProps={{
+          elevation: 8,
+          sx: {
+            minWidth: 200,
+            borderRadius: 2,
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiMenuItem-root': {
+              borderRadius: 1,
+              mx: 1,
+              my: 0.5,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateX(4px)',
+              },
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={handleCardMenuClear}
+          sx={{
+            color: 'warning.main',
+            '&:hover': {
+              bgcolor: 'warning.lighter',
+            },
+          }}
+        >
+          <ListItemIcon>
+            <ClearAll sx={{ color: 'warning.main' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="フィールドをクリア"
+            secondary="入力内容を消去"
+            primaryTypographyProps={{ fontWeight: 'medium' }}
+            secondaryTypographyProps={{ variant: 'caption' }}
+          />
+        </MenuItem>
+        {showRemove && (
+          <MenuItem
+            onClick={handleCardMenuDelete}
+            sx={{
+              color: 'error.main',
+              '&:hover': {
+                bgcolor: 'error.lighter',
+              },
+            }}
+          >
+            <ListItemIcon>
+              <DeleteOutline sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="商品を削除"
+              secondary="この商品カードを削除"
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
     </>
   );
 };

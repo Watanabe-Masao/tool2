@@ -81,8 +81,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     },
     {
       label: '帳合先',
-      completed: !!formData.supplier && formData.supplier.trim().length > 0,
-      value: formData.supplier || null,
+      completed: !!formData.suppliers && formData.suppliers.length > 0,
+      value: formData.suppliers?.join(', ') || null,
     },
     {
       label: '商品情報',

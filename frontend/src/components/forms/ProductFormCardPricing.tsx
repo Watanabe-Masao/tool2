@@ -247,7 +247,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Grid>
         </Grid>
 
-        {/* 4. 店着原価 / 売価 */}
+        {/* 4. 店着原価 / 差益 */}
         <Grid container spacing={1} sx={{ mb: 1.5 }}>
           <Grid item xs={6}>
             <Controller
@@ -275,6 +275,29 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             />
           </Grid>
           <Grid item xs={6}>
+            <TextField
+              label="差益"
+              value={profitAmount ? `¥${profitAmount.toLocaleString()}` : '-'}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
+              sx={{
+                '& .MuiInputBase-input': {
+                  bgcolor: 'grey.200',
+                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
+                  fontWeight: 'medium',
+                },
+              }}
+            />
+          </Grid>
+        </Grid>
+
+        {/* 5. 本体価格 / 値入率 */}
+        <Grid container spacing={1}>
+          <Grid item xs={6}>
             <Controller
               name={`products.${index}.priceExcludingTax`}
               control={control}
@@ -299,10 +322,6 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               )}
             />
           </Grid>
-        </Grid>
-
-        {/* 5. 値入率 / 差益 */}
-        <Grid container spacing={1}>
           <Grid item xs={6}>
             <TextField
               label="値入率"
@@ -316,25 +335,6 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.200',
-                  fontWeight: 'medium',
-                },
-              }}
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label="差益"
-              value={profitAmount ? `¥${profitAmount.toLocaleString()}` : '-'}
-              size="small"
-              fullWidth
-              InputProps={{
-                readOnly: true,
-              }}
-              helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
-              sx={{
-                '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
-                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
                   fontWeight: 'medium',
                 },
               }}

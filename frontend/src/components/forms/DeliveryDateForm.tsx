@@ -33,12 +33,14 @@ interface DeliveryDateFormProps {
   supplierOptions?: string[];
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
+  /** 帳合先変更時のカスタムハンドラー */
+  onSuppliersChange?: (newValue: string[]) => string[];
 }
 
 /**
  * Step 1: 店着日選択・帳合先入力フォーム
  *
- * 商品が店舗に届く日付を選択し、帳合先を入力します。
+ * 商品が店舗に届く日付を選択し、複数の帳合先を入力します。
  * インラインカレンダーでタップして日付を選択できます。
  */
 export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
@@ -46,6 +48,7 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
   errors,
   supplierOptions = [],
   onEnterPress,
+  onSuppliersChange,
 }) => {
   const { presets } = useSupplierPresets();
   const [showPresetManager, setShowPresetManager] = useState(false);
@@ -144,7 +147,7 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
       {/* 帳合先入力セクション */}
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="subtitle1" fontWeight="medium">帳合先を入力</Typography>
+          <Typography variant="subtitle1" fontWeight="medium">帳合先を選択</Typography>
           <IconButton
             size="small"
             onClick={() => setShowPresetManager(true)}
@@ -154,8 +157,12 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
           </IconButton>
         </Box>
 
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+          複数の帳合先を選択できます
+        </Typography>
+
         <Controller
-          name="supplier"
+          name="suppliers"
           control={control}
           render={({ field }) => (
             <Box>
@@ -163,40 +170,55 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
               {presets.length > 0 && (
                 <Box sx={{ mb: 1.5 }}>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {presets.map((preset) => (
-                      <Chip
-                        key={preset.id}
-                        label={preset.supplier}
-                        onClick={() => field.onChange(preset.supplier)}
-                        color={field.value === preset.supplier ? 'primary' : 'default'}
-                        size="small"
-                        sx={{ mb: 0.5 }}
-                      />
-                    ))}
+                    {presets.map((preset) => {
+                      const isSelected = field.value?.includes(preset.supplier);
+                      return (
+                        <Chip
+                          key={preset.id}
+                          label={preset.supplier}
+                          onClick={() => {
+                            const currentValue = field.value || [];
+                            let newValue: string[];
+                            if (isSelected) {
+                              // 既に選択されている場合は削除
+                              newValue = currentValue.filter((s: string) => s !== preset.supplier);
+                            } else {
+                              // 選択されていない場合は追加
+                              newValue = [...currentValue, preset.supplier];
+                            }
+                            // カスタムハンドラーがあれば、それを使用して変更を処理
+                            const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                            field.onChange(finalValue);
+                          }}
+                          color={isSelected ? 'primary' : 'default'}
+                          size="small"
+                          sx={{ mb: 0.5 }}
+                        />
+                      );
+                    })}
                   </Stack>
                   <Divider sx={{ my: 1.5 }} />
                 </Box>
               )}
 
-              {/* 入力フィールド */}
+              {/* 入力フィールド（複数選択対応） */}
               <Autocomplete
-                {...field}
+                multiple
                 options={supplierOptions}
                 freeSolo
-                value={field.value || ''}
+                value={field.value || []}
                 onChange={(_, newValue) => {
-                  field.onChange(newValue || '');
-                }}
-                onInputChange={(_, newInputValue) => {
-                  field.onChange(newInputValue);
+                  // カスタムハンドラーがあれば、それを使用して変更を処理
+                  const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                  field.onChange(finalValue);
                 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     label="帳合先"
                     placeholder="例: ○○商事"
-                    error={!!errors.supplier}
-                    helperText={errors.supplier?.message}
+                    error={!!errors.suppliers}
+                    helperText={errors.suppliers?.message}
                     fullWidth
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && onEnterPress) {

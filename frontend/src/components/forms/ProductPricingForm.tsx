@@ -1,6 +1,6 @@
 import React from 'react';
-import { useFieldArray, useWatch } from 'react-hook-form';
-import type { Control, FieldErrors } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
+import type { Control, FieldErrors, FieldArrayWithId } from 'react-hook-form';
 import { Box, Typography, Alert, Card, CardContent, Grid } from '@mui/material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -15,8 +15,8 @@ interface ProductPricingFormProps {
   errors: FieldErrors<OrderFormData>;
   /** Enterキー押下時のハンドラー */
   onEnterPress?: () => void;
-  /** 商品数（親から渡される） */
-  productCount?: number;
+  /** 商品フィールド配列 */
+  fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
 }
 
 /**
@@ -28,20 +28,8 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   control,
   errors,
   onEnterPress,
-  productCount = 1,
+  fields,
 }) => {
-  const { fields } = useFieldArray({
-    control,
-    name: 'products',
-  });
-
-  // デバッグ用ログ
-  React.useEffect(() => {
-    console.log('[ProductPricingForm] fields:', fields.length, 'productCount:', productCount);
-  }, [fields, productCount]);
-
-  // productCountとfields.lengthの大きい方を使用
-  const actualProductCount = Math.max(fields.length, productCount);
 
   // 全商品のデータを監視
   const products = useWatch({ control, name: 'products' }) || [];
@@ -89,7 +77,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-        商品情報2（価格）を入力してください（{actualProductCount}件の商品）
+        商品情報2（価格）を入力してください（{fields.length}件の商品）
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
@@ -104,9 +92,9 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       )}
 
       {/* 商品リスト */}
-      {Array.from({ length: actualProductCount }, (_, index) => (
+      {fields.map((field, index) => (
         <ProductFormCardPricing
-          key={`product-${index}`}
+          key={field.id}
           index={index}
           control={control}
           errors={errors}
@@ -115,7 +103,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       ))}
 
       {/* 全体集計サマリー */}
-      {actualProductCount > 0 && (
+      {fields.length > 0 && (
         <Card variant="outlined" sx={{ mt: 2, bgcolor: 'primary.50', borderColor: 'primary.main', borderWidth: 2 }}>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: 'primary.main' }}>

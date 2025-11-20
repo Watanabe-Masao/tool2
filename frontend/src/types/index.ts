@@ -8,6 +8,8 @@
 export interface ProductData {
   /** カテゴリーコード */
   categoryCode?: string;
+  /** 帳合先 */
+  supplier: string;
   /** 品名 */
   name: string;
   /** 産地 */
@@ -40,8 +42,8 @@ export interface OrderData {
   id?: string;
   /** 店着日 */
   deliveryDate: Date;
-  /** 帳合先 */
-  supplier: string;
+  /** 帳合先リスト */
+  suppliers: string[];
   /** 商品リスト */
   products: ProductData[];
   /** バイヤー名 */
@@ -206,8 +208,9 @@ export interface FirebaseConfigResponse {
  */
 export interface FirestoreOrderData {
   delivery_date: string;
-  supplier: string;
+  suppliers: string[];
   products: Array<{
+    supplier: string;
     name: string;
     origin: string;
     specification: string;
@@ -249,8 +252,8 @@ export interface AutocompleteHistoryData {
 export interface OrderFormData {
   /** 店着日 */
   deliveryDate: Date;
-  /** 帳合先 */
-  supplier: string;
+  /** 帳合先リスト */
+  suppliers: string[];
   /** 商品リスト */
   products: ProductFormData[];
 }
@@ -263,6 +266,8 @@ export interface OrderFormData {
 export interface ProductFormData {
   /** カテゴリーコード */
   categoryCode?: string;
+  /** 帳合先 */
+  supplier: string;
   /** 品名 */
   name: string;
   /** 産地 */
@@ -295,8 +300,8 @@ export interface CalendarEvent {
   id: string;
   /** 日付 */
   date: Date;
-  /** 帳合先 */
-  supplier: string;
+  /** 帳合先リスト */
+  suppliers: string[];
   /** 商品数 */
   productCount: number;
   /** 注文データ */

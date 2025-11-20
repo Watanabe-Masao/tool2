@@ -302,7 +302,55 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 
 ## 🚢 デプロイ
 
-### Renderデプロイ（推奨）
+### フロントエンド（Firebase Hosting） - PWA対応
+
+フロントエンドはPWA（Progressive Web App）として実装されており、Firebase Hostingでホスティングします。
+
+#### 前提条件
+- Firebase CLIがインストール済み: `npm install -g firebase-tools`
+- Firebase プロジェクトが作成済み
+- GitHub Secrets に `FIREBASE_TOKEN` が設定済み
+
+#### 手動デプロイ
+
+```bash
+# 1. フロントエンドをビルド
+cd frontend
+npm install
+npm run build
+
+# 2. Firebaseにログイン（初回のみ）
+firebase login
+
+# 3. プロジェクトを選択（初回のみ）
+firebase use haibun-distribution
+
+# 4. デプロイ
+firebase deploy --only hosting
+```
+
+#### 自動デプロイ（GitHub Actions）
+
+`main`または`master`ブランチに`frontend/`配下の変更をプッシュすると、自動的にデプロイされます。
+
+**必要なGitHub Secrets:**
+- `FIREBASE_TOKEN`: Firebase CI用トークン（`firebase login:ci`で取得）
+- `VITE_API_BASE_URL`: APIのベースURL
+- `VITE_FIREBASE_API_KEY`: Firebase API Key
+- `VITE_FIREBASE_AUTH_DOMAIN`: Firebase Auth Domain
+- `VITE_FIREBASE_PROJECT_ID`: Firebase Project ID
+- `VITE_FIREBASE_STORAGE_BUCKET`: Firebase Storage Bucket
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`: Firebase Messaging Sender ID
+- `VITE_FIREBASE_APP_ID`: Firebase App ID
+
+#### PWA機能
+- **オフライン対応**: Service Workerによるキャッシング
+- **インストール可能**: ホーム画面に追加可能
+- **自動更新**: 新バージョンが利用可能になると自動通知
+
+### バックエンド（Render）
+
+#### Renderデプロイ（推奨）
 
 1. [Render](https://render.com) でアカウント作成
 2. GitHubリポジトリを接続
@@ -311,7 +359,7 @@ pytest tests/test_api_routes.py::TestHealthAndVersion -v
 
 詳細は `render.yaml` を参照
 
-### 環境変数
+#### 環境変数
 
 本番環境では以下の環境変数が必要：
 

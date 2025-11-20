@@ -31,8 +31,9 @@ export class FirestoreService {
   ): FirestoreOrderData {
     return {
       delivery_date: format(orderData.deliveryDate, 'yyyy-MM-dd'),
-      supplier: orderData.supplier,
+      suppliers: orderData.suppliers,
       products: orderData.products.map((product) => ({
+        supplier: product.supplier,
         name: product.name,
         origin: product.origin,
         specification: product.specification || '',
@@ -59,8 +60,9 @@ export class FirestoreService {
     return {
       id,
       deliveryDate: new Date(firestoreData.delivery_date),
-      supplier: firestoreData.supplier,
+      suppliers: firestoreData.suppliers || [],
       products: firestoreData.products.map((product: any) => ({
+        supplier: product.supplier || '',
         name: product.name,
         origin: product.origin,
         specification: product.specification || '',

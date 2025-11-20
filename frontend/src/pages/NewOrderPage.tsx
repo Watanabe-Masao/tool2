@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -59,6 +59,17 @@ export const NewOrderPage: React.FC = () => {
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [supplierRemovalDialog, setSupplierRemovalDialog] = useState<{
+    open: boolean;
+    suppliersToRemove: string[];
+    affectedProductsCount: number;
+    newSuppliers: string[];
+  }>({
+    open: false,
+    suppliersToRemove: [],
+    affectedProductsCount: 0,
+    newSuppliers: [],
+  });
 
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
@@ -68,6 +79,9 @@ export const NewOrderPage: React.FC = () => {
 
   // 初回ロードフラグ
   const isInitialLoad = useRef(true);
+
+  // 前回の帳合先リスト
+  const previousSuppliers = useRef<string[]>([]);
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
@@ -87,7 +101,7 @@ export const NewOrderPage: React.FC = () => {
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       deliveryDate: new Date(),
-      supplier: '',
+      suppliers: [],
       products: [
         {
           ...DEFAULT_PRODUCT_FORM_DATA,
@@ -109,6 +123,18 @@ export const NewOrderPage: React.FC = () => {
 
   // フォームデータを監視
   const formData = watch();
+
+  // 商品フィールド配列
+  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
+    control,
+    name: 'products',
+  });
+
+  // 帳合先を監視
+  const suppliers = useWatch({
+    control,
+    name: 'suppliers',
+  });
 
   /**
    * ページロード時に下書きを復元
@@ -141,6 +167,107 @@ export const NewOrderPage: React.FC = () => {
 
     loadUserSettings();
   }, [user]);
+
+  /**
+   * 帳合先変更時のハンドラー
+   */
+  const handleSuppliersChange = (newSuppliers: string[]) => {
+    // 最新の商品データを取得
+    const currentProducts = methods.getValues('products');
+
+    // 初回ロード時や商品がない場合はそのまま適用
+    if (isInitialLoad.current || !currentProducts || currentProducts.length === 0) {
+      previousSuppliers.current = newSuppliers;
+      return newSuppliers;
+    }
+
+    const currentSuppliers = suppliers || [];
+
+    // 削除される帳合先を検出
+    const removedSuppliers = currentSuppliers.filter(
+      (supplier) => !newSuppliers.includes(supplier)
+    );
+
+    if (removedSuppliers.length > 0) {
+      // 削除される帳合先を使用している商品を検出
+      const affectedProducts = currentProducts.filter(
+        (product) => product.supplier && removedSuppliers.includes(product.supplier)
+      );
+
+      if (affectedProducts.length > 0) {
+        // 確認ダイアログを表示
+        setSupplierRemovalDialog({
+          open: true,
+          suppliersToRemove: removedSuppliers,
+          affectedProductsCount: affectedProducts.length,
+          newSuppliers,
+        });
+        // 変更を保留
+        return currentSuppliers;
+      }
+    }
+
+    // 問題ない場合はそのまま適用
+    previousSuppliers.current = newSuppliers;
+    return newSuppliers;
+  };
+
+  /**
+   * 帳合先削除の確認
+   */
+  const handleConfirmSupplierRemoval = () => {
+    const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialog;
+
+    // 最新の商品データを取得
+    const currentProducts = methods.getValues('products');
+
+    // 削除される帳合先を使用していない商品のみを残す
+    const remainingProducts = currentProducts.filter(
+      (product) => !product.supplier || !suppliersToRemove.includes(product.supplier)
+    );
+
+    // 残った商品がない場合は、デフォルトの空の商品を1つ追加
+    const newProducts = remainingProducts.length > 0
+      ? remainingProducts
+      : [{
+          ...DEFAULT_PRODUCT_FORM_DATA,
+          totalDelivery: 0,
+          storeAllocations: new Array(STORE_COUNT).fill(0),
+        }];
+
+    // 商品配列を更新
+    methods.setValue('products', newProducts);
+
+    // 帳合先を更新
+    methods.setValue('suppliers', newSuppliers);
+    previousSuppliers.current = newSuppliers;
+
+    // メッセージを表示
+    const removedSupplierNames = suppliersToRemove.join('、');
+    showSuccess(
+      `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
+    );
+
+    // ダイアログを閉じる
+    setSupplierRemovalDialog({
+      open: false,
+      suppliersToRemove: [],
+      affectedProductsCount: 0,
+      newSuppliers: [],
+    });
+  };
+
+  /**
+   * 帳合先削除のキャンセル
+   */
+  const handleCancelSupplierRemoval = () => {
+    setSupplierRemovalDialog({
+      open: false,
+      suppliersToRemove: [],
+      affectedProductsCount: 0,
+      newSuppliers: [],
+    });
+  };
 
   /**
    * フォームデータの自動保存（debounce付き）
@@ -271,6 +398,20 @@ export const NewOrderPage: React.FC = () => {
 
       console.log('Form data:', data);
 
+      // バリデーション: すべての商品の帳合先がステップ1で選択された帳合先リストに含まれているかチェック
+      const invalidProducts = data.products.filter(
+        (product) => !data.suppliers.includes(product.supplier)
+      );
+
+      if (invalidProducts.length > 0) {
+        hideLoading();
+        showError(
+          `一部の商品の帳合先がステップ1で選択されていません。` +
+          `該当する商品の帳合先を修正してください。`
+        );
+        return;
+      }
+
       // バイヤー名を取得（ユーザー名またはメールアドレス）
       const buyerName = user?.displayName || user?.email || '匿名';
 
@@ -281,15 +422,19 @@ export const NewOrderPage: React.FC = () => {
 
       // オートコンプリート履歴に追加
       if (user) {
-        await supplierAutocomplete.addToHistory(data.supplier);
+        // 複数の帳合先を履歴に追加
+        for (const supplier of data.suppliers) {
+          await supplierAutocomplete.addToHistory(supplier);
+        }
+
         for (const product of data.products) {
           await productNameAutocomplete.addToHistory(product.name);
           await originAutocomplete.addToHistory(product.origin);
 
-          // 商品履歴を保存
+          // 商品履歴を保存（各商品の帳合先ごとに）
           await FirestoreService.saveProductHistory(
             user.uid,
-            data.supplier,
+            product.supplier,
             product.name,
             product.origin,
             product.specification || '',
@@ -477,6 +622,7 @@ export const NewOrderPage: React.FC = () => {
                       control={control}
                       errors={errors}
                       supplierOptions={supplierAutocomplete.options}
+                      onSuppliersChange={handleSuppliersChange}
                     />
                   </Box>
                 </SwiperSlide>
@@ -489,7 +635,10 @@ export const NewOrderPage: React.FC = () => {
                       errors={errors}
                       productNameOptions={productNameAutocomplete.options}
                       originOptions={originAutocomplete.options}
-                      supplier={formData.supplier}
+                      suppliers={formData.suppliers}
+                      fields={productFields}
+                      append={appendProduct}
+                      remove={removeProduct}
                     />
                   </Box>
                 </SwiperSlide>
@@ -500,7 +649,7 @@ export const NewOrderPage: React.FC = () => {
                     <ProductPricingForm
                       control={control}
                       errors={errors}
-                      productCount={formData.products.length}
+                      fields={productFields}
                     />
                   </Box>
                 </SwiperSlide>
@@ -508,25 +657,26 @@ export const NewOrderPage: React.FC = () => {
                 {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    {formData.products.map((product, index) =>
-                      isMobile ? (
+                    {productFields.map((field, index) => {
+                      const product = formData.products[index];
+                      return isMobile ? (
                         <StoreAllocationMobile
-                          key={index}
+                          key={field.id}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={product.totalDelivery || 0}
+                          totalDelivery={product?.totalDelivery || 0}
                         />
                       ) : (
                         <StoreAllocationGrid
-                          key={index}
+                          key={field.id}
                           productIndex={index}
                           control={control}
                           errors={errors}
-                          totalDelivery={product.totalDelivery || 0}
+                          totalDelivery={product?.totalDelivery || 0}
                         />
-                      )
-                    )}
+                      );
+                    })}
                     {renderSubmitButton()}
                   </Box>
                 </SwiperSlide>
@@ -561,6 +711,11 @@ export const NewOrderPage: React.FC = () => {
           open={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
           formData={formData}
+          onShowPDF={() => {
+            setShowPreviewModal(false);
+            setShowPDFPreview(true);
+          }}
+          hasPDF={!!generatedFiles?.pdfFilename}
         />
 
         {/* メール送信モーダル */}
@@ -598,6 +753,28 @@ export const NewOrderPage: React.FC = () => {
             </Button>
             <Button onClick={handleRestoreDraft} color="primary" variant="contained">
               復元する
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 帳合先削除確認ダイアログ */}
+        <Dialog open={supplierRemovalDialog.open} onClose={handleCancelSupplierRemoval}>
+          <DialogTitle>帳合先の削除確認</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              削除しようとしている帳合先「{supplierRemovalDialog.suppliersToRemove.join('、')}」は
+              {supplierRemovalDialog.affectedProductsCount}件の商品カードで使用されています。
+            </DialogContentText>
+            <DialogContentText sx={{ mt: 1.5 }}>
+              帳合先を削除すると、これらの商品カードも削除されます。続行しますか？
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelSupplierRemoval} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleConfirmSupplierRemoval} color="error" variant="contained">
+              削除する
             </Button>
           </DialogActions>
         </Dialog>

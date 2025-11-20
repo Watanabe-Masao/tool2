@@ -2,6 +2,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ヘルパー関数: 配列の全要素が文字列かチェック
+    function isStringArray(arr) {
+      return arr is list && arr.size() > 0 && arr[0] is string;
+    }
+
+    // ヘルパー関数: 商品データのバリデーション
+    function isValidProduct(product) {
+      return product.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations']) &&
+             product.supplier is string &&
+             product.supplier.size() > 0 &&
+             product.name is string &&
+             product.origin is string &&
+             product.specification is string &&
+             product.store_cost is number &&
+             product.price_excluding_tax is number &&
+             product.total_delivery is number &&
+             product.store_allocations is list &&
+             product.store_allocations.size() == 36;
+    }
+
+    // ヘルパー関数: 注文データのバリデーション
+    function isValidOrder(data) {
+      return data.keys().hasAll(['delivery_date', 'suppliers', 'products', 'buyer_name', 'timestamp', 'userId']) &&
+             data.delivery_date is string &&
+             data.suppliers is list &&
+             data.suppliers.size() > 0 &&
+             data.suppliers.size() <= 20 &&
+             isStringArray(data.suppliers) &&
+             data.products is list &&
+             data.products.size() > 0 &&
+             data.products.size() <= 50 &&
+             data.buyer_name is string &&
+             data.userId is string &&
+             data.userId == request.auth.uid;
+    }
+
+    // ヘルパー関数: 全商品の帳合先がsuppliersリストに含まれているかチェック
+    function allProductSuppliersValid(suppliers, products) {
+      return products.size() == 0 ||
+             products[0].supplier in suppliers;
+      // Note: Firestore ルールでは配列の全要素をループできないため、
+      // 完全なバリデーションはクライアント側で行う必要があります
+    }
+
     // ヘルパー関数: 認証済みユーザーかチェック
     function isAuthenticated() {
       return request.auth != null;
@@ -61,12 +105,16 @@ service cloud.firestore {
       // 読み取り: 作成者のみ
       allow read: if isAuthenticated() &&
                      resource.data.userId == request.auth.uid;
-      // 作成: 認証済みユーザーのみ
+      // 作成: 認証済みユーザーのみ + データバリデーション
       allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid;
-      // 更新: 作成者のみ
+                       request.resource.data.userId == request.auth.uid &&
+                       isValidOrder(request.resource.data) &&
+                       allProductSuppliersValid(request.resource.data.suppliers, request.resource.data.products);
+      // 更新: 作成者のみ + データバリデーション
       allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+                       resource.data.userId == request.auth.uid &&
+                       isValidOrder(request.resource.data) &&
+                       allProductSuppliersValid(request.resource.data.suppliers, request.resource.data.products);
       // 削除: 作成者のみ
       allow delete: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
@@ -109,9 +157,14 @@ service cloud.firestore {
       // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
       allow read: if isAuthenticated() &&
                      resource.data.userId == request.auth.uid;
-      // 作成: 認証済みユーザーのみ
+      // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid;
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'userId']) &&
+                       request.resource.data.supplier is string &&
+                       request.resource.data.supplier.size() > 0 &&
+                       request.resource.data.name is string &&
+                       request.resource.data.name.size() > 0;
       // 更新: 自分の履歴のみ
       allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;

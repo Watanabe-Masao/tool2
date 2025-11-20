@@ -11,6 +11,12 @@ export const productSchema = z.object({
     .optional()
     .default(''),
 
+  /** 帳合先（この商品の帳合先） */
+  supplier: z
+    .string()
+    .min(1, '帳合先を選択してください')
+    .max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`),
+
   /** 品名 */
   name: z
     .string()
@@ -102,11 +108,11 @@ export const orderFormSchema = z
       invalid_type_error: '有効な日付を選択してください',
     }),
 
-    /** 帳合先 */
-    supplier: z
-      .string()
-      .min(1, '帳合先を入力してください')
-      .max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`),
+    /** 帳合先（複数選択可能） */
+    suppliers: z
+      .array(z.string().max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`))
+      .min(1, '帳合先を少なくとも1つ入力してください')
+      .max(20, '帳合先は最大20個まで選択できます'),
 
     /** 商品リスト */
     products: z

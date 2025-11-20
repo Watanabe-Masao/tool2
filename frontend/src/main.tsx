@@ -24,6 +24,21 @@ import 'swiper/swiper-bundle.css';
 import './index.css';
 import App from './App.tsx';
 
+// PWA Service Worker registration
+import { registerSW } from 'virtual:pwa-register';
+
+// Register Service Worker with auto-update
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('新しいバージョンが利用可能です。更新しますか？')) {
+      updateSW(true);
+    }
+  },
+  onOfflineReady() {
+    console.log('アプリがオフラインで利用可能になりました');
+  },
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

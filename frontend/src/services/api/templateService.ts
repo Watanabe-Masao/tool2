@@ -15,9 +15,12 @@ export class TemplateService {
     formData: OrderFormData,
     buyerName: string
   ): TemplateRequest {
+    // 最初の商品の帳合先、または選択された帳合先の最初を使用
+    const primarySupplier = formData.products[0]?.supplier || formData.suppliers[0] || '';
+
     return {
       delivery_date: format(formData.deliveryDate, 'yyyy-MM-dd'),
-      supplier: formData.supplier,
+      supplier: primarySupplier,
       buyer_name: buyerName,
       products: formData.products.map((product) => ({
         name: product.name,
@@ -28,7 +31,7 @@ export class TemplateService {
         store_cost: product.storeCost,
         price: product.priceExcludingTax,
         total_delivery: product.totalDelivery,
-        delivery_dest: formData.supplier,
+        delivery_dest: product.supplier,
         store_quantities: this.convertStoreAllocations(product.storeAllocations),
       })),
     };

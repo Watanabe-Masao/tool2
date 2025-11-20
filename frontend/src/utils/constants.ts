@@ -119,6 +119,7 @@ export const STORE_COUNT = 36;
 /** デフォルトの商品フォームデータ */
 export const DEFAULT_PRODUCT_FORM_DATA = {
   categoryCode: '',
+  supplier: '',
   name: '',
   origin: '',
   specification: '',
