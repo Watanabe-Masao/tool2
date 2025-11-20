@@ -9,7 +9,7 @@ import {
   Typography,
   IconButton,
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, PictureAsPdf } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
@@ -33,6 +33,10 @@ interface AllocationPreviewModalProps {
   onClose: () => void;
   /** フォームデータ */
   formData: OrderFormData;
+  /** PDFプレビューを開く */
+  onShowPDF?: () => void;
+  /** PDFが利用可能かどうか */
+  hasPDF?: boolean;
 }
 
 /**
@@ -64,6 +68,8 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   open,
   onClose,
   formData,
+  onShowPDF,
+  hasPDF = false,
 }) => {
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
@@ -349,8 +355,20 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 1.5 }}>
-        <Button onClick={onClose} variant="contained" fullWidth sx={{ maxWidth: 200 }}>
+      <DialogActions sx={{ px: 3, py: 1.5, justifyContent: 'space-between' }}>
+        {hasPDF && onShowPDF ? (
+          <Button
+            onClick={onShowPDF}
+            variant="outlined"
+            startIcon={<PictureAsPdf />}
+            sx={{ maxWidth: 200 }}
+          >
+            PDFプレビュー
+          </Button>
+        ) : (
+          <Box />
+        )}
+        <Button onClick={onClose} variant="contained" sx={{ maxWidth: 200 }}>
           閉じる
         </Button>
       </DialogActions>
