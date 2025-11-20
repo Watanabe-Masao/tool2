@@ -15,6 +15,7 @@ import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSumm
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
+import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
@@ -52,6 +53,7 @@ export const NewOrderPage: React.FC = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -479,18 +481,8 @@ export const NewOrderPage: React.FC = () => {
           setHasUnsavedChanges(false);
         }
 
-        // PDFが生成されている場合とそうでない場合で分岐
-        if (response.pdf_filename) {
-          // PDFがある場合
-          if (isIPhoneSafari()) {
-            setShowDownloadModal(true);
-          } else {
-            setShowPDFPreview(true);
-          }
-        } else {
-          // PDFがない場合は直接ダウンロードモーダルを表示
-          setShowDownloadModal(true);
-        }
+        // プレビュー画面を表示
+        setShowGeneratedPreview(true);
       } else {
         // オフライン時
         hideLoading();
@@ -589,6 +581,18 @@ export const NewOrderPage: React.FC = () => {
   return (
     <FormProvider {...methods}>
       <Container maxWidth="lg">
+        {showGeneratedPreview && generatedFiles ? (
+          /* 生成後のプレビュー画面 */
+          <Box sx={{ py: 2 }}>
+            <AllocationPreviewContent
+              formData={formData}
+              pdfFilename={generatedFiles.pdfFilename}
+              onDownloadExcel={handleDownloadExcel}
+              onSendEmail={() => setShowEmailModal(true)}
+            />
+          </Box>
+        ) : (
+          /* フォーム入力画面 */
           <Box sx={{ py: 2 }}>
             {/* オフライン時の警告 */}
             {!isOnline && (
@@ -683,6 +687,7 @@ export const NewOrderPage: React.FC = () => {
               </Swiper>
             </Box>
           </Box>
+        )}
 
         {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (
@@ -726,12 +731,14 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* フローティング進捗サマリー */}
-        <FloatingProgressSummary
-          formData={formData}
-          activeStep={activeStep}
-          totalSteps={TOTAL_STEPS}
-        />
+        {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
+        {!showGeneratedPreview && (
+          <FloatingProgressSummary
+            formData={formData}
+            activeStep={activeStep}
+            totalSteps={TOTAL_STEPS}
+          />
+        )}
 
         {/* 下書き復元確認ダイアログ */}
         <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
