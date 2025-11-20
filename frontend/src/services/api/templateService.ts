@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { API_ENDPOINTS, STORE_CODES } from '@/utils/constants';
+import { API_ENDPOINTS, API_BASE_URL, STORE_CODES } from '@/utils/constants';
 import type { TemplateRequest, TemplateResponse } from '@/types';
 import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -90,7 +90,7 @@ export class TemplateService {
    * @returns ダウンロードURL
    */
   static getDownloadUrl(filename: string, ext: string = 'xlsx'): string {
-    return `${API_ENDPOINTS.DOWNLOAD}/${filename}?ext=${ext}`;
+    return `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD}/${filename}?ext=${ext}`;
   }
 
   /**
