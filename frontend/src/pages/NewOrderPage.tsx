@@ -320,21 +320,6 @@ export const NewOrderPage: React.FC = () => {
     };
   }, [hasUnsavedChanges]);
 
-  /**
-   * Swiper初期化後に確実にスライド0から開始
-   */
-  useEffect(() => {
-    // マウント時に即座に実行
-    if (swiperRef.current && !swiperInitialized.current) {
-      swiperInitialized.current = true;
-
-      // 即座にスライド0に移動
-      if (swiperRef.current.activeIndex !== 0) {
-        swiperRef.current.slideTo(0, 0);
-      }
-      setActiveStep(0);
-    }
-  }, []); // 空の依存配列で一度だけ実行
 
   /**
    * フォームデータ変更時にSwiperを更新
@@ -653,6 +638,21 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => {
                   swiperRef.current = swiper;
+
+                  // Swiper初期化時に確実にスライド0から開始
+                  if (!swiperInitialized.current) {
+                    // 強制的にスライド0に移動（アニメーションなし）
+                    swiper.slideTo(0, 0);
+
+                    // 初期状態を設定
+                    setActiveStep(0);
+
+                    // 初期化フラグをtrueに設定（以降のスライド変更を有効にする）
+                    // setTimeoutで次のイベントループで設定することで、初期化中のonSlideChangeを確実に無視
+                    setTimeout(() => {
+                      swiperInitialized.current = true;
+                    }, 0);
+                  }
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
