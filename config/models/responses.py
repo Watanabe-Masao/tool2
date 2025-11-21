@@ -23,12 +23,14 @@ class TemplateResponse(BaseModel):
         message: ユーザー向けメッセージ
         download_url: ダウンロードURL（成功時のみ）
         filename: 生成されたファイル名（成功時のみ）
+        pdf_filename: 生成されたPDFファイル名（成功時のみ）
     """
 
     success: bool = Field(..., description="処理成功フラグ")
     message: str = Field(..., description="ユーザー向けメッセージ")
     download_url: Optional[str] = Field(default=None, description="ダウンロードURL")
     filename: Optional[str] = Field(default=None, description="生成されたファイル名")
+    pdf_filename: Optional[str] = Field(default=None, description="生成されたPDFファイル名")
 
 
 class ErrorResponse(BaseModel):

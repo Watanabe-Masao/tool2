@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { API_ENDPOINTS, STORE_CODES } from '@/utils/constants';
+import { API_ENDPOINTS, API_BASE_URL, STORE_CODES } from '@/utils/constants';
 import type { TemplateRequest, TemplateResponse } from '@/types';
 import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -86,19 +86,31 @@ export class TemplateService {
    * ファイルをダウンロード
    *
    * @param filename - ダウンロードするファイル名
+   * @param ext - ファイル拡張子 ("xlsx" または "pdf")
    * @returns ダウンロードURL
    */
-  static getDownloadUrl(filename: string): string {
-    return `${API_ENDPOINTS.DOWNLOAD}/${filename}`;
+  static getDownloadUrl(filename: string, ext: string = 'xlsx'): string {
+    return `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD}/${filename}?ext=${ext}`;
+  }
+
+  /**
+   * PDFファイルのプレビューURL取得
+   *
+   * @param fileId - ファイルID
+   * @returns PDFプレビューURL
+   */
+  static getPdfPreviewUrl(fileId: string): string {
+    return this.getDownloadUrl(fileId, 'pdf');
   }
 
   /**
    * ファイルをダウンロード（ブラウザ）
    *
    * @param filename - ダウンロードするファイル名
+   * @param ext - ファイル拡張子
    */
-  static downloadFile(filename: string): void {
-    const url = this.getDownloadUrl(filename);
+  static downloadFile(filename: string, ext: string = 'xlsx'): void {
+    const url = this.getDownloadUrl(filename, ext);
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;

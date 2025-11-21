@@ -15,6 +15,7 @@ import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSumm
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
+import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { TemplateService } from '@/services/api/templateService';
 import { FirestoreService } from '@/services/firebase/firestoreService';
@@ -25,8 +26,9 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { isIPhoneSafari, isMobileDevice } from '@/utils/deviceDetection';
+import { isMobileDevice } from '@/utils/deviceDetection';
 import { SessionStorageService } from '@/utils/sessionStorageService';
+import { format } from 'date-fns';
 
 /**
  * フォームのステップ数
@@ -52,6 +54,7 @@ export const NewOrderPage: React.FC = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -479,18 +482,8 @@ export const NewOrderPage: React.FC = () => {
           setHasUnsavedChanges(false);
         }
 
-        // PDFが生成されている場合とそうでない場合で分岐
-        if (response.pdf_filename) {
-          // PDFがある場合
-          if (isIPhoneSafari()) {
-            setShowDownloadModal(true);
-          } else {
-            setShowPDFPreview(true);
-          }
-        } else {
-          // PDFがない場合は直接ダウンロードモーダルを表示
-          setShowDownloadModal(true);
-        }
+        // プレビュー画面を表示
+        setShowGeneratedPreview(true);
       } else {
         // オフライン時
         hideLoading();
@@ -526,6 +519,54 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
+   * PDFファイルをダウンロード
+   */
+  const handleDownloadPdf = async () => {
+    if (generatedFiles && generatedFiles.pdfFilename) {
+      try {
+        showLoading();
+        const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
+
+        // PDFをfetchしてblobとして取得
+        const response = await fetch(pdfUrl);
+        if (!response.ok) {
+          throw new Error('PDFのダウンロードに失敗しました');
+        }
+
+        const blob = await response.blob();
+
+        // Blobからダウンロードリンクを作成
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `配分表_${format(formData.deliveryDate || new Date(), 'yyyyMMdd')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Blob URLをクリーンアップ
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideLoading();
+        showSuccess('PDFをダウンロードしました');
+      } catch (error) {
+        hideLoading();
+        console.error('PDF download error:', error);
+        showError(error instanceof Error ? error.message : 'PDFのダウンロードに失敗しました');
+      }
+    }
+  };
+
+  /**
+   * プレビュー画面から戻る
+   */
+  const handleBackFromPreview = () => {
+    setShowGeneratedPreview(false);
+    setGeneratedFiles(null);
+    setExcelBlob(null);
+  };
+
+  /**
    * 最終ステップで送信ボタンを表示
    */
   const renderSubmitButton = () => {
@@ -533,22 +574,13 @@ export const NewOrderPage: React.FC = () => {
       return (
         <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
           <Button
-            variant="outlined"
-            size="large"
-            onClick={() => setShowPreviewModal(true)}
-            fullWidth
-            sx={{ maxWidth: 400 }}
-          >
-            プレビュー
-          </Button>
-          <Button
             variant="contained"
             size="large"
             onClick={handleSubmit(onSubmit)}
             fullWidth
             sx={{ maxWidth: 400 }}
           >
-            配分表を作成
+            プレビュー
           </Button>
         </Box>
       );
@@ -589,6 +621,20 @@ export const NewOrderPage: React.FC = () => {
   return (
     <FormProvider {...methods}>
       <Container maxWidth="lg">
+        {showGeneratedPreview && generatedFiles ? (
+          /* 生成後のプレビュー画面 */
+          <Box sx={{ py: 2 }}>
+            <AllocationPreviewContent
+              formData={formData}
+              pdfFilename={generatedFiles.pdfFilename}
+              onDownloadExcel={handleDownloadExcel}
+              onDownloadPdf={handleDownloadPdf}
+              onSendEmail={() => setShowEmailModal(true)}
+              onBack={handleBackFromPreview}
+            />
+          </Box>
+        ) : (
+          /* フォーム入力画面 */
           <Box sx={{ py: 2 }}>
             {/* オフライン時の警告 */}
             {!isOnline && (
@@ -603,6 +649,7 @@ export const NewOrderPage: React.FC = () => {
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
                 onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
+                initialSlide={0}
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}
@@ -639,6 +686,7 @@ export const NewOrderPage: React.FC = () => {
                       fields={productFields}
                       append={appendProduct}
                       remove={removeProduct}
+                      onNavigateToStep={(step) => swiperRef.current?.slideTo(step)}
                     />
                   </Box>
                 </SwiperSlide>
@@ -683,13 +731,14 @@ export const NewOrderPage: React.FC = () => {
               </Swiper>
             </Box>
           </Box>
+        )}
 
         {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (
           <PDFPreviewModal
             open={showPDFPreview}
             onClose={() => setShowPDFPreview(false)}
-            pdfUrl={TemplateService.getDownloadUrl(generatedFiles.pdfFilename)}
+            pdfUrl={TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename)}
             onDownloadExcel={handleDownloadExcel}
             onSendEmail={() => setShowEmailModal(true)}
           />
@@ -711,11 +760,8 @@ export const NewOrderPage: React.FC = () => {
           open={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
           formData={formData}
-          onShowPDF={() => {
-            setShowPreviewModal(false);
-            setShowPDFPreview(true);
-          }}
-          hasPDF={!!generatedFiles?.pdfFilename}
+          pdfFilename={generatedFiles?.pdfFilename}
+          onDownloadExcel={handleDownloadExcel}
         />
 
         {/* メール送信モーダル */}
@@ -729,12 +775,14 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* フローティング進捗サマリー */}
-        <FloatingProgressSummary
-          formData={formData}
-          activeStep={activeStep}
-          totalSteps={TOTAL_STEPS}
-        />
+        {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
+        {!showGeneratedPreview && (
+          <FloatingProgressSummary
+            formData={formData}
+            activeStep={activeStep}
+            totalSteps={TOTAL_STEPS}
+          />
+        )}
 
         {/* 下書き復元確認ダイアログ */}
         <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>

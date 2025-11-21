@@ -1,19 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Box,
   Typography,
-  IconButton,
   Tabs,
   Tab,
   Alert,
   CircularProgress,
+  Button,
+  Paper,
 } from '@mui/material';
-import { Close as CloseIcon, PictureAsPdf, TableChart, Download } from '@mui/icons-material';
+import { PictureAsPdf, TableChart, Download, ArrowBack, Description, Send } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
@@ -30,19 +26,21 @@ import { isIPhoneSafari } from '@/utils/deviceDetection';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
- * AllocationPreviewModalのProps
+ * AllocationPreviewContentのProps
  */
-interface AllocationPreviewModalProps {
-  /** モーダルの開閉状態 */
-  open: boolean;
-  /** モーダルを閉じる */
-  onClose: () => void;
+interface AllocationPreviewContentProps {
   /** フォームデータ */
   formData: OrderFormData;
   /** PDFファイル名（file_id） */
   pdfFilename?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
+  /** PDFダウンロードハンドラ */
+  onDownloadPdf?: () => void;
+  /** メール送信ハンドラ */
+  onSendEmail?: () => void;
+  /** 戻るボタンハンドラ */
+  onBack?: () => void;
 }
 
 /**
@@ -66,16 +64,18 @@ interface GridRowData {
 }
 
 /**
- * 配分表プレビューモーダル
+ * 配分表プレビューコンテンツ
  *
  * AG-Gridを使用してExcel出力と同様の配分表をプレビュー表示します。
+ * タブでPDFプレビューにも切り替え可能です。
  */
-export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
-  open,
-  onClose,
+export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> = ({
   formData,
   pdfFilename,
   onDownloadExcel,
+  onDownloadPdf,
+  onSendEmail,
+  onBack,
 }) => {
   // タブの選択状態（0: 配分表、1: PDFプレビュー）
   const [tabValue, setTabValue] = useState(0);
@@ -284,138 +284,124 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   );
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xl"
-      fullWidth
-      PaperProps={{
-        sx: {
-          height: '90vh',
-          maxHeight: '90vh',
-        },
-      }}
-    >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-        <Typography variant="h6">配分表プレビュー</Typography>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      {/* タブ */}
-      {pdfFilename && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+    <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+      {/* ヘッダーとタブを同じ行に配置 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h6" sx={{ mr: 3 }}>配分表プレビュー</Typography>
+        {/* タブ */}
+        {pdfFilename && (
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab icon={<TableChart />} iconPosition="start" label="配分表" />
             <Tab icon={<PictureAsPdf />} iconPosition="start" label="PDFプレビュー" />
           </Tabs>
-        </Box>
-      )}
+        )}
+      </Box>
 
-      <DialogContent dividers sx={{ p: 0 }}>
+      {/* コンテンツ */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
         {/* 配分表タブ */}
         {tabValue === 0 && (
           <>
             {/* 選択行の詳細情報エリア */}
             {selectedRow && (
-          <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-            {/* 1行目: 店着日と集計情報 */}
-            <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
-              </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
-              </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
-              </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
-                差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
-              </Typography>
-            </Box>
+              <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+                {/* 1行目: 店着日と集計情報 */}
+                <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                    店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                    納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                    配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
+                    差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
+                  </Typography>
+                </Box>
 
-            {/* 2行目: 商品基本情報 */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.secondary">
-                産地: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.origin}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                品名: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.productName}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                規格: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.specification}</Box>
-              </Typography>
-            </Box>
+                {/* 2行目: 商品基本情報 */}
+                <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    産地: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.origin}</Box>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    品名: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.productName}</Box>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    規格: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.specification}</Box>
+                  </Typography>
+                </Box>
 
-            {/* 3行目: 価格情報 */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.secondary">
-                店着原価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.storeCost}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                税抜売価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.priceExcludingTax}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                入数: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.quantityPerPackage}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                帳合先: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.supplier}</Box>
-              </Typography>
-            </Box>
-          </Box>
-        )}
+                {/* 3行目: 価格情報 */}
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    店着原価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.storeCost}</Box>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    税抜売価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.priceExcludingTax}</Box>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    入数: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.quantityPerPackage}</Box>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    帳合先: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.supplier}</Box>
+                  </Typography>
+                </Box>
+              </Box>
+            )}
 
-        <Box
-          className="ag-theme-alpine"
-          sx={{
-            width: '100%',
-            height: selectedRow ? 'calc(90vh - 260px)' : 'calc(90vh - 140px)',
-            '& .ag-header': {
-              backgroundColor: '#f8f9fa',
-              borderBottom: '2px solid #dee2e6',
-            },
-            '& .ag-header-cell': {
-              fontWeight: '600',
-              fontSize: '0.75rem',
-              padding: '6px 8px',
-            },
-            '& .store-header': {
-              backgroundColor: '#e7f1ff',
-              fontSize: '0.7rem',
-            },
-            '& .ag-cell': {
-              fontSize: '0.8rem',
-              lineHeight: '40px',
-              padding: '0 8px',
-            },
-            '& .ag-row:hover': {
-              backgroundColor: '#f8f9fa !important',
-            },
-            '& .ag-row-even': {
-              backgroundColor: '#ffffff',
-            },
-            '& .ag-row-odd': {
-              backgroundColor: '#fafafa',
-            },
-            '& .ag-row-selected': {
-              backgroundColor: '#e3f2fd !important',
-            },
-          }}
-        >
-          <AgGridReact<GridRowData>
-            rowData={rowData}
-            columnDefs={columnDefs}
-            gridOptions={gridOptions}
-          />
-        </Box>
+            <Box
+              className="ag-theme-alpine"
+              sx={{
+                width: '100%',
+                height: selectedRow ? 'calc(85vh - 350px)' : 'calc(85vh - 230px)',
+                minHeight: 400,
+                '& .ag-header': {
+                  backgroundColor: '#f8f9fa',
+                  borderBottom: '2px solid #dee2e6',
+                },
+                '& .ag-header-cell': {
+                  fontWeight: '600',
+                  fontSize: '0.75rem',
+                  padding: '6px 8px',
+                },
+                '& .store-header': {
+                  backgroundColor: '#e7f1ff',
+                  fontSize: '0.7rem',
+                },
+                '& .ag-cell': {
+                  fontSize: '0.8rem',
+                  lineHeight: '40px',
+                  padding: '0 8px',
+                },
+                '& .ag-row:hover': {
+                  backgroundColor: '#f8f9fa !important',
+                },
+                '& .ag-row-even': {
+                  backgroundColor: '#ffffff',
+                },
+                '& .ag-row-odd': {
+                  backgroundColor: '#fafafa',
+                },
+                '& .ag-row-selected': {
+                  backgroundColor: '#e3f2fd !important',
+                },
+              }}
+            >
+              <AgGridReact<GridRowData>
+                rowData={rowData}
+                columnDefs={columnDefs}
+                gridOptions={gridOptions}
+              />
+            </Box>
           </>
         )}
 
         {/* PDFプレビュータブ */}
         {tabValue === 1 && pdfFilename && (
-          <Box sx={{ width: '100%', height: 'calc(90vh - 140px)', position: 'relative' }}>
+          <Box sx={{ width: '100%', height: 'calc(85vh - 230px)', minHeight: 500, position: 'relative' }}>
             {isIPhone ? (
               /* iPhone Safari: PDFを開くボタン */
               <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
@@ -436,16 +422,16 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
                   >
                     PDFを開く
                   </Button>
-                  {onDownloadExcel && (
+                  {onDownloadPdf && (
                     <Button
                       variant="outlined"
                       startIcon={<Download />}
-                      onClick={onDownloadExcel}
+                      onClick={onDownloadPdf}
                       size="large"
                       fullWidth
                       sx={{ maxWidth: 300 }}
                     >
-                      Excelをダウンロード
+                      PDFをダウンロード
                     </Button>
                   )}
                 </Box>
@@ -471,13 +457,13 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
                     <Alert severity="error" sx={{ mb: 3 }}>
                       {pdfError}
                     </Alert>
-                    {onDownloadExcel && (
+                    {onDownloadPdf && (
                       <Button
                         variant="contained"
                         startIcon={<Download />}
-                        onClick={onDownloadExcel}
+                        onClick={onDownloadPdf}
                       >
-                        Excelをダウンロード
+                        PDFをダウンロード
                       </Button>
                     )}
                   </Box>
@@ -500,14 +486,45 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
             )}
           </Box>
         )}
-      </DialogContent>
+      </Box>
 
-      <DialogActions sx={{ px: 3, py: 1.5, justifyContent: 'space-between' }}>
-        <Box />
-        <Button onClick={onClose} variant="contained" sx={{ maxWidth: 200 }}>
-          閉じる
-        </Button>
-      </DialogActions>
-    </Dialog>
+      {/* アクションボタン */}
+      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* 左側：戻るボタン */}
+        <Box>
+          {onBack && (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={onBack}
+            >
+              戻る
+            </Button>
+          )}
+        </Box>
+
+        {/* 右側：ダウンロードと送信ボタン */}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {onDownloadExcel && (
+            <Button
+              variant="contained"
+              startIcon={<Description />}
+              onClick={onDownloadExcel}
+            >
+              ダウンロード
+            </Button>
+          )}
+          {onSendEmail && (
+            <Button
+              variant="outlined"
+              startIcon={<Send />}
+              onClick={onSendEmail}
+            >
+              送信
+            </Button>
+          )}
+        </Box>
+      </Box>
+    </Paper>
   );
 };

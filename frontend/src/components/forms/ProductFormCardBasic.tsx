@@ -60,6 +60,8 @@ interface ProductFormCardBasicProps {
   onEnterPress?: () => void;
   /** 帳合先リスト（ステップ1で選択された帳合先） */
   suppliers?: string[];
+  /** ステップ移動ハンドラー */
+  onNavigateToStep?: (step: number) => void;
 }
 
 /**
@@ -94,6 +96,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   originOptions = [],
   onEnterPress,
   suppliers,
+  onNavigateToStep,
 }) => {
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
@@ -276,6 +279,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const handleSupplierClick = () => {
     if (!suppliers || suppliers.length === 0) {
       showError('ステップ1で帳合先を選択してください');
+      // ステップ1に戻る
+      if (onNavigateToStep) {
+        setTimeout(() => onNavigateToStep(0), 300);
+      }
       return;
     }
     setSupplierSelectOpen(true);
@@ -288,6 +295,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     // ステップ1で帳合先が選択されていればモーダルを開く
     if (!suppliers || suppliers.length === 0) {
       showError('ステップ1で帳合先を選択してください');
+      // ステップ1に戻る
+      if (onNavigateToStep) {
+        setTimeout(() => onNavigateToStep(0), 300);
+      }
       return;
     }
     setPresetModalOpen(true);

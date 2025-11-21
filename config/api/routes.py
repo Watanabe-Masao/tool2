@@ -65,11 +65,24 @@ async def generate_template(req: TemplateRequest):
         # ダウンロードURL生成
         download_url = f"/api/download/{file_id}?filename={filename}"
 
+        # PDF生成
+        pdf_filename = None
+        try:
+            pdf_path = settings.temp_dir / f"{file_id}.pdf"
+            PDFService.prepare_for_conversion(output_path)
+            PDFService.convert_to_pdf(output_path, pdf_path)
+            pdf_filename = file_id
+            logger.info(f"PDF generated successfully: {pdf_path}")
+        except Exception as pdf_error:
+            # PDF生成エラーはログに記録するが、Excelの生成は成功しているので続行
+            logger.warning(f"PDF generation failed: {pdf_error}")
+
         return TemplateResponse(
             success=True,
             message="テンプレートの生成に成功しました",
             download_url=download_url,
-            filename=filename
+            filename=filename,
+            pdf_filename=pdf_filename
         )
 
     except Exception as e:
@@ -81,27 +94,36 @@ async def generate_template(req: TemplateRequest):
 
 
 @router.get("/download/{file_id}")
-async def download_template(file_id: str, filename: str = "配分表_テンプレート.xlsx"):
+async def download_template(
+    file_id: str,
+    filename: str = "配分表_テンプレート.xlsx",
+    ext: str = "xlsx"
+):
     """
     生成されたテンプレートファイルをダウンロード
 
     Args:
         file_id: ファイルID
         filename: ダウンロード時のファイル名
+        ext: ファイル拡張子 ("xlsx" または "pdf")
 
     Returns:
-        StreamingResponse: Excelファイル
+        StreamingResponse: ExcelまたはPDFファイル
 
     Raises:
         AppFileNotFoundError: ファイルが存在しない場合
     """
+    # ファイル拡張子を検証
+    if ext not in ["xlsx", "pdf"]:
+        raise HTTPException(status_code=400, detail="無効なファイル拡張子です")
+
     # ファイルパス取得
-    temp_path = settings.temp_dir / f"{file_id}.xlsx"
+    temp_path = settings.temp_dir / f"{file_id}.{ext}"
 
     if not temp_path.exists():
         raise AppFileNotFoundError(
             message="ファイルが見つかりません",
-            detail=f"ファイルID: {file_id}"
+            detail=f"ファイルID: {file_id}, 拡張子: {ext}"
         )
 
     try:
@@ -112,17 +134,27 @@ async def download_template(file_id: str, filename: str = "配分表_テンプ�
         # 注意: ファイルは削除せず、複数回ダウンロード可能にする
         # クリーンアップはshutdownイベントで実行される
 
+        # メディアタイプとファイル名を拡張子に応じて設定
+        if ext == "pdf":
+            media_type = "application/pdf"
+            default_filename = "template.pdf"
+            # PDFファイル名がカスタマイズされていない場合はデフォルト名を使用
+            if filename == "配分表_テンプレート.xlsx":
+                filename = filename.replace(".xlsx", ".pdf")
+        else:
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            default_filename = "template.xlsx"
+
         # 日本語ファイル名のエンコード（RFC 5987対応）
-        # ASCIIフォールバック用にtemplate.xlsxを設定
         encoded_filename = quote(filename.encode('utf-8'))
 
         # ストリーミングレスポンス
         return StreamingResponse(
             io.BytesIO(file_content),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            media_type=media_type,
             headers={
                 # RFC 5987形式: ASCIIフォールバック + UTF-8エンコード
-                "Content-Disposition": f"attachment; filename=\"template.xlsx\"; filename*=UTF-8''{encoded_filename}"
+                "Content-Disposition": f"attachment; filename=\"{default_filename}\"; filename*=UTF-8''{encoded_filename}"
             }
         )
 
