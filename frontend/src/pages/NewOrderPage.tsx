@@ -652,9 +652,9 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      <Container maxWidth="lg">
-        {showGeneratedPreview && generatedFiles ? (
-          /* 生成後のプレビュー画面 */
+      {showGeneratedPreview && generatedFiles ? (
+        /* 生成後のプレビュー画面 */
+        <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
             <AllocationPreviewContent
               formData={formData}
@@ -665,26 +665,31 @@ export const NewOrderPage: React.FC = () => {
               onBack={handleBackFromPreview}
             />
           </Box>
-        ) : (
-          /* フォーム入力画面 */
-          <Box sx={{ py: 2 }}>
-            {/* オフライン時の警告 */}
-            {!isOnline && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
+        </Container>
+      ) : (
+        /* フォーム入力画面 */
+        <Box sx={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+          {/* オフライン時の警告 */}
+          {!isOnline && (
+            <Box sx={{ px: 2, pt: 2 }}>
+              <Alert severity="warning">
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
               </Alert>
-            )}
+            </Box>
+          )}
 
-            {/* スワイプ可能なステップコンテンツ */}
-            <Box sx={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-              <Swiper
+          {/* スワイプ可能なステップコンテンツ */}
+          <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+            <Swiper
                 key={swiperKey}
                 onSwiper={(swiper) => {
                   console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
+                  console.log('[Swiper] Container width:', swiper.width, 'Slide width:', swiper.slides[0]?.offsetWidth);
                   swiperRef.current = swiper;
                 }}
                 onInit={(swiper) => {
                   console.log('[Swiper] onInit - activeIndex:', swiper.activeIndex, 'translate:', swiper.translate);
+                  console.log('[Swiper] Container width:', swiper.width, 'Viewport:', swiper.el.offsetWidth);
 
                   // 初期化完了フラグを設定
                   swiperInitialized.current = true;
@@ -694,8 +699,9 @@ export const NewOrderPage: React.FC = () => {
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
-                spaceBetween={16}
+                spaceBetween={0}
                 slidesPerView={1}
+                width={typeof window !== 'undefined' ? window.innerWidth : undefined}
                 loop={false}
                 resistance={true}
                 resistanceRatio={0}
@@ -705,7 +711,7 @@ export const NewOrderPage: React.FC = () => {
                 observer={true}
                 observeParents={true}
                 watchOverflow={true}
-                style={{ width: '100%' }}
+                style={{ width: '100%', height: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
                 <SwiperSlide>
@@ -774,11 +780,11 @@ export const NewOrderPage: React.FC = () => {
                   </Box>
                 </SwiperSlide>
               </Swiper>
-            </Box>
           </Box>
-        )}
+        </Box>
+      )}
 
-        {/* PDFプレビューモーダル */}
+      {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (
           <PDFPreviewModal
             open={showPDFPreview}
@@ -872,7 +878,6 @@ export const NewOrderPage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
     </FormProvider>
   );
 };
