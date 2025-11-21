@@ -77,6 +77,9 @@ export const NewOrderPage: React.FC = () => {
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
 
+  // Swiper初期化完了フラグ
+  const swiperInitialized = useRef(false);
+
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -318,6 +321,29 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
+   * Swiper初期化後に確実にスライド0から開始
+   */
+  useEffect(() => {
+    if (swiperRef.current && !swiperInitialized.current) {
+      swiperInitialized.current = true;
+
+      // 確実にスライド0から開始
+      swiperRef.current.slideTo(0, 0);
+      setActiveStep(0);
+
+      // 少し遅延させて再度確認
+      const timer = setTimeout(() => {
+        if (swiperRef.current && swiperRef.current.activeIndex !== 0) {
+          swiperRef.current.slideTo(0, 0);
+          setActiveStep(0);
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [swiperRef.current]);
+
+  /**
    * フォームデータ変更時にSwiperを更新
    */
   useEffect(() => {
@@ -360,7 +386,6 @@ export const NewOrderPage: React.FC = () => {
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
-    console.log('[Swiper] onSlideChange - activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
     setActiveStep(swiper.activeIndex);
   };
 
@@ -646,31 +671,6 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => {
                   swiperRef.current = swiper;
-                  console.log('[Swiper Init] activeIndex:', swiper.activeIndex, 'slides.length:', swiper.slides?.length);
-
-                  // 初期化時に確実にスライド0から開始（複数回実行して確実にする）
-                  swiper.slideTo(0, 0);
-                  setActiveStep(0);
-
-                  // 次のイベントループでも確認
-                  setTimeout(() => {
-                    console.log('[Swiper Timeout 0ms] activeIndex:', swiper.activeIndex);
-                    if (swiper.activeIndex !== 0) {
-                      console.warn('[Swiper] Correcting to slide 0');
-                      swiper.slideTo(0, 0);
-                      setActiveStep(0);
-                    }
-                  }, 0);
-
-                  // さらにDOMが完全に準備された後も確認
-                  setTimeout(() => {
-                    console.log('[Swiper Timeout 100ms] activeIndex:', swiper.activeIndex);
-                    if (swiper.activeIndex !== 0) {
-                      console.warn('[Swiper] Correcting to slide 0 (100ms)');
-                      swiper.slideTo(0, 0);
-                      setActiveStep(0);
-                    }
-                  }, 100);
                 }}
                 onSlideChange={handleSlideChange}
                 onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
