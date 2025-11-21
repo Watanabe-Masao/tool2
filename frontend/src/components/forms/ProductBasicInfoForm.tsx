@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Button, Typography, Alert } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Box, Button, Typography, Alert, Tabs, Tab, IconButton } from '@mui/material';
+import { Add, Close } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -29,6 +29,8 @@ interface ProductBasicInfoFormProps {
   append: UseFieldArrayAppend<OrderFormData, 'products'>;
   /** 商品削除関数 */
   remove: UseFieldArrayRemove;
+  /** ステップ移動ハンドラー */
+  onNavigateToStep?: (step: number) => void;
 }
 
 /**
@@ -47,7 +49,10 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   fields,
   append,
   remove,
+  onNavigateToStep,
 }) => {
+  // アクティブなタブのインデックス
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
@@ -75,6 +80,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
+    // 新しく追加された商品のタブに切り替え
+    setActiveTabIndex(fields.length);
   };
 
   /**
@@ -82,12 +89,23 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
    */
   const handleRemoveProduct = (index: number) => {
     remove(index);
+    // アクティブなタブが削除された場合は、前のタブに移動
+    if (activeTabIndex >= index && activeTabIndex > 0) {
+      setActiveTabIndex(activeTabIndex - 1);
+    }
+  };
+
+  /**
+   * タブ変更ハンドラー
+   */
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTabIndex(newValue);
   };
 
   return (
     <Box>
-      {/* ヘッダーセクション（固定） */}
-      <Box sx={{ mb: 1.5 }}>
+      {/* ヘッダーセクション */}
+      <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight="medium">
           商品情報を入力してください
         </Typography>
@@ -98,44 +116,84 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
-        <Alert severity="error" sx={{ mb: 1.5 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {errors.products.message}
         </Alert>
       )}
 
-      {/* 商品リスト */}
-      {fields.map((field, index) => (
-        <ProductFormCardBasic
-          key={field.id}
-          index={index}
-          control={control}
-          errors={errors}
-          onRemove={() => handleRemoveProduct(index)}
-          showRemove={fields.length > 1}
-          productNameOptions={productNameOptions}
-          originOptions={originOptions}
-          onEnterPress={onEnterPress}
-          suppliers={suppliers}
-        />
-      ))}
+      {/* タブナビゲーション */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs
+          value={activeTabIndex}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          {fields.map((field, index) => {
+            const product = products?.[index];
+            const label = product?.name || `商品${index + 1}`;
+            return (
+              <Tab
+                key={field.id}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body2">{label}</Typography>
+                    {fields.length > 1 && (
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveProduct(index);
+                        }}
+                        sx={{ ml: 0.5, p: 0.25 }}
+                      >
+                        <Close fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                }
+                sx={{ minHeight: 48 }}
+              />
+            );
+          })}
+          {/* 追加タブ */}
+          <Tab
+            icon={<Add />}
+            iconPosition="start"
+            label="商品を追加"
+            onClick={handleAddProduct}
+            disabled={fields.length >= 50}
+            sx={{ minHeight: 48 }}
+          />
+        </Tabs>
+      </Box>
 
-      {/* 商品を追加ボタン */}
-      <Button
-        variant="outlined"
-        startIcon={<Add />}
-        onClick={handleAddProduct}
-        fullWidth
-        sx={{ mt: 1.5 }}
-        disabled={fields.length >= 50}
-      >
-        商品を追加
-      </Button>
+      {/* アクティブな商品カードのみ表示 */}
+      {fields.map((field, index) => (
+        <Box
+          key={field.id}
+          sx={{ display: activeTabIndex === index ? 'block' : 'none' }}
+        >
+          <ProductFormCardBasic
+            index={index}
+            control={control}
+            errors={errors}
+            onRemove={() => handleRemoveProduct(index)}
+            showRemove={fields.length > 1}
+            productNameOptions={productNameOptions}
+            originOptions={originOptions}
+            onEnterPress={onEnterPress}
+            suppliers={suppliers}
+            onNavigateToStep={onNavigateToStep}
+          />
+        </Box>
+      ))}
 
       {/* 最大数エラー */}
       {fields.length >= 50 && (
-        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+        <Alert severity="warning" sx={{ mt: 2 }}>
           商品は最大50個まで追加できます
-        </Typography>
+        </Alert>
       )}
     </Box>
   );

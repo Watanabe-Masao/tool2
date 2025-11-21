@@ -685,6 +685,7 @@ export const NewOrderPage: React.FC = () => {
                       fields={productFields}
                       append={appendProduct}
                       remove={removeProduct}
+                      onNavigateToStep={(step) => swiperRef.current?.slideTo(step)}
                     />
                   </Box>
                 </SwiperSlide>
