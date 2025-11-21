@@ -54,8 +54,95 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // アクティブなタブのインデックス
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
+  // スワイプ検出用の状態
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
+
+  // スワイプの最小距離（px）
+  const minSwipeDistance = 50;
+
+  /**
+   * タッチ開始
+   */
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  /**
+   * タッチ移動
+   */
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  /**
+   * タッチ終了
+   */
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && activeTabIndex < fields.length - 1) {
+      // 左スワイプ → 次のタブ
+      setActiveTabIndex(activeTabIndex + 1);
+    } else if (isRightSwipe && activeTabIndex > 0) {
+      // 右スワイプ → 前のタブ
+      setActiveTabIndex(activeTabIndex - 1);
+    }
+  };
+
+  /**
+   * マウスドラッグ用の状態
+   */
+  const [mouseStart, setMouseStart] = useState<number | null>(null);
+  const [mouseEnd, setMouseEnd] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  /**
+   * マウスダウン
+   */
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setMouseEnd(null);
+    setMouseStart(e.clientX);
+    setIsDragging(true);
+  };
+
+  /**
+   * マウス移動
+   */
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setMouseEnd(e.clientX);
+  };
+
+  /**
+   * マウスアップ
+   */
+  const handleMouseUp = () => {
+    if (!isDragging || !mouseStart || !mouseEnd) {
+      setIsDragging(false);
+      return;
+    }
+
+    const distance = mouseStart - mouseEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && activeTabIndex < fields.length - 1) {
+      setActiveTabIndex(activeTabIndex + 1);
+    } else if (isRightSwipe && activeTabIndex > 0) {
+      setActiveTabIndex(activeTabIndex - 1);
+    }
+
+    setIsDragging(false);
+  };
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -158,30 +245,14 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Alert>
       )}
 
-      {/* 前後ナビゲーションボタン */}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2, justifyContent: 'center' }}>
-        <IconButton
-          size="small"
-          disabled={activeTabIndex === 0}
-          onClick={() => setActiveTabIndex(activeTabIndex - 1)}
-          title="前の商品 (Ctrl+←)"
-        >
-          <ChevronLeft />
-        </IconButton>
-        <Typography variant="body2" sx={{ minWidth: 200, textAlign: 'center' }}>
+      {/* 商品ナビゲーション情報 */}
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
           {products?.[activeTabIndex]?.name || `商品${activeTabIndex + 1}`}
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            ({activeTabIndex + 1} / {fields.length})
-          </Typography>
         </Typography>
-        <IconButton
-          size="small"
-          disabled={activeTabIndex === fields.length - 1}
-          onClick={() => setActiveTabIndex(activeTabIndex + 1)}
-          title="次の商品 (Ctrl+→)"
-        >
-          <ChevronRight />
-        </IconButton>
+        <Typography variant="caption" color="text.secondary">
+          {activeTabIndex + 1} / {fields.length}
+        </Typography>
       </Box>
 
       {/* タブナビゲーション */}
@@ -240,26 +311,100 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Tabs>
       </Box>
 
-      {/* アクティブな商品カードのみ表示 */}
-      {fields.map((field, index) => (
-        <Box
-          key={field.id}
-          sx={{ display: activeTabIndex === index ? 'block' : 'none' }}
-        >
-          <ProductFormCardBasic
-            index={index}
-            control={control}
-            errors={errors}
-            onRemove={() => handleRemoveProduct(index)}
-            showRemove={fields.length > 1}
-            productNameOptions={productNameOptions}
-            originOptions={originOptions}
-            onEnterPress={onEnterPress}
-            suppliers={suppliers}
-            onNavigateToStep={onNavigateToStep}
-          />
-        </Box>
-      ))}
+      {/* スワイプ可能な商品カード表示エリア */}
+      <Box
+        sx={{
+          position: 'relative',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => setIsDragging(false)}
+      >
+        {/* 左端のクリックエリア */}
+        {activeTabIndex > 0 && (
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTabIndex(activeTabIndex - 1);
+            }}
+            sx={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 60,
+              zIndex: 10,
+              cursor: 'pointer',
+              background: 'linear-gradient(to right, rgba(25, 118, 210, 0.1), transparent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s',
+              '&:hover': {
+                background: 'linear-gradient(to right, rgba(25, 118, 210, 0.2), transparent)',
+              },
+            }}
+          >
+            <ChevronLeft sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7 }} />
+          </Box>
+        )}
+
+        {/* 右端のクリックエリア */}
+        {activeTabIndex < fields.length - 1 && (
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTabIndex(activeTabIndex + 1);
+            }}
+            sx={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 60,
+              zIndex: 10,
+              cursor: 'pointer',
+              background: 'linear-gradient(to left, rgba(25, 118, 210, 0.1), transparent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s',
+              '&:hover': {
+                background: 'linear-gradient(to left, rgba(25, 118, 210, 0.2), transparent)',
+              },
+            }}
+          >
+            <ChevronRight sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7 }} />
+          </Box>
+        )}
+
+        {/* アクティブな商品カードのみ表示 */}
+        {fields.map((field, index) => (
+          <Box
+            key={field.id}
+            sx={{ display: activeTabIndex === index ? 'block' : 'none' }}
+          >
+            <ProductFormCardBasic
+              index={index}
+              control={control}
+              errors={errors}
+              onRemove={() => handleRemoveProduct(index)}
+              showRemove={fields.length > 1}
+              productNameOptions={productNameOptions}
+              originOptions={originOptions}
+              onEnterPress={onEnterPress}
+              suppliers={suppliers}
+              onNavigateToStep={onNavigateToStep}
+            />
+          </Box>
+        ))}
+      </Box>
 
       {/* 最大数エラー */}
       {fields.length >= 50 && (
