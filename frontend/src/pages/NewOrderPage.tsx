@@ -77,7 +77,7 @@ export const NewOrderPage: React.FC = () => {
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
 
-  // Swiper初期化完了フラグ
+  // Swiper初期化完了フラグ（初期化中のonSlideChangeを無視するため）
   const swiperInitialized = useRef(false);
 
   // 自動保存用のタイマー
@@ -324,19 +324,16 @@ export const NewOrderPage: React.FC = () => {
    * Swiper初期化後に確実にスライド0から開始
    */
   useEffect(() => {
-    // マウント時に一度だけ実行
-    const timer = setTimeout(() => {
-      if (swiperRef.current && !swiperInitialized.current) {
-        swiperInitialized.current = true;
+    // マウント時に即座に実行
+    if (swiperRef.current && !swiperInitialized.current) {
+      swiperInitialized.current = true;
 
-        if (swiperRef.current.activeIndex !== 0) {
-          swiperRef.current.slideTo(0, 0);
-        }
-        setActiveStep(0);
+      // 即座にスライド0に移動
+      if (swiperRef.current.activeIndex !== 0) {
+        swiperRef.current.slideTo(0, 0);
       }
-    }, 200);
-
-    return () => clearTimeout(timer);
+      setActiveStep(0);
+    }
   }, []); // 空の依存配列で一度だけ実行
 
   /**
@@ -382,6 +379,10 @@ export const NewOrderPage: React.FC = () => {
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
+    // 初期化中のスライド変更を無視
+    if (!swiperInitialized.current) {
+      return;
+    }
     setActiveStep(swiper.activeIndex);
   };
 
