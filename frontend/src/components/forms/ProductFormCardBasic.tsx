@@ -281,7 +281,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       showError('ステップ1で帳合先を選択してください');
       // ステップ1に戻る
       if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 500);
+        setTimeout(() => onNavigateToStep(0), 300);
       }
       return;
     }
@@ -297,7 +297,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       showError('ステップ1で帳合先を選択してください');
       // ステップ1に戻る
       if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 500);
+        setTimeout(() => onNavigateToStep(0), 300);
       }
       return;
     }

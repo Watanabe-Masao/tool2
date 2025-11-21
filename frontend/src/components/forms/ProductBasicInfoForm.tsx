@@ -218,7 +218,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       if (closestIndex !== activeTabIndex) {
         setActiveTabIndex(closestIndex);
       }
-    }, 150); // スクロール終了後150msで判定
+    }, 100); // スクロール終了後100msで判定（より高速に）
   };
 
   /**
@@ -470,7 +470,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                 sx={{
                   height: isActive ? 36 : 28,
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
                   borderRadius: 2,
                   bgcolor: isComplete
                     ? isActive
@@ -485,6 +485,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                   '&:hover': {
                     boxShadow: 4,
                     transform: 'scale(1.05)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.98)',
                   },
                   '& .MuiChip-label': {
                     px: 1.5,
@@ -504,6 +507,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             height: 28,
             cursor: fields.length >= 50 ? 'not-allowed' : 'pointer',
             borderRadius: 2,
+            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
             bgcolor: fields.length >= 50 ? 'action.disabledBackground' : 'primary.light',
             color: fields.length >= 50 ? 'action.disabled' : 'primary.main',
             '&:hover': fields.length >= 50
@@ -512,6 +516,11 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                   bgcolor: 'primary.main',
                   color: 'white',
                   boxShadow: 2,
+                },
+            '&:active': fields.length >= 50
+              ? {}
+              : {
+                  transform: 'scale(0.95)',
                 },
             '& .MuiChip-label': {
               px: 1,
@@ -602,10 +611,10 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
               key={field.id}
               sx={{
                 display: isActive ? 'block' : 'none',
-                animation: isActive ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.3s ease-out` : 'none',
+                animation: isActive ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.25s cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
                 '@keyframes slideInLeft': {
                   '0%': {
-                    transform: 'translateX(100%)',
+                    transform: 'translateX(50%)',
                     opacity: 0,
                   },
                   '100%': {
@@ -615,7 +624,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                 },
                 '@keyframes slideInRight': {
                   '0%': {
-                    transform: 'translateX(-100%)',
+                    transform: 'translateX(-50%)',
                     opacity: 0,
                   },
                   '100%': {
