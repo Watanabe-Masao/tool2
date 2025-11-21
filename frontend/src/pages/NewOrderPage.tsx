@@ -55,6 +55,8 @@ export const NewOrderPage: React.FC = () => {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
+  const [swiperKey, setSwiperKey] = useState(0); // Swiperを強制的に再マウントするためのキー
+  const [isSwiperReady, setIsSwiperReady] = useState(false); // Swiperの初期化完了状態
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -594,6 +596,13 @@ export const NewOrderPage: React.FC = () => {
       reset(draft);
       setRestoreDialogOpen(false);
       showSuccess('下書きを復元しました');
+
+      // Swiperをリセットして最初のステップに戻す
+      setActiveStep(0);
+      swiperInitialized.current = false;
+      setIsSwiperReady(false); // タッチ操作を無効化
+      setSwiperKey(prev => prev + 1); // Swiperを再マウント
+
       isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
       setTimeout(() => {
         isInitialLoad.current = false;
@@ -639,35 +648,49 @@ export const NewOrderPage: React.FC = () => {
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
               <Swiper
+                key={swiperKey}
                 onSwiper={(swiper) => {
                   console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex);
                   swiperRef.current = swiper;
 
                   // Swiper初期化時に確実にスライド0から開始
-                  if (!swiperInitialized.current) {
-                    console.log('[Swiper] Initializing - forcing slide to 0');
+                  console.log('[Swiper] Initializing - forcing slide to 0');
 
-                    // 複数回試行して確実にスライド0に移動
-                    swiper.slideTo(0, 0);
+                  // 即座にスライド0に移動（アニメーションなし）
+                  swiper.slideTo(0, 0);
 
-                    // requestAnimationFrameを使って次のフレームで再度確認
+                  // 次のフレームで状態を確認して設定
+                  requestAnimationFrame(() => {
+                    console.log('[Swiper] After first frame - activeIndex:', swiper.activeIndex);
+
+                    // まだ0でなければ再度移動
+                    if (swiper.activeIndex !== 0) {
+                      console.log('[Swiper] Still not at slide 0, forcing again');
+                      swiper.slideTo(0, 0);
+                    }
+
+                    // さらに次のフレームで最終確認
                     requestAnimationFrame(() => {
+                      console.log('[Swiper] Final check - activeIndex:', swiper.activeIndex);
+
+                      // 強制的に0に設定
                       if (swiper.activeIndex !== 0) {
-                        console.log('[Swiper] Still not at slide 0, retrying. Current index:', swiper.activeIndex);
+                        console.warn('[Swiper] WARNING: Could not set to slide 0, current index:', swiper.activeIndex);
+                        // 最後の手段として直接インデックスを設定
                         swiper.slideTo(0, 0);
                       }
 
-                      // 最終的な状態を設定
-                      console.log('[Swiper] Final activeIndex:', swiper.activeIndex);
-                      setActiveStep(swiper.activeIndex);
+                      // activeStepを確実に0に設定
+                      setActiveStep(0);
 
-                      // 初期化完了フラグを設定
+                      // 初期化完了フラグを設定（次のフレームで）
                       requestAnimationFrame(() => {
                         swiperInitialized.current = true;
-                        console.log('[Swiper] Initialization complete');
+                        setIsSwiperReady(true); // タッチ操作を有効化
+                        console.log('[Swiper] Initialization complete. Final state - activeIndex:', swiper.activeIndex);
                       });
                     });
-                  }
+                  });
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
@@ -678,6 +701,7 @@ export const NewOrderPage: React.FC = () => {
                 resistanceRatio={0}
                 edgeSwipeDetection={true}
                 touchStartPreventDefault={false}
+                allowTouchMove={isSwiperReady}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
