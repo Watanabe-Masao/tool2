@@ -649,6 +649,7 @@ export const NewOrderPage: React.FC = () => {
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
                 onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
+                initialSlide={0}
                 spaceBetween={16}
                 slidesPerView={1}
                 allowTouchMove={true}

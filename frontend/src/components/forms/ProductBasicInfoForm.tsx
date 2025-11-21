@@ -66,98 +66,11 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // スクロール終了検出用タイマー
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // スワイプ検出用の状態
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
 
   // 店着日を監視
   const deliveryDate = useWatch({ control, name: 'deliveryDate' });
-
-  // スワイプの最小距離（px）
-  const minSwipeDistance = 50;
-
-  /**
-   * タッチ開始
-   */
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  /**
-   * タッチ移動
-   */
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  /**
-   * タッチ終了
-   */
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && activeTabIndex < fields.length - 1) {
-      // 左スワイプ → 次のタブ
-      setActiveTabIndex(activeTabIndex + 1);
-    } else if (isRightSwipe && activeTabIndex > 0) {
-      // 右スワイプ → 前のタブ
-      setActiveTabIndex(activeTabIndex - 1);
-    }
-  };
-
-  /**
-   * マウスドラッグ用の状態
-   */
-  const [mouseStart, setMouseStart] = useState<number | null>(null);
-  const [mouseEnd, setMouseEnd] = useState<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  /**
-   * マウスダウン
-   */
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setMouseEnd(null);
-    setMouseStart(e.clientX);
-    setIsDragging(true);
-  };
-
-  /**
-   * マウス移動
-   */
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setMouseEnd(e.clientX);
-  };
-
-  /**
-   * マウスアップ
-   */
-  const handleMouseUp = () => {
-    if (!isDragging || !mouseStart || !mouseEnd) {
-      setIsDragging(false);
-      return;
-    }
-
-    const distance = mouseStart - mouseEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && activeTabIndex < fields.length - 1) {
-      setActiveTabIndex(activeTabIndex + 1);
-    } else if (isRightSwipe && activeTabIndex > 0) {
-      setActiveTabIndex(activeTabIndex - 1);
-    }
-
-    setIsDragging(false);
-  };
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -534,16 +447,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       <Box
         sx={{
           position: 'relative',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          userSelect: 'none',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={() => setIsDragging(false)}
       >
         {/* 左端のクリックエリア */}
         {activeTabIndex > 0 && (
