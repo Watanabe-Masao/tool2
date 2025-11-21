@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+// import { VitePWA } from 'vite-plugin-pwa' // 一時的に無効化
 import path from 'path'
 
 // https://vite.dev/config/
@@ -13,82 +13,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'vite.svg'],
-        manifest: {
-          name: '配分表作成アプリ',
-          short_name: '配分表',
-          description: '店舗配分表を作成するアプリケーション',
-          theme_color: '#1976d2',
-          background_color: '#ffffff',
-          display: 'standalone',
-          orientation: 'portrait',
-          scope: '/',
-          start_url: '/',
-          icons: [
-            {
-              src: 'icon.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
-            }
-          ]
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'gstatic-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /\/api\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                networkTimeoutSeconds: 10,
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 5 // 5 minutes
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            }
-          ]
-        },
-        devOptions: {
-          enabled: true,
-          type: 'module'
-        }
-      })
+      // PWAを一時的に無効化してテスト
     ],
     resolve: {
       alias: {
