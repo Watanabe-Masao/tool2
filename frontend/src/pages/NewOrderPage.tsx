@@ -731,25 +731,30 @@ export const NewOrderPage: React.FC = () => {
                   console.log('  realIndex:', swiper.realIndex);
                   console.log('  translate:', swiper.translate);
 
-                  // 強制的にスライド0に設定（トランスフォームもリセット）
+                  // 強制的にスライドとトランスフォームをリセット
                   swiper.slideTo(0, 0);
-
-                  // トランスフォームを強制的に更新
                   swiper.setTranslate(0);
-                  swiper.updateProgress();
-                  swiper.updateSlidesClasses();
+                  swiper.update(); // 重要：Swiperの内部状態を更新
 
-                  console.log('[Swiper] After reset - translate:', swiper.translate, 'activeIndex:', swiper.activeIndex);
+                  // さらにもう一度確認して更新
+                  requestAnimationFrame(() => {
+                    swiper.slideTo(0, 0);
+                    swiper.setTranslate(0);
+                    swiper.updateProgress();
+                    swiper.updateSlidesClasses();
+                    swiper.update();
 
-                  // activeStepを0に設定
-                  setActiveStep(0);
+                    console.log('[Swiper] After reset - translate:', swiper.translate, 'activeIndex:', swiper.activeIndex);
 
-                  // タイマーで初期化完了フラグを設定
-                  setTimeout(() => {
-                    swiperInitialized.current = true;
-                    setIsSwiperReady(true);
-                    console.log('[Swiper] Initialization complete via onInit');
-                  }, 100);
+                    setActiveStep(0);
+
+                    // 初期化完了フラグを設定
+                    setTimeout(() => {
+                      swiperInitialized.current = true;
+                      setIsSwiperReady(true);
+                      console.log('[Swiper] Initialization complete via onInit');
+                    }, 100);
+                  });
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
@@ -760,7 +765,10 @@ export const NewOrderPage: React.FC = () => {
                 resistanceRatio={0}
                 edgeSwipeDetection={true}
                 touchStartPreventDefault={false}
-                allowTouchMove={isSwiperReady}
+                allowTouchMove={true}
+                observer={true}
+                observeParents={true}
+                watchOverflow={true}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
