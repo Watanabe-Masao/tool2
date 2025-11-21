@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Tabs, Tab, IconButton } from '@mui/material';
-import { Add, Close } from '@mui/icons-material';
+import { Box, Typography, Alert, Tabs, Tab, IconButton, Chip } from '@mui/material';
+import { Add, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -56,6 +56,43 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
+
+  /**
+   * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'ArrowLeft' && activeTabIndex > 0) {
+          e.preventDefault();
+          setActiveTabIndex(activeTabIndex - 1);
+        } else if (e.key === 'ArrowRight' && activeTabIndex < fields.length - 1) {
+          e.preventDefault();
+          setActiveTabIndex(activeTabIndex + 1);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTabIndex, fields.length]);
+
+  /**
+   * 商品の未入力項目数を計算
+   */
+  const getIncompleteCount = (index: number): number => {
+    const product = products?.[index];
+    if (!product) return 0;
+
+    let count = 0;
+    if (!product.name) count++;
+    if (!product.origin) count++;
+    if (!product.supplier) count++;
+    if (!product.specification) count++;
+    if (!product.quantityPerPackage) count++;
+    if (!product.unit) count++;
+
+    return count;
+  };
 
   /**
    * 最後に選択された帳合先を取得
@@ -121,6 +158,32 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Alert>
       )}
 
+      {/* 前後ナビゲーションボタン */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2, justifyContent: 'center' }}>
+        <IconButton
+          size="small"
+          disabled={activeTabIndex === 0}
+          onClick={() => setActiveTabIndex(activeTabIndex - 1)}
+          title="前の商品 (Ctrl+←)"
+        >
+          <ChevronLeft />
+        </IconButton>
+        <Typography variant="body2" sx={{ minWidth: 200, textAlign: 'center' }}>
+          {products?.[activeTabIndex]?.name || `商品${activeTabIndex + 1}`}
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            ({activeTabIndex + 1} / {fields.length})
+          </Typography>
+        </Typography>
+        <IconButton
+          size="small"
+          disabled={activeTabIndex === fields.length - 1}
+          onClick={() => setActiveTabIndex(activeTabIndex + 1)}
+          title="次の商品 (Ctrl+→)"
+        >
+          <ChevronRight />
+        </IconButton>
+      </Box>
+
       {/* タブナビゲーション */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs
@@ -132,12 +195,21 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           {fields.map((field, index) => {
             const product = products?.[index];
             const label = product?.name || `商品${index + 1}`;
+            const incompleteCount = getIncompleteCount(index);
             return (
               <Tab
                 key={field.id}
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography variant="body2">{label}</Typography>
+                    {incompleteCount > 0 && (
+                      <Chip
+                        label={incompleteCount}
+                        size="small"
+                        color="warning"
+                        sx={{ height: 18, fontSize: '0.7rem', minWidth: 18, '& .MuiChip-label': { px: 0.5 } }}
+                      />
+                    )}
                     {fields.length > 1 && (
                       <IconButton
                         size="small"
