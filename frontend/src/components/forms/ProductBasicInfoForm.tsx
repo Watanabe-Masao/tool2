@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Tabs, Tab, IconButton, Chip } from '@mui/material';
+import { Box, Typography, Alert, Tabs, Tab, IconButton, Chip, Tooltip } from '@mui/material';
 import { Add, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -53,6 +53,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 }) => {
   // アクティブなタブのインデックス
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+  // タブコンテナのref（自動センタリング用）
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   // スワイプ検出用の状態
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -164,6 +167,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   }, [activeTabIndex, fields.length]);
 
   /**
+   * アクティブタブの自動センタリング
+   */
+  useEffect(() => {
+    if (tabsRef.current) {
+      const activeTab = tabsRef.current.querySelector('[aria-selected="true"]');
+      if (activeTab) {
+        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTabIndex]);
+
+  /**
    * 商品の未入力項目数を計算
    */
   const getIncompleteCount = (index: number): number => {
@@ -179,6 +194,49 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     if (!product.unit) count++;
 
     return count;
+  };
+
+  /**
+   * 未入力項目のラベルリストを取得
+   */
+  const getIncompleteItems = (index: number): string[] => {
+    const product = products?.[index];
+    if (!product) return [];
+
+    const items: string[] = [];
+    if (!product.name) items.push('品名');
+    if (!product.origin) items.push('産地');
+    if (!product.supplier) items.push('帳合先');
+    if (!product.specification) items.push('規格');
+    if (!product.quantityPerPackage) items.push('入数');
+    if (!product.unit) items.push('単位');
+
+    return items;
+  };
+
+  /**
+   * タブのラベルを作成（#番号 + 品名8文字まで）
+   */
+  const getTabLabel = (index: number): string => {
+    const product = products?.[index];
+    const name = product?.name || '';
+    const truncated = name.length > 8 ? name.slice(0, 8) + '...' : name;
+    return `#${index + 1}${truncated ? ' ' + truncated : ''}`;
+  };
+
+  /**
+   * タブのツールチップコンテンツを作成
+   */
+  const getTabTooltip = (index: number): string => {
+    const product = products?.[index];
+    const name = product?.name || `商品${index + 1}`;
+    const incompleteItems = getIncompleteItems(index);
+
+    if (incompleteItems.length === 0) {
+      return `${name}\n✓ すべて入力済み`;
+    } else {
+      return `${name}\n未入力: ${incompleteItems.join('、')}`;
+    }
   };
 
   /**
@@ -256,7 +314,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       </Box>
 
       {/* タブナビゲーション */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }} ref={tabsRef}>
         <Tabs
           value={activeTabIndex}
           onChange={handleTabChange}
@@ -264,49 +322,66 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           scrollButtons="auto"
         >
           {fields.map((field, index) => {
-            const product = products?.[index];
-            const label = product?.name || `商品${index + 1}`;
             const incompleteCount = getIncompleteCount(index);
             return (
-              <Tab
-                key={field.id}
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2">{label}</Typography>
-                    {incompleteCount > 0 && (
-                      <Chip
-                        label={incompleteCount}
-                        size="small"
-                        color="warning"
-                        sx={{ height: 18, fontSize: '0.7rem', minWidth: 18, '& .MuiChip-label': { px: 0.5 } }}
-                      />
-                    )}
-                    {fields.length > 1 && (
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveProduct(index);
+              <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
+                <Tab
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: incompleteCount === 0 ? 'bold' : 'normal',
+                          fontSize: '0.75rem',
                         }}
-                        sx={{ ml: 0.5, p: 0.25 }}
                       >
-                        <Close fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                }
-                sx={{ minHeight: 48 }}
-              />
+                        {getTabLabel(index)}
+                      </Typography>
+                      {incompleteCount > 0 && (
+                        <Chip
+                          label={incompleteCount}
+                          size="small"
+                          color="warning"
+                          sx={{
+                            height: 16,
+                            fontSize: '0.65rem',
+                            minWidth: 16,
+                            '& .MuiChip-label': { px: 0.4 }
+                          }}
+                        />
+                      )}
+                      {fields.length > 1 && (
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveProduct(index);
+                          }}
+                          sx={{ ml: 0.3, p: 0.2 }}
+                        >
+                          <Close sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      )}
+                    </Box>
+                  }
+                  sx={{
+                    minHeight: 36,
+                    py: 0.5,
+                    borderLeft: 3,
+                    borderColor: incompleteCount === 0 ? 'success.main' : 'warning.main',
+                  }}
+                />
+              </Tooltip>
             );
           })}
           {/* 追加タブ */}
           <Tab
-            icon={<Add />}
+            icon={<Add sx={{ fontSize: 18 }} />}
             iconPosition="start"
-            label="商品を追加"
+            label={<Typography variant="caption">追加</Typography>}
             onClick={handleAddProduct}
             disabled={fields.length >= 50}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: 36, py: 0.5 }}
           />
         </Tabs>
       </Box>
