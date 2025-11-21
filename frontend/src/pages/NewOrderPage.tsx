@@ -7,8 +7,7 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
 import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
-import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
-import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile';
+import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
@@ -24,7 +23,6 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { isMobileDevice } from '@/utils/deviceDetection';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 import { format } from 'date-fns';
 
@@ -526,8 +524,6 @@ export const NewOrderPage: React.FC = () => {
     return null;
   };
 
-  const isMobile = isMobileDevice();
-
   /**
    * 下書きを復元
    */
@@ -647,26 +643,11 @@ export const NewOrderPage: React.FC = () => {
               {/* Step 4: 店舗配分 */}
               {activeStep === 3 && (
                 <Box sx={{ py: 2 }}>
-                  {productFields.map((field, index) => {
-                    const product = formData.products[index];
-                    return isMobile ? (
-                      <StoreAllocationMobile
-                        key={field.id}
-                        productIndex={index}
-                        control={control}
-                        errors={errors}
-                        totalDelivery={product?.totalDelivery || 0}
-                      />
-                    ) : (
-                      <StoreAllocationGrid
-                        key={field.id}
-                        productIndex={index}
-                        control={control}
-                        errors={errors}
-                        totalDelivery={product?.totalDelivery || 0}
-                      />
-                    );
-                  })}
+                  <StoreAllocationForm
+                    control={control}
+                    errors={errors}
+                    fields={productFields}
+                  />
                   {renderSubmitButton()}
                 </Box>
               )}
