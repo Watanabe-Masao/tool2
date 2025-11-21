@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId } from 'react-hook-form';
-import { Box, Typography, Alert, Card, CardContent, Grid, Chip, Tooltip } from '@mui/material';
-import { ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Box, Typography, Alert, Grid, Chip, Tooltip, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -245,8 +245,9 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       grossProfit += (sellingPrice - storeCost) * quantity; // 粗利額 = 売価 - 店着原価
     });
 
-    const averageProfitMargin = totalSellingPrice > 0
-      ? ((totalSellingPrice - totalCenterCostWithFee) / totalSellingPrice * 100).toFixed(1)
+    // 出荷原価率 = 店着総原価 / センターフィー込総原価 × 100
+    const shippingCostRate = totalCenterCostWithFee > 0
+      ? (totalStoreCost / totalCenterCostWithFee * 100).toFixed(1)
       : '0.0';
 
     const grossProfitMargin = totalSellingPrice > 0
@@ -259,7 +260,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       totalStoreCost,
       totalSellingPrice,
       totalProfit,
-      averageProfitMargin,
+      shippingCostRate,
       grossProfit,
       grossProfitMargin,
     };
@@ -281,14 +282,18 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         </Alert>
       )}
 
-      {/* 全体集計サマリー */}
+      {/* 全体集計サマリー（折りたたみ可能） */}
       {fields.length > 0 && (
-        <Card variant="outlined" sx={{ mb: 2, bgcolor: 'primary.50', borderColor: 'primary.main', borderWidth: 2 }}>
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: 'primary.main' }}>
+        <Accordion defaultExpanded sx={{ mb: 2, bgcolor: 'primary.50', border: '2px solid', borderColor: 'primary.main' }}>
+          <AccordionSummary
+            expandIcon={<ExpandMore />}
+            sx={{ minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
+          >
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'primary.main' }}>
               全体集計
             </Typography>
-
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={2}>
               {/* 1列目 */}
               <Grid item xs={6}>
@@ -320,13 +325,13 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                       ¥{summary.totalProfit.toLocaleString()}
                     </Typography>
                   </Box>
-                  {/* 平均値入率 */}
+                  {/* 出荷原価率 */}
                   <Box>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      平均値入率
+                      出荷原価率
                     </Typography>
                     <Typography variant="body2" fontWeight="bold" color="info.main">
-                      {summary.averageProfitMargin}%
+                      {summary.shippingCostRate}%
                     </Typography>
                   </Box>
                 </Box>
@@ -374,8 +379,8 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                 </Box>
               </Grid>
             </Grid>
-          </CardContent>
-        </Card>
+          </AccordionDetails>
+        </Accordion>
       )}
 
       {/* 商品ナビゲーション情報 */}
@@ -387,16 +392,20 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}　総納品数：{products?.[activeTabIndex]?.totalDelivery || '－'}
         </Typography>
         <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'secondary.main' }}>
-          店着原価（1単位）：¥{products?.[activeTabIndex]?.storeCost?.toLocaleString() || '－'}　売価（1単位）：¥{products?.[activeTabIndex]?.priceExcludingTax?.toLocaleString() || '－'}　粗利額（1単位）：¥{(() => {
+          センターフィー込原価（1単位）：¥{(() => {
             const product = products?.[activeTabIndex];
-            if (product?.priceExcludingTax && product?.storeCost) {
-              return (product.priceExcludingTax - product.storeCost).toLocaleString();
+            if (product?.centerCost) {
+              const centerFeeRate = product.centerFeeRate || 13;
+              const centerCostWithFee = Math.round(product.centerCost * (1 + centerFeeRate / 100));
+              return centerCostWithFee.toLocaleString();
             }
             return '－';
-          })()}　値入率：{(() => {
+          })()}　店着原価（1単位）：¥{products?.[activeTabIndex]?.storeCost?.toLocaleString() || '－'}　差益（1単位あたり）：¥{(() => {
             const product = products?.[activeTabIndex];
-            if (product?.priceExcludingTax && product?.storeCost && product.priceExcludingTax > 0) {
-              return ((product.priceExcludingTax - product.storeCost) / product.priceExcludingTax * 100).toFixed(1) + '%';
+            if (product?.centerCost && product?.storeCost) {
+              const centerFeeRate = product.centerFeeRate || 13;
+              const centerCostWithFee = Math.round(product.centerCost * (1 + centerFeeRate / 100));
+              return (product.storeCost - centerCostWithFee).toLocaleString();
             }
             return '－';
           })()}
