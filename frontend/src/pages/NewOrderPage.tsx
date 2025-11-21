@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import type { Swiper as SwiperType } from 'swiper';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -55,7 +53,6 @@ export const NewOrderPage: React.FC = () => {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
-  const [swiperKey, setSwiperKey] = useState(0); // Swiperを強制的に再マウントするためのキー
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -74,12 +71,6 @@ export const NewOrderPage: React.FC = () => {
     affectedProductsCount: 0,
     newSuppliers: [],
   });
-
-  // Swiper instance reference
-  const swiperRef = useRef<SwiperType | null>(null);
-
-  // Swiper初期化完了フラグ（初期化中のonSlideChangeを無視するため）
-  const swiperInitialized = useRef(false);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -321,90 +312,11 @@ export const NewOrderPage: React.FC = () => {
     };
   }, [hasUnsavedChanges]);
 
-
   /**
-   * Swiperマウント後に強制的にスライド0に設定
-   * 一時的に無効化してテスト
+   * タブ変更時の処理
    */
-  /*useEffect(() => {
-    if (swiperRef.current && !swiperInitialized.current) {
-      console.log('[useEffect] Checking Swiper state on mount');
-      const checkAndFixSlide = () => {
-        if (swiperRef.current) {
-          const currentIndex = swiperRef.current.activeIndex;
-          const currentTranslate = swiperRef.current.translate;
-          console.log('[useEffect] Current activeIndex:', currentIndex, 'translate:', currentTranslate);
-
-          if (currentIndex !== 0 || currentTranslate !== 0) {
-            console.log('[useEffect] Force moving to slide 0 and resetting transform');
-            swiperRef.current.slideTo(0, 0);
-            swiperRef.current.setTranslate(0);
-            swiperRef.current.updateProgress();
-            swiperRef.current.updateSlidesClasses();
-            setActiveStep(0);
-          }
-        }
-      };
-
-      // 複数回チェック
-      checkAndFixSlide();
-      setTimeout(checkAndFixSlide, 100);
-      setTimeout(checkAndFixSlide, 300);
-      setTimeout(checkAndFixSlide, 500);
-    }
-  }, [swiperRef.current]); // swiperRefが設定されたら実行*/
-
-  /**
-   * フォームデータ変更時にSwiperを更新
-   */
-  useEffect(() => {
-    if (swiperRef.current) {
-      // Swiperを更新
-      setTimeout(() => {
-        swiperRef.current?.update();
-      }, 100);
-    }
-  }, [formData.products?.length]); // 商品数が変更されたときに更新
-
-  /**
-   * コンテンツサイズ変更を監視してSwiperを更新
-   */
-  useEffect(() => {
-    if (!swiperRef.current) return;
-
-    const swiperEl = swiperRef.current.el;
-    if (!swiperEl) return;
-
-    // ResizeObserverでコンテンツのサイズ変更を検出
-    const resizeObserver = new ResizeObserver(() => {
-      if (swiperRef.current) {
-        swiperRef.current.update();
-      }
-    });
-
-    // すべてのスライドを監視
-    const slides = swiperEl.querySelectorAll('.swiper-slide');
-    slides.forEach((slide) => {
-      resizeObserver.observe(slide);
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [activeStep]); // アクティブステップが変わったときに再設定
-
-  /**
-   * スライド変更時の処理
-   */
-  const handleSlideChange = (swiper: SwiperType) => {
-    console.log('[Swiper] onSlideChange - activeIndex:', swiper.activeIndex, 'initialized:', swiperInitialized.current);
-    // 初期化中のスライド変更を無視
-    if (!swiperInitialized.current) {
-      console.log('[Swiper] Ignoring slide change during initialization');
-      return;
-    }
-    console.log('[Swiper] Setting activeStep to:', swiper.activeIndex);
-    setActiveStep(swiper.activeIndex);
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveStep(newValue);
   };
 
   /**
@@ -628,10 +540,8 @@ export const NewOrderPage: React.FC = () => {
       setRestoreDialogOpen(false);
       showSuccess('下書きを復元しました');
 
-      // Swiperをリセットして最初のステップに戻す
+      // 最初のステップに戻す
       setActiveStep(0);
-      swiperInitialized.current = false;
-      setSwiperKey(prev => prev + 1); // Swiperを再マウント
 
       isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
       setTimeout(() => {
@@ -668,7 +578,7 @@ export const NewOrderPage: React.FC = () => {
         </Container>
       ) : (
         /* フォーム入力画面 */
-        <Box sx={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+        <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
           {/* オフライン時の警告 */}
           {!isOnline && (
             <Box sx={{ px: 2, pt: 2 }}>
@@ -678,135 +588,90 @@ export const NewOrderPage: React.FC = () => {
             </Box>
           )}
 
-          {/* スワイプ可能なステップコンテンツ */}
-          <Box
-            sx={{
-              width: '100%',
-              height: '100%',
-              position: 'relative',
-              '& .swiper': {
-                width: '100%',
-                height: '100%',
-              },
-              '& .swiper-wrapper': {
-                transform: 'translate3d(0px, 0, 0) !important',
-              },
-            }}
-          >
-            <Swiper
-                key={swiperKey}
-                onSwiper={(swiper) => {
-                  console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
-                  console.log('[Swiper] Container width:', swiper.width, 'Slide width:', swiper.slides[0]?.offsetWidth);
-                  swiperRef.current = swiper;
-
-                  // onSwiperで直接初期化（onInitが発火しない場合に備えて）
-                  swiperInitialized.current = true;
-                  setActiveStep(0);
-
-                  // 強制的に最初のスライドに設定
-                  setTimeout(() => {
-                    if (swiper.activeIndex !== 0) {
-                      console.log('[Swiper] Forcing to slide 0 from onSwiper');
-                      swiper.slideTo(0, 0);
-                      setActiveStep(0);
-                    }
-                  }, 50);
-                }}
-                onInit={(swiper) => {
-                  console.log('[Swiper] onInit - activeIndex:', swiper.activeIndex, 'translate:', swiper.translate);
-                  console.log('[Swiper] Container width:', swiper.width, 'Viewport:', swiper.el.offsetWidth);
-
-                  // 初期化完了フラグを設定
-                  swiperInitialized.current = true;
-                  setActiveStep(0);
-
-                  console.log('[Swiper] Initialization complete');
-                }}
-                onSlideChange={handleSlideChange}
-                initialSlide={0}
-                spaceBetween={0}
-                slidesPerView={1}
-                width={typeof window !== 'undefined' ? window.innerWidth : undefined}
-                loop={false}
-                resistance={true}
-                resistanceRatio={0}
-                edgeSwipeDetection={true}
-                touchStartPreventDefault={false}
-                allowTouchMove={true}
-                observer={true}
-                observeParents={true}
-                watchOverflow={true}
-                style={{ width: '100%', height: '100%' }}
+          {/* タブナビゲーション */}
+          <Container maxWidth="lg">
+            <Box sx={{ width: '100%', py: 2 }}>
+              <Tabs
+                value={activeStep}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
               >
-                {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <DeliveryDateForm
-                      control={control}
-                      errors={errors}
-                      supplierOptions={supplierAutocomplete.options}
-                      onSuppliersChange={handleSuppliersChange}
-                    />
-                  </Box>
-                </SwiperSlide>
+                <Tab label="店着日・帳合先" />
+                <Tab label="商品情報" />
+                <Tab label="価格・数量" />
+                <Tab label="店舗配分" />
+              </Tabs>
 
-                {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <ProductBasicInfoForm
-                      control={control}
-                      errors={errors}
-                      productNameOptions={productNameAutocomplete.options}
-                      originOptions={originAutocomplete.options}
-                      suppliers={formData.suppliers}
-                      fields={productFields}
-                      append={appendProduct}
-                      remove={removeProduct}
-                      onNavigateToStep={(step) => swiperRef.current?.slideTo(step)}
-                    />
-                  </Box>
-                </SwiperSlide>
+              {/* Step 1: 店着日・帳合先 */}
+              {activeStep === 0 && (
+                <Box sx={{ py: 2 }}>
+                  <DeliveryDateForm
+                    control={control}
+                    errors={errors}
+                    supplierOptions={supplierAutocomplete.options}
+                    onSuppliersChange={handleSuppliersChange}
+                  />
+                </Box>
+              )}
 
-                {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <ProductPricingForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                    />
-                  </Box>
-                </SwiperSlide>
+              {/* Step 2: 商品情報（基本） */}
+              {activeStep === 1 && (
+                <Box sx={{ py: 2 }}>
+                  <ProductBasicInfoForm
+                    control={control}
+                    errors={errors}
+                    productNameOptions={productNameAutocomplete.options}
+                    originOptions={originAutocomplete.options}
+                    suppliers={formData.suppliers}
+                    fields={productFields}
+                    append={appendProduct}
+                    remove={removeProduct}
+                    onNavigateToStep={setActiveStep}
+                  />
+                </Box>
+              )}
 
-                {/* Step 4: 店舗配分 */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    {productFields.map((field, index) => {
-                      const product = formData.products[index];
-                      return isMobile ? (
-                        <StoreAllocationMobile
-                          key={field.id}
-                          productIndex={index}
-                          control={control}
-                          errors={errors}
-                          totalDelivery={product?.totalDelivery || 0}
-                        />
-                      ) : (
-                        <StoreAllocationGrid
-                          key={field.id}
-                          productIndex={index}
-                          control={control}
-                          errors={errors}
-                          totalDelivery={product?.totalDelivery || 0}
-                        />
-                      );
-                    })}
-                    {renderSubmitButton()}
-                  </Box>
-                </SwiperSlide>
-              </Swiper>
-          </Box>
+              {/* Step 3: 商品情報2（価格・総納品数） */}
+              {activeStep === 2 && (
+                <Box sx={{ py: 2 }}>
+                  <ProductPricingForm
+                    control={control}
+                    errors={errors}
+                    fields={productFields}
+                  />
+                </Box>
+              )}
+
+              {/* Step 4: 店舗配分 */}
+              {activeStep === 3 && (
+                <Box sx={{ py: 2 }}>
+                  {productFields.map((field, index) => {
+                    const product = formData.products[index];
+                    return isMobile ? (
+                      <StoreAllocationMobile
+                        key={field.id}
+                        productIndex={index}
+                        control={control}
+                        errors={errors}
+                        totalDelivery={product?.totalDelivery || 0}
+                      />
+                    ) : (
+                      <StoreAllocationGrid
+                        key={field.id}
+                        productIndex={index}
+                        control={control}
+                        errors={errors}
+                        totalDelivery={product?.totalDelivery || 0}
+                      />
+                    );
+                  })}
+                  {renderSubmitButton()}
+                </Box>
+              )}
+            </Box>
+          </Container>
         </Box>
       )}
 
@@ -853,8 +718,7 @@ export const NewOrderPage: React.FC = () => {
         )}
 
         {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
-        {/* 一時的に無効化してテスト */}
-        {false && !showGeneratedPreview && (
+        {!showGeneratedPreview && (
           <FloatingProgressSummary
             formData={formData}
             activeStep={activeStep}
