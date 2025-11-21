@@ -224,6 +224,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
     let totalStoreCost = 0;
     let totalSellingPrice = 0;
     let totalProfit = 0;
+    let grossProfit = 0; // 粗利額
 
     products.forEach((product) => {
       const centerCost = product.centerCost || 0;
@@ -241,10 +242,15 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       totalStoreCost += storeCost * quantity;
       totalSellingPrice += sellingPrice * quantity;
       totalProfit += (storeCost - centerCostWithFee) * quantity;
+      grossProfit += (sellingPrice - storeCost) * quantity; // 粗利額 = 売価 - 店着原価
     });
 
     const averageProfitMargin = totalSellingPrice > 0
       ? ((totalSellingPrice - totalCenterCostWithFee) / totalSellingPrice * 100).toFixed(1)
+      : '0.0';
+
+    const grossProfitMargin = totalSellingPrice > 0
+      ? (grossProfit / totalSellingPrice * 100).toFixed(1)
       : '0.0';
 
     return {
@@ -254,6 +260,8 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       totalSellingPrice,
       totalProfit,
       averageProfitMargin,
+      grossProfit,
+      grossProfitMargin,
     };
   }, [products]);
 
@@ -281,70 +289,88 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
               全体集計
             </Typography>
 
-            <Grid container spacing={1}>
-              {/* 1行目: 総原価 / 総売価 */}
+            <Grid container spacing={2}>
+              {/* 1列目 */}
               <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    総原価（センター着）
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    ¥{summary.totalCenterCost.toLocaleString()}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    総売価
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    ¥{summary.totalSellingPrice.toLocaleString()}
-                  </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* 総原価（センター着） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（センター着）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalCenterCost.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 総原価（センターフィー込） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（センターフィー込）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalCenterCostWithFee.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 全体差益 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      全体差益
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                      ¥{summary.totalProfit.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 平均値入率 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      平均値入率
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="info.main">
+                      {summary.averageProfitMargin}%
+                    </Typography>
+                  </Box>
                 </Box>
               </Grid>
 
-              {/* 2行目: センターフィー込総原価 / 店着総原価 */}
+              {/* 2列目 */}
               <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    総原価（センターフィー込）
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    ¥{summary.totalCenterCostWithFee.toLocaleString()}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    総原価（店着）
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    ¥{summary.totalStoreCost.toLocaleString()}
-                  </Typography>
-                </Box>
-              </Grid>
-
-              {/* 3行目: 全体差益 / 平均値入率 */}
-              <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    全体差益
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold" color="success.main">
-                    ¥{summary.totalProfit.toLocaleString()}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    平均値入率
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold" color="info.main">
-                    {summary.averageProfitMargin}%
-                  </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* 総原価（店着） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（店着）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalStoreCost.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 総売価 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総売価
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalSellingPrice.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 粗利額 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      粗利額
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                      ¥{summary.grossProfit.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 値入率 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      値入率
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="info.main">
+                      {summary.grossProfitMargin}%
+                    </Typography>
+                  </Box>
                 </Box>
               </Grid>
             </Grid>
@@ -359,6 +385,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         </Typography>
         <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'primary.main' }}>
           品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}　総納品数：{products?.[activeTabIndex]?.totalDelivery || '－'}
+        </Typography>
+        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'secondary.main' }}>
+          店着原価（1単位）：¥{products?.[activeTabIndex]?.storeCost?.toLocaleString() || '－'}　売価（1単位）：¥{products?.[activeTabIndex]?.priceExcludingTax?.toLocaleString() || '－'}　粗利額（1単位）：¥{(() => {
+            const product = products?.[activeTabIndex];
+            if (product?.priceExcludingTax && product?.storeCost) {
+              return (product.priceExcludingTax - product.storeCost).toLocaleString();
+            }
+            return '－';
+          })()}　値入率：{(() => {
+            const product = products?.[activeTabIndex];
+            if (product?.priceExcludingTax && product?.storeCost && product.priceExcludingTax > 0) {
+              return ((product.priceExcludingTax - product.storeCost) / product.priceExcludingTax * 100).toFixed(1) + '%';
+            }
+            return '－';
+          })()}
         </Typography>
       </Box>
 
