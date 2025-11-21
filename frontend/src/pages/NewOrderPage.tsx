@@ -679,13 +679,39 @@ export const NewOrderPage: React.FC = () => {
           )}
 
           {/* スワイプ可能なステップコンテンツ */}
-          <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+              '& .swiper': {
+                width: '100%',
+                height: '100%',
+              },
+              '& .swiper-wrapper': {
+                transform: 'translate3d(0px, 0, 0) !important',
+              },
+            }}
+          >
             <Swiper
                 key={swiperKey}
                 onSwiper={(swiper) => {
                   console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
                   console.log('[Swiper] Container width:', swiper.width, 'Slide width:', swiper.slides[0]?.offsetWidth);
                   swiperRef.current = swiper;
+
+                  // onSwiperで直接初期化（onInitが発火しない場合に備えて）
+                  swiperInitialized.current = true;
+                  setActiveStep(0);
+
+                  // 強制的に最初のスライドに設定
+                  setTimeout(() => {
+                    if (swiper.activeIndex !== 0) {
+                      console.log('[Swiper] Forcing to slide 0 from onSwiper');
+                      swiper.slideTo(0, 0);
+                      setActiveStep(0);
+                    }
+                  }, 50);
                 }}
                 onInit={(swiper) => {
                   console.log('[Swiper] onInit - activeIndex:', swiper.activeIndex, 'translate:', swiper.translate);
