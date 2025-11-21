@@ -447,12 +447,13 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
    * +ボタンクリック（長押しされていない場合は新規追加）
    */
   const handleAddButtonClick = () => {
-    // 長押しタイマーがまだ残っていたら、通常のクリック（新規追加）
-    if (longPressTimer.current) {
-      setEditingId('new');
-      setNameValue('');
-      setEmailValue('');
-    }
+    // 編集メニューが開いている場合は何もしない（長押しだった）
+    if (editMenuAnchor) return;
+
+    // 通常のクリック：新規追加フォームを開く
+    setEditingId('new');
+    setNameValue('');
+    setEmailValue('');
   };
 
   /**
