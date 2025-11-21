@@ -41,6 +41,8 @@ export const FIRESTORE_COLLECTIONS = {
   SUPPLIER_PRESETS: 'supplier_presets',
   /** 店舗カテゴリー */
   STORE_CATEGORIES: 'store_categories',
+  /** メールアドレス帳 */
+  EMAIL_ADDRESSES: 'email_addresses',
 } as const;
 
 // ============================================================
