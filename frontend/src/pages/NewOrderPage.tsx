@@ -364,10 +364,13 @@ export const NewOrderPage: React.FC = () => {
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
+    console.log('[Swiper] onSlideChange - activeIndex:', swiper.activeIndex, 'initialized:', swiperInitialized.current);
     // 初期化中のスライド変更を無視
     if (!swiperInitialized.current) {
+      console.log('[Swiper] Ignoring slide change during initialization');
       return;
     }
+    console.log('[Swiper] Setting activeStep to:', swiper.activeIndex);
     setActiveStep(swiper.activeIndex);
   };
 
@@ -637,21 +640,33 @@ export const NewOrderPage: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Swiper
                 onSwiper={(swiper) => {
+                  console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex);
                   swiperRef.current = swiper;
 
                   // Swiper初期化時に確実にスライド0から開始
                   if (!swiperInitialized.current) {
-                    // 強制的にスライド0に移動（アニメーションなし）
+                    console.log('[Swiper] Initializing - forcing slide to 0');
+
+                    // 複数回試行して確実にスライド0に移動
                     swiper.slideTo(0, 0);
 
-                    // 初期状態を設定
-                    setActiveStep(0);
+                    // requestAnimationFrameを使って次のフレームで再度確認
+                    requestAnimationFrame(() => {
+                      if (swiper.activeIndex !== 0) {
+                        console.log('[Swiper] Still not at slide 0, retrying. Current index:', swiper.activeIndex);
+                        swiper.slideTo(0, 0);
+                      }
 
-                    // 初期化フラグをtrueに設定（以降のスライド変更を有効にする）
-                    // setTimeoutで次のイベントループで設定することで、初期化中のonSlideChangeを確実に無視
-                    setTimeout(() => {
-                      swiperInitialized.current = true;
-                    }, 0);
+                      // 最終的な状態を設定
+                      console.log('[Swiper] Final activeIndex:', swiper.activeIndex);
+                      setActiveStep(swiper.activeIndex);
+
+                      // 初期化完了フラグを設定
+                      requestAnimationFrame(() => {
+                        swiperInitialized.current = true;
+                        console.log('[Swiper] Initialization complete');
+                      });
+                    });
                   }
                 }}
                 onSlideChange={handleSlideChange}
