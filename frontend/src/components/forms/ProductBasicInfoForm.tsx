@@ -63,6 +63,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // タブコンテナのref（自動センタリング用）
   const tabsRef = useRef<HTMLDivElement>(null);
 
+  // スクロール終了検出用タイマー
+  const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // スワイプ検出用の状態
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -176,13 +179,57 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   }, [activeTabIndex, fields.length]);
 
   /**
+   * タブスクロール時に中央のタブを検出して選択
+   */
+  const handleTabScroll = () => {
+    if (!tabsRef.current) return;
+
+    // 既存のタイマーをクリア
+    if (scrollTimerRef.current) {
+      clearTimeout(scrollTimerRef.current);
+    }
+
+    // スクロール終了後に中央のタブを検出
+    scrollTimerRef.current = setTimeout(() => {
+      if (!tabsRef.current) return;
+
+      const container = tabsRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const containerCenter = containerRect.left + containerRect.width / 2;
+
+      // 全てのチップ要素を取得
+      const chips = container.querySelectorAll('[data-chip-index]');
+      let closestIndex = activeTabIndex;
+      let minDistance = Infinity;
+
+      chips.forEach((chip) => {
+        const chipRect = chip.getBoundingClientRect();
+        const chipCenter = chipRect.left + chipRect.width / 2;
+        const distance = Math.abs(containerCenter - chipCenter);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          const index = parseInt(chip.getAttribute('data-chip-index') || '0', 10);
+          closestIndex = index;
+        }
+      });
+
+      // 中央に最も近いタブをアクティブに
+      if (closestIndex !== activeTabIndex) {
+        setActiveTabIndex(closestIndex);
+      }
+    }, 150); // スクロール終了後150msで判定
+  };
+
+  /**
    * アクティブタブの自動センタリング
    */
   useEffect(() => {
     if (tabsRef.current) {
-      const activeTab = tabsRef.current.querySelector('[aria-selected="true"]');
-      if (activeTab) {
-        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      const chips = tabsRef.current.querySelectorAll('[data-chip-index]');
+      const targetChip = chips[activeTabIndex];
+      if (targetChip) {
+        targetChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
   }, [activeTabIndex]);
@@ -198,6 +245,17 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     }
     prevTabIndexRef.current = activeTabIndex;
   }, [activeTabIndex]);
+
+  /**
+   * クリーンアップ：タイマーをクリア
+   */
+  useEffect(() => {
+    return () => {
+      if (scrollTimerRef.current) {
+        clearTimeout(scrollTimerRef.current);
+      }
+    };
+  }, []);
 
   /**
    * 商品の未入力項目数を計算
@@ -316,23 +374,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
       {/* 商品ナビゲーション情報 */}
       <Box sx={{ mb: 2, px: 1 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.6 }}>
-          商品{activeTabIndex + 1}（{activeTabIndex + 1}/{fields.length}）
-          店着日：{deliveryDate ? new Date(deliveryDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '未設定'}
-          帳合先：{products?.[activeTabIndex]?.supplier || '未選択'}
+        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold' }}>
+          商品{activeTabIndex + 1}（{activeTabIndex + 1}/{fields.length}）　店着日：{deliveryDate ? new Date(deliveryDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '未設定'}　帳合先：{products?.[activeTabIndex]?.supplier || '未選択'}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.6 }}>
-          産地：{products?.[activeTabIndex]?.origin || '－'}
-          品名：{products?.[activeTabIndex]?.name || '－'}
-          規格：{products?.[activeTabIndex]?.specification || '－'}
-          入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}
-          単位：{products?.[activeTabIndex]?.unit || '－'}
+        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'primary.main' }}>
+          産地：{products?.[activeTabIndex]?.origin || '－'}　品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}　単位：{products?.[activeTabIndex]?.unit || '－'}
         </Typography>
       </Box>
 
       {/* チップ型タブナビゲーション */}
       <Box
         ref={tabsRef}
+        onScroll={handleTabScroll}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
@@ -345,6 +398,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           overflowX: 'auto',
           pb: 1,
           mb: 2,
+          scrollBehavior: 'smooth',
           '&::-webkit-scrollbar': {
             height: 6,
           },
@@ -362,6 +416,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           return (
             <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
               <Chip
+                data-chip-index={index}
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography
@@ -415,6 +470,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                   height: isActive ? 36 : 28,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  borderRadius: 2,
                   bgcolor: isComplete
                     ? isActive
                       ? 'success.main'
@@ -446,6 +502,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           sx={{
             height: 28,
             cursor: fields.length >= 50 ? 'not-allowed' : 'pointer',
+            borderRadius: 2,
             bgcolor: fields.length >= 50 ? 'action.disabledBackground' : 'primary.light',
             color: fields.length >= 50 ? 'action.disabled' : 'primary.main',
             '&:hover': fields.length >= 50
