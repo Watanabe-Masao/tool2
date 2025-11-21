@@ -699,6 +699,16 @@ export const NewOrderPage: React.FC = () => {
               Slides count: {swiperRef.current?.slides?.length ?? 'null'}
               <br />
               Active slide class: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.className ?? 'null'}
+              <br />
+              Active slide data-slide-number: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.getAttribute('data-slide-number') ?? 'null'}
+              <br />
+              Active slide data-slide-name: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.getAttribute('data-slide-name') ?? 'null'}
+              <br />
+              All slides data-slide-number: [
+              {swiperRef.current?.slides ? Array.from(swiperRef.current.slides).map((slide, idx) =>
+                `${idx}:${slide.getAttribute('data-slide-number')}`
+              ).join(', ') : 'null'}
+              ]
             </Box>
 
             {/* 各スライドに識別用のヘッダーを追加 */}
@@ -754,10 +764,10 @@ export const NewOrderPage: React.FC = () => {
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide>
+                <SwiperSlide data-slide-number="1" data-slide-name="delivery-date">
                   <Box sx={{ px: 1, pb: 4 }}>
                     <Box sx={{ mb: 2, p: 2, bgcolor: 'success.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 1/4: 店着日・帳合先 ★</strong>
+                      <strong>★ スライド 1/4: 店着日・帳合先 ★ [DOM-INDEX-CHECK]</strong>
                     </Box>
                     <DeliveryDateForm
                       control={control}
@@ -769,10 +779,10 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide>
+                <SwiperSlide data-slide-number="2" data-slide-name="product-basic">
                   <Box sx={{ px: 1, pb: 4 }}>
                     <Box sx={{ mb: 2, p: 2, bgcolor: 'secondary.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 2/4: 商品情報（基本） ★</strong>
+                      <strong>★ スライド 2/4: 商品情報（基本） ★ [DOM-INDEX-CHECK]</strong>
                     </Box>
                     <ProductBasicInfoForm
                       control={control}
@@ -789,10 +799,10 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide>
+                <SwiperSlide data-slide-number="3" data-slide-name="product-pricing">
                   <Box sx={{ px: 1, pb: 4 }}>
                     <Box sx={{ mb: 2, p: 2, bgcolor: 'error.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 3/4: 商品情報2（価格・総納品数） ★</strong>
+                      <strong>★ スライド 3/4: 商品情報2（価格・総納品数） ★ [DOM-INDEX-CHECK]</strong>
                     </Box>
                     <ProductPricingForm
                       control={control}
@@ -803,10 +813,10 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 4: 店舗配分 */}
-                <SwiperSlide>
+                <SwiperSlide data-slide-number="4" data-slide-name="store-allocation">
                   <Box sx={{ px: 1, pb: 4 }}>
                     <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 4/4: 店舗配分 ★</strong>
+                      <strong>★ スライド 4/4: 店舗配分 ★ [DOM-INDEX-CHECK]</strong>
                     </Box>
                     {productFields.map((field, index) => {
                       const product = formData.products[index];
