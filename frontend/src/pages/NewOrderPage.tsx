@@ -648,11 +648,25 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => {
                   swiperRef.current = swiper;
-                  // 初期化時に確実にスライド0から開始
-                  if (swiper.activeIndex !== 0) {
-                    swiper.slideTo(0, 0);
-                  }
+                  // 初期化時に確実にスライド0から開始（複数回実行して確実にする）
+                  swiper.slideTo(0, 0);
                   setActiveStep(0);
+
+                  // 次のイベントループでも確認
+                  setTimeout(() => {
+                    if (swiper.activeIndex !== 0) {
+                      swiper.slideTo(0, 0);
+                      setActiveStep(0);
+                    }
+                  }, 0);
+
+                  // さらにDOMが完全に準備された後も確認
+                  setTimeout(() => {
+                    if (swiper.activeIndex !== 0) {
+                      swiper.slideTo(0, 0);
+                      setActiveStep(0);
+                    }
+                  }, 100);
                 }}
                 onSlideChange={handleSlideChange}
                 onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
@@ -663,8 +677,6 @@ export const NewOrderPage: React.FC = () => {
                 noSwiping={true}
                 noSwipingClass="swiper-no-swiping"
                 watchSlidesProgress={true}
-                observer={true}
-                observeParents={true}
                 watchOverflow={true}
                 autoHeight={true}
                 style={{ width: '100%' }}
