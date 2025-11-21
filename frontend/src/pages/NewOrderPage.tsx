@@ -318,14 +318,13 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * フォームデータ変更時にSwiperの高さを更新
+   * フォームデータ変更時にSwiperを更新
    */
   useEffect(() => {
     if (swiperRef.current) {
-      // Swiperを更新して高さを再計算
+      // Swiperを更新
       setTimeout(() => {
         swiperRef.current?.update();
-        swiperRef.current?.updateAutoHeight(300);
       }, 100);
     }
   }, [formData.products?.length]); // 商品数が変更されたときに更新
@@ -343,7 +342,6 @@ export const NewOrderPage: React.FC = () => {
     const resizeObserver = new ResizeObserver(() => {
       if (swiperRef.current) {
         swiperRef.current.update();
-        swiperRef.current.updateAutoHeight(300);
       }
     });
 
@@ -364,21 +362,15 @@ export const NewOrderPage: React.FC = () => {
   const handleSlideChange = (swiper: SwiperType) => {
     console.log('[Swiper] onSlideChange - activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
     setActiveStep(swiper.activeIndex);
-    // スライド変更時に高さを更新
-    setTimeout(() => {
-      swiper.update();
-      swiper.updateAutoHeight(300);
-    }, 50);
   };
 
   /**
    * スライド遷移完了時の処理
    */
   const handleSlideChangeTransitionEnd = (swiper: SwiperType) => {
-    // 遷移完了後に高さを再計算
+    // 遷移完了後にSwiperを更新
     setTimeout(() => {
       swiper.update();
-      swiper.updateAutoHeight(300);
     }, 50);
   };
 
@@ -690,7 +682,6 @@ export const NewOrderPage: React.FC = () => {
                 noSwipingClass="swiper-no-swiping"
                 watchSlidesProgress={true}
                 watchOverflow={true}
-                autoHeight={true}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
