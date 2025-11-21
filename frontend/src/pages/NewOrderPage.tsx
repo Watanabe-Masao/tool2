@@ -658,9 +658,11 @@ export const NewOrderPage: React.FC = () => {
                 initialSlide={0}
                 spaceBetween={16}
                 slidesPerView={1}
+                loop={false}
                 resistance={true}
                 resistanceRatio={0}
                 edgeSwipeDetection={true}
+                touchStartPreventDefault={false}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
