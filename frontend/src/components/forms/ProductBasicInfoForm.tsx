@@ -469,12 +469,13 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'background 0.2s',
+              pointerEvents: 'none', // タッチイベントを透過
               '&:hover': {
                 background: 'linear-gradient(to right, rgba(25, 118, 210, 0.2), transparent)',
               },
             }}
           >
-            <ChevronLeft sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7 }} />
+            <ChevronLeft sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
           </Box>
         )}
 
@@ -498,12 +499,13 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'background 0.2s',
+              pointerEvents: 'none', // タッチイベントを透過
               '&:hover': {
                 background: 'linear-gradient(to left, rgba(25, 118, 210, 0.2), transparent)',
               },
             }}
           >
-            <ChevronRight sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7 }} />
+            <ChevronRight sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
           </Box>
         )}
 
