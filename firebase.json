@@ -16,6 +16,7 @@
         "destination": "/index.html"
       }
     ],
+    "cleanUrls": true,
     "headers": [
       {
         "source": "/sw.js",
@@ -23,6 +24,36 @@
           {
             "key": "Cache-Control",
             "value": "no-cache"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/javascript"
+          }
+        ]
+      },
+      {
+        "source": "/registerSW.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/javascript"
+          }
+        ]
+      },
+      {
+        "source": "/manifest.webmanifest",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/manifest+json"
           }
         ]
       },
@@ -32,6 +63,10 @@
           {
             "key": "Cache-Control",
             "value": "no-cache"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/javascript"
           }
         ]
       },
