@@ -64,7 +64,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // スクロール終了検出用タイマー
-  const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // スワイプ検出用の状態
   const [touchStart, setTouchStart] = useState<number | null>(null);
