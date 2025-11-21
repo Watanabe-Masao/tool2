@@ -399,6 +399,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           pb: 1,
           mb: 2,
           scrollBehavior: 'smooth',
+          px: 'calc(50vw - 60px)', // 左右に画面幅の半分のパディングを追加（チップ幅の半分を引く）
           '&::-webkit-scrollbar': {
             height: 6,
           },
