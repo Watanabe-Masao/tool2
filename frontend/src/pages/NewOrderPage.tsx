@@ -386,16 +386,6 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * スライド遷移完了時の処理
-   */
-  const handleSlideChangeTransitionEnd = (swiper: SwiperType) => {
-    // 遷移完了後にSwiperを更新
-    setTimeout(() => {
-      swiper.update();
-    }, 50);
-  };
-
-  /**
    * ExcelファイルをBlobとして取得
    */
   const fetchExcelAsBlob = async (url: string): Promise<Blob> => {
