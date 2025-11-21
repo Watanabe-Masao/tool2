@@ -646,7 +646,14 @@ export const NewOrderPage: React.FC = () => {
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
               <Swiper
-                onSwiper={(swiper) => (swiperRef.current = swiper)}
+                onSwiper={(swiper) => {
+                  swiperRef.current = swiper;
+                  // 初期化時に確実にスライド0から開始
+                  if (swiper.activeIndex !== 0) {
+                    swiper.slideTo(0, 0);
+                  }
+                  setActiveStep(0);
+                }}
                 onSlideChange={handleSlideChange}
                 onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
                 initialSlide={0}
