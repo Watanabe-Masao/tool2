@@ -654,8 +654,7 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 onSwiper={(swiper) => {
                   swiperRef.current = swiper;
-                  console.log('[Swiper Init] activeIndex:', swiper.activeIndex, 'slides.length:', swiper.slides.length);
-                  console.log('[Swiper Init] Slide elements:', swiper.slides);
+                  console.log('[Swiper Init] activeIndex:', swiper.activeIndex, 'slides.length:', swiper.slides?.length);
 
                   // 初期化時に確実にスライド0から開始（複数回実行して確実にする）
                   swiper.slideTo(0, 0);
@@ -663,7 +662,7 @@ export const NewOrderPage: React.FC = () => {
 
                   // 次のイベントループでも確認
                   setTimeout(() => {
-                    console.log('[Swiper Init Timeout 0ms] activeIndex:', swiper.activeIndex);
+                    console.log('[Swiper Timeout 0ms] activeIndex:', swiper.activeIndex);
                     if (swiper.activeIndex !== 0) {
                       console.warn('[Swiper] Correcting to slide 0');
                       swiper.slideTo(0, 0);
@@ -673,7 +672,7 @@ export const NewOrderPage: React.FC = () => {
 
                   // さらにDOMが完全に準備された後も確認
                   setTimeout(() => {
-                    console.log('[Swiper Init Timeout 100ms] activeIndex:', swiper.activeIndex);
+                    console.log('[Swiper Timeout 100ms] activeIndex:', swiper.activeIndex);
                     if (swiper.activeIndex !== 0) {
                       console.warn('[Swiper] Correcting to slide 0 (100ms)');
                       swiper.slideTo(0, 0);
