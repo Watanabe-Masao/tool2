@@ -56,7 +56,6 @@ export const NewOrderPage: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
   const [swiperKey, setSwiperKey] = useState(0); // Swiperを強制的に再マウントするためのキー
-  const [isSwiperReady, setIsSwiperReady] = useState(false); // Swiperの初期化完了状態
   const [generatedFiles, setGeneratedFiles] = useState<{
     filename: string;
     downloadUrl: string;
@@ -631,7 +630,6 @@ export const NewOrderPage: React.FC = () => {
       // Swiperをリセットして最初のステップに戻す
       setActiveStep(0);
       swiperInitialized.current = false;
-      setIsSwiperReady(false); // タッチ操作を無効化
       setSwiperKey(prev => prev + 1); // Swiperを再マウント
 
       isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
@@ -676,48 +674,8 @@ export const NewOrderPage: React.FC = () => {
               </Alert>
             )}
 
-            {/* デバッグ情報表示（開発中） */}
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
-              <strong>デバッグ情報:</strong>
-              <br />
-              activeStep: {activeStep}
-              <br />
-              swiperInitialized: {swiperInitialized.current ? 'true' : 'false'}
-              <br />
-              isSwiperReady: {isSwiperReady ? 'true' : 'false'}
-              <br />
-              Swiper activeIndex: {swiperRef.current?.activeIndex ?? 'null'}
-              <br />
-              Swiper realIndex: {swiperRef.current?.realIndex ?? 'null'}
-              <br />
-              Swiper translate: {swiperRef.current?.translate ?? 'null'}px
-              <br />
-              Wrapper transform: {typeof window !== 'undefined' && swiperRef.current?.wrapperEl
-                ? window.getComputedStyle(swiperRef.current.wrapperEl).transform
-                : 'null'}
-              <br />
-              Slides count: {swiperRef.current?.slides?.length ?? 'null'}
-              <br />
-              Active slide class: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.className ?? 'null'}
-              <br />
-              Active slide data-slide-number: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.getAttribute('data-slide-number') ?? 'null'}
-              <br />
-              Active slide data-slide-name: {swiperRef.current?.slides?.[swiperRef.current.activeIndex]?.getAttribute('data-slide-name') ?? 'null'}
-              <br />
-              All slides data-slide-number: [
-              {swiperRef.current?.slides ? Array.from(swiperRef.current.slides).map((slide, idx) =>
-                `${idx}:${slide.getAttribute('data-slide-number')}`
-              ).join(', ') : 'null'}
-              ]
-            </Box>
-
-            {/* 各スライドに識別用のヘッダーを追加 */}
-            <Box sx={{ mb: 2, p: 1, bgcolor: 'warning.main', color: 'black', borderRadius: 1, textAlign: 'center' }}>
-              <strong>現在表示されているはずのステップ: ステップ {activeStep + 1}</strong>
-            </Box>
-
             {/* スワイプ可能なステップコンテンツ */}
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ width: '100%', height: '100%', overflow: 'hidden' }}>
               <Swiper
                 key={swiperKey}
                 onSwiper={(swiper) => {
@@ -751,7 +709,6 @@ export const NewOrderPage: React.FC = () => {
                     // 初期化完了フラグを設定
                     setTimeout(() => {
                       swiperInitialized.current = true;
-                      setIsSwiperReady(true);
                       console.log('[Swiper] Initialization complete via onInit');
                     }, 100);
                   });
@@ -772,11 +729,8 @@ export const NewOrderPage: React.FC = () => {
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide data-slide-number="1" data-slide-name="delivery-date">
+                <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    <Box sx={{ mb: 2, p: 2, bgcolor: 'success.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 1/4: 店着日・帳合先 ★ [DOM-INDEX-CHECK]</strong>
-                    </Box>
                     <DeliveryDateForm
                       control={control}
                       errors={errors}
@@ -787,11 +741,8 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide data-slide-number="2" data-slide-name="product-basic">
+                <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    <Box sx={{ mb: 2, p: 2, bgcolor: 'secondary.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 2/4: 商品情報（基本） ★ [DOM-INDEX-CHECK]</strong>
-                    </Box>
                     <ProductBasicInfoForm
                       control={control}
                       errors={errors}
@@ -807,11 +758,8 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide data-slide-number="3" data-slide-name="product-pricing">
+                <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    <Box sx={{ mb: 2, p: 2, bgcolor: 'error.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 3/4: 商品情報2（価格・総納品数） ★ [DOM-INDEX-CHECK]</strong>
-                    </Box>
                     <ProductPricingForm
                       control={control}
                       errors={errors}
@@ -821,11 +769,8 @@ export const NewOrderPage: React.FC = () => {
                 </SwiperSlide>
 
                 {/* Step 4: 店舗配分 */}
-                <SwiperSlide data-slide-number="4" data-slide-name="store-allocation">
+                <SwiperSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
-                    <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.main', color: 'white', borderRadius: 1, textAlign: 'center' }}>
-                      <strong>★ スライド 4/4: 店舗配分 ★ [DOM-INDEX-CHECK]</strong>
-                    </Box>
                     {productFields.map((field, index) => {
                       const product = formData.products[index];
                       return isMobile ? (
