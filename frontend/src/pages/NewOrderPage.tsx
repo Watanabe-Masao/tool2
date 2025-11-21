@@ -324,6 +324,33 @@ export const NewOrderPage: React.FC = () => {
 
 
   /**
+   * Swiperマウント後に強制的にスライド0に設定
+   */
+  useEffect(() => {
+    if (swiperRef.current && !swiperInitialized.current) {
+      console.log('[useEffect] Checking Swiper state on mount');
+      const checkAndFixSlide = () => {
+        if (swiperRef.current) {
+          const currentIndex = swiperRef.current.activeIndex;
+          console.log('[useEffect] Current activeIndex:', currentIndex);
+
+          if (currentIndex !== 0) {
+            console.log('[useEffect] Force moving to slide 0');
+            swiperRef.current.slideTo(0, 0);
+            setActiveStep(0);
+          }
+        }
+      };
+
+      // 複数回チェック
+      checkAndFixSlide();
+      setTimeout(checkAndFixSlide, 100);
+      setTimeout(checkAndFixSlide, 300);
+      setTimeout(checkAndFixSlide, 500);
+    }
+  }, [swiperRef.current]); // swiperRefが設定されたら実行
+
+  /**
    * フォームデータ変更時にSwiperを更新
    */
   useEffect(() => {
@@ -644,6 +671,21 @@ export const NewOrderPage: React.FC = () => {
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
               </Alert>
             )}
+
+            {/* デバッグ情報表示（開発中） */}
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'info.main', color: 'white', borderRadius: 1 }}>
+              <strong>デバッグ情報:</strong>
+              <br />
+              activeStep: {activeStep}
+              <br />
+              swiperInitialized: {swiperInitialized.current ? 'true' : 'false'}
+              <br />
+              isSwiperReady: {isSwiperReady ? 'true' : 'false'}
+              <br />
+              Swiper activeIndex: {swiperRef.current?.activeIndex ?? 'null'}
+              <br />
+              Swiper realIndex: {swiperRef.current?.realIndex ?? 'null'}
+            </Box>
 
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
