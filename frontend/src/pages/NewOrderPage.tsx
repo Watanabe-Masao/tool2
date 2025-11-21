@@ -650,47 +650,28 @@ export const NewOrderPage: React.FC = () => {
               <Swiper
                 key={swiperKey}
                 onSwiper={(swiper) => {
-                  console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex);
+                  console.log('[Swiper] onSwiper called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
                   swiperRef.current = swiper;
+                }}
+                onInit={(swiper) => {
+                  // onInitは初期化が完全に完了した後に呼ばれる
+                  console.log('[Swiper] onInit called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
 
-                  // Swiper初期化時に確実にスライド0から開始
-                  console.log('[Swiper] Initializing - forcing slide to 0');
+                  // 初期化完了時に強制的にスライド0に設定
+                  if (swiper.activeIndex !== 0) {
+                    console.log('[Swiper] onInit - Not at slide 0, forcing to 0');
+                    swiper.slideTo(0, 0);
+                  }
 
-                  // 即座にスライド0に移動（アニメーションなし）
-                  swiper.slideTo(0, 0);
+                  // activeStepを0に設定
+                  setActiveStep(0);
 
-                  // 次のフレームで状態を確認して設定
-                  requestAnimationFrame(() => {
-                    console.log('[Swiper] After first frame - activeIndex:', swiper.activeIndex);
-
-                    // まだ0でなければ再度移動
-                    if (swiper.activeIndex !== 0) {
-                      console.log('[Swiper] Still not at slide 0, forcing again');
-                      swiper.slideTo(0, 0);
-                    }
-
-                    // さらに次のフレームで最終確認
-                    requestAnimationFrame(() => {
-                      console.log('[Swiper] Final check - activeIndex:', swiper.activeIndex);
-
-                      // 強制的に0に設定
-                      if (swiper.activeIndex !== 0) {
-                        console.warn('[Swiper] WARNING: Could not set to slide 0, current index:', swiper.activeIndex);
-                        // 最後の手段として直接インデックスを設定
-                        swiper.slideTo(0, 0);
-                      }
-
-                      // activeStepを確実に0に設定
-                      setActiveStep(0);
-
-                      // 初期化完了フラグを設定（次のフレームで）
-                      requestAnimationFrame(() => {
-                        swiperInitialized.current = true;
-                        setIsSwiperReady(true); // タッチ操作を有効化
-                        console.log('[Swiper] Initialization complete. Final state - activeIndex:', swiper.activeIndex);
-                      });
-                    });
-                  });
+                  // タイマーで初期化完了フラグを設定
+                  setTimeout(() => {
+                    swiperInitialized.current = true;
+                    setIsSwiperReady(true);
+                    console.log('[Swiper] Initialization complete via onInit');
+                  }, 100);
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
