@@ -664,15 +664,9 @@ export const NewOrderPage: React.FC = () => {
                   swiperRef.current = swiper;
                 }}
                 onSlideChange={handleSlideChange}
-                onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
                 initialSlide={0}
                 spaceBetween={16}
                 slidesPerView={1}
-                allowTouchMove={true}
-                noSwiping={true}
-                noSwipingClass="swiper-no-swiping"
-                watchSlidesProgress={true}
-                watchOverflow={true}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
