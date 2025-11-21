@@ -60,6 +60,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // スライド方向（'left' | 'right'）
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
 
+  // 初回マウント判定（初回レンダリング時はアニメーションを無効化）
+  const isMountedRef = useRef(false);
+
   // タブコンテナのref（自動センタリング用）
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +74,13 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 店着日を監視
   const deliveryDate = useWatch({ control, name: 'deliveryDate' });
+
+  /**
+   * 初回マウント後にフラグを立てる（アニメーション制御用）
+   */
+  useEffect(() => {
+    isMountedRef.current = true;
+  }, []);
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -517,7 +527,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
               key={field.id}
               sx={{
                 display: isActive ? 'block' : 'none',
-                animation: isActive ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.25s cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
+                animation: isActive && isMountedRef.current ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.25s cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
                 '@keyframes slideInLeft': {
                   '0%': {
                     transform: 'translateX(50%)',
