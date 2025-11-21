@@ -324,8 +324,9 @@ export const NewOrderPage: React.FC = () => {
 
   /**
    * Swiperマウント後に強制的にスライド0に設定
+   * 一時的に無効化してテスト
    */
-  useEffect(() => {
+  /*useEffect(() => {
     if (swiperRef.current && !swiperInitialized.current) {
       console.log('[useEffect] Checking Swiper state on mount');
       const checkAndFixSlide = () => {
@@ -351,7 +352,7 @@ export const NewOrderPage: React.FC = () => {
       setTimeout(checkAndFixSlide, 300);
       setTimeout(checkAndFixSlide, 500);
     }
-  }, [swiperRef.current]); // swiperRefが設定されたら実行
+  }, [swiperRef.current]); // swiperRefが設定されたら実行*/
 
   /**
    * フォームデータ変更時にSwiperを更新
@@ -683,35 +684,13 @@ export const NewOrderPage: React.FC = () => {
                   swiperRef.current = swiper;
                 }}
                 onInit={(swiper) => {
-                  // onInitは初期化が完全に完了した後に呼ばれる
-                  console.log('[Swiper] onInit called');
-                  console.log('  activeIndex:', swiper.activeIndex);
-                  console.log('  realIndex:', swiper.realIndex);
-                  console.log('  translate:', swiper.translate);
+                  console.log('[Swiper] onInit - activeIndex:', swiper.activeIndex, 'translate:', swiper.translate);
 
-                  // 強制的にスライドとトランスフォームをリセット
-                  swiper.slideTo(0, 0);
-                  swiper.setTranslate(0);
-                  swiper.update(); // 重要：Swiperの内部状態を更新
+                  // 初期化完了フラグを設定
+                  swiperInitialized.current = true;
+                  setActiveStep(0);
 
-                  // さらにもう一度確認して更新
-                  requestAnimationFrame(() => {
-                    swiper.slideTo(0, 0);
-                    swiper.setTranslate(0);
-                    swiper.updateProgress();
-                    swiper.updateSlidesClasses();
-                    swiper.update();
-
-                    console.log('[Swiper] After reset - translate:', swiper.translate, 'activeIndex:', swiper.activeIndex);
-
-                    setActiveStep(0);
-
-                    // 初期化完了フラグを設定
-                    setTimeout(() => {
-                      swiperInitialized.current = true;
-                      console.log('[Swiper] Initialization complete via onInit');
-                    }, 100);
-                  });
+                  console.log('[Swiper] Initialization complete');
                 }}
                 onSlideChange={handleSlideChange}
                 initialSlide={0}
@@ -842,7 +821,8 @@ export const NewOrderPage: React.FC = () => {
         )}
 
         {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
-        {!showGeneratedPreview && (
+        {/* 一時的に無効化してテスト */}
+        {false && !showGeneratedPreview && (
           <FloatingProgressSummary
             formData={formData}
             activeStep={activeStep}
