@@ -324,24 +324,20 @@ export const NewOrderPage: React.FC = () => {
    * Swiper初期化後に確実にスライド0から開始
    */
   useEffect(() => {
-    if (swiperRef.current && !swiperInitialized.current) {
-      swiperInitialized.current = true;
+    // マウント時に一度だけ実行
+    const timer = setTimeout(() => {
+      if (swiperRef.current && !swiperInitialized.current) {
+        swiperInitialized.current = true;
 
-      // 確実にスライド0から開始
-      swiperRef.current.slideTo(0, 0);
-      setActiveStep(0);
-
-      // 少し遅延させて再度確認
-      const timer = setTimeout(() => {
-        if (swiperRef.current && swiperRef.current.activeIndex !== 0) {
+        if (swiperRef.current.activeIndex !== 0) {
           swiperRef.current.slideTo(0, 0);
-          setActiveStep(0);
         }
-      }, 100);
+        setActiveStep(0);
+      }
+    }, 200);
 
-      return () => clearTimeout(timer);
-    }
-  }, [swiperRef.current]);
+    return () => clearTimeout(timer);
+  }, []); // 空の依存配列で一度だけ実行
 
   /**
    * フォームデータ変更時にSwiperを更新
@@ -660,11 +656,6 @@ export const NewOrderPage: React.FC = () => {
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
               </Alert>
             )}
-
-            {/* デバッグ表示 */}
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Debug: activeStep = {activeStep}, Swiper activeIndex = {swiperRef.current?.activeIndex ?? 'null'}, realIndex = {swiperRef.current?.realIndex ?? 'null'}
-            </Alert>
 
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
