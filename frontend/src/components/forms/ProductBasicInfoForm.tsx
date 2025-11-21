@@ -299,12 +299,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       <Box
         ref={tabsRef}
         onScroll={handleTabScroll}
-        onTouchStart={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
-        onTouchEnd={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onMouseMove={(e) => e.stopPropagation()}
-        onMouseUp={(e) => e.stopPropagation()}
         sx={{
           display: 'flex',
           gap: 1,
@@ -331,6 +325,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
               <Chip
                 data-chip-index={index}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Typography
@@ -415,6 +412,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           icon={<Add sx={{ fontSize: 16 }} />}
           label="追加"
           onClick={handleAddProduct}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
           disabled={fields.length >= 50}
           sx={{
             height: 28,
