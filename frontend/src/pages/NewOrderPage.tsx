@@ -332,11 +332,15 @@ export const NewOrderPage: React.FC = () => {
       const checkAndFixSlide = () => {
         if (swiperRef.current) {
           const currentIndex = swiperRef.current.activeIndex;
-          console.log('[useEffect] Current activeIndex:', currentIndex);
+          const currentTranslate = swiperRef.current.translate;
+          console.log('[useEffect] Current activeIndex:', currentIndex, 'translate:', currentTranslate);
 
-          if (currentIndex !== 0) {
-            console.log('[useEffect] Force moving to slide 0');
+          if (currentIndex !== 0 || currentTranslate !== 0) {
+            console.log('[useEffect] Force moving to slide 0 and resetting transform');
             swiperRef.current.slideTo(0, 0);
+            swiperRef.current.setTranslate(0);
+            swiperRef.current.updateProgress();
+            swiperRef.current.updateSlidesClasses();
             setActiveStep(0);
           }
         }
@@ -685,6 +689,12 @@ export const NewOrderPage: React.FC = () => {
               Swiper activeIndex: {swiperRef.current?.activeIndex ?? 'null'}
               <br />
               Swiper realIndex: {swiperRef.current?.realIndex ?? 'null'}
+              <br />
+              Swiper translate: {swiperRef.current?.translate ?? 'null'}px
+              <br />
+              Wrapper transform: {typeof window !== 'undefined' && swiperRef.current?.wrapperEl
+                ? window.getComputedStyle(swiperRef.current.wrapperEl).transform
+                : 'null'}
             </Box>
 
             {/* スワイプ可能なステップコンテンツ */}
@@ -697,13 +707,20 @@ export const NewOrderPage: React.FC = () => {
                 }}
                 onInit={(swiper) => {
                   // onInitは初期化が完全に完了した後に呼ばれる
-                  console.log('[Swiper] onInit called, activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
+                  console.log('[Swiper] onInit called');
+                  console.log('  activeIndex:', swiper.activeIndex);
+                  console.log('  realIndex:', swiper.realIndex);
+                  console.log('  translate:', swiper.translate);
 
-                  // 初期化完了時に強制的にスライド0に設定
-                  if (swiper.activeIndex !== 0) {
-                    console.log('[Swiper] onInit - Not at slide 0, forcing to 0');
-                    swiper.slideTo(0, 0);
-                  }
+                  // 強制的にスライド0に設定（トランスフォームもリセット）
+                  swiper.slideTo(0, 0);
+
+                  // トランスフォームを強制的に更新
+                  swiper.setTranslate(0);
+                  swiper.updateProgress();
+                  swiper.updateSlidesClasses();
+
+                  console.log('[Swiper] After reset - translate:', swiper.translate, 'activeIndex:', swiper.activeIndex);
 
                   // activeStepを0に設定
                   setActiveStep(0);
