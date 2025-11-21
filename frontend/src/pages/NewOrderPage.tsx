@@ -362,6 +362,7 @@ export const NewOrderPage: React.FC = () => {
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
+    console.log('[Swiper] onSlideChange - activeIndex:', swiper.activeIndex, 'realIndex:', swiper.realIndex);
     setActiveStep(swiper.activeIndex);
     // スライド変更時に高さを更新
     setTimeout(() => {
@@ -643,18 +644,28 @@ export const NewOrderPage: React.FC = () => {
               </Alert>
             )}
 
+            {/* デバッグ表示 */}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Debug: activeStep = {activeStep}, Swiper activeIndex = {swiperRef.current?.activeIndex ?? 'null'}, realIndex = {swiperRef.current?.realIndex ?? 'null'}
+            </Alert>
+
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
               <Swiper
                 onSwiper={(swiper) => {
                   swiperRef.current = swiper;
+                  console.log('[Swiper Init] activeIndex:', swiper.activeIndex, 'slides.length:', swiper.slides.length);
+                  console.log('[Swiper Init] Slide elements:', swiper.slides);
+
                   // 初期化時に確実にスライド0から開始（複数回実行して確実にする）
                   swiper.slideTo(0, 0);
                   setActiveStep(0);
 
                   // 次のイベントループでも確認
                   setTimeout(() => {
+                    console.log('[Swiper Init Timeout 0ms] activeIndex:', swiper.activeIndex);
                     if (swiper.activeIndex !== 0) {
+                      console.warn('[Swiper] Correcting to slide 0');
                       swiper.slideTo(0, 0);
                       setActiveStep(0);
                     }
@@ -662,7 +673,9 @@ export const NewOrderPage: React.FC = () => {
 
                   // さらにDOMが完全に準備された後も確認
                   setTimeout(() => {
+                    console.log('[Swiper Init Timeout 100ms] activeIndex:', swiper.activeIndex);
                     if (swiper.activeIndex !== 0) {
+                      console.warn('[Swiper] Correcting to slide 0 (100ms)');
                       swiper.slideTo(0, 0);
                       setActiveStep(0);
                     }
