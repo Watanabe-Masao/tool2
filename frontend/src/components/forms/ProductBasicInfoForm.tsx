@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Tabs, Tab, IconButton, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Alert, IconButton, Chip, Tooltip } from '@mui/material';
 import { Add, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -277,13 +277,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     }
   };
 
-  /**
-   * タブ変更ハンドラー
-   */
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTabIndex(newValue);
-  };
-
   return (
     <Box>
       {/* ヘッダーセクション */}
@@ -313,77 +306,131 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Typography>
       </Box>
 
-      {/* タブナビゲーション */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }} ref={tabsRef}>
-        <Tabs
-          value={activeTabIndex}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          {fields.map((field, index) => {
-            const incompleteCount = getIncompleteCount(index);
-            return (
-              <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
-                <Tab
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography
-                        variant="caption"
+      {/* チップ型タブナビゲーション */}
+      <Box
+        ref={tabsRef}
+        sx={{
+          display: 'flex',
+          gap: 1,
+          overflowX: 'auto',
+          pb: 1,
+          mb: 2,
+          '&::-webkit-scrollbar': {
+            height: 6,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: 3,
+          },
+        }}
+      >
+        {fields.map((field, index) => {
+          const incompleteCount = getIncompleteCount(index);
+          const isActive = activeTabIndex === index;
+          const isComplete = incompleteCount === 0;
+
+          return (
+            <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
+              <Chip
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: isActive ? 'bold' : 'normal',
+                        fontSize: isActive ? '0.8rem' : '0.7rem',
+                      }}
+                    >
+                      {getTabLabel(index)}
+                    </Typography>
+                    {incompleteCount > 0 && (
+                      <Box
                         sx={{
-                          fontWeight: incompleteCount === 0 ? 'bold' : 'normal',
-                          fontSize: '0.75rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          bgcolor: 'warning.main',
+                          color: 'white',
+                          fontSize: '0.6rem',
+                          fontWeight: 'bold',
+                          px: 0.3,
                         }}
                       >
-                        {getTabLabel(index)}
-                      </Typography>
-                      {incompleteCount > 0 && (
-                        <Chip
-                          label={incompleteCount}
-                          size="small"
-                          color="warning"
-                          sx={{
-                            height: 16,
-                            fontSize: '0.65rem',
-                            minWidth: 16,
-                            '& .MuiChip-label': { px: 0.4 }
-                          }}
-                        />
-                      )}
-                      {fields.length > 1 && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveProduct(index);
-                          }}
-                          sx={{ ml: 0.3, p: 0.2 }}
-                        >
-                          <Close sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      )}
-                    </Box>
-                  }
-                  sx={{
-                    minHeight: 36,
-                    py: 0.5,
-                    borderLeft: 3,
-                    borderColor: incompleteCount === 0 ? 'success.main' : 'warning.main',
-                  }}
-                />
-              </Tooltip>
-            );
-          })}
-          {/* 追加タブ */}
-          <Tab
-            icon={<Add sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            label={<Typography variant="caption">追加</Typography>}
-            onClick={handleAddProduct}
-            disabled={fields.length >= 50}
-            sx={{ minHeight: 36, py: 0.5 }}
-          />
-        </Tabs>
+                        {incompleteCount}
+                      </Box>
+                    )}
+                    {fields.length > 1 && (
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveProduct(index);
+                        }}
+                        sx={{
+                          ml: 0.3,
+                          p: 0.2,
+                          '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
+                        }}
+                      >
+                        <Close sx={{ fontSize: 12 }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                }
+                onClick={() => setActiveTabIndex(index)}
+                sx={{
+                  height: isActive ? 36 : 28,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  bgcolor: isComplete
+                    ? isActive
+                      ? 'success.main'
+                      : 'success.light'
+                    : isActive
+                    ? 'warning.main'
+                    : 'warning.light',
+                  color: isActive ? 'white' : 'text.primary',
+                  boxShadow: isActive ? 3 : 1,
+                  transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                  '&:hover': {
+                    boxShadow: 4,
+                    transform: 'scale(1.05)',
+                  },
+                  '& .MuiChip-label': {
+                    px: 1.5,
+                  },
+                }}
+              />
+            </Tooltip>
+          );
+        })}
+        {/* 追加チップ */}
+        <Chip
+          icon={<Add sx={{ fontSize: 16 }} />}
+          label="追加"
+          onClick={handleAddProduct}
+          disabled={fields.length >= 50}
+          sx={{
+            height: 28,
+            cursor: fields.length >= 50 ? 'not-allowed' : 'pointer',
+            bgcolor: fields.length >= 50 ? 'action.disabledBackground' : 'primary.light',
+            color: fields.length >= 50 ? 'action.disabled' : 'primary.main',
+            '&:hover': fields.length >= 50
+              ? {}
+              : {
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  boxShadow: 2,
+                },
+            '& .MuiChip-label': {
+              px: 1,
+              fontSize: '0.7rem',
+            },
+          }}
+        />
       </Box>
 
       {/* スワイプ可能な商品カード表示エリア */}
