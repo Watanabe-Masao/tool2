@@ -449,6 +449,16 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     const deltaX = Math.abs(clientX - cardLongPressStartPos.current.x);
     const deltaY = Math.abs(clientY - cardLongPressStartPos.current.y);
 
+    // 横方向のスワイプ（ステップ移動）の場合は長押しをキャンセルしてイベントを伝播
+    if (deltaX > 10 && deltaX > deltaY) {
+      if (cardLongPressTimer.current) {
+        window.clearTimeout(cardLongPressTimer.current);
+        cardLongPressTimer.current = null;
+      }
+      cardLongPressStartPos.current = null;
+      return; // 早期リターンでイベントを伝播
+    }
+
     // 5px以上移動したらスクロールとみなして長押しをキャンセル
     if (deltaX > 5 || deltaY > 5) {
       if (cardLongPressTimer.current) {

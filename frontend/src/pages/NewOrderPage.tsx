@@ -77,6 +77,9 @@ export const NewOrderPage: React.FC = () => {
   // Swiper instance reference
   const swiperRef = useRef<SwiperType | null>(null);
 
+  // Swiper初期化完了フラグ（初期化中のonSlideChangeを無視するため）
+  const swiperInitialized = useRef(false);
+
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -318,14 +321,29 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * フォームデータ変更時にSwiperの高さを更新
+   * Swiper初期化後に確実にスライド0から開始
+   */
+  useEffect(() => {
+    // マウント時に即座に実行
+    if (swiperRef.current && !swiperInitialized.current) {
+      swiperInitialized.current = true;
+
+      // 即座にスライド0に移動
+      if (swiperRef.current.activeIndex !== 0) {
+        swiperRef.current.slideTo(0, 0);
+      }
+      setActiveStep(0);
+    }
+  }, []); // 空の依存配列で一度だけ実行
+
+  /**
+   * フォームデータ変更時にSwiperを更新
    */
   useEffect(() => {
     if (swiperRef.current) {
-      // Swiperを更新して高さを再計算
+      // Swiperを更新
       setTimeout(() => {
         swiperRef.current?.update();
-        swiperRef.current?.updateAutoHeight(300);
       }, 100);
     }
   }, [formData.products?.length]); // 商品数が変更されたときに更新
@@ -343,7 +361,6 @@ export const NewOrderPage: React.FC = () => {
     const resizeObserver = new ResizeObserver(() => {
       if (swiperRef.current) {
         swiperRef.current.update();
-        swiperRef.current.updateAutoHeight(300);
       }
     });
 
@@ -362,23 +379,11 @@ export const NewOrderPage: React.FC = () => {
    * スライド変更時の処理
    */
   const handleSlideChange = (swiper: SwiperType) => {
+    // 初期化中のスライド変更を無視
+    if (!swiperInitialized.current) {
+      return;
+    }
     setActiveStep(swiper.activeIndex);
-    // スライド変更時に高さを更新
-    setTimeout(() => {
-      swiper.update();
-      swiper.updateAutoHeight(300);
-    }, 50);
-  };
-
-  /**
-   * スライド遷移完了時の処理
-   */
-  const handleSlideChangeTransitionEnd = (swiper: SwiperType) => {
-    // 遷移完了後に高さを再計算
-    setTimeout(() => {
-      swiper.update();
-      swiper.updateAutoHeight(300);
-    }, 50);
   };
 
   /**
@@ -646,20 +651,18 @@ export const NewOrderPage: React.FC = () => {
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
               <Swiper
-                onSwiper={(swiper) => (swiperRef.current = swiper)}
+                onSwiper={(swiper) => {
+                  swiperRef.current = swiper;
+                }}
                 onSlideChange={handleSlideChange}
-                onSlideChangeTransitionEnd={handleSlideChangeTransitionEnd}
                 initialSlide={0}
                 spaceBetween={16}
                 slidesPerView={1}
-                allowTouchMove={true}
-                noSwiping={true}
-                noSwipingClass="swiper-no-swiping"
-                watchSlidesProgress={true}
-                observer={true}
-                observeParents={true}
-                watchOverflow={true}
-                autoHeight={true}
+                loop={false}
+                resistance={true}
+                resistanceRatio={0}
+                edgeSwipeDetection={true}
+                touchStartPreventDefault={false}
                 style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
