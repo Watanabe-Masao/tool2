@@ -54,6 +54,12 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // アクティブなタブのインデックス
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
+  // 前回のタブインデックスを保持（アニメーション方向判定用）
+  const prevTabIndexRef = useRef(0);
+
+  // スライド方向（'left' | 'right'）
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+
   // タブコンテナのref（自動センタリング用）
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +69,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
+
+  // 店着日を監視
+  const deliveryDate = useWatch({ control, name: 'deliveryDate' });
 
   // スワイプの最小距離（px）
   const minSwipeDistance = 50;
@@ -179,6 +188,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   }, [activeTabIndex]);
 
   /**
+   * タブ切り替え時のスライド方向を設定
+   */
+  useEffect(() => {
+    if (activeTabIndex > prevTabIndexRef.current) {
+      setSlideDirection('left'); // 右から左へスライド（次へ）
+    } else if (activeTabIndex < prevTabIndexRef.current) {
+      setSlideDirection('right'); // 左から右へスライド（前へ）
+    }
+    prevTabIndexRef.current = activeTabIndex;
+  }, [activeTabIndex]);
+
+  /**
    * 商品の未入力項目数を計算
    */
   const getIncompleteCount = (index: number): number => {
@@ -284,9 +305,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         <Typography variant="subtitle1" fontWeight="medium">
           商品情報を入力してください
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          商品は最大50個まで追加できます。（現在: {fields.length}個）
-        </Typography>
       </Box>
 
       {/* エラー表示 */}
@@ -297,18 +315,30 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       )}
 
       {/* 商品ナビゲーション情報 */}
-      <Box sx={{ mb: 2, textAlign: 'center' }}>
-        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-          {products?.[activeTabIndex]?.name || `商品${activeTabIndex + 1}`}
+      <Box sx={{ mb: 2, px: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.6 }}>
+          商品{activeTabIndex + 1}（{activeTabIndex + 1}/{fields.length}）
+          店着日：{deliveryDate ? new Date(deliveryDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '未設定'}
+          帳合先：{products?.[activeTabIndex]?.supplier || '未選択'}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {activeTabIndex + 1} / {fields.length}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.6 }}>
+          産地：{products?.[activeTabIndex]?.origin || '－'}
+          品名：{products?.[activeTabIndex]?.name || '－'}
+          規格：{products?.[activeTabIndex]?.specification || '－'}
+          入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}
+          単位：{products?.[activeTabIndex]?.unit || '－'}
         </Typography>
       </Box>
 
       {/* チップ型タブナビゲーション */}
       <Box
         ref={tabsRef}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
         sx={{
           display: 'flex',
           gap: 1,
@@ -506,34 +536,53 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           </Box>
         )}
 
-        {/* アクティブな商品カードのみ表示 */}
-        {fields.map((field, index) => (
-          <Box
-            key={field.id}
-            sx={{ display: activeTabIndex === index ? 'block' : 'none' }}
-          >
-            <ProductFormCardBasic
-              index={index}
-              control={control}
-              errors={errors}
-              onRemove={() => handleRemoveProduct(index)}
-              showRemove={fields.length > 1}
-              productNameOptions={productNameOptions}
-              originOptions={originOptions}
-              onEnterPress={onEnterPress}
-              suppliers={suppliers}
-              onNavigateToStep={onNavigateToStep}
-            />
-          </Box>
-        ))}
+        {/* アクティブな商品カードのみ表示（アニメーション付き） */}
+        {fields.map((field, index) => {
+          const isActive = activeTabIndex === index;
+          return (
+            <Box
+              key={field.id}
+              sx={{
+                display: isActive ? 'block' : 'none',
+                animation: isActive ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.3s ease-out` : 'none',
+                '@keyframes slideInLeft': {
+                  '0%': {
+                    transform: 'translateX(100%)',
+                    opacity: 0,
+                  },
+                  '100%': {
+                    transform: 'translateX(0)',
+                    opacity: 1,
+                  },
+                },
+                '@keyframes slideInRight': {
+                  '0%': {
+                    transform: 'translateX(-100%)',
+                    opacity: 0,
+                  },
+                  '100%': {
+                    transform: 'translateX(0)',
+                    opacity: 1,
+                  },
+                },
+              }}
+            >
+              <ProductFormCardBasic
+                index={index}
+                control={control}
+                errors={errors}
+                onRemove={() => handleRemoveProduct(index)}
+                showRemove={fields.length > 1}
+                productNameOptions={productNameOptions}
+                originOptions={originOptions}
+                onEnterPress={onEnterPress}
+                suppliers={suppliers}
+                onNavigateToStep={onNavigateToStep}
+              />
+            </Box>
+          );
+        })}
       </Box>
-
-      {/* 最大数エラー */}
-      {fields.length >= 50 && (
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          商品は最大50個まで追加できます
-        </Alert>
-      )}
     </Box>
   );
 };
