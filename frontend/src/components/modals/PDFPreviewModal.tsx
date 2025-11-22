@@ -24,8 +24,8 @@ import {
 } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
-// PDF.js worker設定
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// PDF.js worker設定 - cdnjsを使用（unpkg.comよりも安定）
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 /**
  * PDFPreviewModalのProps
