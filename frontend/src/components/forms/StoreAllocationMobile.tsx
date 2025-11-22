@@ -13,13 +13,9 @@ import {
   Alert,
   ToggleButtonGroup,
   ToggleButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   LinearProgress,
 } from '@mui/material';
 import {
-  ExpandMore,
   Clear,
   Lock,
   Functions,
@@ -201,10 +197,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
   const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    category: true,  // デフォルトでオープン
-    stores: false,   // デフォルトで閉じる
-  });
 
   // 長押し検出用のタイマー（固定機能用）
   const longPressTimer = React.useRef<number | null>(null);
@@ -694,25 +686,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       onChange(newAllocations);
     } else {
       newSelectedCategories.add(categoryId);
-
-      // カテゴリーが選択されたら「配分する店舗を選択」セクションを自動的に開く
-      setExpandedSections((prev) => ({
-        ...prev,
-        stores: true,
-      }));
     }
 
     setSelectedCategories(newSelectedCategories);
-  };
-
-  /**
-   * セクションの展開/折りたたみ
-   */
-  const handleToggleSection = (section: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
   };
 
   return (
@@ -864,18 +840,32 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </CardContent>
         </Card>
 
-        {/* 2. カテゴリー絞り込み（デフォルトオープン） */}
+        {/* カテゴリー絞り込み */}
         {categories.length > 0 && (
-          <Accordion
-            expanded={expandedSections.category}
-            onChange={() => handleToggleSection('category')}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                カテゴリで絞り込み ({selectedCategories.size}選択中)
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
+          <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
+                  カテゴリー ({selectedCategories.size}選択)
+                </Typography>
+                {selectedCategories.size > 0 && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setSelectedCategories(new Set());
+                      setSelectedStores(new Set());
+                      const newAllocations = [...allocations];
+                      STORE_DATA.forEach((_, index) => {
+                        newAllocations[index] = 0;
+                      });
+                      onChange(newAllocations);
+                    }}
+                    sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                  >
+                    リセット
+                  </Button>
+                )}
+              </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
@@ -892,6 +882,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         borderColor: color.main,
                         borderWidth: 1,
                         borderStyle: 'solid',
+                        fontSize: '0.7rem',
+                        height: 24,
                         '&:hover': {
                           bgcolor: isSelected ? color.main : color.light,
                         },
@@ -902,45 +894,63 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 <Chip
                   label={`未分類 (${getUncategorizedStores().length})`}
                   onClick={() => handleToggleCategory('uncategorized')}
-                  color={selectedCategories.has('uncategorized') ? 'default' : 'default'}
-                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
                   size="small"
+                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
+                  sx={{ fontSize: '0.7rem', height: 24 }}
                 />
               </Box>
-            </AccordionDetails>
-          </Accordion>
+            </CardContent>
+          </Card>
         )}
 
-        {/* 3. 配分する店舗を選択（デフォルト閉じ） */}
-        <Accordion
-          expanded={expandedSections.stores}
-          onChange={() => handleToggleSection('stores')}
-        >
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="subtitle2" fontWeight="bold">
-              配分する店舗を選択 ({selectedStores.size}/{availableStores.length})
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
-              <Chip
-                label="全選択"
-                onClick={handleSelectAll}
-                color="primary"
-                variant="outlined"
-                size="small"
-                sx={{ fontWeight: 'medium' }}
-              />
-              <Chip
-                label="全クリア"
-                onClick={handleClearAll}
-                color="error"
-                variant="outlined"
-                size="small"
-                sx={{ fontWeight: 'medium' }}
-              />
+        {/* 店舗選択 */}
+        <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
+                店舗選択 ({selectedStores.size}/{availableStores.length})
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Button
+                  size="small"
+                  onClick={handleSelectAll}
+                  variant="text"
+                  sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                >
+                  全選択
+                </Button>
+                <Button
+                  size="small"
+                  onClick={handleClearAll}
+                  variant="text"
+                  color="error"
+                  sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                >
+                  クリア
+                </Button>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
+            <Box sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              maxHeight: 200,
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: 6,
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                borderRadius: 3,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                borderRadius: 3,
+                '&:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                },
+              },
+            }}>
               {availableStores.map((store) => {
                 const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
                 const quantity = allocations[storeIndex] || 0;
@@ -956,16 +966,16 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     key={store.code}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Typography variant="caption">
-                          {store.code}店
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                          {store.code}
                         </Typography>
                         {quantity > 0 && (
-                          <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
                             ({quantity})
                           </Typography>
                         )}
                         {distributionMode === 'ratio' && ratio > 0 && (
-                          <Typography variant="caption" sx={{ ml: 0.25, color: 'text.secondary', fontSize: '0.65rem' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
                             [{ratio}%]
                           </Typography>
                         )}
@@ -981,23 +991,29 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             borderColor: color.main,
                             borderWidth: 1,
                             borderStyle: 'solid',
+                            height: 24,
                             '&:hover': {
                               bgcolor: isSelected ? color.main : color.light,
                             },
                           }
                         : {
-                            bgcolor: isSelected ? 'default' : 'transparent',
-                            borderColor: isSelected ? 'grey.400' : 'grey.300',
+                            bgcolor: isSelected ? 'primary.main' : 'transparent',
+                            color: isSelected ? 'white' : 'text.primary',
+                            borderColor: isSelected ? 'primary.main' : 'grey.300',
                             borderWidth: 1,
                             borderStyle: 'solid',
+                            height: 24,
+                            '&:hover': {
+                              bgcolor: isSelected ? 'primary.main' : 'grey.100',
+                            },
                           }
                     }
                   />
                 );
               })}
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </CardContent>
+        </Card>
 
         {/* 4. 配分方法選択 + 実行ボタン */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
