@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import {
   Dialog,
   DialogTitle,
@@ -24,8 +25,8 @@ import {
 } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
-// PDF.js worker設定 - ローカルファイルを使用（CDN依存を排除）
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// PDF.js worker設定 - Viteで自動バンドル（推奨方法）
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 /**
  * PDFPreviewModalのProps
