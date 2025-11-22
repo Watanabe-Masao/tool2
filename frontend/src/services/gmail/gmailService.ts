@@ -4,6 +4,8 @@
  * Gmail API依存を削除し、バックエンド（Resend）経由でメール送信を行います
  */
 
+import { API_BASE_URL } from '@/utils/constants';
+
 /**
  * メール送信オプション
  */
@@ -59,8 +61,8 @@ export async function sendEmail(options: EmailSendOptions): Promise<void> {
       </html>
     `;
 
-    // バックエンドAPIを呼び出し
-    const response = await fetch('/api/send-email', {
+    // バックエンドAPIを呼び出し（絶対URLを使用してFirebase Hostingに対応）
+    const response = await fetch(`${API_BASE_URL}/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
