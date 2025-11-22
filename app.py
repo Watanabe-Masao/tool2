@@ -13,6 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Response, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -72,6 +73,21 @@ app = FastAPI(
     title="配分表テンプレート作成API",
     description="Excelの配分表テンプレートを生成するWebアプリケーション",
     version=settings.app_version
+)
+
+# CORSミドルウェアの設定
+# Firebase HostingからのAPIアクセスを許可
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://haibun-distribution.web.app",
+        "https://haibun-distribution.firebaseapp.com",
+        "http://localhost:3000",  # 開発環境
+        "http://localhost:5173",  # Vite開発サーバー
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 例外ハンドラーを登録 (Phase 3: エラーハンドリング統一)
