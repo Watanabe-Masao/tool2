@@ -4,6 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "haibun-distribution",
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",
