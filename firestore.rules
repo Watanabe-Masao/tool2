@@ -195,6 +195,8 @@ service cloud.firestore {
     }
 
     // 価格履歴（ステップ3用）
+    // Note: 重複防止ロジック（全く同じ値の場合は更新しない）はアプリケーション層で実装
+    //       firestoreService.ts の savePricingHistory() を参照
     match /pricing_history/{historyId} {
       // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
       allow read: if isAuthenticated() &&

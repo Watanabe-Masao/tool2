@@ -997,13 +997,30 @@ export class FirestoreService {
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
-      // 既存の履歴を更新
+      // 既存の履歴が存在する場合、値が変更されているかチェック
       const existingDoc = snapshot.docs[0];
+      const existingData = existingDoc.data();
+
+      const normalizedCenterFeeRate = centerFeeRate ?? 13;
+
+      // 全ての価格情報が同じ場合はスキップ
+      if (
+        existingData.centerCost === centerCost &&
+        existingData.storeCost === storeCost &&
+        existingData.priceExcludingTax === priceExcludingTax &&
+        existingData.centerFeeRate === normalizedCenterFeeRate &&
+        existingData.unit === unit
+      ) {
+        console.log(`[Firestore] Pricing history unchanged, skipping update for ${productName} (${specification})`);
+        return;
+      }
+
+      // 値が変更されている場合のみ更新
       await updateDoc(doc(db, 'pricing_history', existingDoc.id), {
         centerCost,
         storeCost,
         priceExcludingTax,
-        centerFeeRate: centerFeeRate ?? 13,
+        centerFeeRate: normalizedCenterFeeRate,
         unit,
         usageCount: increment(1),
         lastUsedAt: Timestamp.now(),
