@@ -1,11 +1,8 @@
 name: Deploy to Firebase
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:  # 手動トリガーを許可
+  push:  # すべてのブランチで自動デプロイ
+  workflow_dispatch:  # 手動トリガーも許可
 
 jobs:
   deploy:
