@@ -381,6 +381,26 @@ export const NewOrderPage: React.FC = () => {
             product.unit || '',
             product.categoryCode
           );
+
+          // 価格履歴を保存（商品名・規格・入数をキーとして）
+          if (
+            product.centerCost &&
+            product.storeCost &&
+            product.priceExcludingTax &&
+            product.quantityPerPackage
+          ) {
+            await FirestoreService.savePricingHistory(
+              user.uid,
+              product.name,
+              product.specification || '',
+              product.quantityPerPackage,
+              product.unit || '',
+              product.centerCost,
+              product.storeCost,
+              product.priceExcludingTax,
+              product.centerFeeRate
+            );
+          }
         }
       }
 

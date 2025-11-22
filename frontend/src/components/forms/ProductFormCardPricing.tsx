@@ -1,5 +1,5 @@
-import React from 'react';
-import { Controller, useWatch } from 'react-hook-form';
+import React, { useState } from 'react';
+import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Card,
@@ -8,8 +8,15 @@ import {
   Grid,
   Typography,
   Box,
+  Button,
+  Tooltip,
 } from '@mui/material';
+import { History } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { usePricingHistory } from '@/hooks/usePricingHistory';
+import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
+import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
+import { useNotification } from '@/context/NotificationContext';
 
 /**
  * ProductFormCardPricingのProps
@@ -38,6 +45,19 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   onEnterPress,
 }) => {
   const productErrors = errors.products?.[index];
+  const { setValue } = useFormContext<OrderFormData>();
+  const { showSuccess } = useNotification();
+
+  // 価格履歴の取得
+  const {
+    pricingHistory,
+    findMatchingHistory,
+    deletePricingHistory,
+    savePricingHistory,
+  } = usePricingHistory();
+
+  // 価格履歴モーダルの開閉状態
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
   // 各フィールドを監視
   const productName = useWatch({ control, name: `products.${index}.name` });
@@ -63,6 +83,58 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const profitAmount = storeCost && centerCostWithFee && totalDelivery && quantityPerPackage
     ? Math.round((storeCost - centerCostWithFee) * (totalDelivery * quantityPerPackage))
     : 0;
+
+  /**
+   * 価格履歴を選択
+   */
+  const handleSelectHistory = (history: PricingHistoryItem) => {
+    setValue(`products.${index}.centerCost`, history.centerCost);
+    setValue(`products.${index}.storeCost`, history.storeCost);
+    setValue(`products.${index}.priceExcludingTax`, history.priceExcludingTax);
+    if (history.centerFeeRate !== undefined) {
+      setValue(`products.${index}.centerFeeRate`, history.centerFeeRate);
+    }
+    showSuccess('価格履歴を読み込みました');
+  };
+
+  /**
+   * 現在の価格情報を手動で保存
+   */
+  const handleSaveHistory = async () => {
+    if (!productName || !specification || !quantityPerPackage || !unit) {
+      showSuccess('商品名、規格、入数を入力してください');
+      return;
+    }
+
+    if (!centerCost || !storeCost || !priceExcludingTax) {
+      showSuccess('原価と売価を入力してください');
+      return;
+    }
+
+    try {
+      await savePricingHistory(
+        productName,
+        specification,
+        quantityPerPackage,
+        unit,
+        centerCost,
+        storeCost,
+        priceExcludingTax,
+        centerFeeRate
+      );
+      showSuccess('価格履歴を保存しました');
+    } catch (error) {
+      console.error('[ProductFormCardPricing] Failed to save pricing history:', error);
+    }
+  };
+
+  /**
+   * 一致する履歴の数を取得
+   */
+  const matchingHistoryCount =
+    productName && specification && quantityPerPackage
+      ? findMatchingHistory(productName, specification, quantityPerPackage).length
+      : 0;
 
   /**
    * Enterキー押下時のハンドラー
@@ -144,6 +216,45 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               {quantityPerPackage}{unit}
             </Box>
           )}
+        </Box>
+
+        {/* 価格履歴ボタン */}
+        <Box sx={{ mb: 1.5, display: 'flex', gap: 1 }}>
+          <Tooltip
+            title={
+              matchingHistoryCount > 0
+                ? `この商品の価格履歴が${matchingHistoryCount}件あります`
+                : '価格履歴から読み込む'
+            }
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<History />}
+              onClick={() => setHistoryModalOpen(true)}
+              sx={{ fontSize: '0.75rem' }}
+            >
+              履歴から読込 {matchingHistoryCount > 0 && `(${matchingHistoryCount})`}
+            </Button>
+          </Tooltip>
+          <Tooltip title="現在の価格情報を履歴として保存">
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleSaveHistory}
+              disabled={
+                !productName ||
+                !specification ||
+                !quantityPerPackage ||
+                !centerCost ||
+                !storeCost ||
+                !priceExcludingTax
+              }
+              sx={{ fontSize: '0.75rem' }}
+            >
+              履歴に保存
+            </Button>
+          </Tooltip>
         </Box>
 
         {/* 2. 総納品数 / センターフィー率 */}
@@ -342,6 +453,18 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Grid>
         </Grid>
       </CardContent>
+
+      {/* 価格履歴選択モーダル */}
+      <PricingHistoryModal
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        onSelect={handleSelectHistory}
+        onDelete={deletePricingHistory}
+        histories={pricingHistory}
+        productName={productName}
+        specification={specification}
+        quantityPerPackage={quantityPerPackage}
+      />
     </Card>
   );
 };

@@ -931,4 +931,113 @@ export class FirestoreService {
 
     console.log(`[Firestore] Reordered ${reorderedItems.length} pinned items`);
   }
+
+  /**
+   * 価格履歴を取得
+   *
+   * @param userId - ユーザーID
+   * @returns 価格履歴一覧
+   */
+  static async getPricingHistory(userId: string): Promise<any[]> {
+    const db = getFirebaseFirestore();
+    const q = query(
+      collection(db, 'pricing_history'),
+      where('userId', '==', userId),
+      orderBy('lastUsedAt', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      lastUsedAt: doc.data().lastUsedAt?.toDate(),
+    }));
+  }
+
+  /**
+   * 価格履歴を保存または更新
+   *
+   * 同じキー（商品名・規格・入数）の履歴が存在する場合は更新、
+   * 存在しない場合は新規作成します。
+   *
+   * @param userId - ユーザーID
+   * @param productName - 商品名
+   * @param specification - 規格
+   * @param quantityPerPackage - 入数
+   * @param unit - 単位
+   * @param centerCost - センター着原価
+   * @param storeCost - 店着原価
+   * @param priceExcludingTax - 本体価格（税抜売価）
+   * @param centerFeeRate - センターフィー率（省略可）
+   */
+  static async savePricingHistory(
+    userId: string,
+    productName: string,
+    specification: string,
+    quantityPerPackage: number,
+    unit: string,
+    centerCost: number,
+    storeCost: number,
+    priceExcludingTax: number,
+    centerFeeRate?: number
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    // 同じキーの履歴が存在するかチェック
+    const q = query(
+      collection(db, 'pricing_history'),
+      where('userId', '==', userId),
+      where('productName', '==', productName),
+      where('specification', '==', specification),
+      where('quantityPerPackage', '==', quantityPerPackage)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      // 既存の履歴を更新
+      const existingDoc = snapshot.docs[0];
+      await updateDoc(doc(db, 'pricing_history', existingDoc.id), {
+        centerCost,
+        storeCost,
+        priceExcludingTax,
+        centerFeeRate: centerFeeRate ?? 13,
+        unit,
+        usageCount: increment(1),
+        lastUsedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      console.log(`[Firestore] Updated pricing history for ${productName} (${specification})`);
+    } else {
+      // 新規作成
+      await addDoc(collection(db, 'pricing_history'), {
+        userId,
+        productName,
+        specification,
+        quantityPerPackage,
+        unit,
+        centerCost,
+        storeCost,
+        priceExcludingTax,
+        centerFeeRate: centerFeeRate ?? 13,
+        usageCount: 1,
+        createdAt: Timestamp.now(),
+        lastUsedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      console.log(`[Firestore] Created pricing history for ${productName} (${specification})`);
+    }
+  }
+
+  /**
+   * 価格履歴を削除
+   *
+   * @param historyId - 削除する履歴ID
+   */
+  static async deletePricingHistory(historyId: string): Promise<void> {
+    const db = getFirebaseFirestore();
+    await deleteDoc(doc(db, 'pricing_history', historyId));
+    console.log(`[Firestore] Deleted pricing history: ${historyId}`);
+  }
 }
