@@ -485,7 +485,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const handleLongPressStart = (storeCode: string) => {
     longPressTimer.current = window.setTimeout(() => {
       handleToggleLock(storeCode);
-    }, 500); // 500ms長押しで固定/解除
+    }, 800); // 800ms長押しで固定/解除（以前は500ms）
   };
 
   /**
@@ -695,150 +695,43 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     <Box>
       {/* 縦並びセクション */}
       <Stack spacing={1.5}>
-        {/* ヘッダー */}
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          店舗配分入力
-        </Typography>
-
-        {/* 統計 + 操作カード */}
-        <Card
-          variant="outlined"
-          sx={{
-            borderWidth: 2,
-            borderColor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
-            borderRadius: 2,
-          }}
-        >
-          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            {/* 統計数値 - 3列レイアウト */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1.5 }}>
-              <Box>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
-                  総納品数
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1 }}>
-                  {totalDelivery}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
-                  配分済み
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1, color: remaining === 0 ? 'success.main' : 'text.primary' }}>
-                  {totalAllocated}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
-                  残り
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main'
-                  }}
-                >
-                  {remaining}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* 進捗バー + ステータス */}
-            <Box sx={{ mb: 1.5 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {remaining === 0 ? (
-                    <>
-                      <CheckCircle sx={{ fontSize: 18, color: 'success.main' }} />
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main' }}>完了</Typography>
-                    </>
-                  ) : remaining > 0 ? (
-                    <>
-                      <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.main' }}>残り{remaining}</Typography>
-                    </>
-                  ) : (
-                    <>
-                      <ErrorIcon sx={{ fontSize: 18, color: 'error.main' }} />
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main' }}>{Math.abs(remaining)}超過</Typography>
-                    </>
-                  )}
-                </Box>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                  {progressPercentage.toFixed(0)}% | ロック{lockedStores.size}
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(progressPercentage, 100)}
-                sx={{
-                  height: 6,
-                  borderRadius: 3,
-                  bgcolor: 'grey.200',
-                  '& .MuiLinearProgress-bar': {
-                    borderRadius: 3,
-                    bgcolor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
-                  },
-                }}
-              />
-            </Box>
-
-            {/* 操作ボタン - 機能別グループ */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {/* 配分操作 */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<Functions sx={{ fontSize: '1rem' }} />}
-                  onClick={handleEqualDistribution}
-                  disabled={selectedStores.size === 0}
-                  fullWidth
-                  sx={{ fontSize: '0.75rem', py: 0.75 }}
-                >
-                  均等配分
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DeleteSweep sx={{ fontSize: '1rem' }} />}
-                  onClick={handleClearUnlocked}
-                  fullWidth
-                  sx={{ fontSize: '0.75rem', py: 0.75 }}
-                >
-                  クリア
-                </Button>
-              </Box>
-              {/* ロック操作 */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<LockOutlined sx={{ fontSize: '1rem' }} />}
-                  onClick={handleLockAll}
-                  color="warning"
-                  fullWidth
-                  sx={{ fontSize: '0.75rem', py: 0.75 }}
-                >
-                  全ロック
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<LockOpenOutlined sx={{ fontSize: '1rem' }} />}
-                  onClick={handleUnlockAll}
-                  color="info"
-                  fullWidth
-                  sx={{ fontSize: '0.75rem', py: 0.75 }}
-                >
-                  全解除
-                </Button>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+        {/* ヘッダー + アクションボタン */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            商品 {productIndex + 1}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.75 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DeleteSweep sx={{ fontSize: '0.9rem' }} />}
+              onClick={handleClearUnlocked}
+              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+            >
+              クリア
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LockOutlined sx={{ fontSize: '0.9rem' }} />}
+              onClick={handleLockAll}
+              color="warning"
+              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+            >
+              全ロック
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LockOpenOutlined sx={{ fontSize: '0.9rem' }} />}
+              onClick={handleUnlockAll}
+              color="info"
+              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+            >
+              全解除
+            </Button>
+          </Box>
+        </Box>
 
         {/* カテゴリー絞り込み */}
         {categories.length > 0 && (
@@ -1068,86 +961,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box className="swiper-no-swiping">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center', flex: 1 }}>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mr: 0.5 }}>
-                商品 {productIndex + 1}:
-              </Typography>
-              {origin && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {origin}
-                </Box>
-              )}
-              {productName && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'primary.100',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                    fontWeight: 'medium',
-                  }}
-                >
-                  {productName}
-                </Box>
-              )}
-              {specification && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {specification}
-                </Box>
-              )}
-              {quantityPerPackage && unit && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {quantityPerPackage}
-                  {unit}
-                </Box>
-              )}
-            </Box>
-            {selectedStoresList.length > 0 && (
-              <Chip
-                icon={<Clear />}
-                label="クリア"
-                onClick={handleClearAllocations}
-                size="small"
-                color="error"
-                variant="outlined"
-                sx={{ fontSize: '0.7rem', height: 24 }}
-              />
-            )}
-          </Box>
+          <Typography variant="caption" fontWeight="bold" sx={{ mb: 0.75, display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>
+            配分数量入力
+          </Typography>
 
           {selectedStoresList.length > 0 ? (
             <Box
@@ -1311,6 +1127,120 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Alert>
           )}
         </Box>
+        {/* 統計表示（画面最下部） */}
+        <Card
+          variant="outlined"
+          sx={{
+            mt: 2,
+            borderWidth: 2,
+            borderColor:
+              remaining === 0
+                ? 'success.main'
+                : remaining < 0
+                ? 'error.main'
+                : 'primary.main',
+          }}
+        >
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            {/* 統計数値（3列グリッド） */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  総納品数
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                  {totalDelivery}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  配分済み
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main', fontSize: '1.1rem' }}>
+                  {totalAllocated}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  残り
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  {remaining}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* プログレスバー */}
+            <Box sx={{ mb: 1 }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(progressPercentage, 100)}
+                sx={{
+                  height: 8,
+                  borderRadius: 1,
+                  bgcolor: 'grey.200',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor:
+                      remaining === 0
+                        ? 'success.main'
+                        : remaining < 0
+                        ? 'error.main'
+                        : 'primary.main',
+                    borderRadius: 1,
+                  },
+                }}
+              />
+              <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.25, fontSize: '0.65rem', color: 'text.secondary' }}>
+                {progressPercentage.toFixed(1)}%
+              </Typography>
+            </Box>
+
+            {/* ステータス表示 */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {remaining === 0 ? (
+                  <>
+                    <CheckCircle sx={{ fontSize: '1rem', color: 'success.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', fontSize: '0.75rem' }}>
+                      完了
+                    </Typography>
+                  </>
+                ) : remaining < 0 ? (
+                  <>
+                    <ErrorIcon sx={{ fontSize: '1rem', color: 'error.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.main', fontSize: '0.75rem' }}>
+                      超過: {Math.abs(remaining)}個
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <WarningIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.main', fontSize: '0.75rem' }}>
+                      残り: {remaining}個
+                    </Typography>
+                  </>
+                )}
+              </Box>
+
+              {/* 固定店舗数表示 */}
+              {lockedStores.size > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Lock sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    固定: {lockedStores.size}店舗
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
       </Stack>
 
       {/* エラー表示 */}
