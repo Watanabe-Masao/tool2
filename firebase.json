@@ -3,23 +3,21 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "hosting": [
-    {
-      "target": "haibun-distribution",
-      "public": "frontend/dist",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "rewrites": [
-        {
-          "source": "**",
-          "destination": "/index.html"
-        }
-      ],
-      "cleanUrls": true,
-      "headers": [
+  "hosting": {
+    "public": "frontend/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "cleanUrls": true,
+    "headers": [
       {
         "source": "/sw.js",
         "headers": [
@@ -81,7 +79,6 @@
           }
         ]
       }
-      ]
-    }
-  ]
+    ]
+  }
 }
