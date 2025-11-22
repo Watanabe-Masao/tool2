@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -70,6 +70,52 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
   const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
   const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
+
+  // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
+  const lastAutoLoadedKey = useRef<string | null>(null);
+
+  /**
+   * 履歴がある場合、最新のものを自動読み込み
+   */
+  useEffect(() => {
+    // 商品名、規格、入数がすべて入力されている場合のみ
+    if (!productName || !specification || !quantityPerPackage) {
+      return;
+    }
+
+    // 一致する履歴を取得
+    const matchingHistory = findMatchingHistory(productName, specification, quantityPerPackage);
+    if (matchingHistory.length === 0) {
+      return;
+    }
+
+    // 現在の組み合わせのキーを生成
+    const currentKey = `${productName}-${specification}-${quantityPerPackage}`;
+
+    // すでに同じ組み合わせで自動読み込み済みの場合はスキップ
+    if (lastAutoLoadedKey.current === currentKey) {
+      return;
+    }
+
+    // 価格情報がすでに入力されている場合はスキップ（ユーザーが手動入力した可能性）
+    if (centerCost || storeCost || priceExcludingTax) {
+      return;
+    }
+
+    // 最新の履歴（配列の最初の要素）を自動読み込み
+    const latestHistory = matchingHistory[0];
+    setValue(`products.${index}.centerCost`, latestHistory.centerCost);
+    setValue(`products.${index}.storeCost`, latestHistory.storeCost);
+    setValue(`products.${index}.priceExcludingTax`, latestHistory.priceExcludingTax);
+    if (latestHistory.centerFeeRate !== undefined) {
+      setValue(`products.${index}.centerFeeRate`, latestHistory.centerFeeRate);
+    }
+
+    // 自動読み込み済みとして記録
+    lastAutoLoadedKey.current = currentKey;
+
+    console.log(`[ProductFormCardPricing] Auto-loaded latest pricing history for ${productName} (${specification})`);
+  }, [productName, specification, quantityPerPackage, findMatchingHistory, centerCost, storeCost, priceExcludingTax, setValue, index]);
 
   // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
   const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
