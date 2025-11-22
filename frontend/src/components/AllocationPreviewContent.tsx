@@ -2,14 +2,11 @@ import React, { useMemo, useState } from 'react';
 import {
   Box,
   Typography,
-  Tabs,
-  Tab,
-  Alert,
-  CircularProgress,
   Button,
   Paper,
+  Divider,
 } from '@mui/material';
-import { PictureAsPdf, TableChart, Download, ArrowBack, Description, Send } from '@mui/icons-material';
+import { PictureAsPdf, ArrowBack, Description, Send } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
@@ -18,7 +15,6 @@ import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { TemplateService } from '@/services/api/templateService';
-import { isIPhoneSafari } from '@/utils/deviceDetection';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 
 // AG Grid モジュールを登録
@@ -76,48 +72,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onSendEmail,
   onBack,
 }) => {
-  // タブの選択状態（0: 配分表、1: PDFプレビュー）
-  const [tabValue, setTabValue] = useState(0);
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
-  // PDF読み込み状態
-  const [pdfLoading, setPdfLoading] = useState(true);
-  const [pdfError, setPdfError] = useState<string | null>(null);
   // PDFプレビューモーダルの開閉状態
   const [showPDFModal, setShowPDFModal] = useState(false);
 
-  // iPhone Safari判定
-  const isIPhone = isIPhoneSafari();
-
   // PDF URL
   const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
-
-  /**
-   * タブ変更ハンドラ
-   */
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-    if (newValue === 1) {
-      // PDFタブに切り替えた時、読み込み状態をリセット
-      setPdfLoading(true);
-      setPdfError(null);
-    }
-  };
-
-  /**
-   * PDF iframeの読み込み完了
-   */
-  const handlePdfLoad = () => {
-    setPdfLoading(false);
-  };
-
-  /**
-   * PDF iframeのエラー
-   */
-  const handlePdfError = () => {
-    setPdfLoading(false);
-    setPdfError('PDFの読み込みに失敗しました');
-  };
 
   /**
    * グリッド行データを生成
@@ -286,29 +247,17 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
   return (
     <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ヘッダーとタブを同じ行に配置 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h6" sx={{ mr: 1 }}>配分表プレビュー</Typography>
-        {/* タブ */}
-        {pdfFilename ? (
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab icon={<TableChart />} iconPosition="start" label="配分表" />
-            <Tab icon={<PictureAsPdf />} iconPosition="start" label="PDFプレビュー" />
-          </Tabs>
-        ) : (
-          <Typography variant="caption" color="warning.main" sx={{ ml: 2, fontStyle: 'italic' }}>
-            ※ PDFプレビューが利用できません（配分表はExcelでダウンロード可能です）
-          </Typography>
-        )}
+      {/* ヘッダー */}
+      <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50' }}>
+        <Typography variant="h5" fontWeight="700" color="primary.main">
+          配分表プレビュー
+        </Typography>
       </Box>
 
       {/* コンテンツ */}
       <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
-        {/* 配分表タブ */}
-        {tabValue === 0 && (
-          <>
-            {/* 選択行の詳細情報エリア */}
-            {selectedRow && (
+        {/* 選択行の詳細情報エリア */}
+        {selectedRow && (
               <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
                 {/* 1行目: 店着日と集計情報 */}
                 <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
@@ -400,101 +349,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 columnDefs={columnDefs}
                 gridOptions={gridOptions}
               />
-            </Box>
-          </>
-        )}
-
-        {/* PDFプレビュータブ */}
-        {tabValue === 1 && pdfFilename && (
-          <Box sx={{ width: '100%', height: 'calc(85vh - 230px)', minHeight: 500, position: 'relative' }}>
-            {isIPhone ? (
-              /* iPhone Safari: PDFを開くボタン */
-              <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                <Alert severity="info" sx={{ mb: 3 }}>
-                  iPhone Safariでは、iframe内でのPDFプレビューはサポートされていません。
-                  <br />
-                  下のボタンからPDFを新しいタブで開いて表示できます。
-                </Alert>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PictureAsPdf />}
-                    onClick={() => window.open(pdfUrl, '_blank')}
-                    size="large"
-                    fullWidth
-                    sx={{ maxWidth: 300 }}
-                  >
-                    PDFを開く
-                  </Button>
-                  {onDownloadPdf && (
-                    <Button
-                      variant="outlined"
-                      startIcon={<Download />}
-                      onClick={onDownloadPdf}
-                      size="large"
-                      fullWidth
-                      sx={{ maxWidth: 300 }}
-                    >
-                      PDFをダウンロード
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-            ) : (
-              /* PC: iframeでPDFプレビュー */
-              <>
-                {pdfLoading && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 1,
-                    }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                )}
-                {pdfError && (
-                  <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {pdfError}
-                    </Alert>
-                    {onDownloadPdf && (
-                      <Button
-                        variant="contained"
-                        startIcon={<Download />}
-                        onClick={onDownloadPdf}
-                      >
-                        PDFをダウンロード
-                      </Button>
-                    )}
-                  </Box>
-                )}
-                {!pdfError && (
-                  <iframe
-                    src={pdfUrl}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      display: pdfLoading ? 'none' : 'block',
-                    }}
-                    title="PDFプレビュー"
-                    onLoad={handlePdfLoad}
-                    onError={handlePdfError}
-                  />
-                )}
-              </>
-            )}
-          </Box>
-        )}
+        </Box>
       </Box>
 
+      <Divider />
+
       {/* アクションボタン */}
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         {/* 左側：戻るボタン */}
         <Box>
           {onBack && (
@@ -502,6 +363,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               variant="outlined"
               startIcon={<ArrowBack />}
               onClick={onBack}
+              size="large"
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                borderWidth: 2,
+                '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
+              }}
             >
               戻る
             </Button>
@@ -509,13 +378,21 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         </Box>
 
         {/* 右側：ダウンロードと送信ボタン */}
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {pdfFilename && (
             <Button
               variant="outlined"
               startIcon={<PictureAsPdf />}
               onClick={() => setShowPDFModal(true)}
               color="primary"
+              size="large"
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                borderWidth: 2,
+                '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
+              }}
             >
               PDFプレビュー
             </Button>
@@ -526,15 +403,32 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               startIcon={<Description />}
               onClick={onDownloadExcel}
               color="success"
+              size="large"
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                boxShadow: 3,
+                '&:hover': { boxShadow: 6 }
+              }}
             >
               Excelダウンロード
             </Button>
           )}
           {onSendEmail && (
             <Button
-              variant="outlined"
+              variant="contained"
               startIcon={<Send />}
               onClick={onSendEmail}
+              color="info"
+              size="large"
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                boxShadow: 3,
+                '&:hover': { boxShadow: 6 }
+              }}
             >
               送信
             </Button>
