@@ -53,8 +53,8 @@ export const Header: React.FC = () => {
   const [showClearMessage, setShowClearMessage] = useState(false);
   const [clearMessage, setClearMessage] = useState('');
 
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const longPressInterval = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressInterval = useRef<number | null>(null);
 
   /**
    * ユーザーメニューを開く
