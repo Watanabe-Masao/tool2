@@ -93,11 +93,15 @@
       ]
     },
     {
-      "collectionGroup": "history",
-      "queryScope": "COLLECTION_GROUP",
+      "collectionGroup": "email_addresses",
+      "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "lastUsed",
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]

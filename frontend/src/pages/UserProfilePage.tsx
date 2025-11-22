@@ -10,6 +10,7 @@ import {
   Divider,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Dialog,
@@ -28,11 +29,13 @@ import {
   Info,
   Edit,
   MailOutline,
+  ContactMail,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useHistory } from 'react-router-dom';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
+import { EmailAddressBookManagerModal } from '@/components/modals/EmailAddressBookManagerModal';
 
 /**
  * ユーザープロフィール・管理ページ
@@ -48,6 +51,7 @@ export const UserProfilePage: React.FC = () => {
   const [emailSenderName, setEmailSenderName] = useState('');
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [addressBookModalOpen, setAddressBookModalOpen] = useState(false);
 
   /**
    * ログインプロバイダーを判定
@@ -250,6 +254,18 @@ export const UserProfilePage: React.FC = () => {
                       }}
                     />
                   </ListItem>
+                  <Divider sx={{ my: 1 }} />
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => setAddressBookModalOpen(true)}>
+                      <ListItemIcon>
+                        <ContactMail color="primary" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="アドレス帳"
+                        secondary="よく使うメールアドレスを登録"
+                      />
+                    </ListItemButton>
+                  </ListItem>
                 </List>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, px: 2 }}>
                   メール送信時に表示される送信者名を設定できます
@@ -357,6 +373,12 @@ export const UserProfilePage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* アドレス帳管理モーダル */}
+        <EmailAddressBookManagerModal
+          open={addressBookModalOpen}
+          onClose={() => setAddressBookModalOpen(false)}
+        />
     </Container>
   );
 };

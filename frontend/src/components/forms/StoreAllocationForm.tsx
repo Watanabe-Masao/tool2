@@ -1,34 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId } from 'react-hook-form';
-import { Box, Typography, Alert, Grid, Chip, Tooltip, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
-import { ProductFormCardPricing } from './ProductFormCardPricing';
+import { Box, Typography, Alert, Chip, Tooltip } from '@mui/material';
+import { ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { StoreAllocationGrid } from './StoreAllocationGrid';
+import { StoreAllocationMobile } from './StoreAllocationMobile';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { isMobileDevice } from '@/utils/deviceDetection';
 
 /**
- * ProductPricingFormのProps
+ * StoreAllocationFormのProps
  */
-interface ProductPricingFormProps {
+interface StoreAllocationFormProps {
   /** React Hook FormのControl */
   control: Control<OrderFormData>;
   /** エラー */
   errors: FieldErrors<OrderFormData>;
-  /** Enterキー押下時のハンドラー */
-  onEnterPress?: () => void;
   /** 商品フィールド配列 */
   fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
 }
 
 /**
- * Step 3: 商品価格情報フォーム
+ * Step 4: 店舗配分フォーム
  *
- * 商品の価格情報（原価、売価、総納品数）を入力します。
+ * 36店舗への配分数を入力します。
  */
-export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
+export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   control,
   errors,
-  onEnterPress,
   fields,
 }) => {
   // アクティブなタブのインデックス
@@ -54,6 +53,9 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
 
   // 店着日を監視
   const deliveryDate = useWatch({ control, name: 'deliveryDate' });
+
+  // デバイス判定
+  const isMobile = isMobileDevice();
 
   /**
    * 初回マウント後にフラグを立てる（アニメーション制御用）
@@ -161,35 +163,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   }, []);
 
   /**
-   * 商品の未入力項目数を計算
+   * 配分の完了状況を確認
    */
-  const getIncompleteCount = (index: number): number => {
+  const getAllocationStatus = (index: number): { isComplete: boolean; remaining: number } => {
     const product = products?.[index];
-    if (!product) return 0;
+    if (!product) return { isComplete: false, remaining: 0 };
 
-    let count = 0;
-    if (!product.centerCost || product.centerCost === 0) count++;
-    if (!product.storeCost || product.storeCost === 0) count++;
-    if (!product.priceExcludingTax || product.priceExcludingTax === 0) count++;
-    if (!product.totalDelivery || product.totalDelivery === 0) count++;
+    const totalDelivery = product.totalDelivery || 0;
+    const allocations = product.storeAllocations || [];
+    const totalAllocated = allocations.reduce((sum: number, val: number) => sum + (val || 0), 0);
+    const remaining = totalDelivery - totalAllocated;
 
-    return count;
-  };
-
-  /**
-   * 未入力項目のラベルリストを取得
-   */
-  const getIncompleteItems = (index: number): string[] => {
-    const product = products?.[index];
-    if (!product) return [];
-
-    const items: string[] = [];
-    if (!product.centerCost || product.centerCost === 0) items.push('センター着原価');
-    if (!product.storeCost || product.storeCost === 0) items.push('店着原価');
-    if (!product.priceExcludingTax || product.priceExcludingTax === 0) items.push('売価');
-    if (!product.totalDelivery || product.totalDelivery === 0) items.push('総納品数');
-
-    return items;
+    return {
+      isComplete: remaining === 0 && totalDelivery > 0,
+      remaining,
+    };
   };
 
   /**
@@ -208,70 +196,25 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
   const getTabTooltip = (index: number): string => {
     const product = products?.[index];
     const name = product?.name || `商品${index + 1}`;
-    const incompleteItems = getIncompleteItems(index);
+    const status = getAllocationStatus(index);
 
-    if (incompleteItems.length === 0) {
-      return `${name}\n✓ すべて入力済み`;
+    if (status.isComplete) {
+      return `${name}\n✓ 配分完了`;
+    } else if (status.remaining > 0) {
+      return `${name}\n未配分: ${status.remaining}個`;
+    } else if (status.remaining < 0) {
+      return `${name}\n配分超過: ${Math.abs(status.remaining)}個`;
     } else {
-      return `${name}\n未入力: ${incompleteItems.join('、')}`;
+      return `${name}\n未配分`;
     }
   };
-
-  // 全体の集計を計算
-  const summary = React.useMemo(() => {
-    let totalCenterCost = 0;
-    let totalCenterCostWithFee = 0;
-    let totalStoreCost = 0;
-    let totalSellingPrice = 0;
-    let totalProfit = 0;
-    let grossProfit = 0; // 粗利額
-
-    products.forEach((product) => {
-      const centerCost = product.centerCost || 0;
-      const centerFeeRate = product.centerFeeRate || 13;
-      const storeCost = product.storeCost || 0;
-      const sellingPrice = product.priceExcludingTax || 0;
-      const quantityPerPackage = product.quantityPerPackage || 0;
-      const totalDelivery = product.totalDelivery || 0;
-
-      const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
-      const quantity = totalDelivery * quantityPerPackage;
-
-      totalCenterCost += centerCost * quantity;
-      totalCenterCostWithFee += centerCostWithFee * quantity;
-      totalStoreCost += storeCost * quantity;
-      totalSellingPrice += sellingPrice * quantity;
-      totalProfit += (storeCost - centerCostWithFee) * quantity;
-      grossProfit += (sellingPrice - storeCost) * quantity; // 粗利額 = 売価 - 店着原価
-    });
-
-    // 出荷原価率 = 店着総原価 / センターフィー込総原価 × 100
-    const shippingCostRate = totalCenterCostWithFee > 0
-      ? (totalStoreCost / totalCenterCostWithFee * 100).toFixed(1)
-      : '0.0';
-
-    const grossProfitMargin = totalSellingPrice > 0
-      ? (grossProfit / totalSellingPrice * 100).toFixed(1)
-      : '0.0';
-
-    return {
-      totalCenterCost,
-      totalCenterCostWithFee,
-      totalStoreCost,
-      totalSellingPrice,
-      totalProfit,
-      shippingCostRate,
-      grossProfit,
-      grossProfitMargin,
-    };
-  }, [products]);
 
   return (
     <Box>
       {/* ヘッダーセクション */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight="medium">
-          商品情報2（価格・数量）を入力してください
+          店舗配分を入力してください
         </Typography>
       </Box>
 
@@ -282,133 +225,13 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         </Alert>
       )}
 
-      {/* 全体集計サマリー（折りたたみ可能） */}
-      {fields.length > 0 && (
-        <Accordion defaultExpanded sx={{ mb: 2, bgcolor: 'primary.50', border: '2px solid', borderColor: 'primary.main' }}>
-          <AccordionSummary
-            expandIcon={<ExpandMore />}
-            sx={{ minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
-          >
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'primary.main' }}>
-              全体集計
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={2}>
-              {/* 1列目 */}
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {/* 総原価（センター着） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（センター着）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalCenterCost.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 総原価（センターフィー込） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（センターフィー込）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalCenterCostWithFee.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 全体差益 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      全体差益
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="success.main">
-                      ¥{summary.totalProfit.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 出荷原価率 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      出荷原価率
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="info.main">
-                      {summary.shippingCostRate}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-
-              {/* 2列目 */}
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {/* 総原価（店着） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（店着）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalStoreCost.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 総売価 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総売価
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalSellingPrice.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 粗利額 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      粗利額
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="success.main">
-                      ¥{summary.grossProfit.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 値入率 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      値入率
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="info.main">
-                      {summary.grossProfitMargin}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
       {/* 商品ナビゲーション情報 */}
       <Box sx={{ mb: 2, px: 1 }}>
         <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold' }}>
           商品{activeTabIndex + 1}（{activeTabIndex + 1}/{fields.length}）　店着日：{deliveryDate ? new Date(deliveryDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '未設定'}　帳合先：{products?.[activeTabIndex]?.supplier || '未選択'}
         </Typography>
         <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'primary.main' }}>
-          品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}　総納品数：{products?.[activeTabIndex]?.totalDelivery || '－'}
-        </Typography>
-        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'secondary.main' }}>
-          センターフィー込原価（1単位）：¥{(() => {
-            const product = products?.[activeTabIndex];
-            if (product?.centerCost) {
-              const centerFeeRate = product.centerFeeRate || 13;
-              const centerCostWithFee = Math.round(product.centerCost * (1 + centerFeeRate / 100));
-              return centerCostWithFee.toLocaleString();
-            }
-            return '－';
-          })()}　店着原価（1単位）：¥{products?.[activeTabIndex]?.storeCost?.toLocaleString() || '－'}　差益（1単位あたり）：¥{(() => {
-            const product = products?.[activeTabIndex];
-            if (product?.centerCost && product?.storeCost) {
-              const centerFeeRate = product.centerFeeRate || 13;
-              const centerCostWithFee = Math.round(product.centerCost * (1 + centerFeeRate / 100));
-              return (product.storeCost - centerCostWithFee).toLocaleString();
-            }
-            return '－';
-          })()}
+          品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　総納品数：{products?.[activeTabIndex]?.totalDelivery || '－'}
         </Typography>
       </Box>
 
@@ -434,9 +257,10 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         }}
       >
         {fields.map((field, index) => {
-          const incompleteCount = getIncompleteCount(index);
+          const status = getAllocationStatus(index);
           const isActive = activeTabIndex === index;
-          const isComplete = incompleteCount === 0;
+          const isComplete = status.isComplete;
+          const hasError = status.remaining !== 0;
 
           return (
             <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
@@ -456,7 +280,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                     >
                       {getTabLabel(index)}
                     </Typography>
-                    {incompleteCount > 0 && (
+                    {hasError && (
                       <Box
                         sx={{
                           display: 'inline-flex',
@@ -465,14 +289,14 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                           minWidth: 16,
                           height: 16,
                           borderRadius: '50%',
-                          bgcolor: 'warning.main',
+                          bgcolor: status.remaining > 0 ? 'warning.main' : 'error.main',
                           color: 'white',
-                          fontSize: '0.6rem',
+                          fontSize: '0.55rem',
                           fontWeight: 'bold',
                           px: 0.3,
                         }}
                       >
-                        {incompleteCount}
+                        {status.remaining > 0 ? `+${status.remaining}` : status.remaining}
                       </Box>
                     )}
                   </Box>
@@ -487,9 +311,13 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                     ? isActive
                       ? 'success.main'
                       : 'success.light'
+                    : hasError
+                    ? isActive
+                      ? status.remaining > 0 ? 'warning.main' : 'error.main'
+                      : status.remaining > 0 ? 'warning.light' : 'error.light'
                     : isActive
-                    ? 'warning.main'
-                    : 'warning.light',
+                    ? 'grey.400'
+                    : 'grey.200',
                   color: isActive ? 'white' : 'text.primary',
                   boxShadow: isActive ? 3 : 1,
                   transform: isActive ? 'scale(1.05)' : 'scale(1)',
@@ -579,6 +407,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         {/* アクティブな商品カードのみ表示（アニメーション付き） */}
         {fields.map((field, index) => {
           const isActive = activeTabIndex === index;
+          const product = products?.[index];
           return (
             <Box
               key={field.id}
@@ -607,12 +436,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
                 },
               }}
             >
-              <ProductFormCardPricing
-                index={index}
-                control={control}
-                errors={errors}
-                onEnterPress={onEnterPress}
-              />
+              {isMobile ? (
+                <StoreAllocationMobile
+                  productIndex={index}
+                  control={control}
+                  errors={errors}
+                  totalDelivery={product?.totalDelivery || 0}
+                />
+              ) : (
+                <StoreAllocationGrid
+                  productIndex={index}
+                  control={control}
+                  errors={errors}
+                  totalDelivery={product?.totalDelivery || 0}
+                />
+              )}
             </Box>
           );
         })}

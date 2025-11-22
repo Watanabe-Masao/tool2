@@ -477,6 +477,195 @@ export class FirestoreService {
   }
 
   /**
+   * メールアドレス帳を保存
+   *
+   * @param userId - ユーザーID
+   * @param name - 表示名
+   * @param email - メールアドレス
+   * @returns エントリID
+   */
+  static async saveEmailAddress(userId: string, name: string, email: string): Promise<string> {
+    const db = getFirebaseFirestore();
+    const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
+
+    const docRef = await addDoc(addressesRef, {
+      userId,
+      name,
+      email,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`[Firestore] Email address saved: ${name} (${email})`);
+    return docRef.id;
+  }
+
+  /**
+   * メールアドレス帳一覧を取得
+   *
+   * @param userId - ユーザーID
+   * @returns アドレス帳配列
+   */
+  static async getEmailAddresses(userId: string): Promise<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      displayOrder?: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  > {
+    const db = getFirebaseFirestore();
+    const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
+
+    const q = query(addressesRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+
+    const snapshot = await getDocs(q);
+
+    const addresses = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        email: data.email,
+        displayOrder: data.displayOrder,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+      };
+    });
+
+    // displayOrderでソート（設定されていない場合は最後に）
+    addresses.sort((a, b) => {
+      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+        return a.displayOrder - b.displayOrder;
+      }
+      if (a.displayOrder !== undefined) return -1;
+      if (b.displayOrder !== undefined) return 1;
+      return 0;
+    });
+
+    console.log(`[Firestore] Retrieved ${addresses.length} email addresses`);
+    return addresses;
+  }
+
+  /**
+   * メールアドレス帳一覧をリアルタイムで監視
+   *
+   * @param userId - ユーザーID
+   * @param onSuccess - データ更新時のコールバック
+   * @param onError - エラー発生時のコールバック
+   * @returns アンサブスクライブ関数
+   */
+  static subscribeToEmailAddresses(
+    userId: string,
+    onSuccess: (addresses: Array<{
+      id: string;
+      name: string;
+      email: string;
+      displayOrder?: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>) => void,
+    onError: (error: Error) => void
+  ): () => void {
+    const db = getFirebaseFirestore();
+    const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
+    const q = query(addressesRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const addresses = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            email: data.email,
+            displayOrder: data.displayOrder,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+          };
+        });
+
+        // displayOrderでソート（設定されていない場合は最後に）
+        addresses.sort((a, b) => {
+          if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+            return a.displayOrder - b.displayOrder;
+          }
+          if (a.displayOrder !== undefined) return -1;
+          if (b.displayOrder !== undefined) return 1;
+          return 0;
+        });
+
+        onSuccess(addresses);
+      },
+      (error) => {
+        onError(error as Error);
+      }
+    );
+
+    return unsubscribe;
+  }
+
+  /**
+   * メールアドレス帳を削除
+   *
+   * @param addressId - アドレスID
+   */
+  static async deleteEmailAddress(addressId: string): Promise<void> {
+    const db = getFirebaseFirestore();
+    const addressRef = doc(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES, addressId);
+
+    await deleteDoc(addressRef);
+
+    console.log(`[Firestore] Email address deleted: ${addressId}`);
+  }
+
+  /**
+   * メールアドレス帳を更新
+   *
+   * @param addressId - アドレスID
+   * @param name - 表示名
+   * @param email - メールアドレス
+   */
+  static async updateEmailAddress(addressId: string, name: string, email: string): Promise<void> {
+    const db = getFirebaseFirestore();
+    const addressRef = doc(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES, addressId);
+
+    await updateDoc(addressRef, {
+      name,
+      email,
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`[Firestore] Email address updated: ${addressId}`);
+  }
+
+  /**
+   * メールアドレス帳の並び順を更新
+   *
+   * @param reorderedItems - 並び替え後のID配列とdisplayOrder
+   */
+  static async reorderEmailAddresses(
+    reorderedItems: Array<{ id: string; displayOrder: number }>
+  ): Promise<void> {
+    const db = getFirebaseFirestore();
+
+    const updates = reorderedItems.map(async (item) => {
+      const addressRef = doc(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES, item.id);
+      await updateDoc(addressRef, {
+        displayOrder: item.displayOrder,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await Promise.all(updates);
+
+    console.log(`[Firestore] Reordered ${reorderedItems.length} email addresses`);
+  }
+
+  /**
    * 商品履歴を保存
    *
    * @param userId - ユーザーID

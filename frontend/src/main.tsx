@@ -17,18 +17,15 @@ import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
-/* Swiper CSS */
-import 'swiper/swiper-bundle.css';
-
 /* Custom CSS */
 import './index.css';
 import App from './App.tsx';
 
-// PWA Service Worker registration
-import { registerSW } from 'virtual:pwa-register';
+// PWA Service Worker registration - 一時的に無効化
+// import { registerSW } from 'virtual:pwa-register';
 
 // Register Service Worker with auto-update
-const updateSW = registerSW({
+/*const updateSW = registerSW({
   onNeedRefresh() {
     if (confirm('新しいバージョンが利用可能です。更新しますか？')) {
       updateSW(true);
@@ -37,7 +34,7 @@ const updateSW = registerSW({
   onOfflineReady() {
     console.log('アプリがオフラインで利用可能になりました');
   },
-});
+});*/
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

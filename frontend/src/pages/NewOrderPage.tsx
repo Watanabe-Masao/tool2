@@ -1,16 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import type { Swiper as SwiperType } from 'swiper';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
 import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
-import { StoreAllocationGrid } from '@/components/forms/StoreAllocationGrid';
-import { StoreAllocationMobile } from '@/components/forms/StoreAllocationMobile';
+import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
@@ -26,7 +23,6 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { isMobileDevice } from '@/utils/deviceDetection';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 import { format } from 'date-fns';
 
@@ -73,12 +69,6 @@ export const NewOrderPage: React.FC = () => {
     affectedProductsCount: 0,
     newSuppliers: [],
   });
-
-  // Swiper instance reference
-  const swiperRef = useRef<SwiperType | null>(null);
-
-  // Swiper初期化完了フラグ（初期化中のonSlideChangeを無視するため）
-  const swiperInitialized = useRef(false);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -321,69 +311,10 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * Swiper初期化後に確実にスライド0から開始
+   * タブ変更時の処理
    */
-  useEffect(() => {
-    // マウント時に即座に実行
-    if (swiperRef.current && !swiperInitialized.current) {
-      swiperInitialized.current = true;
-
-      // 即座にスライド0に移動
-      if (swiperRef.current.activeIndex !== 0) {
-        swiperRef.current.slideTo(0, 0);
-      }
-      setActiveStep(0);
-    }
-  }, []); // 空の依存配列で一度だけ実行
-
-  /**
-   * フォームデータ変更時にSwiperを更新
-   */
-  useEffect(() => {
-    if (swiperRef.current) {
-      // Swiperを更新
-      setTimeout(() => {
-        swiperRef.current?.update();
-      }, 100);
-    }
-  }, [formData.products?.length]); // 商品数が変更されたときに更新
-
-  /**
-   * コンテンツサイズ変更を監視してSwiperを更新
-   */
-  useEffect(() => {
-    if (!swiperRef.current) return;
-
-    const swiperEl = swiperRef.current.el;
-    if (!swiperEl) return;
-
-    // ResizeObserverでコンテンツのサイズ変更を検出
-    const resizeObserver = new ResizeObserver(() => {
-      if (swiperRef.current) {
-        swiperRef.current.update();
-      }
-    });
-
-    // すべてのスライドを監視
-    const slides = swiperEl.querySelectorAll('.swiper-slide');
-    slides.forEach((slide) => {
-      resizeObserver.observe(slide);
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [activeStep]); // アクティブステップが変わったときに再設定
-
-  /**
-   * スライド変更時の処理
-   */
-  const handleSlideChange = (swiper: SwiperType) => {
-    // 初期化中のスライド変更を無視
-    if (!swiperInitialized.current) {
-      return;
-    }
-    setActiveStep(swiper.activeIndex);
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveStep(newValue);
   };
 
   /**
@@ -593,8 +524,6 @@ export const NewOrderPage: React.FC = () => {
     return null;
   };
 
-  const isMobile = isMobileDevice();
-
   /**
    * 下書きを復元
    */
@@ -606,6 +535,10 @@ export const NewOrderPage: React.FC = () => {
       reset(draft);
       setRestoreDialogOpen(false);
       showSuccess('下書きを復元しました');
+
+      // 最初のステップに戻す
+      setActiveStep(0);
+
       isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
       setTimeout(() => {
         isInitialLoad.current = false;
@@ -625,9 +558,9 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      <Container maxWidth="lg">
-        {showGeneratedPreview && generatedFiles ? (
-          /* 生成後のプレビュー画面 */
+      {showGeneratedPreview && generatedFiles ? (
+        /* 生成後のプレビュー画面 */
+        <Container maxWidth="lg">
           <Box sx={{ py: 2 }}>
             <AllocationPreviewContent
               formData={formData}
@@ -638,105 +571,92 @@ export const NewOrderPage: React.FC = () => {
               onBack={handleBackFromPreview}
             />
           </Box>
-        ) : (
-          /* フォーム入力画面 */
-          <Box sx={{ py: 2 }}>
-            {/* オフライン時の警告 */}
-            {!isOnline && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
+        </Container>
+      ) : (
+        /* フォーム入力画面 */
+        <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
+          {/* オフライン時の警告 */}
+          {!isOnline && (
+            <Box sx={{ px: 2, pt: 2 }}>
+              <Alert severity="warning">
                 現在オフラインモードです。データはローカルに保存され、オンライン復帰時に自動的に同期されます。
               </Alert>
-            )}
-
-            {/* スワイプ可能なステップコンテンツ */}
-            <Box sx={{ mt: 2 }}>
-              <Swiper
-                onSwiper={(swiper) => {
-                  swiperRef.current = swiper;
-                }}
-                onSlideChange={handleSlideChange}
-                initialSlide={0}
-                spaceBetween={16}
-                slidesPerView={1}
-                loop={false}
-                resistance={true}
-                resistanceRatio={0}
-                edgeSwipeDetection={true}
-                touchStartPreventDefault={false}
-                style={{ width: '100%' }}
-              >
-                {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <DeliveryDateForm
-                      control={control}
-                      errors={errors}
-                      supplierOptions={supplierAutocomplete.options}
-                      onSuppliersChange={handleSuppliersChange}
-                    />
-                  </Box>
-                </SwiperSlide>
-
-                {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <ProductBasicInfoForm
-                      control={control}
-                      errors={errors}
-                      productNameOptions={productNameAutocomplete.options}
-                      originOptions={originAutocomplete.options}
-                      suppliers={formData.suppliers}
-                      fields={productFields}
-                      append={appendProduct}
-                      remove={removeProduct}
-                      onNavigateToStep={(step) => swiperRef.current?.slideTo(step)}
-                    />
-                  </Box>
-                </SwiperSlide>
-
-                {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    <ProductPricingForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                    />
-                  </Box>
-                </SwiperSlide>
-
-                {/* Step 4: 店舗配分 */}
-                <SwiperSlide>
-                  <Box sx={{ px: 1, pb: 4 }}>
-                    {productFields.map((field, index) => {
-                      const product = formData.products[index];
-                      return isMobile ? (
-                        <StoreAllocationMobile
-                          key={field.id}
-                          productIndex={index}
-                          control={control}
-                          errors={errors}
-                          totalDelivery={product?.totalDelivery || 0}
-                        />
-                      ) : (
-                        <StoreAllocationGrid
-                          key={field.id}
-                          productIndex={index}
-                          control={control}
-                          errors={errors}
-                          totalDelivery={product?.totalDelivery || 0}
-                        />
-                      );
-                    })}
-                    {renderSubmitButton()}
-                  </Box>
-                </SwiperSlide>
-              </Swiper>
             </Box>
-          </Box>
-        )}
+          )}
 
-        {/* PDFプレビューモーダル */}
+          {/* タブナビゲーション */}
+          <Container maxWidth="lg">
+            <Box sx={{ width: '100%', py: 2 }}>
+              <Tabs
+                value={activeStep}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+              >
+                <Tab label="店着日・帳合先" />
+                <Tab label="商品情報" />
+                <Tab label="価格・数量" />
+                <Tab label="店舗配分" />
+              </Tabs>
+
+              {/* Step 1: 店着日・帳合先 */}
+              {activeStep === 0 && (
+                <Box sx={{ py: 2 }}>
+                  <DeliveryDateForm
+                    control={control}
+                    errors={errors}
+                    supplierOptions={supplierAutocomplete.options}
+                    onSuppliersChange={handleSuppliersChange}
+                  />
+                </Box>
+              )}
+
+              {/* Step 2: 商品情報（基本） */}
+              {activeStep === 1 && (
+                <Box sx={{ py: 2 }}>
+                  <ProductBasicInfoForm
+                    control={control}
+                    errors={errors}
+                    productNameOptions={productNameAutocomplete.options}
+                    originOptions={originAutocomplete.options}
+                    suppliers={formData.suppliers}
+                    fields={productFields}
+                    append={appendProduct}
+                    remove={removeProduct}
+                    onNavigateToStep={setActiveStep}
+                  />
+                </Box>
+              )}
+
+              {/* Step 3: 商品情報2（価格・総納品数） */}
+              {activeStep === 2 && (
+                <Box sx={{ py: 2 }}>
+                  <ProductPricingForm
+                    control={control}
+                    errors={errors}
+                    fields={productFields}
+                  />
+                </Box>
+              )}
+
+              {/* Step 4: 店舗配分 */}
+              {activeStep === 3 && (
+                <Box sx={{ py: 2 }}>
+                  <StoreAllocationForm
+                    control={control}
+                    errors={errors}
+                    fields={productFields}
+                  />
+                  {renderSubmitButton()}
+                </Box>
+              )}
+            </Box>
+          </Container>
+        </Box>
+      )}
+
+      {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (
           <PDFPreviewModal
             open={showPDFPreview}
@@ -829,7 +749,6 @@ export const NewOrderPage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
     </FormProvider>
   );
 };

@@ -43,3 +43,9 @@ build/
 dist/
 *.egg-info/
 .coverage
+
+# Node modules
+node_modules/
+
+# Deployment packages
+*.tar.gz

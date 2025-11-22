@@ -29,6 +29,7 @@ import {
 import { useAuthContext } from '@/context/AuthContext';
 import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
+import { BuildInfo } from '@/components/common/BuildInfo';
 
 /**
  * ヘッダーコンポーネント
@@ -206,6 +207,9 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* ビルド情報ボタン */}
+              <BuildInfo />
+
               {/* ユーザーメニューボタン */}
               <IconButton
                 size="small"

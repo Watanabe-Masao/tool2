@@ -10,8 +10,11 @@ import {
   CircularProgress,
   Typography,
   Alert,
+  Chip,
 } from '@mui/material';
+import { ContactMail } from '@mui/icons-material';
 import { sendEmail } from '@/services/gmail/gmailService';
+import { useEmailAddressBook } from '@/hooks/useEmailAddressBook';
 
 /**
  * EmailSendModalのProps
@@ -46,6 +49,14 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
   const [body, setBody] = useState('配分表を添付いたします。\n\nよろしくお願いいたします。');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { entries } = useEmailAddressBook();
+
+  /**
+   * アドレス帳から選択
+   */
+  const handleSelectAddress = (email: string) => {
+    setTo(email);
+  };
 
   const handleSend = async () => {
     try {
@@ -103,6 +114,31 @@ export const EmailSendModal: React.FC<EmailSendModalProps> = ({
             placeholder="example@example.com"
             disabled={sending}
           />
+
+          {/* アドレス帳選択 */}
+          {entries.length > 0 && (
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <ContactMail fontSize="small" color="action" />
+                <Typography variant="caption" color="text.secondary">
+                  アドレス帳から選択:
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {entries.map((entry) => (
+                  <Chip
+                    key={entry.id}
+                    label={entry.name}
+                    onClick={() => handleSelectAddress(entry.email)}
+                    disabled={sending}
+                    variant={to === entry.email ? 'filled' : 'outlined'}
+                    color={to === entry.email ? 'primary' : 'default'}
+                    size="small"
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
 
           <TextField
             label="件名"

@@ -3,32 +3,56 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { execSync } from 'child_process'
+
+// Get Git information
+const getGitInfo = () => {
+  try {
+    return {
+      commit: execSync('git rev-parse HEAD').toString().trim(),
+      branch: execSync('git rev-parse --abbrev-ref HEAD').toString().trim(),
+      commitShort: execSync('git rev-parse --short HEAD').toString().trim(),
+      commitDate: execSync('git log -1 --format=%cd --date=iso').toString().trim(),
+      commitMessage: execSync('git log -1 --format=%s').toString().trim(),
+    }
+  } catch {
+    return {
+      commit: 'unknown',
+      branch: 'unknown',
+      commitShort: 'unknown',
+      commitDate: 'unknown',
+      commitMessage: 'unknown',
+    }
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
+  const gitInfo = getGitInfo()
+  const buildTime = new Date().toISOString()
 
   return {
     plugins: [
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'vite.svg'],
+        includeAssets: ['icon.svg'],
         manifest: {
-          name: '配分表作成アプリ',
+          name: '配分表作成ツール',
           short_name: '配分表',
-          description: '店舗配分表を作成するアプリケーション',
+          description: '36店舗への商品配分表を自動生成するWebアプリケーション',
           theme_color: '#1976d2',
           background_color: '#ffffff',
           display: 'standalone',
-          orientation: 'portrait',
           scope: '/',
           start_url: '/',
+          orientation: 'portrait',
           icons: [
             {
-              src: 'icon.svg',
+              src: '/icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
@@ -66,27 +90,11 @@ export default defineConfig(({ mode }) => {
                   statuses: [0, 200]
                 }
               }
-            },
-            {
-              urlPattern: /\/api\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                networkTimeoutSeconds: 10,
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 5 // 5 minutes
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
             }
           ]
         },
         devOptions: {
-          enabled: true,
-          type: 'module'
+          enabled: false
         }
       })
     ],
@@ -127,6 +135,15 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_FIREBASE_STORAGE_BUCKET': JSON.stringify(env.VITE_FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET),
       'import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
       'import.meta.env.VITE_FIREBASE_APP_ID': JSON.stringify(env.VITE_FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID),
+      // Build and Git information
+      '__BUILD_INFO__': JSON.stringify({
+        buildTime,
+        gitCommit: gitInfo.commit,
+        gitBranch: gitInfo.branch,
+        gitCommitShort: gitInfo.commitShort,
+        gitCommitDate: gitInfo.commitDate,
+        gitCommitMessage: gitInfo.commitMessage,
+      }),
     }
   }
 })
