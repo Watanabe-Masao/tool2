@@ -24,8 +24,8 @@ import {
 } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
-// PDF.js worker設定 - jsDelivrを使用（npmパッケージを直接提供）
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// PDF.js worker設定 - ローカルファイルを使用（CDN依存を排除）
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 /**
  * PDFPreviewModalのProps
