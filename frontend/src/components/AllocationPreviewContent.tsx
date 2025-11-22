@@ -510,8 +510,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               variant="contained"
               startIcon={<Description />}
               onClick={onDownloadExcel}
+              color="success"
             >
-              ダウンロード
+              Excelダウンロード
             </Button>
           )}
           {onSendEmail && (

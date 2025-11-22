@@ -445,12 +445,17 @@ export const NewOrderPage: React.FC = () => {
    * Excelファイルをダウンロード
    */
   const handleDownloadExcel = () => {
-    if (generatedFiles) {
-      // レスポンスの download_url を直接使用
+    if (generatedFiles && generatedFiles.pdfFilename) {
+      // file_idとfilenameを使用してダウンロードURLを構築
+      const fileId = generatedFiles.pdfFilename; // pdfFilenameはfile_idとして使用される
+      const downloadUrl = `${generatedFiles.downloadUrl.split('?')[0]}?filename=${encodeURIComponent(generatedFiles.filename)}&ext=xlsx`;
+
       const link = document.createElement('a');
-      link.href = generatedFiles.downloadUrl;
+      link.href = downloadUrl;
       link.download = generatedFiles.filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     }
   };
 
