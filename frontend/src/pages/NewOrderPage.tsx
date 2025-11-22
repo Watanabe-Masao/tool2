@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, Chip, Paper, Typography } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -29,18 +29,19 @@ import { format } from 'date-fns';
 /**
  * フォームのステップ数
  */
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 /**
  * 新規注文作成ページ
  *
- * 4ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
+ * 5ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
  *
  * ステップ:
  * 1. 店着日選択・帳合先入力
  * 2. 商品情報入力（品名、産地、規格、入数）
  * 3. 商品情報2入力（原価、売価、総納品数）
  * 4. 36店舗への配分入力
+ * 5. 配分プレビュー・生成
  */
 export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -520,37 +521,6 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * プレビュー画面から戻る
-   */
-  const handleBackFromPreview = () => {
-    setShowGeneratedPreview(false);
-    setGeneratedFiles(null);
-    setExcelBlob(null);
-  };
-
-  /**
-   * 最終ステップで送信ボタンを表示
-   */
-  const renderSubmitButton = () => {
-    if (activeStep === TOTAL_STEPS - 1) {
-      return (
-        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleSubmit(onSubmit)}
-            fullWidth
-            sx={{ maxWidth: 400 }}
-          >
-            プレビュー
-          </Button>
-        </Box>
-      );
-    }
-    return null;
-  };
-
-  /**
    * 下書きを復元
    */
   const handleRestoreDraft = () => {
@@ -584,23 +554,8 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      {showGeneratedPreview && generatedFiles ? (
-        /* 生成後のプレビュー画面 */
-        <Container maxWidth="lg">
-          <Box sx={{ py: 2 }}>
-            <AllocationPreviewContent
-              formData={formData}
-              pdfFilename={generatedFiles.pdfFilename}
-              onDownloadExcel={handleDownloadExcel}
-              onDownloadPdf={handleDownloadPdf}
-              onSendEmail={() => setShowEmailModal(true)}
-              onBack={handleBackFromPreview}
-            />
-          </Box>
-        </Container>
-      ) : (
-        /* フォーム入力画面 */
-        <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
+      {/* フォーム入力画面（Step 5がプレビューを含む） */}
+      <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
           {/* オフライン時の警告 */}
           {!isOnline && (
             <Box sx={{ px: 2, pt: 2 }}>
@@ -624,6 +579,7 @@ export const NewOrderPage: React.FC = () => {
                 <Tab label="商品情報" />
                 <Tab label="価格・数量" />
                 <Tab label="店舗配分" />
+                <Tab label="プレビュー" />
               </Tabs>
 
               {/* Step 1: 店着日・帳合先 */}
@@ -674,13 +630,113 @@ export const NewOrderPage: React.FC = () => {
                     errors={errors}
                     fields={productFields}
                   />
-                  {renderSubmitButton()}
+                </Box>
+              )}
+
+              {/* Step 5: プレビュー・生成 */}
+              {activeStep === 4 && (
+                <Box sx={{ py: 2 }}>
+                  {!showGeneratedPreview ? (
+                    /* 生成前のプレビュー（配分確認） */
+                    <Box>
+                      <Typography variant="h5" fontWeight="700" color="primary.main" gutterBottom>
+                        配分内容の確認
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        入力内容を確認し、問題がなければ「テンプレート生成」ボタンをクリックしてください。
+                      </Typography>
+
+                      {/* 簡易プレビュー表示 */}
+                      <AllocationPreviewModal
+                        open={false}
+                        onClose={() => {}}
+                        formData={formData}
+                        pdfFilename={undefined}
+                        onDownloadExcel={() => {}}
+                      />
+
+                      {/* 配分データを簡易表示 */}
+                      <Box sx={{ mb: 3 }}>
+                        {formData.products.map((product, index) => {
+                          const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
+                          const remaining = (product.totalDelivery || 0) - totalAllocated;
+
+                          return (
+                            <Paper key={index} variant="outlined" sx={{ p: 2, mb: 2 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="700">
+                                  商品 {index + 1}: {product.name}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
+                                    納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{product.totalDelivery}</Box>
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
+                                    配分済: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'success.main' }}>{totalAllocated}</Box>
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
+                                    残り: <Box component="span" sx={{
+                                      fontWeight: 700,
+                                      fontSize: '0.9rem',
+                                      color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main'
+                                    }}>{remaining}</Box>
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                <Chip label={`産地: ${product.origin}`} size="small" />
+                                <Chip label={`規格: ${product.specification || '-'}`} size="small" />
+                                <Chip label={`帳合先: ${product.supplier}`} size="small" />
+                              </Box>
+                            </Paper>
+                          );
+                        })}
+                      </Box>
+
+                      {/* 生成ボタン */}
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                        <Button
+                          variant="contained"
+                          size="large"
+                          onClick={handleSubmit(onSubmit)}
+                          sx={{
+                            px: 6,
+                            py: 1.5,
+                            fontSize: '1.1rem',
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            boxShadow: 4,
+                            '&:hover': {
+                              boxShadow: 8,
+                            }
+                          }}
+                        >
+                          テンプレート生成
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    /* 生成後のプレビュー */
+                    generatedFiles && (
+                      <AllocationPreviewContent
+                        formData={formData}
+                        pdfFilename={generatedFiles.pdfFilename}
+                        onDownloadExcel={handleDownloadExcel}
+                        onDownloadPdf={handleDownloadPdf}
+                        onSendEmail={() => setShowEmailModal(true)}
+                        onBack={() => {
+                          setShowGeneratedPreview(false);
+                          setGeneratedFiles(null);
+                          setExcelBlob(null);
+                        }}
+                      />
+                    )
+                  )}
                 </Box>
               )}
             </Box>
           </Container>
         </Box>
-      )}
 
       {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Controller, useWatch } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Box,
@@ -16,7 +16,6 @@ import {
   LinearProgress,
 } from '@mui/material';
 import {
-  Clear,
   Lock,
   Functions,
   AutoFixHigh,
@@ -145,7 +144,6 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             enabledStores={enabledStores}
             categories={categories}
             storeSettings={storeSettings}
-            control={control}
           />
         );
       }}
@@ -165,7 +163,6 @@ interface StoreAllocationMobileContentProps {
   enabledStores: Array<typeof STORE_DATA[number]>;
   categories: StoreCategory[];
   storeSettings: Record<string, StoreSettings>;
-  control: Control<OrderFormData>;
 }
 
 /**
@@ -184,15 +181,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   enabledStores,
   categories,
   storeSettings,
-  control,
 }) => {
-  // 商品情報を取得
-  const origin = useWatch({ control, name: `products.${productIndex}.origin` });
-  const productName = useWatch({ control, name: `products.${productIndex}.name` });
-  const specification = useWatch({ control, name: `products.${productIndex}.specification` });
-  const quantityPerPackage = useWatch({ control, name: `products.${productIndex}.quantityPerPackage` });
-  const unit = useWatch({ control, name: `products.${productIndex}.unit` });
-
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
@@ -450,21 +439,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * 配分進捗率を計算
    */
   const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
-
-  /**
-   * 選択店舗の配分をクリア
-   */
-  const handleClearAllocations = () => {
-    const newAllocations = [...allocations];
-    selectedStoresList.forEach((store) => {
-      const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-      if (storeIndex !== -1) {
-        newAllocations[storeIndex] = 0;
-      }
-    });
-    onChange(newAllocations);
-    setLockedStores(new Set());
-  };
 
   /**
    * 店舗の固定/解除をトグル
