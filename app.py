@@ -133,10 +133,16 @@ async def serve_react_app(full_path: str):
     """
     すべてのパスでReactアプリを配信（SPA フォールバック）
     /api/ で始まるパスは除外（APIルーターで処理）
+    静的ファイル（registerSW.js, manifest.webmanifest等）が存在する場合はそれを返す
     """
     # APIパスは除外（すでにルーターで処理される）
     if full_path.startswith("api/"):
         return Response(status_code=404)
+
+    # 実際のファイルが存在するか確認（registerSW.js、manifest.webmanifest等）
+    requested_file = frontend_dist / full_path
+    if requested_file.is_file():
+        return FileResponse(requested_file)
 
     # React の index.html を配信
     index_path = frontend_dist / "index.html"
