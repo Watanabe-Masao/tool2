@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, Chip, Paper, Typography } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, Typography } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -637,64 +637,26 @@ export const NewOrderPage: React.FC = () => {
               {activeStep === 4 && (
                 <Box sx={{ py: 2 }}>
                   {!showGeneratedPreview ? (
-                    /* 生成前のプレビュー（配分確認） */
+                    /* 生成前のプレビュー（詳細な配分確認） */
                     <Box>
                       <Typography variant="h5" fontWeight="700" color="primary.main" gutterBottom>
                         配分内容の確認
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        入力内容を確認し、問題がなければ「テンプレート生成」ボタンをクリックしてください。
+                        以下の配分表で全ての内容を確認してください。問題がなければ「テンプレート生成」ボタンをクリックしてください。
                       </Typography>
 
-                      {/* 簡易プレビュー表示 */}
-                      <AllocationPreviewModal
-                        open={false}
-                        onClose={() => {}}
-                        formData={formData}
-                        pdfFilename={undefined}
-                        onDownloadExcel={() => {}}
-                      />
-
-                      {/* 配分データを簡易表示 */}
+                      {/* 詳細プレビュー表示（AG-Grid形式） */}
                       <Box sx={{ mb: 3 }}>
-                        {formData.products.map((product, index) => {
-                          const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-                          const remaining = (product.totalDelivery || 0) - totalAllocated;
-
-                          return (
-                            <Paper key={index} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight="700">
-                                  商品 {index + 1}: {product.name}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 2 }}>
-                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
-                                    納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{product.totalDelivery}</Box>
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
-                                    配分済: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'success.main' }}>{totalAllocated}</Box>
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
-                                    残り: <Box component="span" sx={{
-                                      fontWeight: 700,
-                                      fontSize: '0.9rem',
-                                      color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main'
-                                    }}>{remaining}</Box>
-                                  </Typography>
-                                </Box>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                <Chip label={`産地: ${product.origin}`} size="small" />
-                                <Chip label={`規格: ${product.specification || '-'}`} size="small" />
-                                <Chip label={`帳合先: ${product.supplier}`} size="small" />
-                              </Box>
-                            </Paper>
-                          );
-                        })}
+                        <AllocationPreviewContent
+                          formData={formData}
+                          pdfFilename={undefined}
+                          onBack={() => setActiveStep(3)}
+                        />
                       </Box>
 
                       {/* 生成ボタン */}
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
                         <Button
                           variant="contained"
                           size="large"
