@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, Typography } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -637,46 +637,12 @@ export const NewOrderPage: React.FC = () => {
               {activeStep === 4 && (
                 <Box sx={{ py: 2 }}>
                   {!showGeneratedPreview ? (
-                    /* 生成前のプレビュー（詳細な配分確認） */
-                    <Box>
-                      <Typography variant="h5" fontWeight="700" color="primary.main" gutterBottom>
-                        配分内容の確認
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        以下の配分表で全ての内容を確認してください。問題がなければ「テンプレート生成」ボタンをクリックしてください。
-                      </Typography>
-
-                      {/* 詳細プレビュー表示（AG-Grid形式） */}
-                      <Box sx={{ mb: 3 }}>
-                        <AllocationPreviewContent
-                          formData={formData}
-                          pdfFilename={undefined}
-                          onBack={() => setActiveStep(3)}
-                        />
-                      </Box>
-
-                      {/* 生成ボタン */}
-                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          size="large"
-                          onClick={handleSubmit(onSubmit)}
-                          sx={{
-                            px: 6,
-                            py: 1.5,
-                            fontSize: '1.1rem',
-                            fontWeight: 700,
-                            borderRadius: 2,
-                            boxShadow: 4,
-                            '&:hover': {
-                              boxShadow: 8,
-                            }
-                          }}
-                        >
-                          テンプレート生成
-                        </Button>
-                      </Box>
-                    </Box>
+                    /* 生成前のプレビュー */
+                    <AllocationPreviewContent
+                      formData={formData}
+                      pdfFilename={undefined}
+                      onGenerate={handleSubmit(onSubmit)}
+                    />
                   ) : (
                     /* 生成後のプレビュー */
                     generatedFiles && (

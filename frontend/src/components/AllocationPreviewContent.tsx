@@ -6,7 +6,7 @@ import {
   Paper,
   Divider,
 } from '@mui/material';
-import { PictureAsPdf, ArrowBack, Description, Send } from '@mui/icons-material';
+import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
@@ -16,6 +16,7 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { TemplateService } from '@/services/api/templateService';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
+import { StoreStatisticsModal } from '@/components/modals/StoreStatisticsModal';
 
 // AG Grid モジュールを登録
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -36,6 +37,8 @@ interface AllocationPreviewContentProps {
   onSendEmail?: () => void;
   /** 戻るボタンハンドラ */
   onBack?: () => void;
+  /** 生成ボタンハンドラ（生成前のみ） */
+  onGenerate?: () => void;
 }
 
 /**
@@ -71,11 +74,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onDownloadPdf,
   onSendEmail,
   onBack,
+  onGenerate,
 }) => {
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
   // PDFプレビューモーダルの開閉状態
   const [showPDFModal, setShowPDFModal] = useState(false);
+  // 店舗別統計モーダルの開閉状態
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   // PDF URL
   const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
@@ -246,13 +252,30 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   );
 
   return (
-    <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ヘッダー */}
-      <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50' }}>
-        <Typography variant="h5" fontWeight="700" color="primary.main">
-          配分表プレビュー
-        </Typography>
-      </Box>
+    <>
+      <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        {/* ヘッダー */}
+        <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" fontWeight="700" color="primary.main">
+            配分表プレビュー
+          </Typography>
+          {/* 店舗別統計ボタン */}
+          <Button
+            variant="contained"
+            startIcon={<Assessment />}
+            onClick={() => setShowStatsModal(true)}
+            color="secondary"
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              boxShadow: 3,
+              '&:hover': { boxShadow: 6 }
+            }}
+          >
+            店舗別統計
+          </Button>
+        </Box>
 
       {/* コンテンツ */}
       <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
@@ -355,85 +378,109 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Divider />
 
       {/* アクションボタン */}
-      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* 左側：戻るボタン */}
-        <Box>
-          {onBack && (
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBack />}
-              onClick={onBack}
-              size="large"
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 600,
-                borderWidth: 2,
-                '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
-              }}
-            >
-              戻る
-            </Button>
-          )}
-        </Box>
+      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: onGenerate ? 'center' : 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        {onGenerate ? (
+          /* 生成前：生成ボタンのみ */
+          <Button
+            variant="contained"
+            size="large"
+            onClick={onGenerate}
+            sx={{
+              px: 6,
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 700,
+              borderRadius: 2,
+              boxShadow: 4,
+              '&:hover': {
+                boxShadow: 8,
+              }
+            }}
+          >
+            テンプレート生成
+          </Button>
+        ) : (
+          <>
+            {/* 生成後：左側に戻るボタン */}
+            <Box>
+              {onBack && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ArrowBack />}
+                  onClick={onBack}
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    borderWidth: 2,
+                    '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
+                  }}
+                >
+                  戻る
+                </Button>
+              )}
+            </Box>
 
-        {/* 右側：ダウンロードと送信ボタン */}
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {pdfFilename && (
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdf />}
-              onClick={() => setShowPDFModal(true)}
-              color="primary"
-              size="large"
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 600,
-                borderWidth: 2,
-                '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
-              }}
-            >
-              PDFプレビュー
-            </Button>
-          )}
-          {onDownloadExcel && (
-            <Button
-              variant="contained"
-              startIcon={<Description />}
-              onClick={onDownloadExcel}
-              color="success"
-              size="large"
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 600,
-                boxShadow: 3,
-                '&:hover': { boxShadow: 6 }
-              }}
-            >
-              Excelダウンロード
-            </Button>
-          )}
-          {onSendEmail && (
-            <Button
-              variant="contained"
-              startIcon={<Send />}
-              onClick={onSendEmail}
-              color="info"
-              size="large"
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                fontWeight: 600,
-                boxShadow: 3,
-                '&:hover': { boxShadow: 6 }
-              }}
-            >
-              送信
-            </Button>
-          )}
-        </Box>
+            {/* 生成後：右側にダウンロードと送信ボタン */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {pdfFilename && (
+                <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdf />}
+                  onClick={() => setShowPDFModal(true)}
+                  color="primary"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    borderWidth: 2,
+                    '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
+                  }}
+                >
+                  PDFプレビュー
+                </Button>
+              )}
+              {onDownloadExcel && (
+                <Button
+                  variant="contained"
+                  startIcon={<Description />}
+                  onClick={onDownloadExcel}
+                  color="success"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    boxShadow: 3,
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                >
+                  Excelダウンロード
+                </Button>
+              )}
+              {onSendEmail && (
+                <Button
+                  variant="contained"
+                  startIcon={<Send />}
+                  onClick={onSendEmail}
+                  color="info"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    boxShadow: 3,
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                >
+                  送信
+                </Button>
+              )}
+            </Box>
+          </>
+        )}
       </Box>
 
       {/* PDFプレビューモーダル */}
@@ -448,5 +495,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         />
       )}
     </Paper>
+
+    {/* 店舗別統計ダッシュボードモーダル */}
+    <StoreStatisticsModal
+      open={showStatsModal}
+      onClose={() => setShowStatsModal(false)}
+      formData={formData}
+    />
+    </>
   );
 };
