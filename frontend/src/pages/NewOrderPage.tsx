@@ -446,8 +446,10 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleDownloadExcel = () => {
     if (generatedFiles) {
-      // ext=xlsxパラメータを明示的に追加してExcelファイルをダウンロード
-      const downloadUrl = `${generatedFiles.downloadUrl.split('?')[0]}?filename=${encodeURIComponent(generatedFiles.filename)}&ext=xlsx`;
+      // TemplateService.getDownloadUrl()を使用して絶対URLを取得
+      // Firebase HostingからRender.com APIへのアクセスに対応
+      const fileId = generatedFiles.downloadUrl.split('/').pop()?.split('?')[0] || '';
+      const downloadUrl = TemplateService.getDownloadUrl(fileId, 'xlsx');
 
       const link = document.createElement('a');
       link.href = downloadUrl;
