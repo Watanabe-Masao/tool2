@@ -274,8 +274,8 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
                   <Page
                     pageNumber={pageNumber}
                     scale={scale}
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
                     loading={
                       <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                         <CircularProgress size={24} />
