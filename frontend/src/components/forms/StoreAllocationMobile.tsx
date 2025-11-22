@@ -669,44 +669,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     <Box>
       {/* 縦並びセクション */}
       <Stack spacing={1.5}>
-        {/* ヘッダー + アクションボタン */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
-            商品 {productIndex + 1}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<DeleteSweep sx={{ fontSize: '0.9rem' }} />}
-              onClick={handleClearUnlocked}
-              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
-            >
-              クリア
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<LockOutlined sx={{ fontSize: '0.9rem' }} />}
-              onClick={handleLockAll}
-              color="warning"
-              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
-            >
-              全ロック
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<LockOpenOutlined sx={{ fontSize: '0.9rem' }} />}
-              onClick={handleUnlockAll}
-              color="info"
-              sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
-            >
-              全解除
-            </Button>
-          </Box>
-        </Box>
-
         {/* カテゴリー絞り込み */}
         {categories.length > 0 && (
           <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
@@ -935,9 +897,48 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box className="swiper-no-swiping">
-          <Typography variant="caption" fontWeight="bold" sx={{ mb: 0.75, display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>
-            配分数量入力
-          </Typography>
+          {/* 商品番号 + 配分数量入力 + アクションボタン */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.9rem' }}>
+                商品 {productIndex + 1}:
+              </Typography>
+              <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                配分数量入力
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<DeleteSweep sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleClearUnlocked}
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                クリア
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LockOutlined sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleLockAll}
+                color="warning"
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                全ロック
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LockOpenOutlined sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleUnlockAll}
+                color="info"
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                全解除
+              </Button>
+            </Box>
+          </Box>
 
           {selectedStoresList.length > 0 ? (
             <Box
