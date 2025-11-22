@@ -21,6 +21,7 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { TemplateService } from '@/services/api/templateService';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
+import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 
 // AG Grid モジュールを登録
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -84,6 +85,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // PDF読み込み状態
   const [pdfLoading, setPdfLoading] = useState(true);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  // PDFプレビューモーダルの開閉状態
+  const [showPDFModal, setShowPDFModal] = useState(false);
 
   // iPhone Safari判定
   const isIPhone = isIPhoneSafari();
@@ -509,6 +512,16 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
         {/* 右側：ダウンロードと送信ボタン */}
         <Box sx={{ display: 'flex', gap: 2 }}>
+          {pdfFilename && (
+            <Button
+              variant="outlined"
+              startIcon={<PictureAsPdf />}
+              onClick={() => setShowPDFModal(true)}
+              color="primary"
+            >
+              PDFプレビュー
+            </Button>
+          )}
           {onDownloadExcel && (
             <Button
               variant="contained"
@@ -530,6 +543,18 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           )}
         </Box>
       </Box>
+
+      {/* PDFプレビューモーダル */}
+      {pdfFilename && (
+        <PDFPreviewModal
+          open={showPDFModal}
+          onClose={() => setShowPDFModal(false)}
+          pdfUrl={pdfUrl}
+          onDownloadExcel={onDownloadExcel || (() => {})}
+          onDownloadPdf={onDownloadPdf}
+          onSendEmail={onSendEmail}
+        />
+      )}
     </Paper>
   );
 };
