@@ -24,10 +24,6 @@ import {
 } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
 
-// CSS for react-pdf
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-
 // PDF.js worker設定
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
