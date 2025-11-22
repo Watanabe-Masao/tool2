@@ -286,14 +286,18 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   return (
     <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
       {/* ヘッダーとタブを同じ行に配置 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6" sx={{ mr: 3 }}>配分表プレビュー</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h6" sx={{ mr: 1 }}>配分表プレビュー</Typography>
         {/* タブ */}
-        {pdfFilename && (
+        {pdfFilename ? (
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab icon={<TableChart />} iconPosition="start" label="配分表" />
             <Tab icon={<PictureAsPdf />} iconPosition="start" label="PDFプレビュー" />
           </Tabs>
+        ) : (
+          <Typography variant="caption" color="warning.main" sx={{ ml: 2, fontStyle: 'italic' }}>
+            ※ PDFプレビューが利用できません（配分表はExcelでダウンロード可能です）
+          </Typography>
         )}
       </Box>
 
