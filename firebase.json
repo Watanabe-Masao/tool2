@@ -12,7 +12,7 @@
     ],
     "rewrites": [
       {
-        "source": "**",
+        "source": "!/@(registerSW.js|manifest.webmanifest|sw.js|workbox-*.js|assets/**|*.js|*.css|*.json|*.ico|*.svg|*.png|*.jpg|*.jpeg|*.gif|*.webp|*.woff|*.woff2)",
         "destination": "/index.html"
       }
     ],
