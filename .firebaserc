@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "haibun-distribution"
+  },
+  "targets": {
+    "haibun-distribution": {
+      "hosting": {
+        "haibun-distribution": [
+          "haibun-distribution"
+        ]
+      }
+    }
   }
 }
