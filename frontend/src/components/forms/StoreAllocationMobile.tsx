@@ -724,116 +724,142 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           店舗配分入力
         </Typography>
 
-        {/* 統計 + クイック操作 統合カード */}
+        {/* 統計 + 操作カード */}
         <Card
           variant="outlined"
           sx={{
             borderWidth: 2,
             borderColor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+            borderRadius: 2,
           }}
         >
-          <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-            {/* 統計数値 - コンパクト2列 */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'baseline' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>総納品</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>{totalDelivery}</Typography>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            {/* 統計数値 - 3列レイアウト */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1.5 }}>
+              <Box>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
+                  総納品数
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1 }}>
+                  {totalDelivery}
+                </Typography>
               </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'baseline' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>配分済</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: remaining === 0 ? 'success.main' : 'text.primary' }}>{totalAllocated}</Typography>
+              <Box>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
+                  配分済み
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1, color: remaining === 0 ? 'success.main' : 'text.primary' }}>
+                  {totalAllocated}
+                </Typography>
               </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'baseline' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>残り</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main' }}>{remaining}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'baseline' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>ロック</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'warning.main' }}>{lockedStores.size}</Typography>
+              <Box>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.25 }}>
+                  残り
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main'
+                  }}
+                >
+                  {remaining}
+                </Typography>
               </Box>
             </Box>
 
-            {/* 進捗バー */}
-            <LinearProgress
-              variant="determinate"
-              value={Math.min(progressPercentage, 100)}
-              sx={{
-                height: 5,
-                borderRadius: 2.5,
-                mb: 1,
-                bgcolor: 'grey.200',
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 2.5,
-                  bgcolor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
-                },
-              }}
-            />
-
-            {/* ステータス */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-              {remaining === 0 ? (
-                <>
-                  <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main' }}>完了</Typography>
-                </>
-              ) : remaining > 0 ? (
-                <>
-                  <WarningIcon sx={{ fontSize: 16, color: 'warning.main' }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.main' }}>残り{remaining}個</Typography>
-                </>
-              ) : (
-                <>
-                  <ErrorIcon sx={{ fontSize: 16, color: 'error.main' }} />
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main' }}>{Math.abs(remaining)}個超過</Typography>
-                </>
-              )}
+            {/* 進捗バー + ステータス */}
+            <Box sx={{ mb: 1.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {remaining === 0 ? (
+                    <>
+                      <CheckCircle sx={{ fontSize: 18, color: 'success.main' }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main' }}>完了</Typography>
+                    </>
+                  ) : remaining > 0 ? (
+                    <>
+                      <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.main' }}>残り{remaining}</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <ErrorIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main' }}>{Math.abs(remaining)}超過</Typography>
+                    </>
+                  )}
+                </Box>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                  {progressPercentage.toFixed(0)}% | ロック{lockedStores.size}
+                </Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(progressPercentage, 100)}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: 'grey.200',
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 3,
+                    bgcolor: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+                  },
+                }}
+              />
             </Box>
 
-            {/* クイック操作ボタン */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75 }}>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<Functions sx={{ fontSize: '1rem' }} />}
-                onClick={handleEqualDistribution}
-                disabled={selectedStores.size === 0}
-                fullWidth
-                sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
-              >
-                均等配分
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<DeleteSweep sx={{ fontSize: '1rem' }} />}
-                onClick={handleClearUnlocked}
-                fullWidth
-                sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
-              >
-                クリア
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<LockOutlined sx={{ fontSize: '1rem' }} />}
-                onClick={handleLockAll}
-                color="warning"
-                fullWidth
-                sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
-              >
-                全ロック
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<LockOpenOutlined sx={{ fontSize: '1rem' }} />}
-                onClick={handleUnlockAll}
-                color="info"
-                fullWidth
-                sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
-              >
-                全解除
-              </Button>
+            {/* 操作ボタン - 機能別グループ */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* 配分操作 */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<Functions sx={{ fontSize: '1rem' }} />}
+                  onClick={handleEqualDistribution}
+                  disabled={selectedStores.size === 0}
+                  fullWidth
+                  sx={{ fontSize: '0.75rem', py: 0.75 }}
+                >
+                  均等配分
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<DeleteSweep sx={{ fontSize: '1rem' }} />}
+                  onClick={handleClearUnlocked}
+                  fullWidth
+                  sx={{ fontSize: '0.75rem', py: 0.75 }}
+                >
+                  クリア
+                </Button>
+              </Box>
+              {/* ロック操作 */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LockOutlined sx={{ fontSize: '1rem' }} />}
+                  onClick={handleLockAll}
+                  color="warning"
+                  fullWidth
+                  sx={{ fontSize: '0.75rem', py: 0.75 }}
+                >
+                  全ロック
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LockOpenOutlined sx={{ fontSize: '1rem' }} />}
+                  onClick={handleUnlockAll}
+                  color="info"
+                  fullWidth
+                  sx={{ fontSize: '0.75rem', py: 0.75 }}
+                >
+                  全解除
+                </Button>
+              </Box>
             </Box>
           </CardContent>
         </Card>
