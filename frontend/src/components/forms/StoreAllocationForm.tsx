@@ -3,7 +3,7 @@ import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId } from 'react-hook-form';
 import { Box, Typography, Alert, Chip, Tooltip } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
-import { StoreAllocationGrid } from './StoreAllocationGrid';
+import { StoreAllocationTable } from './StoreAllocationTable';
 import { StoreAllocationMobile } from './StoreAllocationMobile';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { isMobileDevice } from '@/utils/deviceDetection';
@@ -444,7 +444,7 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
                   totalDelivery={product?.totalDelivery || 0}
                 />
               ) : (
-                <StoreAllocationGrid
+                <StoreAllocationTable
                   productIndex={index}
                   control={control}
                   errors={errors}
