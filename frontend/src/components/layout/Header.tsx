@@ -125,13 +125,13 @@ export const Header: React.FC = () => {
       setClearMessage('✅ キャッシュをクリアしました！ リロード中...');
 
       // 2秒後にリロード
-      setTimeout(() => {
+      window.setTimeout(() => {
         window.location.reload();
       }, 1000);
     } catch (error) {
       console.error('キャッシュクリアエラー:', error);
       setClearMessage('❌ キャッシュクリアに失敗しました');
-      setTimeout(() => setShowClearMessage(false), 3000);
+      window.setTimeout(() => setShowClearMessage(false), 3000);
     }
   }, []);
 
@@ -142,10 +142,10 @@ export const Header: React.FC = () => {
     setLongPressProgress(0);
 
     // プログレスバー更新
-    longPressInterval.current = setInterval(() => {
+    longPressInterval.current = window.setInterval(() => {
       setLongPressProgress(prev => {
         if (prev >= 100) {
-          if (longPressInterval.current) clearInterval(longPressInterval.current);
+          if (longPressInterval.current) window.clearInterval(longPressInterval.current);
           return 100;
         }
         return prev + 5; // 2秒で100%（20回 × 100ms）
@@ -153,8 +153,8 @@ export const Header: React.FC = () => {
     }, 100);
 
     // 2秒後にキャッシュクリア実行
-    longPressTimer.current = setTimeout(() => {
-      if (longPressInterval.current) clearInterval(longPressInterval.current);
+    longPressTimer.current = window.setTimeout(() => {
+      if (longPressInterval.current) window.clearInterval(longPressInterval.current);
       setLongPressProgress(100);
       setShowClearMessage(true);
       clearCacheAndReload();
@@ -166,11 +166,11 @@ export const Header: React.FC = () => {
    */
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
+      window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
     if (longPressInterval.current) {
-      clearInterval(longPressInterval.current);
+      window.clearInterval(longPressInterval.current);
       longPressInterval.current = null;
     }
     setLongPressProgress(0);

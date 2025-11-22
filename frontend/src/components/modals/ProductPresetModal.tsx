@@ -781,7 +781,6 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                 }
 
                 // グループ内に複数アイテムがある場合はアコーディオン表示
-                const pinnedCount = group.items.filter((item) => item.pinned).length;
                 const categoryCode = group.items[0].categoryCode;
 
                 return (

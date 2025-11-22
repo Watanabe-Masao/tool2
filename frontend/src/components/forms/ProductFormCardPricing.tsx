@@ -463,7 +463,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         histories={pricingHistory}
         productName={productName}
         specification={specification}
-        quantityPerPackage={quantityPerPackage}
+        quantityPerPackage={quantityPerPackage ?? undefined}
       />
     </Card>
   );

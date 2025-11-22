@@ -10,6 +10,7 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
+  increment,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
