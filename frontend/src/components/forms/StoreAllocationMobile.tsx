@@ -211,8 +211,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('ratio');
 
-  // 長押し検出用のタイマー（固定機能用）
+  // 長押し+スワイプ検出用の状態
   const longPressTimer = React.useRef<number | null>(null);
+  const touchStartY = React.useRef<number | null>(null);
+  const touchStartTime = React.useRef<number | null>(null);
+  const currentTouchStore = React.useRef<string | null>(null);
+  const [swipePreview, setSwipePreview] = React.useState<{ storeCode: string; direction: 'up' | 'down' } | null>(null);
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
   useEffect(() => {
@@ -478,22 +482,75 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 長押し開始（固定機能）
+   * タッチ開始（長押し+スワイプ用）
    */
-  const handleLongPressStart = (storeCode: string) => {
+  const handleTouchStart = (storeCode: string, event: React.TouchEvent) => {
+    const touch = event.touches[0];
+    touchStartY.current = touch.clientY;
+    touchStartTime.current = Date.now();
+    currentTouchStore.current = storeCode;
+
+    // 短い長押し判定（300ms）
     longPressTimer.current = window.setTimeout(() => {
-      handleToggleLock(storeCode);
-    }, 800); // 800ms長押しで固定/解除（以前は500ms）
+      // 長押しが成立したらスワイプ待機状態
+      setSwipePreview({ storeCode, direction: 'up' });
+    }, 300);
   };
 
   /**
-   * 長押し終了
+   * タッチ移動（スワイプ検出）
    */
-  const handleLongPressEnd = () => {
+  const handleTouchMove = (event: React.TouchEvent) => {
+    if (!touchStartY.current || !currentTouchStore.current || !touchStartTime.current) return;
+
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - touchStartY.current;
+    const deltaTime = Date.now() - touchStartTime.current;
+
+    // 長押し後のスワイプ判定（300ms以上経過後）
+    if (deltaTime >= 300) {
+      if (Math.abs(deltaY) > 30) { // 30px以上のスワイプ
+        if (deltaY < -30) {
+          // 上スワイプ
+          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'up' });
+        } else if (deltaY > 30) {
+          // 下スワイプ
+          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'down' });
+        }
+      }
+    }
+  };
+
+  /**
+   * タッチ終了（スワイプ実行）
+   */
+  const handleTouchEnd = () => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+
+    if (swipePreview && currentTouchStore.current) {
+      const storeCode = currentTouchStore.current;
+
+      if (swipePreview.direction === 'up') {
+        // 上スワイプ: ロック
+        const newLockedStores = new Set(lockedStores);
+        newLockedStores.add(storeCode);
+        setLockedStores(newLockedStores);
+      } else if (swipePreview.direction === 'down') {
+        // 下スワイプ: ロック解除
+        const newLockedStores = new Set(lockedStores);
+        newLockedStores.delete(storeCode);
+        setLockedStores(newLockedStores);
+      }
+    }
+
+    // リセット
+    touchStartY.current = null;
+    touchStartTime.current = null;
+    currentTouchStore.current = null;
+    setSwipePreview(null);
   };
 
   /**
@@ -1054,11 +1111,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     <Card
                       key={store.code}
                       variant="outlined"
-                      onTouchStart={() => handleLongPressStart(store.code)}
-                      onTouchEnd={handleLongPressEnd}
-                      onMouseDown={() => handleLongPressStart(store.code)}
-                      onMouseUp={handleLongPressEnd}
-                      onMouseLeave={handleLongPressEnd}
+                      onTouchStart={(e) => handleTouchStart(store.code, e)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         handleToggleLock(store.code);
@@ -1068,15 +1123,38 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         maxWidth: 70,
                         flexShrink: 0,
                         scrollSnapAlign: 'start',
-                        bgcolor: isLocked ? 'warning.50' : quantity > 0 ? 'success.50' : 'background.paper',
-                        borderColor: isLocked ? 'warning.main' : quantity > 0 ? 'success.main' : 'divider',
-                        borderWidth: isLocked || quantity > 0 ? 2 : 1,
-                        transition: 'all 0.2s ease',
-                        touchAction: 'pan-x', // カード上でも横スワイプのみ許可
+                        bgcolor:
+                          swipePreview?.storeCode === store.code
+                            ? swipePreview.direction === 'up'
+                              ? 'warning.100'
+                              : 'info.100'
+                            : isLocked
+                            ? 'warning.50'
+                            : quantity > 0
+                            ? 'success.50'
+                            : 'background.paper',
+                        borderColor:
+                          swipePreview?.storeCode === store.code
+                            ? swipePreview.direction === 'up'
+                              ? 'warning.main'
+                              : 'info.main'
+                            : isLocked
+                            ? 'warning.main'
+                            : quantity > 0
+                            ? 'success.main'
+                            : 'divider',
+                        borderWidth: isLocked || quantity > 0 || swipePreview?.storeCode === store.code ? 2 : 1,
+                        transition: 'all 0.15s ease',
+                        touchAction: 'none', // 長押し+スワイプを有効にするため
                         boxShadow: quantity > 0 ? 1 : 0,
+                        transform:
+                          swipePreview?.storeCode === store.code
+                            ? swipePreview.direction === 'up'
+                              ? 'translateY(-4px)'
+                              : 'translateY(4px)'
+                            : 'none',
                         '&:hover': {
                           boxShadow: 2,
-                          transform: 'translateY(-2px)',
                         },
                       }}
                     >
