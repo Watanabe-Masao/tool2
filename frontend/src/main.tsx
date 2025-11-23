@@ -17,8 +17,9 @@ import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
-/* Swiper CSS */
-import 'swiper/swiper-bundle.css';
+/* Splide CSS */
+// @ts-ignore - CSS import
+import '@splidejs/react-splide/css/core';
 
 /* Custom CSS */
 import './index.css';

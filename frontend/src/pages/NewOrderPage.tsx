@@ -2,8 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+// @ts-ignore - Splide types issue
 import { Splide, SplideSlide } from '@splidejs/react-splide';
+// @ts-ignore - CSS import
 import '@splidejs/react-splide/css/core';
+// @ts-ignore - Splide types issue
 import type { Splide as SplideType } from '@splidejs/splide';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -338,7 +341,7 @@ export const NewOrderPage: React.FC = () => {
   /**
    * スライド移動時の処理
    */
-  const handleSplideMove = (splide: SplideType, newIndex: number) => {
+  const handleSplideMove = (_splide: any, newIndex: number) => {
     if (splideInitialized.current) {
       setActiveStep(newIndex);
     }
