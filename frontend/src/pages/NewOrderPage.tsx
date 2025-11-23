@@ -113,6 +113,7 @@ export const NewOrderPage: React.FC = () => {
     defaultValues: {
       deliveryDate: new Date(),
       customBookName: '',
+      buyerName: '',
       suppliers: [],
       products: [
         {
@@ -404,8 +405,8 @@ export const NewOrderPage: React.FC = () => {
         return;
       }
 
-      // バイヤー名を取得（ユーザー名またはメールアドレス）
-      const buyerName = user?.displayName || user?.email || '匿名';
+      // バイヤー名を取得（カスタム入力 > ユーザー名 > メールアドレス > '匿名'）
+      const buyerName = data.buyerName?.trim() || user?.displayName || user?.email || '匿名';
 
       // オフライン同期を使用してデータを保存
       // オンライン時: Firestore + API呼び出し

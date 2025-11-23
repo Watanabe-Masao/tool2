@@ -115,6 +115,13 @@ export const orderFormSchema = z
       .optional()
       .default(''),
 
+    /** 担当バイヤー名（オプション） */
+    buyerName: z
+      .string()
+      .max(50, 'バイヤー名は50文字以内で入力してください')
+      .optional()
+      .default(''),
+
     /** 帳合先（複数選択可能） */
     suppliers: z
       .array(z.string().max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`))

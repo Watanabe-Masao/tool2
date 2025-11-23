@@ -172,6 +172,38 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
         />
       </Box>
 
+      {/* 担当バイヤー名入力セクション */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+          担当バイヤー名（オプション）
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+          未入力の場合は登録名またはメールアドレスが使用されます
+        </Typography>
+
+        <Controller
+          name="buyerName"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="担当バイヤー名"
+              placeholder="例: 山田太郎"
+              error={!!errors.buyerName}
+              helperText={errors.buyerName?.message}
+              fullWidth
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onEnterPress) {
+                  e.preventDefault();
+                  onEnterPress();
+                }
+              }}
+            />
+          )}
+        />
+      </Box>
+
       {/* 帳合先入力セクション */}
       <Box>
         <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
