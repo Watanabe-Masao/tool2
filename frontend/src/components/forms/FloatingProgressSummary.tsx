@@ -9,7 +9,6 @@ import {
   Chip,
   Card,
   CardContent,
-  Tooltip,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -466,35 +465,23 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                     </Box>
                     {/* ステータスアイコン（右側） */}
                     <Stack direction="row" spacing={0.5}>
-                      <Tooltip title={status.hasBasicInfo ? '基本情報完了' : '基本情報未完了'} arrow>
-                        <Box>
-                          {status.hasBasicInfo ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                        </Box>
-                      </Tooltip>
-                      <Tooltip title={status.hasPricing ? '価格・数量完了' : '価格・数量未完了'} arrow>
-                        <Box>
-                          {status.hasPricing ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                        </Box>
-                      </Tooltip>
-                      <Tooltip title={status.hasAllocation ? '配分完了' : status.hasOverAllocation ? '配分超過' : '配分未完了'} arrow>
-                        <Box>
-                          {status.hasAllocation ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : status.hasOverAllocation ? (
-                            <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                        </Box>
-                      </Tooltip>
+                      {status.hasBasicInfo ? (
+                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                      ) : (
+                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                      )}
+                      {status.hasPricing ? (
+                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                      ) : (
+                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                      )}
+                      {status.hasAllocation ? (
+                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                      ) : status.hasOverAllocation ? (
+                        <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                      ) : (
+                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                      )}
                     </Stack>
                   </Box>
 
