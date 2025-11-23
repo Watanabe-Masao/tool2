@@ -211,7 +211,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   setSelectedCategories,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
+  const [distributionMode, setDistributionMode] = useState<DistributionMode>('ratio');
 
   // 長押し検出用のタイマー（固定機能用）
   const longPressTimer = React.useRef<number | null>(null);
@@ -686,6 +686,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       onChange(newAllocations);
     } else {
       newSelectedCategories.add(categoryId);
+
+      // カテゴリ選択時に、そのカテゴリ内の店舗も自動的に選択
+      const categoryStores = categoryId === 'uncategorized'
+        ? getUncategorizedStores()
+        : getCategoryStores(categoryId);
+
+      const newSelectedStores = new Set(selectedStores);
+      categoryStores.forEach((store) => {
+        newSelectedStores.add(store.code);
+      });
+      setSelectedStores(newSelectedStores);
     }
 
     setSelectedCategories(newSelectedCategories);
@@ -870,54 +881,75 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </CardContent>
         </Card>
 
-        {/* 4. 配分方法選択 + 実行ボタン */}
+        {/* 4. 配分方法選択 + 実行ボタン（1行に統合） */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
-          <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-            <ToggleButtonGroup
-              value={distributionMode}
-              exclusive
-              onChange={(_, newMode) => newMode && setDistributionMode(newMode)}
-              fullWidth
-              size="small"
-              sx={{
-                mb: 0.75,
-                '& .MuiToggleButton-root': {
+          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              {/* 構成比ボタン */}
+              <Button
+                variant={distributionMode === 'ratio' ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => setDistributionMode('ratio')}
+                sx={{
+                  flex: 1,
                   py: 0.75,
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  '&.Mui-selected': {
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: 'primary.dark',
-                    },
+                  bgcolor: distributionMode === 'ratio' ? 'primary.main' : 'transparent',
+                  color: distributionMode === 'ratio' ? 'white' : 'primary.main',
+                  borderColor: 'primary.main',
+                  '&:hover': {
+                    bgcolor: distributionMode === 'ratio' ? 'primary.dark' : 'primary.50',
                   },
-                },
-              }}
-            >
-              <ToggleButton value="equal">
-                <Functions sx={{ mr: 0.5, fontSize: '0.9rem' }} />
-                均等
-              </ToggleButton>
-              <ToggleButton value="ratio">
+                }}
+              >
                 <AutoFixHigh sx={{ mr: 0.5, fontSize: '0.9rem' }} />
                 構成比
-              </ToggleButton>
-            </ToggleButtonGroup>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleDistribute}
-              fullWidth
-              disabled={selectedStores.size === 0}
-              sx={{
-                py: 0.75,
-                fontWeight: 700,
-                fontSize: '0.8rem',
-              }}
-            >
-              {distributionMode === 'equal' ? '均等配分実行' : '構成比配分実行'}
-            </Button>
+              </Button>
+
+              {/* 実行ボタン */}
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleDistribute}
+                disabled={selectedStores.size === 0}
+                color="success"
+                sx={{
+                  flex: 1.2,
+                  py: 0.75,
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  boxShadow: 2,
+                  '&:hover': {
+                    boxShadow: 4,
+                  },
+                }}
+              >
+                実行
+              </Button>
+
+              {/* 均等ボタン */}
+              <Button
+                variant={distributionMode === 'equal' ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => setDistributionMode('equal')}
+                sx={{
+                  flex: 1,
+                  py: 0.75,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  bgcolor: distributionMode === 'equal' ? 'primary.main' : 'transparent',
+                  color: distributionMode === 'equal' ? 'white' : 'primary.main',
+                  borderColor: 'primary.main',
+                  '&:hover': {
+                    bgcolor: distributionMode === 'equal' ? 'primary.dark' : 'primary.50',
+                  },
+                }}
+              >
+                <Functions sx={{ mr: 0.5, fontSize: '0.9rem' }} />
+                均等
+              </Button>
+            </Box>
           </CardContent>
         </Card>
 
