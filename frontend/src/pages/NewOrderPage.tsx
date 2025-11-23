@@ -417,7 +417,10 @@ export const NewOrderPage: React.FC = () => {
    */
   const onSubmit = async (data: OrderFormData) => {
     try {
-      showLoading();
+      // オンライン時はダイアログを表示するため、まだローディングを表示しない
+      if (!isOnline) {
+        showLoading();
+      }
 
       console.log('Form data:', data);
 
@@ -427,12 +430,19 @@ export const NewOrderPage: React.FC = () => {
       );
 
       if (invalidProducts.length > 0) {
-        hideLoading();
+        if (!isOnline) {
+          hideLoading();
+        }
         showError(
           `一部の商品の帳合先がステップ1で選択されていません。` +
           `該当する商品の帳合先を修正してください。`
         );
         return;
+      }
+
+      // オンライン時: 先にローディングを表示してデータ保存
+      if (isOnline) {
+        showLoading();
       }
 
       // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
@@ -488,8 +498,9 @@ export const NewOrderPage: React.FC = () => {
         }
       }
 
-      // オンライン時: ブック名ダイアログを表示してからテンプレート生成
+      // オンライン時: データ保存後にローディングを隠してブック名ダイアログを表示
       if (isOnline) {
+        hideLoading();
         // ブック名入力ダイアログを表示
         setBookNameDialog({ open: true, bookName: '' });
         return; // ダイアログ確認後にgenerateTemplateWithBookNameを呼び出す
@@ -710,11 +721,31 @@ export const NewOrderPage: React.FC = () => {
                 onSlideChange={handleSwiperSlideChange}
                 initialSlide={activeStep}
                 allowTouchMove={true}
-                style={{ width: '100%' }}
+                style={{
+                  width: '100%',
+                  height: `calc(100vh - 240px - ${progressSummaryHeight}px)`,
+                }}
               >
                 {/* Step 1: 店着日・帳合先 */}
                 <SwiperSlide>
-                  <Box sx={{ py: 2 }}>
+                  <Box sx={{
+                    height: '100%',
+                    overflow: 'auto',
+                    py: 2,
+                    '&::-webkit-scrollbar': {
+                      width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#888',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#555',
+                    },
+                  }}>
                     <DeliveryDateForm
                       control={control}
                       errors={errors}
@@ -726,7 +757,24 @@ export const NewOrderPage: React.FC = () => {
 
                 {/* Step 2: 商品情報（基本） */}
                 <SwiperSlide>
-                  <Box sx={{ py: 2 }}>
+                  <Box sx={{
+                    height: '100%',
+                    overflow: 'auto',
+                    py: 2,
+                    '&::-webkit-scrollbar': {
+                      width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#888',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#555',
+                    },
+                  }}>
                     <ProductBasicInfoForm
                       control={control}
                       errors={errors}
@@ -746,7 +794,24 @@ export const NewOrderPage: React.FC = () => {
 
                 {/* Step 3: 商品情報2（価格・総納品数） */}
                 <SwiperSlide>
-                  <Box sx={{ py: 2 }}>
+                  <Box sx={{
+                    height: '100%',
+                    overflow: 'auto',
+                    py: 2,
+                    '&::-webkit-scrollbar': {
+                      width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#888',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#555',
+                    },
+                  }}>
                     <ProductPricingForm
                       control={control}
                       errors={errors}
@@ -759,7 +824,24 @@ export const NewOrderPage: React.FC = () => {
 
                 {/* Step 4: 店舗配分 */}
                 <SwiperSlide>
-                  <Box sx={{ py: 2 }}>
+                  <Box sx={{
+                    height: '100%',
+                    overflow: 'auto',
+                    py: 2,
+                    '&::-webkit-scrollbar': {
+                      width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#888',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#555',
+                    },
+                  }}>
                     <StoreAllocationForm
                       control={control}
                       errors={errors}
@@ -776,7 +858,24 @@ export const NewOrderPage: React.FC = () => {
 
                 {/* Step 5: プレビュー・生成 */}
                 <SwiperSlide>
-                  <Box sx={{ py: 2 }}>
+                  <Box sx={{
+                    height: '100%',
+                    overflow: 'auto',
+                    py: 2,
+                    '&::-webkit-scrollbar': {
+                      width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#888',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#555',
+                    },
+                  }}>
                     {!showGeneratedPreview ? (
                       /* 生成前のプレビュー */
                       <AllocationPreviewContent
