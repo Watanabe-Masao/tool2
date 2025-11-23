@@ -1,6 +1,6 @@
 /* Splide カスタムスタイル */
 .splide__track {
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .splide__list {

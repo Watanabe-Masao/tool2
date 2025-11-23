@@ -313,7 +313,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         )}
 
         {/* Splideスライダー */}
-        <Box sx={{ px: 2, pb: 2 }}>
+        <Box sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
           <Splide
             options={{
               type: 'slide',
