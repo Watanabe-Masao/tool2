@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { Box, Typography, Alert, Button } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -69,24 +69,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     }
   };
 
-  // 前回のタブインデックスを保持（アニメーション方向判定用）
-  const prevTabIndexRef = useRef(0);
-
-  // スライド方向（'left' | 'right'）
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-
-  // 初回マウント判定（初回レンダリング時はアニメーションを無効化）
-  const isMountedRef = useRef(false);
-
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
-
-  /**
-   * 初回マウント後にフラグを立てる（アニメーション制御用）
-   */
-  useEffect(() => {
-    isMountedRef.current = true;
-  }, []);
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -106,18 +90,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTabIndex, fields.length]);
-
-  /**
-   * タブ切り替え時のスライド方向を設定
-   */
-  useEffect(() => {
-    if (activeTabIndex > prevTabIndexRef.current) {
-      setSlideDirection('left'); // 右から左へスライド（次へ）
-    } else if (activeTabIndex < prevTabIndexRef.current) {
-      setSlideDirection('right'); // 左から右へスライド（前へ）
-    }
-    prevTabIndexRef.current = activeTabIndex;
-  }, [activeTabIndex]);
 
   /**
    * 最後に選択された帳合先を取得
@@ -183,100 +155,51 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Alert>
       )}
 
-      {/* スワイプ可能な商品カード表示エリア */}
+      {/* 横並びの商品カード表示エリア */}
       <Box
         sx={{
-          position: 'relative',
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 2,
+          overflowX: 'auto',
+          overflowY: 'visible',
+          pb: 2,
+          // スクロールバーのスタイリング
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'rgba(0,0,0,0.05)',
+            borderRadius: 4,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: 4,
+            '&:hover': {
+              backgroundColor: 'rgba(0,0,0,0.3)',
+            },
+          },
         }}
       >
-        {/* 左端のクリックエリア */}
-        {activeTabIndex > 0 && (
-          <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTabIndex(activeTabIndex - 1);
-            }}
-            sx={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 60,
-              zIndex: 10,
-              cursor: 'pointer',
-              background: 'linear-gradient(to right, rgba(25, 118, 210, 0.1), transparent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s',
-              pointerEvents: 'none', // タッチイベントを透過
-              '&:hover': {
-                background: 'linear-gradient(to right, rgba(25, 118, 210, 0.2), transparent)',
-              },
-            }}
-          >
-            <ChevronLeft sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
-          </Box>
-        )}
-
-        {/* 右端のクリックエリア */}
-        {activeTabIndex < fields.length - 1 && (
-          <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTabIndex(activeTabIndex + 1);
-            }}
-            sx={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: 60,
-              zIndex: 10,
-              cursor: 'pointer',
-              background: 'linear-gradient(to left, rgba(25, 118, 210, 0.1), transparent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s',
-              pointerEvents: 'none', // タッチイベントを透過
-              '&:hover': {
-                background: 'linear-gradient(to left, rgba(25, 118, 210, 0.2), transparent)',
-              },
-            }}
-          >
-            <ChevronRight sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
-          </Box>
-        )}
-
-        {/* アクティブな商品カードのみ表示（アニメーション付き） */}
+        {/* 全ての商品カードを横並びで表示 */}
         {fields.map((field, index) => {
           const isActive = activeTabIndex === index;
           return (
             <Box
               key={field.id}
+              onClick={() => setActiveTabIndex(index)}
               sx={{
-                display: isActive ? 'block' : 'none',
-                animation: isActive && isMountedRef.current ? `slideIn${slideDirection === 'left' ? 'Left' : 'Right'} 0.25s cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
-                '@keyframes slideInLeft': {
-                  '0%': {
-                    transform: 'translateX(50%)',
-                    opacity: 0,
-                  },
-                  '100%': {
-                    transform: 'translateX(0)',
-                    opacity: 1,
-                  },
-                },
-                '@keyframes slideInRight': {
-                  '0%': {
-                    transform: 'translateX(-50%)',
-                    opacity: 0,
-                  },
-                  '100%': {
-                    transform: 'translateX(0)',
-                    opacity: 1,
-                  },
+                minWidth: 400,
+                maxWidth: 400,
+                flexShrink: 0,
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                border: isActive ? 2 : 0,
+                borderColor: isActive ? 'primary.main' : 'transparent',
+                borderRadius: 1,
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 3,
                 },
               }}
             >
