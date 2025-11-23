@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,7 +13,6 @@ import {
   DialogActions,
   DialogContentText,
   Checkbox,
-  Alert,
 } from '@mui/material';
 import {
   Close,
@@ -22,7 +21,6 @@ import {
   TrendingUp,
   SelectAll,
   Deselect,
-  Download,
 } from '@mui/icons-material';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { format } from 'date-fns';
