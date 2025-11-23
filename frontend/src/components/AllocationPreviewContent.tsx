@@ -265,6 +265,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             startIcon={<Assessment />}
             onClick={() => setShowStatsModal(true)}
             color="secondary"
+            aria-label="店舗別統計ダッシュボードを開く"
             sx={{
               borderRadius: 2,
               px: 3,
@@ -385,6 +386,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             variant="contained"
             size="large"
             onClick={onGenerate}
+            aria-label="配分表のExcelテンプレートを生成"
             sx={{
               px: 6,
               py: 1.5,

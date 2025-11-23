@@ -13,8 +13,23 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { Close } from '@mui/icons-material';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 
@@ -48,11 +63,16 @@ interface StoreStatistics {
  *
  * 各店舗の配分金額、売上、粗利、値入率などを表示します。
  */
+// チャート用のカラーパレット
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D'];
+
 export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
   open,
   onClose,
   formData,
 }) => {
+  const [activeTab, setActiveTab] = React.useState(0);
+
   /**
    * 店舗別統計を計算
    */
@@ -127,17 +147,65 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
     ? (totals.grossProfit / totals.salesAmount) * 100
     : 0;
 
+  /**
+   * トップ10店舗（粗利額順）
+   */
+  const top10Stores = useMemo(() => {
+    return [...storeStatistics]
+      .sort((a, b) => b.grossProfit - a.grossProfit)
+      .slice(0, 10);
+  }, [storeStatistics]);
+
+  /**
+   * 値入率分布用データ
+   */
+  const marginDistribution = useMemo(() => {
+    const ranges = [
+      { name: '0-10%', min: 0, max: 10, count: 0 },
+      { name: '10-20%', min: 10, max: 20, count: 0 },
+      { name: '20-30%', min: 20, max: 30, count: 0 },
+      { name: '30-40%', min: 30, max: 40, count: 0 },
+      { name: '40%+', min: 40, max: 100, count: 0 },
+    ];
+
+    storeStatistics.forEach((stat) => {
+      const range = ranges.find((r) => stat.grossProfitMargin >= r.min && stat.grossProfitMargin < r.max);
+      if (range) range.count++;
+    });
+
+    return ranges.filter((r) => r.count > 0);
+  }, [storeStatistics]);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      aria-labelledby="store-statistics-dialog-title"
+      aria-describedby="store-statistics-dialog-description"
+    >
+      <DialogTitle
+        id="store-statistics-dialog-title"
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}
+      >
         <Typography variant="h6" fontWeight="700">
           店舗別統計ダッシュボード
         </Typography>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label="ダッシュボードを閉じる">
           <Close />
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
+        {/* タブナビゲーション */}
+        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 2 }}>
+          <Tab label="📊 データテーブル" />
+          <Tab label="📈 売上ランキング" />
+          <Tab label="🥧 値入率分布" />
+        </Tabs>
+
+        {/* タブ1: データテーブル */}
+        {activeTab === 0 && (
         <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
           <Table stickyHeader size="small">
             <TableHead>
@@ -183,8 +251,92 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
             </TableBody>
           </Table>
         </TableContainer>
+        )}
 
-        {/* サマリー情報 */}
+        {/* タブ2: 売上ランキング（棒グラフ） */}
+        {activeTab === 1 && (
+          <Box>
+            <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+              粗利額トップ10店舗
+            </Typography>
+            <ResponsiveContainer width="100%" height={500}>
+              <BarChart data={top10Stores} layout="horizontal" margin={{ top: 20, right: 30, left: 100, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+                <YAxis type="category" dataKey="storeCode" width={80} />
+                <Tooltip
+                  formatter={(value: number) => [`¥${value.toLocaleString()}`, '粗利額']}
+                  labelFormatter={(label) => `店番: ${label}`}
+                />
+                <Legend />
+                <Bar dataKey="grossProfit" name="粗利額" fill="#82ca9d" />
+                <Bar dataKey="salesAmount" name="売上金額" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
+
+        {/* タブ3: 値入率分布（円グラフ） */}
+        {activeTab === 2 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+              値入率の分布
+            </Typography>
+            <ResponsiveContainer width="100%" height={500}>
+              <PieChart>
+                <Pie
+                  data={marginDistribution}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={150}
+                  label={(entry: any) => `${entry.name}: ${entry.count}店舗 (${((entry.percent || 0) * 100).toFixed(1)}%)`}
+                >
+                  {marginDistribution.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => [`${value}店舗`, '店舗数']} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* 分布詳細テーブル */}
+            <Box sx={{ mt: 3, width: '100%', maxWidth: 600 }}>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>値入率範囲</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>店舗数</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>割合</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {marginDistribution.map((range, index) => {
+                      const percentage = (range.count / storeStatistics.length) * 100;
+                      return (
+                        <TableRow key={range.name}>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], borderRadius: 0.5 }} />
+                              {range.name}
+                            </Box>
+                          </TableCell>
+                          <TableCell align="right">{range.count}店舗</TableCell>
+                          <TableCell align="right">{percentage.toFixed(1)}%</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Box>
+        )}
+
+        {/* サマリー情報（全タブ共通） */}
         <Box sx={{ mt: 3, p: 2, bgcolor: 'primary.50', borderRadius: 1 }}>
           <Typography variant="subtitle2" fontWeight="700" gutterBottom>
             統計サマリー
