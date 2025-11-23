@@ -629,6 +629,8 @@ export const NewOrderPage: React.FC = () => {
                     append={appendProduct}
                     remove={removeProduct}
                     onNavigateToStep={setActiveStep}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -640,6 +642,8 @@ export const NewOrderPage: React.FC = () => {
                     control={control}
                     errors={errors}
                     fields={productFields}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -752,8 +756,8 @@ export const NewOrderPage: React.FC = () => {
             formData={formData}
             activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
-            activeProductIndex={activeStep >= 1 && activeStep <= 3 ? activeProductIndex : undefined}
-            onProductChange={activeStep >= 1 && activeStep <= 3 ? setActiveProductIndex : undefined}
+            activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
+            onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
           />
         )}
 

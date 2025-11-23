@@ -57,8 +57,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
 }) => {
   const [expanded, setExpanded] = useState(false);
 
-  // ステップ2-4では商品情報モードを表示
-  const isProductMode = activeStep >= 1 && activeStep <= 3 && activeProductIndex !== undefined;
+  // ステップ2-5では商品情報モードを表示
+  const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
 
   /**
    * 各商品の総納品数の合計を計算
@@ -212,8 +212,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                 key={index}
                 onClick={() => onProductChange && onProductChange(index)}
                 sx={{
-                  minWidth: 200,
-                  maxWidth: 200,
+                  minWidth: 240,
+                  maxWidth: 240,
                   cursor: 'pointer',
                   border: isActive ? 2 : 1,
                   borderColor: isActive ? 'primary.main' : 'grey.300',
@@ -237,7 +237,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.8rem',
-                      mb: 1,
+                      mb: 0.5,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -245,6 +245,25 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                   >
                     {product.name || '未入力'}
                   </Typography>
+
+                  {/* 産地・規格・入数 */}
+                  <Box sx={{ mb: 1 }}>
+                    {product.origin && (
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        産地: {product.origin}
+                      </Typography>
+                    )}
+                    {product.specification && (
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        規格: {product.specification}
+                      </Typography>
+                    )}
+                    {product.quantityPerPackage && (
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        入数: {product.quantityPerPackage}{product.unit || ''}
+                      </Typography>
+                    )}
+                  </Box>
 
                   {/* ステータスアイコン */}
                   <Stack direction="row" spacing={0.5}>
@@ -366,7 +385,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             {renderProductCards()}
           </Box>
         ) : (
-          /* 通常モード: 従来の進捗表示 */
+          /* 通常モード: 従来の進捗表示 + ステップ別ヒント */
           <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
             <Typography variant="caption" color="text.secondary" gutterBottom>
               入力状況
@@ -415,6 +434,39 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                 </Box>
               ))}
             </Stack>
+
+            {/* ステップ別のヒント表示 */}
+            {activeStep === 0 && (
+              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.50', borderRadius: 1, border: 1, borderColor: 'info.200' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.main', display: 'block', mb: 0.5 }}>
+                  💡 次のステップ
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                  帳合先を選択したら、商品情報の入力に進みます
+                </Typography>
+              </Box>
+            )}
+
+            {activeStep === 4 && (
+              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'success.50', borderRadius: 1, border: 1, borderColor: 'success.200' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main', display: 'block', mb: 0.5 }}>
+                  ✅ 最終確認
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  すべての配分数が正しいか確認してください
+                </Typography>
+                {totalAllocated > 0 && remaining === 0 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'success.dark', fontWeight: 600 }}>
+                    配分完了！生成ボタンを押してExcelとPDFを作成できます
+                  </Typography>
+                )}
+                {remaining !== 0 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'warning.dark', fontWeight: 600 }}>
+                    配分数の調整が必要です（残り: {remaining}個）
+                  </Typography>
+                )}
+              </Box>
+            )}
           </Box>
         )}
       </Collapse>

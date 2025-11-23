@@ -31,6 +31,10 @@ interface ProductBasicInfoFormProps {
   remove: UseFieldArrayRemove;
   /** ステップ移動ハンドラー */
   onNavigateToStep?: (step: number) => void;
+  /** 現在の商品インデックス（外部制御用） */
+  activeProductIndex?: number;
+  /** 商品インデックス変更ハンドラー */
+  onProductIndexChange?: (index: number) => void;
 }
 
 /**
@@ -50,9 +54,20 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   append,
   remove,
   onNavigateToStep,
+  activeProductIndex,
+  onProductIndexChange,
 }) => {
-  // アクティブなタブのインデックス
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  // アクティブなタブのインデックス（外部制御または内部状態）
+  const [internalTabIndex, setInternalTabIndex] = useState(0);
+  const activeTabIndex = activeProductIndex !== undefined ? activeProductIndex : internalTabIndex;
+  const setActiveTabIndex = (index: number | ((prev: number) => number)) => {
+    const newIndex = typeof index === 'function' ? index(activeTabIndex) : index;
+    if (onProductIndexChange) {
+      onProductIndexChange(newIndex);
+    } else {
+      setInternalTabIndex(newIndex);
+    }
+  };
 
   // 前回のタブインデックスを保持（アニメーション方向判定用）
   const prevTabIndexRef = useRef(0);
