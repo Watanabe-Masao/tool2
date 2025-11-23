@@ -115,6 +115,7 @@ export const NewOrderPage: React.FC = () => {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = methods;
 
@@ -327,6 +328,16 @@ export const NewOrderPage: React.FC = () => {
       throw new Error('Excelファイルの取得に失敗しました');
     }
     return await response.blob();
+  };
+
+  /**
+   * プレビュー画面での配分数量変更ハンドラ
+   */
+  const handleAllocationChange = (productIndex: number, storeIndex: number, newValue: number) => {
+    setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   /**
@@ -642,6 +653,7 @@ export const NewOrderPage: React.FC = () => {
                       formData={formData}
                       pdfFilename={undefined}
                       onGenerate={handleSubmit(onSubmit)}
+                      onAllocationChange={handleAllocationChange}
                     />
                   ) : (
                     /* 生成後のプレビュー */
@@ -657,6 +669,7 @@ export const NewOrderPage: React.FC = () => {
                           setGeneratedFiles(null);
                           setExcelBlob(null);
                         }}
+                        onAllocationChange={handleAllocationChange}
                       />
                     )
                   )}

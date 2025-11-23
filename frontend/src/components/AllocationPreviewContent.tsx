@@ -39,12 +39,15 @@ interface AllocationPreviewContentProps {
   onBack?: () => void;
   /** 生成ボタンハンドラ（生成前のみ） */
   onGenerate?: () => void;
+  /** 配分数量変更ハンドラ */
+  onAllocationChange?: (productIndex: number, storeIndex: number, newValue: number) => void;
 }
 
 /**
  * グリッド行データの型
  */
 interface GridRowData {
+  productIndex: number; // 商品のインデックス
   deliveryDate: string;
   origin: string;
   specification: string;
@@ -75,6 +78,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onSendEmail,
   onBack,
   onGenerate,
+  onAllocationChange,
 }) => {
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
@@ -92,7 +96,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const rowData = useMemo<GridRowData[]>(() => {
     const rows: GridRowData[] = [];
 
-    formData.products.forEach((product) => {
+    formData.products.forEach((product, productIndex) => {
       // 総パッケージ数を計算
       const totalPackages = product.totalDelivery || 0;
 
@@ -104,6 +108,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
       // 1行にまとめる
       const row: GridRowData = {
+        productIndex, // 商品のインデックスを保存
         deliveryDate: formData.deliveryDate
           ? format(formData.deliveryDate, 'M/d(E)', { locale: ja })
           : '',
@@ -152,13 +157,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       },
     ];
 
-    // 36店舗のカラムを追加
-    STORE_DATA.forEach((store) => {
+    // 36店舗のカラムを追加（編集可能）
+    STORE_DATA.forEach((store, storeIndex) => {
       cols.push({
         headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
         width: 55,
         headerClass: 'store-header',
+        editable: true, // 編集可能にする
         cellStyle: (params) => {
           const value = params.value as number;
           return {
@@ -166,11 +172,25 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
             color: value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
+            cursor: 'pointer', // 編集可能を示すカーソル
           };
         },
         valueFormatter: (params) => {
           const value = params.value as number;
           return value > 0 ? value.toString() : '-';
+        },
+        valueParser: (params) => {
+          // 入力値を数値に変換（無効な値は0にする）
+          const num = parseInt(params.newValue, 10);
+          return isNaN(num) || num < 0 ? 0 : num;
+        },
+        onCellValueChanged: (params) => {
+          // セルの値が変更されたときの処理
+          if (onAllocationChange && params.data) {
+            const productIndex = params.data.productIndex;
+            const newValue = params.newValue as number;
+            onAllocationChange(productIndex, storeIndex, newValue);
+          }
         },
       });
     });
@@ -219,7 +239,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, []);
+  }, [onAllocationChange]);
 
   /**
    * 行クリック時のハンドラー
