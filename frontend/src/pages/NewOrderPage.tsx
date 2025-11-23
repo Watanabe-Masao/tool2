@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import type { Swiper as SwiperType } from 'swiper';
+import { Splide, SplideSlide } from '@splidejs/react-splide';
+import '@splidejs/react-splide/css/core';
+import type { Splide as SplideType } from '@splidejs/splide';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -74,11 +75,11 @@ export const NewOrderPage: React.FC = () => {
     newSuppliers: [],
   });
 
-  // Swiper instance reference
-  const swiperRef = useRef<SwiperType | null>(null);
+  // Splide instance reference
+  const splideRef = useRef<SplideType | null>(null);
 
-  // Swiper初期化完了フラグ（初期化中のonSlideChangeを無視するため）
-  const swiperInitialized = useRef(false);
+  // Splide初期化完了フラグ
+  const splideInitialized = useRef(false);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -321,69 +322,26 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * Swiper初期化後に確実にスライド0から開始
+   * Splide初期化完了時の処理
    */
-  useEffect(() => {
-    // マウント時に即座に実行
-    if (swiperRef.current && !swiperInitialized.current) {
-      swiperInitialized.current = true;
+  const handleSplideMount = (splide: SplideType) => {
+    splideRef.current = splide;
+    splideInitialized.current = true;
 
-      // 即座にスライド0に移動
-      if (swiperRef.current.activeIndex !== 0) {
-        swiperRef.current.slideTo(0, 0);
-      }
-      setActiveStep(0);
+    // 確実にスライド0から開始
+    if (splide.index !== 0) {
+      splide.go(0);
     }
-  }, []); // 空の依存配列で一度だけ実行
+    setActiveStep(0);
+  };
 
   /**
-   * フォームデータ変更時にSwiperを更新
+   * スライド移動時の処理
    */
-  useEffect(() => {
-    if (swiperRef.current) {
-      // Swiperを更新
-      setTimeout(() => {
-        swiperRef.current?.update();
-      }, 100);
+  const handleSplideMove = (splide: SplideType, newIndex: number) => {
+    if (splideInitialized.current) {
+      setActiveStep(newIndex);
     }
-  }, [formData.products?.length]); // 商品数が変更されたときに更新
-
-  /**
-   * コンテンツサイズ変更を監視してSwiperを更新
-   */
-  useEffect(() => {
-    if (!swiperRef.current) return;
-
-    const swiperEl = swiperRef.current.el;
-    if (!swiperEl) return;
-
-    // ResizeObserverでコンテンツのサイズ変更を検出
-    const resizeObserver = new ResizeObserver(() => {
-      if (swiperRef.current) {
-        swiperRef.current.update();
-      }
-    });
-
-    // すべてのスライドを監視
-    const slides = swiperEl.querySelectorAll('.swiper-slide');
-    slides.forEach((slide) => {
-      resizeObserver.observe(slide);
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [activeStep]); // アクティブステップが変わったときに再設定
-
-  /**
-   * スライド変更時の処理
-   */
-  const handleSlideChange = (swiper: SwiperType) => {
-    // 初期化中のスライド変更を無視
-    if (!swiperInitialized.current) {
-      return;
-    }
-    setActiveStep(swiper.activeIndex);
   };
 
   /**
@@ -650,23 +608,24 @@ export const NewOrderPage: React.FC = () => {
 
             {/* スワイプ可能なステップコンテンツ */}
             <Box sx={{ mt: 2 }}>
-              <Swiper
-                onSwiper={(swiper) => {
-                  swiperRef.current = swiper;
+              <Splide
+                onMounted={handleSplideMount}
+                onMoved={handleSplideMove}
+                options={{
+                  type: 'slide',
+                  rewind: false,
+                  gap: '1rem',
+                  arrows: false,
+                  pagination: false,
+                  drag: true,
+                  snap: true,
+                  start: 0,
+                  speed: 400,
+                  easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
                 }}
-                onSlideChange={handleSlideChange}
-                initialSlide={0}
-                spaceBetween={16}
-                slidesPerView={1}
-                loop={false}
-                resistance={true}
-                resistanceRatio={0}
-                edgeSwipeDetection={true}
-                touchStartPreventDefault={false}
-                style={{ width: '100%' }}
               >
                 {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide>
+                <SplideSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     <DeliveryDateForm
                       control={control}
@@ -675,10 +634,10 @@ export const NewOrderPage: React.FC = () => {
                       onSuppliersChange={handleSuppliersChange}
                     />
                   </Box>
-                </SwiperSlide>
+                </SplideSlide>
 
                 {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide>
+                <SplideSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     <ProductBasicInfoForm
                       control={control}
@@ -689,13 +648,13 @@ export const NewOrderPage: React.FC = () => {
                       fields={productFields}
                       append={appendProduct}
                       remove={removeProduct}
-                      onNavigateToStep={(step) => swiperRef.current?.slideTo(step)}
+                      onNavigateToStep={(step) => splideRef.current?.go(step)}
                     />
                   </Box>
-                </SwiperSlide>
+                </SplideSlide>
 
                 {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide>
+                <SplideSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     <ProductPricingForm
                       control={control}
@@ -703,10 +662,10 @@ export const NewOrderPage: React.FC = () => {
                       fields={productFields}
                     />
                   </Box>
-                </SwiperSlide>
+                </SplideSlide>
 
                 {/* Step 4: 店舗配分 */}
-                <SwiperSlide>
+                <SplideSlide>
                   <Box sx={{ px: 1, pb: 4 }}>
                     {productFields.map((field, index) => {
                       const product = formData.products[index];
@@ -730,8 +689,8 @@ export const NewOrderPage: React.FC = () => {
                     })}
                     {renderSubmitButton()}
                   </Box>
-                </SwiperSlide>
-              </Swiper>
+                </SplideSlide>
+              </Splide>
             </Box>
           </Box>
         )}
