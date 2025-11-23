@@ -4,11 +4,13 @@ import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFi
 import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2 } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
-import { ProductBulkAddModal } from '@/components/modals/ProductBulkAddModal';
+import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
+import { useAuthContext } from '@/context/AuthContext';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 
 /**
  * ProductBasicInfoFormのProps
@@ -78,6 +80,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // フォームコンテキストからsetValueを取得
   const { setValue } = useFormContext<OrderFormData>();
 
+  // ユーザー情報を取得
+  const { user } = useAuthContext();
+
   // 商品追加メニューの状態
   const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
   const addMenuOpen = Boolean(addMenuAnchor);
@@ -86,7 +91,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
 
   // PL（プリセット）履歴を取得（全帳合先の履歴）
-  const { history: presetHistory } = useProductHistory(suppliers, undefined);
+  const { history: presetHistory, loadHistory: reloadPresetHistory } = useProductHistory(suppliers, undefined);
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -235,6 +240,20 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     });
     // 新しく追加された商品のタブに切り替え
     setActiveTabIndex(fields.length);
+  };
+
+  /**
+   * プリセットを削除
+   */
+  const handleDeletePreset = async (presetId: string) => {
+    try {
+      await FirestoreService.deleteProductHistoryById(presetId);
+      // 履歴を再読み込み
+      await reloadPresetHistory();
+    } catch (error) {
+      console.error('[ProductBasicInfoForm] Failed to delete preset:', error);
+      throw error;
+    }
   };
 
   /**
@@ -393,12 +412,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         })}
       </Box>
 
-      {/* 商品一括追加モーダル */}
-      <ProductBulkAddModal
+      {/* 商品一括追加モーダル（PL複数選択モード） */}
+      <ProductPresetModal
         open={bulkAddModalOpen}
         onClose={() => setBulkAddModalOpen(false)}
-        onAddProducts={handleBulkAddProducts}
+        onSelect={() => {}} // 複数選択モードでは使用しない
+        onDelete={handleDeletePreset}
         presets={presetHistory}
+        onReload={reloadPresetHistory}
+        userId={user?.uid}
+        suppliers={suppliers}
+        multiSelect={true}
+        onSelectMultiple={handleBulkAddProducts}
       />
     </Box>
   );

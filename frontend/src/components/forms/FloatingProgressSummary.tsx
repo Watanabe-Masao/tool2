@@ -332,12 +332,13 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
               padding: { left: 0, right: 0 },
               updateOnMove: false,
               trimSpace: false,
-              speed: 100, // さらに軽く（指についてくるように）
+              speed: 0, // 指と完全同期（即座に移動）
               rewind: false,
-              rewindSpeed: 100,
-              flickPower: 400, // フリック感度をさらに上げる
-              dragMinThreshold: 5, // ドラッグ開始の閾値をさらに下げる
+              rewindSpeed: 0,
+              flickPower: 600, // フリック感度を最大化
+              dragMinThreshold: 3, // ドラッグ開始の閾値を最小化
               waitForTransition: false, // トランジション待機なし
+              easing: 'linear', // リニアイージングで自然な動き
             }}
             aria-label="商品カードスライダー"
           >
