@@ -79,6 +79,9 @@ export const NewOrderPage: React.FC = () => {
   // Map<商品インデックス, Set<カテゴリコード>>
   const [selectedCategories, setSelectedCategories] = useState<Map<number, Set<string>>>(new Map());
 
+  // 現在編集中の商品インデックス（ステップ2-4で使用）
+  const [activeProductIndex, setActiveProductIndex] = useState(0);
+
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -652,6 +655,8 @@ export const NewOrderPage: React.FC = () => {
                     setLockedStores={setLockedStores}
                     selectedCategories={selectedCategories}
                     setSelectedCategories={setSelectedCategories}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -747,6 +752,8 @@ export const NewOrderPage: React.FC = () => {
             formData={formData}
             activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
+            activeProductIndex={activeStep >= 1 && activeStep <= 3 ? activeProductIndex : undefined}
+            onProductChange={activeStep >= 1 && activeStep <= 3 ? setActiveProductIndex : undefined}
           />
         )}
 
