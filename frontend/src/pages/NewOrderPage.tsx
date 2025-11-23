@@ -2,9 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
-import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -92,9 +89,6 @@ export const NewOrderPage: React.FC = () => {
 
   // FloatingProgressSummaryの高さ
   const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
-
-  // Swiper インスタンスへの参照
-  const swiperRef = useRef<SwiperType | null>(null);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -199,15 +193,6 @@ export const NewOrderPage: React.FC = () => {
       setRestoreDialogOpen(true);
     }
   }, [user]);
-
-  /**
-   * activeStepが変更されたときにSwiperを同期
-   */
-  useEffect(() => {
-    if (swiperRef.current && swiperRef.current.activeIndex !== activeStep) {
-      swiperRef.current.slideTo(activeStep);
-    }
-  }, [activeStep]);
 
   /**
    * ユーザー設定を読み込み
@@ -374,21 +359,10 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * タブ変更時の処理（Material-UI Tabs用 - Swiperと同期）
+   * タブ変更時の処理
    */
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveStep(newValue);
-    // Swiperスライドも同期
-    if (swiperRef.current) {
-      swiperRef.current.slideTo(newValue);
-    }
-  };
-
-  /**
-   * Swiperスライド変更時の処理
-   */
-  const handleSwiperSlideChange = (swiper: SwiperType) => {
-    setActiveStep(swiper.activeIndex);
   };
 
   /**
@@ -710,42 +684,27 @@ export const NewOrderPage: React.FC = () => {
                 <Tab label="プレビュー" />
               </Tabs>
 
-              {/* Swiperスライド */}
-              <Swiper
-                modules={[Navigation, Pagination]}
-                spaceBetween={0}
-                slidesPerView={1}
-                onSwiper={(swiper) => {
-                  swiperRef.current = swiper;
-                }}
-                onSlideChange={handleSwiperSlideChange}
-                initialSlide={activeStep}
-                allowTouchMove={true}
-                style={{
-                  width: '100%',
-                  height: `calc(100vh - 240px - ${progressSummaryHeight}px)`,
-                }}
-              >
+              {/* コンテンツエリア（スクロール可能） */}
+              <Box sx={{
+                height: `calc(100vh - 240px - ${progressSummaryHeight}px)`,
+                overflow: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#f1f1f1',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#888',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#555',
+                },
+              }}>
                 {/* Step 1: 店着日・帳合先 */}
-                <SwiperSlide>
-                  <Box sx={{
-                    height: '100%',
-                    overflow: 'auto',
-                    py: 2,
-                    '&::-webkit-scrollbar': {
-                      width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: '#f1f1f1',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#888',
-                      borderRadius: '4px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: '#555',
-                    },
-                  }}>
+                {activeStep === 0 && (
+                  <Box sx={{ py: 2 }}>
                     <DeliveryDateForm
                       control={control}
                       errors={errors}
@@ -753,28 +712,11 @@ export const NewOrderPage: React.FC = () => {
                       onSuppliersChange={handleSuppliersChange}
                     />
                   </Box>
-                </SwiperSlide>
+                )}
 
                 {/* Step 2: 商品情報（基本） */}
-                <SwiperSlide>
-                  <Box sx={{
-                    height: '100%',
-                    overflow: 'auto',
-                    py: 2,
-                    '&::-webkit-scrollbar': {
-                      width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: '#f1f1f1',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#888',
-                      borderRadius: '4px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: '#555',
-                    },
-                  }}>
+                {activeStep === 1 && (
+                  <Box sx={{ py: 2 }}>
                     <ProductBasicInfoForm
                       control={control}
                       errors={errors}
@@ -790,28 +732,11 @@ export const NewOrderPage: React.FC = () => {
                       onProductIndexChange={setActiveProductIndex}
                     />
                   </Box>
-                </SwiperSlide>
+                )}
 
                 {/* Step 3: 商品情報2（価格・総納品数） */}
-                <SwiperSlide>
-                  <Box sx={{
-                    height: '100%',
-                    overflow: 'auto',
-                    py: 2,
-                    '&::-webkit-scrollbar': {
-                      width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: '#f1f1f1',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#888',
-                      borderRadius: '4px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: '#555',
-                    },
-                  }}>
+                {activeStep === 2 && (
+                  <Box sx={{ py: 2 }}>
                     <ProductPricingForm
                       control={control}
                       errors={errors}
@@ -820,28 +745,11 @@ export const NewOrderPage: React.FC = () => {
                       onProductIndexChange={setActiveProductIndex}
                     />
                   </Box>
-                </SwiperSlide>
+                )}
 
                 {/* Step 4: 店舗配分 */}
-                <SwiperSlide>
-                  <Box sx={{
-                    height: '100%',
-                    overflow: 'auto',
-                    py: 2,
-                    '&::-webkit-scrollbar': {
-                      width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: '#f1f1f1',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#888',
-                      borderRadius: '4px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: '#555',
-                    },
-                  }}>
+                {activeStep === 3 && (
+                  <Box sx={{ py: 2 }}>
                     <StoreAllocationForm
                       control={control}
                       errors={errors}
@@ -854,28 +762,11 @@ export const NewOrderPage: React.FC = () => {
                       onProductIndexChange={setActiveProductIndex}
                     />
                   </Box>
-                </SwiperSlide>
+                )}
 
                 {/* Step 5: プレビュー・生成 */}
-                <SwiperSlide>
-                  <Box sx={{
-                    height: '100%',
-                    overflow: 'auto',
-                    py: 2,
-                    '&::-webkit-scrollbar': {
-                      width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: '#f1f1f1',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: '#888',
-                      borderRadius: '4px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: '#555',
-                    },
-                  }}>
+                {activeStep === 4 && (
+                  <Box sx={{ py: 2 }}>
                     {!showGeneratedPreview ? (
                       /* 生成前のプレビュー */
                       <AllocationPreviewContent
@@ -912,8 +803,8 @@ export const NewOrderPage: React.FC = () => {
                       )
                     )}
                   </Box>
-                </SwiperSlide>
-              </Swiper>
+                )}
+              </Box>
             </Box>
           </Container>
         </Box>
