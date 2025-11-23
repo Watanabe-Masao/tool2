@@ -466,6 +466,13 @@ export const NewOrderPage: React.FC = () => {
         const customName = data.customBookName?.trim() || '';
         const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
 
+        // デバッグログ
+        console.log('📝 Custom filename generation:');
+        console.log('  - data.customBookName:', data.customBookName);
+        console.log('  - customName (trimmed):', customName);
+        console.log('  - dateStr:', dateStr);
+        console.log('  - customFilename:', customFilename);
+
         const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
 
         console.log('Template generated:', response);
@@ -527,13 +534,10 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleDownloadExcel = () => {
     if (generatedFiles) {
-      // TemplateService.getDownloadUrl()を使用して絶対URLを取得
-      // Firebase HostingからRender.com APIへのアクセスに対応
-      const fileId = generatedFiles.downloadUrl.split('/').pop()?.split('?')[0] || '';
-      const downloadUrl = TemplateService.getDownloadUrl(fileId, 'xlsx');
-
+      // バックエンドから返されたdownload_urlをそのまま使用
+      // （filenameパラメータが含まれている）
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = generatedFiles.downloadUrl;
       link.download = generatedFiles.filename;
       document.body.appendChild(link);
       link.click();
@@ -545,10 +549,12 @@ export const NewOrderPage: React.FC = () => {
    * PDFファイルをダウンロード
    */
   const handleDownloadPdf = async () => {
-    if (generatedFiles && generatedFiles.pdfFilename) {
+    if (generatedFiles && generatedFiles.pdfDownloadUrl) {
       try {
         showLoading();
-        const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
+        // バックエンドから返されたpdf_download_urlをそのまま使用
+        // （filenameパラメータが含まれている）
+        const pdfUrl = generatedFiles.pdfDownloadUrl;
 
         // PDFをfetchしてblobとして取得
         const response = await fetch(pdfUrl);
@@ -562,7 +568,9 @@ export const NewOrderPage: React.FC = () => {
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.download = `配分表_${format(formData.deliveryDate || new Date(), 'yyyyMMdd')}.pdf`;
+        // PDFファイル名を生成（Excelファイル名の.xlsxを.pdfに置き換え）
+        const pdfFilename = generatedFiles.filename.replace('.xlsx', '.pdf');
+        link.download = pdfFilename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

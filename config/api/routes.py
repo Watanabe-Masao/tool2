@@ -53,8 +53,16 @@ async def generate_template(req: TemplateRequest):
         TemplateCreationError: テンプレート生成失敗時
     """
     try:
+        # デバッグログ: リクエストの内容を確認
+        logger.info(f"Template generation request received:")
+        logger.info(f"  - output_filename: {req.output_filename}")
+        logger.info(f"  - delivery_date: {req.delivery_date}")
+        logger.info(f"  - supplier: {req.supplier}")
+        logger.info(f"  - buyer_name: {req.buyer_name}")
+
         # ファイル名の生成
         filename = ExcelService.generate_filename(req.output_filename)
+        logger.info(f"  - generated filename: {filename}")
 
         # テンプレート生成
         output_path, file_id = ExcelService.create_template(
