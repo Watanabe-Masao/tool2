@@ -64,89 +64,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // ドラッグ&ドロップ状態
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const longPressTimer = React.useRef<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [cardOrder, setCardOrder] = useState<number[]>([]);
-
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
-
-  /**
-   * カード順序の初期化と更新
-   */
-  React.useEffect(() => {
-    if (formData.products.length > 0) {
-      setCardOrder((prevOrder) => {
-        // 初期化
-        if (prevOrder.length === 0) {
-          return formData.products.map((_, i) => i);
-        }
-
-        // 商品が追加された場合、新しいインデックスを末尾に追加
-        if (prevOrder.length < formData.products.length) {
-          const newIndices = [];
-          for (let i = prevOrder.length; i < formData.products.length; i++) {
-            newIndices.push(i);
-          }
-          return [...prevOrder, ...newIndices];
-        }
-
-        // 商品が削除された場合、範囲外のインデックスを除去
-        if (prevOrder.length > formData.products.length) {
-          return prevOrder.filter(index => index < formData.products.length);
-        }
-
-        return prevOrder;
-      });
-    } else {
-      // 商品がすべて削除された場合
-      setCardOrder([]);
-    }
-  }, [formData.products.length]);
-
-  /**
-   * 長押し開始
-   */
-  const handleLongPressStart = (index: number) => {
-    longPressTimer.current = window.setTimeout(() => {
-      setIsDragging(true);
-      setDraggedIndex(index);
-    }, 500); // 500ms長押しでドラッグ開始
-  };
-
-  /**
-   * 長押し終了
-   */
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-
-    if (isDragging && draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
-      // カードの順序を入れ替える
-      const newOrder = [...cardOrder];
-      const [removed] = newOrder.splice(draggedIndex, 1);
-      newOrder.splice(dragOverIndex, 0, removed);
-      setCardOrder(newOrder);
-    }
-
-    setIsDragging(false);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  /**
-   * ドラッグオーバー処理
-   */
-  const handleDragOver = (index: number) => {
-    if (isDragging && draggedIndex !== null) {
-      setDragOverIndex(index);
-    }
-  };
 
   /**
    * コンテナの高さを監視して親に通知
@@ -298,15 +217,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           )}
         </Box>
 
-        {/* ドラッグ&ドロップのヒント */}
-        {!isDragging && formData.products.length > 1 && (
-          <Box sx={{ px: 2, pb: 1 }}>
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-              💡 スワイプで移動、長押しして順番を入れ替え
-            </Typography>
-          </Box>
-        )}
-
         {/* Splideスライダー */}
         <Box sx={{ px: 2, pb: 2 }}>
           <Splide
@@ -316,7 +226,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
               gap: '8px',
               pagination: false,
               arrows: false,
-              drag: !isDragging, // ドラッグ中はSplideのドラッグを無効化
+              drag: true,
               autoWidth: true,
               focus: activeProductIndex,
               padding: { left: 0, right: 0 },
@@ -325,47 +235,25 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             }}
             aria-label="商品カードスライダー"
           >
-            {(cardOrder.length > 0 ? cardOrder : formData.products.map((_, i) => i)).map((originalIndex, displayIndex) => {
-            const product = formData.products[originalIndex];
+            {formData.products.map((product, index) => {
             const status = getProductStatus(product);
-            const isActive = originalIndex === activeProductIndex;
-            const isBeingDragged = displayIndex === draggedIndex;
-            const isDropTarget = displayIndex === dragOverIndex;
+            const isActive = index === activeProductIndex;
 
             return (
-              <SplideSlide key={originalIndex}>
+              <SplideSlide key={index}>
                 <Card
-                onClick={() => !isDragging && onProductChange && onProductChange(originalIndex)}
-                onTouchStart={() => handleLongPressStart(displayIndex)}
-                onTouchEnd={handleLongPressEnd}
-                onTouchMove={() => handleDragOver(displayIndex)}
-                onMouseDown={() => handleLongPressStart(displayIndex)}
-                onMouseUp={handleLongPressEnd}
-                onMouseEnter={() => handleDragOver(displayIndex)}
+                onClick={() => onProductChange && onProductChange(index)}
                 sx={{
-                  minWidth: isDragging ? 150 : 180,
-                  maxWidth: isDragging ? 150 : 180,
-                  cursor: isDragging ? (isBeingDragged ? 'grabbing' : 'default') : 'pointer',
+                  minWidth: 180,
+                  maxWidth: 180,
+                  cursor: 'pointer',
                   border: isActive ? 2 : 1,
-                  borderColor: isDropTarget && isDragging
-                    ? 'success.main'
-                    : isActive
-                    ? 'primary.main'
-                    : 'grey.300',
-                  bgcolor: isBeingDragged
-                    ? 'warning.50'
-                    : isDropTarget && isDragging
-                    ? 'success.50'
-                    : isActive
-                    ? 'primary.50'
-                    : 'background.paper',
-                  opacity: isBeingDragged ? 0.7 : 1,
-                  transform: isDropTarget && isDragging ? 'scale(0.98)' : 'scale(1)',
+                  borderColor: isActive ? 'primary.main' : 'grey.300',
+                  bgcolor: isActive ? 'primary.50' : 'background.paper',
                   transition: 'all 0.2s',
-                  touchAction: 'none',
                   '&:hover': {
-                    boxShadow: isDragging ? 0 : 3,
-                    transform: isDragging ? 'scale(1)' : 'translateY(-2px)',
+                    boxShadow: 3,
+                    transform: 'translateY(-2px)',
                   },
                 }}
               >
@@ -373,13 +261,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                   {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
-                      {isDragging && isBeingDragged && (
-                        <Typography variant="caption" sx={{ fontSize: '0.9rem' }}>
-                          🔄
-                        </Typography>
-                      )}
                       <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                        #{originalIndex + 1}
+                        #{index + 1}
                       </Typography>
                       {product.supplier && (
                         <Typography
