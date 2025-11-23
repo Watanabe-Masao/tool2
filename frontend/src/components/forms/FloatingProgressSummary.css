@@ -4,13 +4,15 @@
 }
 
 .splide__list {
-  display: flex;
-  align-items: stretch;
+  display: flex !important;
+  align-items: stretch !important;
+  flex-direction: row !important;
 }
 
 .splide__slide {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  align-items: stretch !important;
+  height: auto !important;
 }
 
 /* スライドのトランジション */

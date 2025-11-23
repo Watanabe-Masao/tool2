@@ -319,8 +319,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                 onMouseUp={handleLongPressEnd}
                 onMouseEnter={() => handleDragOver(displayIndex)}
                 sx={{
-                  minWidth: 180,
-                  maxWidth: 180,
+                  minWidth: isDragging ? 150 : 180,
+                  maxWidth: isDragging ? 150 : 180,
                   cursor: isDragging ? (isBeingDragged ? 'grabbing' : 'default') : 'pointer',
                   border: isActive ? 2 : 1,
                   borderColor: isDropTarget && isDragging
@@ -335,13 +335,13 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                     : isActive
                     ? 'primary.50'
                     : 'background.paper',
-                  opacity: isBeingDragged ? 0.5 : 1,
-                  transform: isBeingDragged ? 'scale(1.05)' : isDropTarget && isDragging ? 'scale(0.95)' : 'scale(1)',
+                  opacity: isBeingDragged ? 0.7 : 1,
+                  transform: isDropTarget && isDragging ? 'scale(0.98)' : 'scale(1)',
                   transition: 'all 0.2s',
                   touchAction: 'none',
                   '&:hover': {
                     boxShadow: isDragging ? 0 : 3,
-                    transform: isDragging ? (isBeingDragged ? 'scale(1.05)' : 'scale(1)') : 'translateY(-2px)',
+                    transform: isDragging ? 'scale(1)' : 'translateY(-2px)',
                   },
                 }}
               >
