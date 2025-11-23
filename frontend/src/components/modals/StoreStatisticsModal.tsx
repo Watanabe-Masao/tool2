@@ -15,8 +15,16 @@ import {
   Paper,
   Tabs,
   Tab,
+  ButtonGroup,
+  Button,
+  Chip,
 } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import {
+  Close,
+  Store as StoreIcon,
+  ShoppingCart as ProductIcon,
+  Category as CategoryIcon,
+} from '@mui/icons-material';
 import {
   BarChart,
   Bar,
@@ -59,9 +67,39 @@ interface StoreStatistics {
 }
 
 /**
+ * 商品別統計情報
+ */
+interface ProductStatistics {
+  productIndex: number;
+  productName: string;
+  origin: string;
+  specification: string;
+  totalQuantity: number;
+  salesAmount: number;
+  costAmount: number;
+  grossProfit: number;
+  grossProfitMargin: number;
+  [key: string]: string | number;
+}
+
+/**
+ * カテゴリー別統計情報（店舗カテゴリ）
+ */
+interface CategoryStatistics {
+  categoryName: string;
+  storeCount: number;
+  totalQuantity: number;
+  salesAmount: number;
+  costAmount: number;
+  grossProfit: number;
+  grossProfitMargin: number;
+  [key: string]: string | number;
+}
+
+/**
  * 店舗別統計ダッシュボードモーダル
  *
- * 各店舗の配分金額、売上、粗利、値入率などを表示します。
+ * 店舗別、商品別、カテゴリー別の分析ビューを提供します。
  */
 // チャート用のカラーパレット
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D'];
@@ -72,6 +110,7 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
   formData,
 }) => {
   const [activeTab, setActiveTab] = React.useState(0);
+  const [viewMode, setViewMode] = React.useState<'store' | 'product' | 'category'>('store');
 
   /**
    * 店舗別統計を計算
@@ -176,6 +215,70 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
     return ranges.filter((r) => r.count > 0);
   }, [storeStatistics]);
 
+  /**
+   * 商品別統計を計算
+   */
+  const productStatistics = useMemo<ProductStatistics[]>(() => {
+    return formData.products.map((product, index) => {
+      const totalQuantity = product.storeAllocations.reduce((sum, qty) => sum + qty, 0);
+      const storeCost = product.storeCost || 0;
+      const priceExcludingTax = product.priceExcludingTax || 0;
+      const costAmount = storeCost * totalQuantity;
+      const salesAmount = priceExcludingTax * totalQuantity;
+      const grossProfit = salesAmount - costAmount;
+      const grossProfitMargin = salesAmount > 0 ? (grossProfit / salesAmount) * 100 : 0;
+
+      return {
+        productIndex: index,
+        productName: product.name || '未設定',
+        origin: product.origin || '未設定',
+        specification: product.specification || '未設定',
+        totalQuantity,
+        salesAmount,
+        costAmount,
+        grossProfit,
+        grossProfitMargin,
+      };
+    }).filter((stat) => stat.totalQuantity > 0);
+  }, [formData]);
+
+  /**
+   * カテゴリー別統計を計算（店舗カテゴリ別）
+   */
+  const categoryStatistics = useMemo<CategoryStatistics[]>(() => {
+    // 簡易版：未分類のみを集計（実際の店舗カテゴリ機能は未実装のため）
+    const stats: Record<string, CategoryStatistics> = {
+      '全店舗': {
+        categoryName: '全店舗',
+        storeCount: 0,
+        totalQuantity: 0,
+        salesAmount: 0,
+        costAmount: 0,
+        grossProfit: 0,
+        grossProfitMargin: 0,
+      },
+    };
+
+    // 店舗別統計から集計
+    storeStatistics.forEach((storeStat) => {
+      const category = stats['全店舗'];
+      category.storeCount += 1;
+      category.totalQuantity += storeStat.allocationQuantity;
+      category.salesAmount += storeStat.salesAmount;
+      category.costAmount += storeStat.allocationAmount;
+      category.grossProfit += storeStat.grossProfit;
+    });
+
+    // 値入率を計算
+    Object.values(stats).forEach((stat) => {
+      if (stat.salesAmount > 0) {
+        stat.grossProfitMargin = (stat.grossProfit / stat.salesAmount) * 100;
+      }
+    });
+
+    return Object.values(stats);
+  }, [storeStatistics]);
+
   return (
     <Dialog
       open={open}
@@ -187,152 +290,435 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
     >
       <DialogTitle
         id="store-statistics-dialog-title"
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}
+        sx={{ pb: 2 }}
       >
-        <Typography variant="h6" fontWeight="700">
-          店舗別統計ダッシュボード
-        </Typography>
-        <IconButton onClick={onClose} size="small" aria-label="ダッシュボードを閉じる">
-          <Close />
-        </IconButton>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" fontWeight="700">
+            統計ダッシュボード
+          </Typography>
+          <IconButton onClick={onClose} size="small" aria-label="ダッシュボードを閉じる">
+            <Close />
+          </IconButton>
+        </Box>
+        {/* ビューモード切り替え */}
+        <ButtonGroup variant="outlined" size="small" fullWidth>
+          <Button
+            onClick={() => setViewMode('store')}
+            variant={viewMode === 'store' ? 'contained' : 'outlined'}
+            startIcon={<StoreIcon />}
+          >
+            店舗別分析
+          </Button>
+          <Button
+            onClick={() => setViewMode('product')}
+            variant={viewMode === 'product' ? 'contained' : 'outlined'}
+            startIcon={<ProductIcon />}
+          >
+            商品別分析
+          </Button>
+          <Button
+            onClick={() => setViewMode('category')}
+            variant={viewMode === 'category' ? 'contained' : 'outlined'}
+            startIcon={<CategoryIcon />}
+          >
+            カテゴリー別分析
+          </Button>
+        </ButtonGroup>
       </DialogTitle>
       <DialogContent dividers>
         {/* タブナビゲーション */}
         <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 2 }}>
           <Tab label="📊 データテーブル" />
-          <Tab label="📈 売上ランキング" />
-          <Tab label="🥧 値入率分布" />
+          <Tab label="📈 ランキング" />
+          <Tab label="📉 分布図" />
         </Tabs>
 
         {/* タブ1: データテーブル */}
         {activeTab === 0 && (
         <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>店番</TableCell>
-                <TableCell sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>店舗名</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>配分数</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>配分金額<br />（原価）</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>売上金額<br />（売価）</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>粗利額</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>値入率</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {storeStatistics.map((stat) => (
-                <TableRow key={stat.storeCode} hover>
-                  <TableCell>{stat.storeCode}</TableCell>
-                  <TableCell>{stat.storeName}</TableCell>
-                  <TableCell align="right">{stat.allocationQuantity.toLocaleString()}</TableCell>
-                  <TableCell align="right">¥{stat.allocationAmount.toLocaleString()}</TableCell>
-                  <TableCell align="right">¥{stat.salesAmount.toLocaleString()}</TableCell>
-                  <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
-                    ¥{stat.grossProfit.toLocaleString()}
+          {viewMode === 'store' && (
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>店番</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>店舗名</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>配分数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>配分金額<br />（原価）</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>売上金額<br />（売価）</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>粗利額</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'primary.50' }}>値入率</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {storeStatistics.map((stat) => (
+                  <TableRow key={stat.storeCode} hover>
+                    <TableCell>{stat.storeCode}</TableCell>
+                    <TableCell>{stat.storeName}</TableCell>
+                    <TableCell align="right">{stat.allocationQuantity.toLocaleString()}</TableCell>
+                    <TableCell align="right">¥{stat.allocationAmount.toLocaleString()}</TableCell>
+                    <TableCell align="right">¥{stat.salesAmount.toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
+                      ¥{stat.grossProfit.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'info.main', fontWeight: 600 }}>
+                      {stat.grossProfitMargin.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {/* 合計行 */}
+                <TableRow sx={{ bgcolor: 'grey.100', '& td': { fontWeight: 700, fontSize: '0.9rem' } }}>
+                  <TableCell colSpan={2}>合計</TableCell>
+                  <TableCell align="right">{totals.allocationQuantity.toLocaleString()}</TableCell>
+                  <TableCell align="right">¥{totals.allocationAmount.toLocaleString()}</TableCell>
+                  <TableCell align="right">¥{totals.salesAmount.toLocaleString()}</TableCell>
+                  <TableCell align="right" sx={{ color: 'success.main' }}>
+                    ¥{totals.grossProfit.toLocaleString()}
                   </TableCell>
-                  <TableCell align="right" sx={{ color: 'info.main', fontWeight: 600 }}>
-                    {stat.grossProfitMargin.toFixed(1)}%
+                  <TableCell align="right" sx={{ color: 'info.main' }}>
+                    {totalGrossProfitMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>
-              ))}
-              {/* 合計行 */}
-              <TableRow sx={{ bgcolor: 'grey.100', '& td': { fontWeight: 700, fontSize: '0.9rem' } }}>
-                <TableCell colSpan={2}>合計</TableCell>
-                <TableCell align="right">{totals.allocationQuantity.toLocaleString()}</TableCell>
-                <TableCell align="right">¥{totals.allocationAmount.toLocaleString()}</TableCell>
-                <TableCell align="right">¥{totals.salesAmount.toLocaleString()}</TableCell>
-                <TableCell align="right" sx={{ color: 'success.main' }}>
-                  ¥{totals.grossProfit.toLocaleString()}
-                </TableCell>
-                <TableCell align="right" sx={{ color: 'info.main' }}>
-                  {totalGrossProfitMargin.toFixed(1)}%
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          )}
+          {viewMode === 'product' && (
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'success.50' }}>商品番号</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'success.50' }}>産地</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'success.50' }}>商品名</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'success.50' }}>規格</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'success.50' }}>配分数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'success.50' }}>売上金額</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'success.50' }}>粗利額</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'success.50' }}>値入率</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {productStatistics.map((stat) => (
+                  <TableRow key={stat.productIndex} hover>
+                    <TableCell>
+                      <Chip label={`#${stat.productIndex + 1}`} size="small" color="primary" />
+                    </TableCell>
+                    <TableCell>{stat.origin}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{stat.productName}</TableCell>
+                    <TableCell>{stat.specification}</TableCell>
+                    <TableCell align="right">{stat.totalQuantity.toLocaleString()}</TableCell>
+                    <TableCell align="right">¥{stat.salesAmount.toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
+                      ¥{stat.grossProfit.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'info.main', fontWeight: 600 }}>
+                      {stat.grossProfitMargin.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {/* 合計行 */}
+                <TableRow sx={{ bgcolor: 'grey.100', '& td': { fontWeight: 700, fontSize: '0.9rem' } }}>
+                  <TableCell colSpan={4}>合計</TableCell>
+                  <TableCell align="right">
+                    {productStatistics.reduce((sum, s) => sum + s.totalQuantity, 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell align="right">
+                    ¥{productStatistics.reduce((sum, s) => sum + s.salesAmount, 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: 'success.main' }}>
+                    ¥{productStatistics.reduce((sum, s) => sum + s.grossProfit, 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: 'info.main' }}>
+                    {totalGrossProfitMargin.toFixed(1)}%
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+          {viewMode === 'category' && (
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>カテゴリ名</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>店舗数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>配分数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>売上金額</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>粗利額</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'warning.50' }}>値入率</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {categoryStatistics.map((stat, index) => (
+                  <TableRow key={index} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{stat.categoryName}</TableCell>
+                    <TableCell align="right">{stat.storeCount}店舗</TableCell>
+                    <TableCell align="right">{stat.totalQuantity.toLocaleString()}</TableCell>
+                    <TableCell align="right">¥{stat.salesAmount.toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
+                      ¥{stat.grossProfit.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'info.main', fontWeight: 600 }}>
+                      {stat.grossProfitMargin.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </TableContainer>
         )}
 
-        {/* タブ2: 売上ランキング（棒グラフ） */}
+        {/* タブ2: ランキング（棒グラフ） */}
         {activeTab === 1 && (
           <Box>
-            <Typography variant="subtitle1" fontWeight="700" gutterBottom>
-              粗利額トップ10店舗
-            </Typography>
-            <ResponsiveContainer width="100%" height={500}>
-              <BarChart data={top10Stores} layout="horizontal" margin={{ top: 20, right: 30, left: 100, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
-                <YAxis type="category" dataKey="storeCode" width={80} />
-                <Tooltip
-                  formatter={(value: number) => [`¥${value.toLocaleString()}`, '粗利額']}
-                  labelFormatter={(label) => `店番: ${label}`}
-                />
-                <Legend />
-                <Bar dataKey="grossProfit" name="粗利額" fill="#82ca9d" />
-                <Bar dataKey="salesAmount" name="売上金額" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {viewMode === 'store' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  粗利額トップ10店舗
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <BarChart data={top10Stores} layout="horizontal" margin={{ top: 20, right: 30, left: 100, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+                    <YAxis type="category" dataKey="storeCode" width={80} />
+                    <Tooltip
+                      formatter={(value: number) => [`¥${value.toLocaleString()}`, '粗利額']}
+                      labelFormatter={(label) => `店番: ${label}`}
+                    />
+                    <Legend />
+                    <Bar dataKey="grossProfit" name="粗利額" fill="#82ca9d" />
+                    <Bar dataKey="salesAmount" name="売上金額" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
+            )}
+            {viewMode === 'product' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  商品別粗利額ランキング
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <BarChart
+                    data={[...productStatistics].sort((a, b) => b.grossProfit - a.grossProfit)}
+                    layout="horizontal"
+                    margin={{ top: 20, right: 30, left: 120, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+                    <YAxis type="category" dataKey="productName" width={110} />
+                    <Tooltip
+                      formatter={(value: number) => [`¥${value.toLocaleString()}`]}
+                      labelFormatter={(label) => label}
+                    />
+                    <Legend />
+                    <Bar dataKey="grossProfit" name="粗利額" fill="#66bb6a" />
+                    <Bar dataKey="salesAmount" name="売上金額" fill="#42a5f5" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
+            )}
+            {viewMode === 'category' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  カテゴリー別粗利額比較
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <BarChart
+                    data={[...categoryStatistics].sort((a, b) => b.grossProfit - a.grossProfit)}
+                    layout="horizontal"
+                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(value) => `¥${value.toLocaleString()}`} />
+                    <YAxis type="category" dataKey="categoryName" width={90} />
+                    <Tooltip
+                      formatter={(value: number) => [`¥${value.toLocaleString()}`]}
+                    />
+                    <Legend />
+                    <Bar dataKey="grossProfit" name="粗利額" fill="#ff9800" />
+                    <Bar dataKey="salesAmount" name="売上金額" fill="#5c6bc0" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
+            )}
           </Box>
         )}
 
-        {/* タブ3: 値入率分布（円グラフ） */}
+        {/* タブ3: 分布図（円グラフ） */}
         {activeTab === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Typography variant="subtitle1" fontWeight="700" gutterBottom>
-              値入率の分布
-            </Typography>
-            <ResponsiveContainer width="100%" height={500}>
-              <PieChart>
-                <Pie
-                  data={marginDistribution}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={150}
-                  label={(entry: any) => `${entry.name}: ${entry.count}店舗 (${((entry.percent || 0) * 100).toFixed(1)}%)`}
-                >
-                  {marginDistribution.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => [`${value}店舗`, '店舗数']} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {viewMode === 'store' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  店舗別 値入率の分布
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <PieChart>
+                    <Pie
+                      data={marginDistribution}
+                      dataKey="count"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={150}
+                      label={(entry: any) => `${entry.name}: ${entry.count}店舗 (${((entry.percent || 0) * 100).toFixed(1)}%)`}
+                    >
+                      {marginDistribution.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [`${value}店舗`, '店舗数']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
 
-            {/* 分布詳細テーブル */}
-            <Box sx={{ mt: 3, width: '100%', maxWidth: 600 }}>
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>値入率範囲</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>店舗数</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>割合</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {marginDistribution.map((range, index) => {
-                      const percentage = (range.count / storeStatistics.length) * 100;
-                      return (
-                        <TableRow key={range.name}>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], borderRadius: 0.5 }} />
-                              {range.name}
-                            </Box>
-                          </TableCell>
-                          <TableCell align="right">{range.count}店舗</TableCell>
-                          <TableCell align="right">{percentage.toFixed(1)}%</TableCell>
+                {/* 分布詳細テーブル */}
+                <Box sx={{ mt: 3, width: '100%', maxWidth: 600 }}>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>値入率範囲</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>店舗数</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>割合</TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
+                      </TableHead>
+                      <TableBody>
+                        {marginDistribution.map((range, index) => {
+                          const percentage = (range.count / storeStatistics.length) * 100;
+                          return (
+                            <TableRow key={range.name}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], borderRadius: 0.5 }} />
+                                  {range.name}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="right">{range.count}店舗</TableCell>
+                              <TableCell align="right">{percentage.toFixed(1)}%</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              </>
+            )}
+            {viewMode === 'product' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  商品別 配分数の割合
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <PieChart>
+                    <Pie
+                      data={productStatistics}
+                      dataKey="totalQuantity"
+                      nameKey="productName"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={150}
+                      label={(entry: any) => `${entry.productName}: ${entry.totalQuantity} (${((entry.percent || 0) * 100).toFixed(1)}%)`}
+                    >
+                      {productStatistics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [`${value}個`, '配分数']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+
+                <Box sx={{ mt: 3, width: '100%', maxWidth: 600 }}>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>商品名</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>配分数</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>割合</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {productStatistics.map((stat, index) => {
+                          const totalQty = productStatistics.reduce((sum, s) => sum + s.totalQuantity, 0);
+                          const percentage = (stat.totalQuantity / totalQty) * 100;
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], borderRadius: 0.5 }} />
+                                  {stat.productName}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="right">{stat.totalQuantity.toLocaleString()}</TableCell>
+                              <TableCell align="right">{percentage.toFixed(1)}%</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              </>
+            )}
+            {viewMode === 'category' && (
+              <>
+                <Typography variant="subtitle1" fontWeight="700" gutterBottom>
+                  カテゴリー別 売上金額の割合
+                </Typography>
+                <ResponsiveContainer width="100%" height={500}>
+                  <PieChart>
+                    <Pie
+                      data={categoryStatistics}
+                      dataKey="salesAmount"
+                      nameKey="categoryName"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={150}
+                      label={(entry: any) => `${entry.categoryName}: ¥${entry.salesAmount.toLocaleString()} (${((entry.percent || 0) * 100).toFixed(1)}%)`}
+                    >
+                      {categoryStatistics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [`¥${value.toLocaleString()}`, '売上金額']} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+
+                <Box sx={{ mt: 3, width: '100%', maxWidth: 600 }}>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>カテゴリ名</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>売上金額</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>割合</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {categoryStatistics.map((stat, index) => {
+                          const totalSales = categoryStatistics.reduce((sum, s) => sum + s.salesAmount, 0);
+                          const percentage = (stat.salesAmount / totalSales) * 100;
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], borderRadius: 0.5 }} />
+                                  {stat.categoryName}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="right">¥{stat.salesAmount.toLocaleString()}</TableCell>
+                              <TableCell align="right">{percentage.toFixed(1)}%</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              </>
+            )}
           </Box>
         )}
 
