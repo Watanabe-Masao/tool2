@@ -149,8 +149,8 @@ export interface TemplateRequest {
     /** 店舗配分数（店舗コード→数量のマップ） */
     store_quantities: Record<string, number>;
   }>;
-  /** カスタムファイル名（オプション） */
-  custom_filename?: string;
+  /** 出力ファイル名（オプション） */
+  output_filename?: string;
 }
 
 /**

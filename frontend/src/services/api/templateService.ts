@@ -71,7 +71,7 @@ export class TemplateService {
     const requestData = this.convertToApiRequest(formData, buyerName);
 
     if (customFilename) {
-      requestData.custom_filename = customFilename;
+      requestData.output_filename = customFilename;
     }
 
     const response = await apiClient.post<TemplateResponse>(
