@@ -102,6 +102,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // PDF URL
   const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
 
+  // カスタムブック名を生成（配分表_{customName}_{YYYYMMDD}）
+  const bookName = useMemo(() => {
+    const dateStr = format(formData.deliveryDate, 'yyyyMMdd');
+    const customName = formData.customBookName?.trim() || '';
+    return customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
+  }, [formData.deliveryDate, formData.customBookName]);
+
   /**
    * グリッド行データを生成
    */
@@ -307,9 +314,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         {/* ヘッダー */}
         <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h5" fontWeight="700" color="primary.main">
-            配分表プレビュー
-          </Typography>
+          <Box>
+            <Typography variant="h5" fontWeight="700" color="primary.main">
+              {bookName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              配分表プレビュー
+            </Typography>
+          </Box>
           {/* 店舗別統計ボタン */}
           <Button
             variant="contained"

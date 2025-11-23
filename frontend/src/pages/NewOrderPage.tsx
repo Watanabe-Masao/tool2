@@ -112,6 +112,7 @@ export const NewOrderPage: React.FC = () => {
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       deliveryDate: new Date(),
+      customBookName: '',
       suppliers: [],
       products: [
         {
@@ -458,7 +459,12 @@ export const NewOrderPage: React.FC = () => {
 
       // オンライン時のみテンプレート生成API呼び出し
       if (isOnline) {
-        const response = await TemplateService.generateTemplate(data, buyerName);
+        // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
+        const dateStr = format(data.deliveryDate, 'yyyyMMdd');
+        const customName = data.customBookName?.trim() || '';
+        const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
+
+        const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
 
         console.log('Template generated:', response);
 

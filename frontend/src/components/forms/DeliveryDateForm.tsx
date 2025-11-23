@@ -140,6 +140,38 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
         )}
       />
 
+      {/* ブック名入力セクション */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+          ブック名（オプション）
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+          Excelファイル名: 配分表_<Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>ここの名前</Box>_20250510
+        </Typography>
+
+        <Controller
+          name="customBookName"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="ブック名"
+              placeholder="例: テスト"
+              error={!!errors.customBookName}
+              helperText={errors.customBookName?.message}
+              fullWidth
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onEnterPress) {
+                  e.preventDefault();
+                  onEnterPress();
+                }
+              }}
+            />
+          )}
+        />
+      </Box>
+
       {/* 帳合先入力セクション */}
       <Box>
         <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
