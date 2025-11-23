@@ -1,0 +1,38 @@
+/* Splide カスタムスタイル */
+.splide__track {
+  overflow: visible !important;
+}
+
+.splide__list {
+  display: flex !important;
+  align-items: stretch !important;
+  flex-direction: row !important;
+  width: auto !important;
+}
+
+.splide__slide {
+  display: flex !important;
+  align-items: stretch !important;
+  height: auto !important;
+  width: auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* スライドのトランジション */
+.splide__slide {
+  transition: transform 0.3s ease;
+}
+
+/* アクティブなスライドを少し強調 */
+.splide__slide.is-active {
+  transform: scale(1.02);
+}
+
+/* スムーズなスクロール */
+.splide__track {
+  cursor: grab;
+}
+
+.splide__track:active {
+  cursor: grabbing;
+}
