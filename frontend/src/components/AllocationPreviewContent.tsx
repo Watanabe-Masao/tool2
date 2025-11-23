@@ -41,14 +41,14 @@ interface AllocationPreviewContentProps {
   onGenerate?: () => void;
   /** 配分数量変更ハンドラ */
   onAllocationChange?: (productIndex: number, storeIndex: number, newValue: number) => void;
-  /** ロックされた店舗のSet */
-  lockedStores: Set<string>;
+  /** ロックされた店舗のMap（商品別） */
+  lockedStores: Map<number, Set<string>>;
   /** ロック状態更新関数 */
-  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
-  /** 選択されたカテゴリのSet */
-  selectedCategories: Set<string>;
+  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  /** 選択されたカテゴリのMap（商品別） */
+  selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
 }
 
 /**
@@ -171,22 +171,85 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
     // 36店舗のカラムを追加（生成前のみ編集可能、ロック状態を反映）
     STORE_DATA.forEach((store, storeIndex) => {
-      const isLocked = lockedStores.has(store.code);
       cols.push({
-        headerName: `${store.code}\n${store.name}${isLocked ? ' 🔒' : ''}`,
+        headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
         width: 55,
         headerClass: 'store-header',
-        // 生成前かつロックされていない場合のみ編集可能
-        editable: Boolean(onGenerate) && !isLocked,
+        // 生成前のみ編集可能（ロック状態は商品別に判定）
+        editable: (params) => {
+          if (!Boolean(onGenerate) || !params.data) return false;
+          const productIndex = params.data.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          return !productLockedStores.has(store.code);
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data) return null;
+          const productIndex = params.data.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const isLocked = productLockedStores.has(store.code);
+          const value = params.value as number;
+
+          // 長押し検出用の変数
+          let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+          let isLongPress = false;
+
+          const handleTouchStart = (e: TouchEvent) => {
+            isLongPress = false;
+            longPressTimer = setTimeout(() => {
+              isLongPress = true;
+              // 長押しでロックをトグル
+              setLockedStores((prev) => {
+                const newMap = new Map(prev);
+                const currentSet = prev.get(productIndex) || new Set();
+                const newSet = new Set(currentSet);
+                if (newSet.has(store.code)) {
+                  newSet.delete(store.code);
+                } else {
+                  newSet.add(store.code);
+                }
+                newMap.set(productIndex, newSet);
+                return newMap;
+              });
+            }, 500); // 500msの長押し
+          };
+
+          const handleTouchEnd = () => {
+            if (longPressTimer) {
+              clearTimeout(longPressTimer);
+              longPressTimer = null;
+            }
+          };
+
+          const cellDiv = document.createElement('div');
+          cellDiv.style.width = '100%';
+          cellDiv.style.height = '100%';
+          cellDiv.style.display = 'flex';
+          cellDiv.style.alignItems = 'center';
+          cellDiv.style.justifyContent = 'center';
+          cellDiv.textContent = value > 0 ? value.toString() : '-';
+
+          // 長押しイベントを追加（生成前のみ）
+          if (Boolean(onGenerate)) {
+            cellDiv.addEventListener('touchstart', handleTouchStart);
+            cellDiv.addEventListener('touchend', handleTouchEnd);
+            cellDiv.addEventListener('touchcancel', handleTouchEnd);
+          }
+
+          return cellDiv;
+        },
         cellStyle: (params) => {
+          if (!params.data) return {};
+          const productIndex = params.data.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const isLocked = productLockedStores.has(store.code);
           const value = params.value as number;
           return {
             textAlign: 'center',
-            backgroundColor: isLocked ? '#f5f5f5' : value > 0 ? '#e3f2fd' : 'transparent',
-            color: isLocked ? '#999' : value > 0 ? '#1565c0' : '#bdbdbd',
+            backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
+            color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
-            cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
+            cursor: Boolean(onGenerate) && !isLocked ? 'text' : Boolean(onGenerate) ? 'pointer' : 'default',
           };
         },
         valueFormatter: (params) => {
@@ -200,11 +263,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         },
         valueSetter: (params) => {
           // セルの値を更新する代わりに、親コンポーネントに通知
-          if (onAllocationChange && params.data && !isLocked) {
+          if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
-            const parsedValue = parseInt(params.newValue, 10);
-            const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
-            onAllocationChange(productIndex, storeIndex, newValue);
+            const productLockedStores = lockedStores.get(productIndex) || new Set();
+            const isLocked = productLockedStores.has(store.code);
+            if (!isLocked) {
+              const parsedValue = parseInt(params.newValue, 10);
+              const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
+              onAllocationChange(productIndex, storeIndex, newValue);
+            }
           }
           // AG-Gridに値を更新させない（React側で管理）
           return false;
@@ -256,7 +323,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onAllocationChange, lockedStores, onGenerate]);
+  }, [onAllocationChange, lockedStores, onGenerate, setLockedStores]);
 
   /**
    * 行クリック時のハンドラー

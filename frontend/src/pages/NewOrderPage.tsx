@@ -71,11 +71,13 @@ export const NewOrderPage: React.FC = () => {
     newSuppliers: [],
   });
 
-  // 店舗のロック状態（ステップ4とステップ5で共有）
-  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
+  // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
+  // Map<商品インデックス, Set<店舗コード>>
+  const [lockedStores, setLockedStores] = useState<Map<number, Set<string>>>(new Map());
 
-  // カテゴリフィルター（ステップ4とステップ5で共有）
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  // カテゴリフィルター（商品別、ステップ4とステップ5で共有）
+  // Map<商品インデックス, Set<カテゴリコード>>
+  const [selectedCategories, setSelectedCategories] = useState<Map<number, Set<string>>>(new Map());
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);

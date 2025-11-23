@@ -18,14 +18,14 @@ interface StoreAllocationFormProps {
   errors: FieldErrors<OrderFormData>;
   /** 商品フィールド配列 */
   fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
-  /** ロックされた店舗のSet */
-  lockedStores: Set<string>;
+  /** ロックされた店舗のMap（商品別） */
+  lockedStores: Map<number, Set<string>>;
   /** ロック状態更新関数 */
-  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
-  /** 選択されたカテゴリのSet */
-  selectedCategories: Set<string>;
+  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  /** 選択されたカテゴリのMap（商品別） */
+  selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
 }
 
 /**
@@ -454,10 +454,26 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
                   control={control}
                   errors={errors}
                   totalDelivery={product?.totalDelivery || 0}
-                  lockedStores={lockedStores}
-                  setLockedStores={setLockedStores}
-                  selectedCategories={selectedCategories}
-                  setSelectedCategories={setSelectedCategories}
+                  lockedStores={lockedStores.get(index) || new Set()}
+                  setLockedStores={(updater) => {
+                    setLockedStores((prev) => {
+                      const newMap = new Map(prev);
+                      const currentSet = prev.get(index) || new Set();
+                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+                      newMap.set(index, newSet);
+                      return newMap;
+                    });
+                  }}
+                  selectedCategories={selectedCategories.get(index) || new Set()}
+                  setSelectedCategories={(updater) => {
+                    setSelectedCategories((prev) => {
+                      const newMap = new Map(prev);
+                      const currentSet = prev.get(index) || new Set();
+                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+                      newMap.set(index, newSet);
+                      return newMap;
+                    });
+                  }}
                 />
               ) : (
                 <StoreAllocationTable
@@ -465,10 +481,26 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
                   control={control}
                   errors={errors}
                   totalDelivery={product?.totalDelivery || 0}
-                  lockedStores={lockedStores}
-                  setLockedStores={setLockedStores}
-                  selectedCategories={selectedCategories}
-                  setSelectedCategories={setSelectedCategories}
+                  lockedStores={lockedStores.get(index) || new Set()}
+                  setLockedStores={(updater) => {
+                    setLockedStores((prev) => {
+                      const newMap = new Map(prev);
+                      const currentSet = prev.get(index) || new Set();
+                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+                      newMap.set(index, newSet);
+                      return newMap;
+                    });
+                  }}
+                  selectedCategories={selectedCategories.get(index) || new Set()}
+                  setSelectedCategories={(updater) => {
+                    setSelectedCategories((prev) => {
+                      const newMap = new Map(prev);
+                      const currentSet = prev.get(index) || new Set();
+                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+                      newMap.set(index, newSet);
+                      return newMap;
+                    });
+                  }}
                 />
               )}
             </Box>
