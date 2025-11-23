@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useWatch } from 'react-hook-form';
+import { useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2 } from '@mui/icons-material';
@@ -74,6 +74,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
+
+  // フォームコンテキストからsetValueを取得
+  const { setValue } = useFormContext<OrderFormData>();
 
   // 商品追加メニューの状態
   const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
