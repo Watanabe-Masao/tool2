@@ -71,11 +71,19 @@ export const NewOrderPage: React.FC = () => {
     newSuppliers: [],
   });
 
-  // 店舗のロック状態（ステップ4とステップ5で共有）
-  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
+  // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
+  // Map<商品インデックス, Set<店舗コード>>
+  const [lockedStores, setLockedStores] = useState<Map<number, Set<string>>>(new Map());
 
-  // カテゴリフィルター（ステップ4とステップ5で共有）
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  // カテゴリフィルター（商品別、ステップ4とステップ5で共有）
+  // Map<商品インデックス, Set<カテゴリコード>>
+  const [selectedCategories, setSelectedCategories] = useState<Map<number, Set<string>>>(new Map());
+
+  // 現在編集中の商品インデックス（ステップ2-4で使用）
+  const [activeProductIndex, setActiveProductIndex] = useState(0);
+
+  // FloatingProgressSummaryの高さ
+  const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -584,7 +592,7 @@ export const NewOrderPage: React.FC = () => {
 
           {/* タブナビゲーション */}
           <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2 }}>
+            <Box sx={{ width: '100%', py: 2, pb: `${progressSummaryHeight + 16}px` }}>
               <Tabs
                 value={activeStep}
                 onChange={handleTabChange}
@@ -624,6 +632,8 @@ export const NewOrderPage: React.FC = () => {
                     append={appendProduct}
                     remove={removeProduct}
                     onNavigateToStep={setActiveStep}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -635,6 +645,8 @@ export const NewOrderPage: React.FC = () => {
                     control={control}
                     errors={errors}
                     fields={productFields}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -650,6 +662,8 @@ export const NewOrderPage: React.FC = () => {
                     setLockedStores={setLockedStores}
                     selectedCategories={selectedCategories}
                     setSelectedCategories={setSelectedCategories}
+                    activeProductIndex={activeProductIndex}
+                    onProductIndexChange={setActiveProductIndex}
                   />
                 </Box>
               )}
@@ -745,6 +759,9 @@ export const NewOrderPage: React.FC = () => {
             formData={formData}
             activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
+            activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
+            onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
+            onHeightChange={setProgressSummaryHeight}
           />
         )}
 

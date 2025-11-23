@@ -41,14 +41,14 @@ interface AllocationPreviewContentProps {
   onGenerate?: () => void;
   /** 配分数量変更ハンドラ */
   onAllocationChange?: (productIndex: number, storeIndex: number, newValue: number) => void;
-  /** ロックされた店舗のSet */
-  lockedStores: Set<string>;
+  /** ロックされた店舗のMap（商品別） */
+  lockedStores: Map<number, Set<string>>;
   /** ロック状態更新関数 */
-  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
-  /** 選択されたカテゴリのSet */
-  selectedCategories: Set<string>;
+  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  /** 選択されたカテゴリのMap（商品別） */
+  selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
 }
 
 /**
@@ -88,7 +88,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onGenerate,
   onAllocationChange,
   lockedStores,
-  setLockedStores: _setLockedStores, // TODO: カテゴリフィルター UI で使用予定
+  setLockedStores: _setLockedStores, // 未使用（将来の拡張用）
   selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
   setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
 }) => {
@@ -171,23 +171,31 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
     // 36店舗のカラムを追加（生成前のみ編集可能、ロック状態を反映）
     STORE_DATA.forEach((store, storeIndex) => {
-      const isLocked = lockedStores.has(store.code);
       cols.push({
-        headerName: `${store.code}\n${store.name}${isLocked ? ' 🔒' : ''}`,
+        headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
         width: 55,
         headerClass: 'store-header',
-        // 生成前かつロックされていない場合のみ編集可能
-        editable: Boolean(onGenerate) && !isLocked,
+        // 生成前のみ編集可能（ロック状態は商品別に判定）
+        editable: (params) => {
+          if (!Boolean(onGenerate) || !params.data) return false;
+          const productIndex = params.data.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          return !productLockedStores.has(store.code);
+        },
         cellStyle: (params) => {
+          if (!params.data) return {} as any;
+          const productIndex = params.data.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const isLocked = productLockedStores.has(store.code);
           const value = params.value as number;
           return {
             textAlign: 'center',
-            backgroundColor: isLocked ? '#f5f5f5' : value > 0 ? '#e3f2fd' : 'transparent',
-            color: isLocked ? '#999' : value > 0 ? '#1565c0' : '#bdbdbd',
+            backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
+            color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
             cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
-          };
+          } as any;
         },
         valueFormatter: (params) => {
           const value = params.value as number;
@@ -200,11 +208,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         },
         valueSetter: (params) => {
           // セルの値を更新する代わりに、親コンポーネントに通知
-          if (onAllocationChange && params.data && !isLocked) {
+          if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
-            const parsedValue = parseInt(params.newValue, 10);
-            const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
-            onAllocationChange(productIndex, storeIndex, newValue);
+            const productLockedStores = lockedStores.get(productIndex) || new Set();
+            const isLocked = productLockedStores.has(store.code);
+            if (!isLocked) {
+              const parsedValue = parseInt(params.newValue, 10);
+              const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
+              onAllocationChange(productIndex, storeIndex, newValue);
+            }
           }
           // AG-Gridに値を更新させない（React側で管理）
           return false;

@@ -7,6 +7,9 @@ import {
   IconButton,
   Stack,
   Chip,
+  Card,
+  CardContent,
+  Tooltip,
 } from '@mui/material';
 import {
   ExpandLess as ExpandLessIcon,
@@ -14,6 +17,8 @@ import {
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as UncheckedIcon,
   Warning as WarningIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -29,6 +34,12 @@ interface FloatingProgressSummaryProps {
   activeStep: number;
   /** 総ステップ数 */
   totalSteps: number;
+  /** 現在の商品インデックス（ステップ2-4で使用） */
+  activeProductIndex?: number;
+  /** 商品切り替えハンドラー */
+  onProductChange?: (index: number) => void;
+  /** 高さ変更コールバック */
+  onHeightChange?: (height: number) => void;
 }
 
 /**
@@ -43,8 +54,38 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   formData,
   activeStep,
   totalSteps,
+  activeProductIndex,
+  onProductChange,
+  onHeightChange,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // ステップ2-5では商品情報モードを表示
+  const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
+
+  /**
+   * コンテナの高さを監視して親に通知
+   */
+  React.useEffect(() => {
+    if (!containerRef.current || !onHeightChange) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height;
+        onHeightChange(height);
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    // 初回の高さを通知
+    onHeightChange(containerRef.current.offsetHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [onHeightChange, expanded, isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -118,8 +159,255 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const completedCount = steps.filter((s) => s.completed).length;
   const progress = Math.round((completedCount / steps.length) * 100);
 
+  /**
+   * 商品の完了状態を判定
+   */
+  const getProductStatus = (product: OrderFormData['products'][0]) => {
+    const hasBasicInfo = !!(product.name && product.origin);
+    const hasPricing = !!(product.storeCost && product.priceExcludingTax && product.totalDelivery);
+    const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
+    const hasAllocation = totalAllocated === product.totalDelivery && totalAllocated > 0;
+    const hasOverAllocation = totalAllocated > product.totalDelivery;
+
+    return {
+      hasBasicInfo,
+      hasPricing,
+      hasAllocation,
+      hasOverAllocation,
+      totalAllocated,
+      remaining: product.totalDelivery - totalAllocated,
+    };
+  };
+
+  /**
+   * 商品カード表示用の横スクロールリスト
+   */
+  const renderProductCards = () => {
+    if (!isProductMode || activeProductIndex === undefined) return null;
+
+    return (
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+            商品 {activeProductIndex + 1} / {formData.products.length}
+          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          {/* 前へボタン */}
+          {activeProductIndex > 0 && onProductChange && (
+            <IconButton
+              size="small"
+              onClick={() => onProductChange(activeProductIndex - 1)}
+              sx={{ bgcolor: 'action.hover' }}
+            >
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+          )}
+          {/* 次へボタン */}
+          {activeProductIndex < formData.products.length - 1 && onProductChange && (
+            <IconButton
+              size="small"
+              onClick={() => onProductChange(activeProductIndex + 1)}
+              sx={{ bgcolor: 'action.hover' }}
+            >
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
+
+        {/* 横スクロール可能な商品カードリスト */}
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            overflowX: 'auto',
+            pb: 1,
+            '&::-webkit-scrollbar': {
+              height: 4,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0,0,0,0.2)',
+              borderRadius: 2,
+            },
+          }}
+        >
+          {formData.products.map((product, index) => {
+            const status = getProductStatus(product);
+            const isActive = index === activeProductIndex;
+
+            return (
+              <Card
+                key={index}
+                onClick={() => onProductChange && onProductChange(index)}
+                sx={{
+                  minWidth: 260,
+                  maxWidth: 260,
+                  cursor: 'pointer',
+                  border: isActive ? 2 : 1,
+                  borderColor: isActive ? 'primary.main' : 'grey.300',
+                  bgcolor: isActive ? 'primary.50' : 'background.paper',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    boxShadow: 3,
+                    transform: 'translateY(-2px)',
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                  {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}>
+                        商品 #{index + 1}
+                      </Typography>
+                      {product.supplier && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.65rem',
+                            color: 'text.secondary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {product.supplier}
+                        </Typography>
+                      )}
+                    </Box>
+                    {/* ステータスアイコン（右側） */}
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title={status.hasBasicInfo ? '基本情報完了' : '基本情報未完了'} arrow>
+                        <Box>
+                          {status.hasBasicInfo ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title={status.hasPricing ? '価格・数量完了' : '価格・数量未完了'} arrow>
+                        <Box>
+                          {status.hasPricing ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title={status.hasAllocation ? '配分完了' : status.hasOverAllocation ? '配分超過' : '配分未完了'} arrow>
+                        <Box>
+                          {status.hasAllocation ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : status.hasOverAllocation ? (
+                            <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Stack>
+                  </Box>
+
+                  {/* 2行目: 産地 | 品名 */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                    {product.origin && (
+                      <>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                          {product.origin}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          |
+                        </Typography>
+                      </>
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flex: 1,
+                      }}
+                    >
+                      {product.name || '未入力'}
+                    </Typography>
+                  </Box>
+
+                  {/* 3行目: 規格 | 入数+単位 */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                    {product.specification && (
+                      <>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          {product.specification}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          |
+                        </Typography>
+                      </>
+                    )}
+                    {product.quantityPerPackage && (
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                        {product.quantityPerPackage}{product.unit || ''}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* 4行目: 店着原価 | 税込売価（ステップ3以降のみ） */}
+                  {activeStep >= 2 && status.hasPricing && (
+                    <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                      {product.storeCost && (
+                        <>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            ¥{product.storeCost.toLocaleString()}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            |
+                          </Typography>
+                        </>
+                      )}
+                      {product.priceExcludingTax && (
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* 配分状況 */}
+                  {status.hasPricing && (
+                    <Box sx={{ mt: 0.75, pt: 0.75, borderTop: 1, borderColor: 'grey.200' }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                        配分: {status.totalAllocated} / {product.totalDelivery}
+                        {status.remaining !== 0 && (
+                          <Box
+                            component="span"
+                            sx={{
+                              ml: 0.5,
+                              color: status.remaining > 0 ? 'warning.main' : 'error.main',
+                              fontWeight: 700,
+                            }}
+                          >
+                            ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
+                          </Box>
+                        )}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Paper
+      ref={containerRef}
       elevation={8}
       sx={{
         position: 'fixed',
@@ -165,55 +453,96 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
 
       {/* 詳細（折りたたみ可能） */}
       <Collapse in={expanded}>
-        <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
-            入力状況
-          </Typography>
+        {isProductMode ? (
+          /* 商品モード: 商品カードを表示 */
+          <Box sx={{ bgcolor: 'background.paper' }}>
+            {renderProductCards()}
+          </Box>
+        ) : (
+          /* 通常モード: 従来の進捗表示 + ステップ別ヒント */
+          <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
+            <Typography variant="caption" color="text.secondary" gutterBottom>
+              入力状況
+            </Typography>
 
-          <Stack spacing={1.5} sx={{ mt: 1 }}>
-            {steps.map((step, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  opacity: index <= activeStep ? 1 : 0.5,
-                }}
-              >
-                {/* アイコン */}
-                {step.completed ? (
-                  <CheckCircleIcon fontSize="small" color="success" />
-                ) : step.warning ? (
-                  <WarningIcon fontSize="small" color="error" />
-                ) : (
-                  <UncheckedIcon fontSize="small" color="disabled" />
-                )}
-
-                {/* ラベル */}
-                <Typography
-                  variant="body2"
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              {steps.map((step, index) => (
+                <Box
+                  key={index}
                   sx={{
-                    minWidth: '80px',
-                    fontWeight: index === activeStep ? 'bold' : 'normal',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    opacity: index <= activeStep ? 1 : 0.5,
                   }}
                 >
-                  {step.label}
-                </Typography>
+                  {/* アイコン */}
+                  {step.completed ? (
+                    <CheckCircleIcon fontSize="small" color="success" />
+                  ) : step.warning ? (
+                    <WarningIcon fontSize="small" color="error" />
+                  ) : (
+                    <UncheckedIcon fontSize="small" color="disabled" />
+                  )}
 
-                {/* 値 */}
-                {step.value && (
-                  <Chip
-                    label={step.value}
-                    size="small"
-                    color={step.warning ? 'error' : step.completed ? 'success' : 'default'}
-                    variant={step.completed ? 'filled' : 'outlined'}
-                  />
+                  {/* ラベル */}
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      minWidth: '80px',
+                      fontWeight: index === activeStep ? 'bold' : 'normal',
+                    }}
+                  >
+                    {step.label}
+                  </Typography>
+
+                  {/* 値 */}
+                  {step.value && (
+                    <Chip
+                      label={step.value}
+                      size="small"
+                      color={step.warning ? 'error' : step.completed ? 'success' : 'default'}
+                      variant={step.completed ? 'filled' : 'outlined'}
+                    />
+                  )}
+                </Box>
+              ))}
+            </Stack>
+
+            {/* ステップ別のヒント表示 */}
+            {activeStep === 0 && (
+              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.50', borderRadius: 1, border: 1, borderColor: 'info.200' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.main', display: 'block', mb: 0.5 }}>
+                  💡 次のステップ
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                  帳合先を選択したら、商品情報の入力に進みます
+                </Typography>
+              </Box>
+            )}
+
+            {activeStep === 4 && (
+              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'success.50', borderRadius: 1, border: 1, borderColor: 'success.200' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main', display: 'block', mb: 0.5 }}>
+                  ✅ 最終確認
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  すべての配分数が正しいか確認してください
+                </Typography>
+                {totalAllocated > 0 && remaining === 0 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'success.dark', fontWeight: 600 }}>
+                    配分完了！生成ボタンを押してExcelとPDFを作成できます
+                  </Typography>
+                )}
+                {remaining !== 0 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'warning.dark', fontWeight: 600 }}>
+                    配分数の調整が必要です（残り: {remaining}個）
+                  </Typography>
                 )}
               </Box>
-            ))}
-          </Stack>
-        </Box>
+            )}
+          </Box>
+        )}
       </Collapse>
     </Paper>
   );
