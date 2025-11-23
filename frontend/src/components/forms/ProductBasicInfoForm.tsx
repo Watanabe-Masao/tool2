@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Button } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Box, Typography, Alert, Button, IconButton } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -155,52 +155,63 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </Alert>
       )}
 
-      {/* 横並びの商品カード表示エリア */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          gap: 2,
-          overflowX: 'auto',
-          overflowY: 'visible',
-          pb: 2,
-          // スクロールバーのスタイリング
-          '&::-webkit-scrollbar': {
-            height: 8,
-          },
-          '&::-webkit-scrollbar-track': {
-            backgroundColor: 'rgba(0,0,0,0.05)',
-            borderRadius: 4,
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(0,0,0,0.2)',
-            borderRadius: 4,
-            '&:hover': {
-              backgroundColor: 'rgba(0,0,0,0.3)',
-            },
-          },
-        }}
-      >
-        {/* 全ての商品カードを横並びで表示 */}
+      {/* 商品カード表示エリア（1枚ずつ表示） */}
+      <Box>
+        {/* ナビゲーションバー */}
+        {fields.length > 1 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
+            <IconButton
+              size="small"
+              onClick={() => setActiveTabIndex(Math.max(0, activeTabIndex - 1))}
+              disabled={activeTabIndex === 0}
+              sx={{
+                bgcolor: activeTabIndex === 0 ? 'action.disabledBackground' : 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: activeTabIndex === 0 ? 'action.disabledBackground' : 'primary.dark',
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'action.disabledBackground',
+                  color: 'action.disabled',
+                },
+              }}
+            >
+              <ChevronLeft />
+            </IconButton>
+
+            <Typography variant="body2" sx={{ minWidth: 100, textAlign: 'center', fontWeight: 'medium' }}>
+              商品 {activeTabIndex + 1} / {fields.length}
+            </Typography>
+
+            <IconButton
+              size="small"
+              onClick={() => setActiveTabIndex(Math.min(fields.length - 1, activeTabIndex + 1))}
+              disabled={activeTabIndex === fields.length - 1}
+              sx={{
+                bgcolor: activeTabIndex === fields.length - 1 ? 'action.disabledBackground' : 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: activeTabIndex === fields.length - 1 ? 'action.disabledBackground' : 'primary.dark',
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'action.disabledBackground',
+                  color: 'action.disabled',
+                },
+              }}
+            >
+              <ChevronRight />
+            </IconButton>
+          </Box>
+        )}
+
+        {/* アクティブな商品カードのみ表示 */}
         {fields.map((field, index) => {
           const isActive = activeTabIndex === index;
           return (
             <Box
               key={field.id}
-              onClick={() => setActiveTabIndex(index)}
               sx={{
-                minWidth: 400,
-                maxWidth: 400,
-                flexShrink: 0,
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                border: isActive ? 2 : 0,
-                borderColor: isActive ? 'primary.main' : 'transparent',
-                borderRadius: 1,
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: 3,
-                },
+                display: isActive ? 'block' : 'none',
               }}
             >
               <ProductFormCardBasic
