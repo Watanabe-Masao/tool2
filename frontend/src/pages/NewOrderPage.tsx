@@ -71,6 +71,12 @@ export const NewOrderPage: React.FC = () => {
     newSuppliers: [],
   });
 
+  // 店舗のロック状態（ステップ4とステップ5で共有）
+  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
+
+  // カテゴリフィルター（ステップ4とステップ5で共有）
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -640,6 +646,10 @@ export const NewOrderPage: React.FC = () => {
                     control={control}
                     errors={errors}
                     fields={productFields}
+                    lockedStores={lockedStores}
+                    setLockedStores={setLockedStores}
+                    selectedCategories={selectedCategories}
+                    setSelectedCategories={setSelectedCategories}
                   />
                 </Box>
               )}
@@ -654,6 +664,10 @@ export const NewOrderPage: React.FC = () => {
                       pdfFilename={undefined}
                       onGenerate={handleSubmit(onSubmit)}
                       onAllocationChange={handleAllocationChange}
+                      lockedStores={lockedStores}
+                      setLockedStores={setLockedStores}
+                      selectedCategories={selectedCategories}
+                      setSelectedCategories={setSelectedCategories}
                     />
                   ) : (
                     /* 生成後のプレビュー */
@@ -670,6 +684,10 @@ export const NewOrderPage: React.FC = () => {
                           setExcelBlob(null);
                         }}
                         onAllocationChange={handleAllocationChange}
+                        lockedStores={lockedStores}
+                        setLockedStores={setLockedStores}
+                        selectedCategories={selectedCategories}
+                        setSelectedCategories={setSelectedCategories}
                       />
                     )
                   )}

@@ -63,6 +63,14 @@ interface StoreAllocationMobileProps {
   errors: FieldErrors<OrderFormData>;
   /** 総納品数 */
   totalDelivery: number;
+  /** ロックされた店舗のSet */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -77,6 +85,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   control,
   errors,
   totalDelivery,
+  lockedStores,
+  setLockedStores,
+  selectedCategories,
+  setSelectedCategories,
 }) => {
   const { user } = useAuthContext();
   const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
@@ -144,6 +156,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             enabledStores={enabledStores}
             categories={categories}
             storeSettings={storeSettings}
+            lockedStores={lockedStores}
+            setLockedStores={setLockedStores}
+            selectedCategories={selectedCategories}
+            setSelectedCategories={setSelectedCategories}
           />
         );
       }}
@@ -163,6 +179,14 @@ interface StoreAllocationMobileContentProps {
   enabledStores: Array<typeof STORE_DATA[number]>;
   categories: StoreCategory[];
   storeSettings: Record<string, StoreSettings>;
+  /** ロックされた店舗のSet（親から渡される） */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet（親から渡される） */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -181,11 +205,13 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   enabledStores,
   categories,
   storeSettings,
+  lockedStores,
+  setLockedStores,
+  selectedCategories,
+  setSelectedCategories,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
-  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
 
   // 長押し検出用のタイマー（固定機能用）
   const longPressTimer = React.useRef<number | null>(null);

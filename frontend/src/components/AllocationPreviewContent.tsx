@@ -41,6 +41,14 @@ interface AllocationPreviewContentProps {
   onGenerate?: () => void;
   /** 配分数量変更ハンドラ */
   onAllocationChange?: (productIndex: number, storeIndex: number, newValue: number) => void;
+  /** ロックされた店舗のSet */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -79,6 +87,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onBack,
   onGenerate,
   onAllocationChange,
+  lockedStores,
+  setLockedStores: _setLockedStores, // TODO: カテゴリフィルター UI で使用予定
+  selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
+  setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
 }) => {
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
@@ -157,22 +169,24 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       },
     ];
 
-    // 36店舗のカラムを追加（編集可能）
+    // 36店舗のカラムを追加（生成前のみ編集可能、ロック状態を反映）
     STORE_DATA.forEach((store, storeIndex) => {
+      const isLocked = lockedStores.has(store.code);
       cols.push({
-        headerName: `${store.code}\n${store.name}`,
+        headerName: `${store.code}\n${store.name}${isLocked ? ' 🔒' : ''}`,
         field: `store_${store.code}`,
         width: 55,
         headerClass: 'store-header',
-        editable: true, // 編集可能にする
+        // 生成前かつロックされていない場合のみ編集可能
+        editable: Boolean(onGenerate) && !isLocked,
         cellStyle: (params) => {
           const value = params.value as number;
           return {
             textAlign: 'center',
-            backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
-            color: value > 0 ? '#1565c0' : '#bdbdbd',
+            backgroundColor: isLocked ? '#f5f5f5' : value > 0 ? '#e3f2fd' : 'transparent',
+            color: isLocked ? '#999' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
-            cursor: 'text', // 編集可能を示すカーソル
+            cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
           };
         },
         valueFormatter: (params) => {
@@ -186,7 +200,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         },
         valueSetter: (params) => {
           // セルの値を更新する代わりに、親コンポーネントに通知
-          if (onAllocationChange && params.data) {
+          if (onAllocationChange && params.data && !isLocked) {
             const productIndex = params.data.productIndex;
             const parsedValue = parseInt(params.newValue, 10);
             const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
@@ -242,7 +256,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onAllocationChange]);
+  }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
    * 行クリック時のハンドラー

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -46,6 +46,14 @@ interface StoreAllocationTableProps {
   errors: FieldErrors<OrderFormData>;
   /** 総納品数 */
   totalDelivery: number;
+  /** ロックされた店舗のSet */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -73,9 +81,12 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
   control,
   errors,
   totalDelivery,
+  lockedStores,
+  setLockedStores,
+  selectedCategories: _selectedCategories, // TODO: カテゴリフィルター機能で使用予定
+  setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター機能で使用予定
 }) => {
   const productErrors = errors.products?.[productIndex];
-  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
 
   /**
    * ロック状態をトグル
