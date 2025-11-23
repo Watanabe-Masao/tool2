@@ -156,51 +156,59 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       )}
 
       {/* 商品カード表示エリア（1枚ずつ表示） */}
-      <Box>
-        {/* ナビゲーションバー */}
-        {fields.length > 1 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
-            <IconButton
-              size="small"
-              onClick={() => setActiveTabIndex(Math.max(0, activeTabIndex - 1))}
-              disabled={activeTabIndex === 0}
-              sx={{
-                bgcolor: activeTabIndex === 0 ? 'action.disabledBackground' : 'primary.main',
-                color: 'white',
-                '&:hover': {
-                  bgcolor: activeTabIndex === 0 ? 'action.disabledBackground' : 'primary.dark',
-                },
-                '&.Mui-disabled': {
-                  bgcolor: 'action.disabledBackground',
-                  color: 'action.disabled',
-                },
-              }}
-            >
-              <ChevronLeft />
-            </IconButton>
+      <Box sx={{ position: 'relative' }}>
+        {/* 左端のナビゲーションボタン */}
+        {fields.length > 1 && activeTabIndex > 0 && (
+          <IconButton
+            size="medium"
+            onClick={() => setActiveTabIndex(Math.max(0, activeTabIndex - 1))}
+            sx={{
+              position: 'absolute',
+              left: -16,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              bgcolor: 'primary.main',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              },
+              boxShadow: 2,
+            }}
+          >
+            <ChevronLeft />
+          </IconButton>
+        )}
 
-            <Typography variant="body2" sx={{ minWidth: 100, textAlign: 'center', fontWeight: 'medium' }}>
+        {/* 右端のナビゲーションボタン */}
+        {fields.length > 1 && activeTabIndex < fields.length - 1 && (
+          <IconButton
+            size="medium"
+            onClick={() => setActiveTabIndex(Math.min(fields.length - 1, activeTabIndex + 1))}
+            sx={{
+              position: 'absolute',
+              right: -16,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              bgcolor: 'primary.main',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              },
+              boxShadow: 2,
+            }}
+          >
+            <ChevronRight />
+          </IconButton>
+        )}
+
+        {/* 商品番号表示（上部中央） */}
+        {fields.length > 1 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
               商品 {activeTabIndex + 1} / {fields.length}
             </Typography>
-
-            <IconButton
-              size="small"
-              onClick={() => setActiveTabIndex(Math.min(fields.length - 1, activeTabIndex + 1))}
-              disabled={activeTabIndex === fields.length - 1}
-              sx={{
-                bgcolor: activeTabIndex === fields.length - 1 ? 'action.disabledBackground' : 'primary.main',
-                color: 'white',
-                '&:hover': {
-                  bgcolor: activeTabIndex === fields.length - 1 ? 'action.disabledBackground' : 'primary.dark',
-                },
-                '&.Mui-disabled': {
-                  bgcolor: 'action.disabledBackground',
-                  color: 'action.disabled',
-                },
-              }}
-            >
-              <ChevronRight />
-            </IconButton>
           </Box>
         )}
 
