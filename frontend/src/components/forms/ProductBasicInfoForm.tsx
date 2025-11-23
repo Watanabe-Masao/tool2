@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useWatch, useFormContext } from 'react-hook-form';
-import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2 } from '@mui/icons-material';
+import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove, UseFieldArrayMove } from 'react-hook-form';
+import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2, SwapVert, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -34,6 +34,8 @@ interface ProductBasicInfoFormProps {
   append: UseFieldArrayAppend<OrderFormData, 'products'>;
   /** 商品削除関数 */
   remove: UseFieldArrayRemove;
+  /** 商品移動関数 */
+  move: UseFieldArrayMove;
   /** ステップ移動ハンドラー */
   onNavigateToStep?: (step: number) => void;
   /** 現在の商品インデックス（外部制御用） */
@@ -58,6 +60,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   fields,
   append,
   remove,
+  move,
   onNavigateToStep,
   activeProductIndex,
   onProductIndexChange,
@@ -89,6 +92,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 商品一括追加モーダルの状態
   const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
+
+  // 商品並べ替えモーダルの状態
+  const [reorderModalOpen, setReorderModalOpen] = useState(false);
 
   // PL（プリセット）履歴を取得（全帳合先の履歴）
   const { history: presetHistory, loadHistory: reloadPresetHistory } = useProductHistory(suppliers, undefined);
@@ -274,16 +280,28 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         <Typography variant="subtitle1" fontWeight="medium">
           商品情報1
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<Add />}
-          onClick={handleAddButtonClick}
-          disabled={fields.length >= 50}
-          sx={{ fontSize: '0.8rem' }}
-        >
-          商品を追加
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SwapVert />}
+            onClick={() => setReorderModalOpen(true)}
+            disabled={fields.length <= 1}
+            sx={{ fontSize: '0.8rem' }}
+          >
+            並べ替え
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Add />}
+            onClick={handleAddButtonClick}
+            disabled={fields.length >= 50}
+            sx={{ fontSize: '0.8rem' }}
+          >
+            商品を追加
+          </Button>
+        </Box>
       </Box>
 
       {/* 商品追加メニュー */}
@@ -427,6 +445,87 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         multiSelect={true}
         onSelectMultiple={handleBulkAddProducts}
       />
+
+      {/* 商品並べ替えモーダル */}
+      <Dialog
+        open={reorderModalOpen}
+        onClose={() => setReorderModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>商品の並べ替え</DialogTitle>
+        <DialogContent>
+          <List sx={{ pt: 0 }}>
+            {fields.map((field, index) => {
+              const product = products?.[index];
+              return (
+                <ListItem
+                  key={field.id}
+                  sx={{
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    mb: 1,
+                    bgcolor: 'background.paper',
+                  }}
+                  secondaryAction={
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={() => {
+                          if (index > 0) {
+                            move(index, index - 1);
+                            if (activeTabIndex === index) {
+                              setActiveTabIndex(index - 1);
+                            } else if (activeTabIndex === index - 1) {
+                              setActiveTabIndex(index);
+                            }
+                          }
+                        }}
+                        disabled={index === 0}
+                      >
+                        <ArrowUpward fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={() => {
+                          if (index < fields.length - 1) {
+                            move(index, index + 1);
+                            if (activeTabIndex === index) {
+                              setActiveTabIndex(index + 1);
+                            } else if (activeTabIndex === index + 1) {
+                              setActiveTabIndex(index);
+                            }
+                          }
+                        }}
+                        disabled={index === fields.length - 1}
+                      >
+                        <ArrowDownward fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  }
+                >
+                  <ListItemButton sx={{ cursor: 'default', '&:hover': { bgcolor: 'transparent' } }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight="medium">
+                        商品 {index + 1}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {product?.name || '未入力'} {product?.origin && `(${product.origin})`}
+                      </Typography>
+                    </Box>
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReorderModalOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

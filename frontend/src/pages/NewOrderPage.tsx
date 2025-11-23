@@ -137,7 +137,7 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   // 商品フィールド配列
-  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
+  const { fields: productFields, append: appendProduct, remove: removeProduct, move: moveProduct } = useFieldArray({
     control,
     name: 'products',
   });
@@ -657,6 +657,7 @@ export const NewOrderPage: React.FC = () => {
                     fields={productFields}
                     append={appendProduct}
                     remove={removeProduct}
+                    move={moveProduct}
                     onNavigateToStep={setActiveStep}
                     activeProductIndex={activeProductIndex}
                     onProductIndexChange={setActiveProductIndex}
