@@ -413,28 +413,62 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                           </Typography>
                         </Box>
 
-                        {/* 3行目: 店着原価 | 税込売価 */}
-                        {(product.storeCost || product.priceExcludingTax) && (
+                        {/* 3行目: 規格 | 入数 */}
+                        {(product.specification || product.quantityPerPackage) && (
                           <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
-                            {product.storeCost && (
+                            {product.specification && (
                               <>
                                 <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                                  原価 ¥{product.storeCost.toLocaleString()}
+                                  {product.specification}
                                 </Typography>
-                                {product.priceExcludingTax && (
+                                {product.quantityPerPackage && (
                                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
                                     |
                                   </Typography>
                                 )}
                               </>
                             )}
-                            {product.priceExcludingTax && (
+                            {product.quantityPerPackage && (
                               <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                                売価 ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                                {product.quantityPerPackage}{product.unit || ''}
                               </Typography>
                             )}
                           </Box>
                         )}
+
+                        {/* 4行目: 店着原価 | 税込売価 */}
+                        <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                          {product.storeCost ? (
+                            <>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                原価 ¥{product.storeCost.toLocaleString()}
+                              </Typography>
+                              {product.priceExcludingTax && (
+                                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                  |
+                                </Typography>
+                              )}
+                            </>
+                          ) : (
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.disabled' }}>
+                              原価 未入力
+                            </Typography>
+                          )}
+                          {product.priceExcludingTax ? (
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              売価 ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                            </Typography>
+                          ) : !product.storeCost && (
+                            <>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                |
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.disabled' }}>
+                                売価 未入力
+                              </Typography>
+                            </>
+                          )}
+                        </Box>
 
                         {/* 配分状況 */}
                         {status.hasPricing && (

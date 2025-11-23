@@ -630,11 +630,31 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                 >
                   <ListItemButton sx={{ cursor: 'inherit', '&:hover': { bgcolor: 'transparent' } }}>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" fontWeight="medium">
+                      <Typography variant="body2" fontWeight="medium" sx={{ mb: 0.5 }}>
                         商品 {index + 1}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {product?.name || '未入力'} {product?.origin && `(${product.origin})`}
+                      {/* 帳合先 */}
+                      <Typography variant="caption" color="text.primary" sx={{ display: 'block', mb: 0.25 }}>
+                        {product?.supplier || '帳合先未設定'}
+                      </Typography>
+                      {/* 産地 | 商品名 */}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                        {product?.origin && `${product.origin} | `}
+                        {product?.name || '商品名未入力'}
+                      </Typography>
+                      {/* 規格 | 入数 */}
+                      {(product?.specification || product?.quantityPerPackage) && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                          {product.specification && `${product.specification}`}
+                          {product.specification && product.quantityPerPackage && ' | '}
+                          {product.quantityPerPackage && `${product.quantityPerPackage}${product.unit || ''}`}
+                        </Typography>
+                      )}
+                      {/* 原価 | 売価 */}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        {product?.storeCost ? `原価 ¥${product.storeCost.toLocaleString()}` : '原価 未入力'}
+                        {' | '}
+                        {product?.priceExcludingTax ? `売価 ¥${Math.round(product.priceExcludingTax * 1.08).toLocaleString()}` : '売価 未入力'}
                       </Typography>
                     </Box>
                   </ListItemButton>
