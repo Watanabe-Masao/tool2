@@ -228,10 +228,11 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
               arrows: false,
               drag: true,
               autoWidth: true,
-              focus: activeProductIndex,
+              start: 0, // 常に左端から開始
               padding: { left: 0, right: 0 },
-              updateOnMove: true,
+              updateOnMove: false, // 位置が変わっても自動更新しない
               trimSpace: false,
+              speed: 300, // スライド速度を設定
             }}
             aria-label="商品カードスライダー"
           >
