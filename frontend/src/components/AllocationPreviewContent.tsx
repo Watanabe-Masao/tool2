@@ -183,56 +183,6 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           const productLockedStores = lockedStores.get(productIndex) || new Set();
           return !productLockedStores.has(store.code);
         },
-        cellRenderer: (params: any) => {
-          if (!params.data) return null;
-          const productIndex = params.data.productIndex;
-          const value = params.value as number;
-
-          // 長押し検出用の変数
-          let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-
-          const handleTouchStart = () => {
-            longPressTimer = setTimeout(() => {
-              // 長押しでロックをトグル
-              setLockedStores((prev: Map<number, Set<string>>) => {
-                const newMap = new Map(prev);
-                const currentSet = prev.get(productIndex) || new Set();
-                const newSet = new Set(currentSet);
-                if (newSet.has(store.code)) {
-                  newSet.delete(store.code);
-                } else {
-                  newSet.add(store.code);
-                }
-                newMap.set(productIndex, newSet);
-                return newMap;
-              });
-            }, 500); // 500msの長押し
-          };
-
-          const handleTouchEnd = () => {
-            if (longPressTimer) {
-              clearTimeout(longPressTimer);
-              longPressTimer = null;
-            }
-          };
-
-          const cellDiv = document.createElement('div');
-          cellDiv.style.width = '100%';
-          cellDiv.style.height = '100%';
-          cellDiv.style.display = 'flex';
-          cellDiv.style.alignItems = 'center';
-          cellDiv.style.justifyContent = 'center';
-          cellDiv.textContent = value > 0 ? value.toString() : '-';
-
-          // 長押しイベントを追加（生成前のみ）
-          if (Boolean(onGenerate)) {
-            cellDiv.addEventListener('touchstart', handleTouchStart);
-            cellDiv.addEventListener('touchend', handleTouchEnd);
-            cellDiv.addEventListener('touchcancel', handleTouchEnd);
-          }
-
-          return cellDiv;
-        },
         cellStyle: (params) => {
           if (!params.data) return {} as any;
           const productIndex = params.data.productIndex;
@@ -244,7 +194,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
             color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
-            cursor: Boolean(onGenerate) && !isLocked ? 'text' : Boolean(onGenerate) ? 'pointer' : 'default',
+            cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
           } as any;
         },
         valueFormatter: (params) => {
@@ -318,7 +268,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onAllocationChange, lockedStores, onGenerate, setLockedStores]);
+  }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
    * 行クリック時のハンドラー
