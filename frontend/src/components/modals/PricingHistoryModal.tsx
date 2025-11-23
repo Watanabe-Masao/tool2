@@ -45,6 +45,14 @@ interface PricingHistoryModalProps {
   specification?: string;
   /** 現在の入数（フィルタリング用） */
   quantityPerPackage?: number;
+  /** 現在入力されている価格情報（上書き確認用） */
+  currentPricing?: {
+    centerCost?: number;
+    storeCost?: number;
+    priceExcludingTax?: number;
+  };
+  /** 新規商品として追加するハンドラー（複数選択モード用） */
+  onAddNew?: (history: PricingHistoryItem) => void;
 }
 
 /**
@@ -61,6 +69,8 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   productName,
   specification,
   quantityPerPackage,
+  currentPricing,
+  onAddNew,
 }) => {
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,6 +79,10 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   // 複数選択モードの状態
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedHistories, setSelectedHistories] = useState<Set<string>>(new Set());
+
+  // 上書き確認ダイアログの状態
+  const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
+  const [historyToApply, setHistoryToApply] = useState<PricingHistoryItem | null>(null);
 
   /**
    * 現在の商品にマッチする履歴のみをフィルタリング
@@ -136,10 +150,55 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   }, [matchingHistories, selectedHistories]);
 
   /**
+   * 現在の価格情報が入力されているかチェック
+   */
+  const hasPricingData = () => {
+    if (!currentPricing) return false;
+    return !!(
+      currentPricing.centerCost ||
+      currentPricing.storeCost ||
+      currentPricing.priceExcludingTax
+    );
+  };
+
+  /**
    * 複数選択した履歴から1つを選んで適用
    */
   const handleApplySelected = (history: PricingHistoryItem) => {
-    onSelect(history);
+    // 価格情報が既に入力されている場合は確認ダイアログを表示
+    if (hasPricingData()) {
+      setHistoryToApply(history);
+      setOverwriteDialogOpen(true);
+    } else {
+      // 未入力の場合は直接適用
+      onSelect(history);
+      onClose();
+      setBulkSelectMode(false);
+      setSelectedHistories(new Set());
+    }
+  };
+
+  /**
+   * 上書き確認ダイアログで「上書き」を選択
+   */
+  const handleConfirmOverwrite = () => {
+    if (!historyToApply) return;
+    onSelect(historyToApply);
+    setOverwriteDialogOpen(false);
+    setHistoryToApply(null);
+    onClose();
+    setBulkSelectMode(false);
+    setSelectedHistories(new Set());
+  };
+
+  /**
+   * 上書き確認ダイアログで「新規追加」を選択
+   */
+  const handleConfirmAddNew = () => {
+    if (!historyToApply || !onAddNew) return;
+    onAddNew(historyToApply);
+    setOverwriteDialogOpen(false);
+    setHistoryToApply(null);
     onClose();
     setBulkSelectMode(false);
     setSelectedHistories(new Set());
@@ -483,6 +542,100 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
           </Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained">
             削除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 上書き確認ダイアログ */}
+      <Dialog
+        open={overwriteDialogOpen}
+        onClose={() => {
+          setOverwriteDialogOpen(false);
+          setHistoryToApply(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>価格履歴の適用方法</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            現在の商品には既に価格情報が入力されています。どのように適用しますか？
+          </DialogContentText>
+
+          {/* 現在の価格情報 */}
+          {currentPricing && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'warning.50', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+              <Typography variant="caption" fontWeight="bold" color="warning.dark" gutterBottom>
+                現在の価格情報
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                {currentPricing.centerCost && (
+                  <Typography variant="body2" color="text.secondary">
+                    センター着: ¥{currentPricing.centerCost.toLocaleString()}
+                  </Typography>
+                )}
+                {currentPricing.storeCost && (
+                  <Typography variant="body2" color="text.secondary">
+                    店着: ¥{currentPricing.storeCost.toLocaleString()}
+                  </Typography>
+                )}
+                {currentPricing.priceExcludingTax && (
+                  <Typography variant="body2" color="text.secondary">
+                    売価: ¥{currentPricing.priceExcludingTax.toLocaleString()}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* 適用する履歴 */}
+          {historyToApply && (
+            <Box sx={{ p: 2, bgcolor: 'primary.50', borderRadius: 1, border: 1, borderColor: 'primary.main' }}>
+              <Typography variant="caption" fontWeight="bold" color="primary.dark" gutterBottom>
+                適用する履歴
+              </Typography>
+              <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>
+                {historyToApply.productName} ({historyToApply.specification})
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  センター着: ¥{historyToApply.centerCost.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  店着: ¥{historyToApply.storeCost.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  売価: ¥{historyToApply.priceExcludingTax.toLocaleString()}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            onClick={() => {
+              setOverwriteDialogOpen(false);
+              setHistoryToApply(null);
+            }}
+            color="inherit"
+          >
+            キャンセル
+          </Button>
+          {onAddNew && (
+            <Button
+              onClick={handleConfirmAddNew}
+              color="success"
+              variant="outlined"
+            >
+              新しい商品として追加
+            </Button>
+          )}
+          <Button
+            onClick={handleConfirmOverwrite}
+            color="primary"
+            variant="contained"
+          >
+            現在の商品を上書き
           </Button>
         </DialogActions>
       </Dialog>

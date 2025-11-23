@@ -554,6 +554,11 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         productName={productName}
         specification={specification}
         quantityPerPackage={quantityPerPackage ?? undefined}
+        currentPricing={{
+          centerCost,
+          storeCost,
+          priceExcludingTax,
+        }}
       />
     </Card>
   );
