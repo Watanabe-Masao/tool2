@@ -516,10 +516,10 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    * すべて選択/解除（複数選択モード用）
    */
   const handleSelectAll = () => {
-    if (selectedIds.size === sortedPresets.length) {
+    if (selectedIds.size === filteredPresets.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(sortedPresets.map((p) => p.id)));
+      setSelectedIds(new Set(filteredPresets.map((p) => p.id)));
     }
   };
 
@@ -535,7 +535,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    */
   const handleAddSelected = () => {
     if (onSelectMultiple && selectedIds.size > 0) {
-      const selectedPresets = sortedPresets.filter((p) => selectedIds.has(p.id));
+      const selectedPresets = filteredPresets.filter((p) => selectedIds.has(p.id));
       onSelectMultiple(selectedPresets);
       setSelectedIds(new Set());
       onClose();
@@ -1044,10 +1044,10 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
           <DialogActions>
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, px: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                {selectedIds.size} / {sortedPresets.length} 選択中
+                {selectedIds.size} / {filteredPresets.length} 選択中
               </Typography>
               <Button size="small" onClick={handleSelectAll}>
-                {selectedIds.size === sortedPresets.length ? 'すべて解除' : 'すべて選択'}
+                {selectedIds.size === filteredPresets.length ? 'すべて解除' : 'すべて選択'}
               </Button>
               {selectedIds.size > 0 && (
                 <Button size="small" onClick={handleClearSelection}>
