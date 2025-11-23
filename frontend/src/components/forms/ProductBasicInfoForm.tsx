@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Button, IconButton } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight, NoteAdd, History } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
+import { ProductBulkAddModal } from '@/components/modals/ProductBulkAddModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
+import { useProductHistory } from '@/hooks/useProductHistory';
+import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 
 /**
  * ProductBasicInfoFormのProps
@@ -72,6 +75,16 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
 
+  // 商品追加メニューの状態
+  const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
+  const addMenuOpen = Boolean(addMenuAnchor);
+
+  // 商品一括追加モーダルの状態
+  const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
+
+  // 商品履歴を取得（全帳合先の履歴）
+  const { history: productHistory } = useProductHistory(suppliers, undefined);
+
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
    */
@@ -103,14 +116,82 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   };
 
   /**
-   * 商品を追加
+   * 商品追加ボタンをクリック（メニューを表示）
    */
-  const handleAddProduct = () => {
+  const handleAddButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAddMenuAnchor(event.currentTarget);
+  };
+
+  /**
+   * 商品追加メニューを閉じる
+   */
+  const handleCloseAddMenu = () => {
+    setAddMenuAnchor(null);
+  };
+
+  /**
+   * 空のカードを追加
+   */
+  const handleAddEmptyProduct = () => {
     // 手前で選択している帳合先をデフォルトとして設定
     const defaultSupplier = getLastSelectedSupplier();
     append({
       ...DEFAULT_PRODUCT_FORM_DATA,
       supplier: defaultSupplier,
+      totalDelivery: 0,
+      storeAllocations: new Array(STORE_COUNT).fill(0),
+    });
+    // 新しく追加された商品のタブに切り替え
+    setActiveTabIndex(fields.length);
+    handleCloseAddMenu();
+  };
+
+  /**
+   * 履歴から商品を追加（複数選択モーダルを開く）
+   */
+  const handleAddFromHistory = () => {
+    setBulkAddModalOpen(true);
+    handleCloseAddMenu();
+  };
+
+  /**
+   * 選択した商品を一括追加
+   */
+  const handleBulkAddProducts = (presets: ProductHistoryItem[]) => {
+    // 選択された商品を順番に追加
+    presets.forEach((preset) => {
+      append({
+        ...DEFAULT_PRODUCT_FORM_DATA,
+        categoryCode: preset.categoryCode || '',
+        supplier: preset.supplier,
+        name: preset.name,
+        origin: preset.origin,
+        specification: preset.specification,
+        quantityPerPackage: preset.quantityPerPackage,
+        unit: preset.unit,
+        totalDelivery: 0,
+        storeAllocations: new Array(STORE_COUNT).fill(0),
+      });
+    });
+    // 最後に追加された商品のタブに切り替え
+    if (presets.length > 0) {
+      setActiveTabIndex(fields.length + presets.length - 1);
+    }
+  };
+
+  /**
+   * プリセットから商品を追加
+   */
+  const handleAddProductFromPreset = (preset: any) => {
+    append({
+      ...DEFAULT_PRODUCT_FORM_DATA,
+      categoryCode: preset.categoryCode || '',
+      supplier: preset.supplier,
+      name: preset.name,
+      origin: preset.origin,
+      specification: preset.specification,
+      quantityPerPackage: preset.quantityPerPackage,
+      unit: preset.unit,
       totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
@@ -140,13 +221,47 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           variant="outlined"
           size="small"
           startIcon={<Add />}
-          onClick={handleAddProduct}
+          onClick={handleAddButtonClick}
           disabled={fields.length >= 50}
           sx={{ fontSize: '0.8rem' }}
         >
           商品を追加
         </Button>
       </Box>
+
+      {/* 商品追加メニュー */}
+      <Menu
+        anchorEl={addMenuAnchor}
+        open={addMenuOpen}
+        onClose={handleCloseAddMenu}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem onClick={handleAddEmptyProduct}>
+          <ListItemIcon>
+            <NoteAdd fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="空のカードを追加"
+            secondary="新規商品を入力"
+          />
+        </MenuItem>
+        <MenuItem onClick={handleAddFromHistory}>
+          <ListItemIcon>
+            <History fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="履歴から追加"
+            secondary="過去の商品を選択"
+          />
+        </MenuItem>
+      </Menu>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
@@ -233,11 +348,20 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                 onEnterPress={onEnterPress}
                 suppliers={suppliers}
                 onNavigateToStep={onNavigateToStep}
+                onAddProductFromPreset={handleAddProductFromPreset}
               />
             </Box>
           );
         })}
       </Box>
+
+      {/* 商品一括追加モーダル */}
+      <ProductBulkAddModal
+        open={bulkAddModalOpen}
+        onClose={() => setBulkAddModalOpen(false)}
+        onAddProducts={handleBulkAddProducts}
+        presets={productHistory}
+      />
     </Box>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -10,6 +10,11 @@ import {
   Card,
   CardContent,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Grow,
 } from '@mui/material';
 import {
   ExpandLess as ExpandLessIcon,
@@ -19,6 +24,8 @@ import {
   Warning as WarningIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  DeleteOutline,
+  ClearAll,
 } from '@mui/icons-material';
 import { Splide, SplideSlide } from '@splidejs/react-splide';
 import '@splidejs/splide/dist/css/splide.min.css';
@@ -43,6 +50,10 @@ interface FloatingProgressSummaryProps {
   onProductChange?: (index: number) => void;
   /** 高さ変更コールバック */
   onHeightChange?: (height: number) => void;
+  /** 商品削除ハンドラー */
+  onRemoveProduct?: (index: number) => void;
+  /** 商品フィールドクリアハンドラー */
+  onClearProduct?: (index: number) => void;
 }
 
 /**
@@ -60,12 +71,101 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   activeProductIndex,
   onProductChange,
   onHeightChange,
+  onRemoveProduct,
+  onClearProduct,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  // カード長押しメニューの状態
+  const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuProductIndex, setMenuProductIndex] = useState<number | null>(null);
+  const cardMenuOpen = Boolean(cardMenuAnchor);
+
+  // カード長押しタイマー
+  const cardLongPressTimer = useRef<number | null>(null);
+  const cardLongPressStartPos = useRef<{ x: number; y: number } | null>(null);
+
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
+
+  /**
+   * カード長押し開始
+   */
+  const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
+    const target = e.currentTarget as HTMLElement;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // タッチ開始位置を保存
+    cardLongPressStartPos.current = { x: clientX, y: clientY };
+
+    cardLongPressTimer.current = window.setTimeout(() => {
+      setMenuProductIndex(index);
+      setCardMenuAnchor(target);
+    }, 500); // 500ms長押しでメニュー表示
+  };
+
+  /**
+   * カード長押し中の移動（スクロール検出）
+   */
+  const handleCardLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!cardLongPressStartPos.current || !cardLongPressTimer.current) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = Math.abs(clientX - cardLongPressStartPos.current.x);
+    const deltaY = Math.abs(clientY - cardLongPressStartPos.current.y);
+
+    // 5px以上移動したらスクロールとみなして長押しをキャンセル
+    if (deltaX > 5 || deltaY > 5) {
+      if (cardLongPressTimer.current) {
+        window.clearTimeout(cardLongPressTimer.current);
+        cardLongPressTimer.current = null;
+      }
+      cardLongPressStartPos.current = null;
+    }
+  };
+
+  /**
+   * カード長押し終了
+   */
+  const handleCardLongPressEnd = () => {
+    if (cardLongPressTimer.current) {
+      window.clearTimeout(cardLongPressTimer.current);
+      cardLongPressTimer.current = null;
+    }
+    cardLongPressStartPos.current = null;
+  };
+
+  /**
+   * カードメニューを閉じる
+   */
+  const handleCardMenuClose = () => {
+    setCardMenuAnchor(null);
+    setMenuProductIndex(null);
+  };
+
+  /**
+   * カードメニューから削除
+   */
+  const handleCardMenuDelete = () => {
+    if (menuProductIndex !== null && onRemoveProduct) {
+      onRemoveProduct(menuProductIndex);
+    }
+    handleCardMenuClose();
+  };
+
+  /**
+   * カードメニューからクリア
+   */
+  const handleCardMenuClear = () => {
+    if (menuProductIndex !== null && onClearProduct) {
+      onClearProduct(menuProductIndex);
+    }
+    handleCardMenuClose();
+  };
 
   /**
    * コンテナの高さを監視して親に通知
@@ -248,6 +348,18 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
               <SplideSlide key={index}>
                 <Card
                 onClick={() => onProductChange && onProductChange(index)}
+                onTouchStart={(e) => handleCardLongPressStart(e, index)}
+                onTouchMove={handleCardLongPressMove}
+                onTouchEnd={handleCardLongPressEnd}
+                onMouseDown={(e) => handleCardLongPressStart(e, index)}
+                onMouseMove={handleCardLongPressMove}
+                onMouseUp={handleCardLongPressEnd}
+                onMouseLeave={handleCardLongPressEnd}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenuProductIndex(index);
+                  setCardMenuAnchor(e.currentTarget);
+                }}
                 sx={{
                   minWidth: 180,
                   maxWidth: 180,
@@ -260,6 +372,9 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                   '&:hover': {
                     boxShadow: 3,
                     transform: 'translateY(-2px)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.98)',
                   },
                 }}
               >
@@ -557,6 +672,84 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           </Box>
         )}
       </Collapse>
+
+      {/* カード長押しメニュー */}
+      <Menu
+        anchorEl={cardMenuAnchor}
+        open={cardMenuOpen}
+        onClose={handleCardMenuClose}
+        TransitionComponent={Grow}
+        anchorOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'center',
+          horizontal: 'center',
+        }}
+        PaperProps={{
+          elevation: 8,
+          sx: {
+            minWidth: 200,
+            borderRadius: 2,
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            '& .MuiMenuItem-root': {
+              borderRadius: 1,
+              mx: 1,
+              my: 0.5,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateX(4px)',
+              },
+            },
+          },
+        }}
+      >
+        {onClearProduct && (
+          <MenuItem
+            onClick={handleCardMenuClear}
+            sx={{
+              color: 'warning.main',
+              '&:hover': {
+                bgcolor: 'warning.lighter',
+              },
+            }}
+          >
+            <ListItemIcon>
+              <ClearAll sx={{ color: 'warning.main' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="フィールドをクリア"
+              secondary="入力内容を消去"
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
+            />
+          </MenuItem>
+        )}
+        {onRemoveProduct && formData.products.length > 1 && (
+          <MenuItem
+            onClick={handleCardMenuDelete}
+            sx={{
+              color: 'error.main',
+              '&:hover': {
+                bgcolor: 'error.lighter',
+              },
+            }}
+          >
+            <ListItemIcon>
+              <DeleteOutline sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="商品を削除"
+              secondary="この商品カードを削除"
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
     </Paper>
   );
 };

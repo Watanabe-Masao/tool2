@@ -62,6 +62,8 @@ interface ProductFormCardBasicProps {
   suppliers?: string[];
   /** ステップ移動ハンドラー */
   onNavigateToStep?: (step: number) => void;
+  /** プリセットを新規カードとして追加するハンドラー */
+  onAddProductFromPreset?: (preset: ProductHistoryItem) => void;
 }
 
 /**
@@ -97,6 +99,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   onEnterPress,
   suppliers,
   onNavigateToStep,
+  onAddProductFromPreset,
 }) => {
   const productErrors = errors.products?.[index];
   const { showSuccess, showError } = useNotification();
@@ -126,6 +129,15 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 帳合先選択モーダルの状態
   const [supplierSelectOpen, setSupplierSelectOpen] = useState(false);
+
+  // プリセット上書き確認ダイアログの状態
+  const [presetConfirmDialog, setPresetConfirmDialog] = useState<{
+    open: boolean;
+    preset: ProductHistoryItem | null;
+  }>({
+    open: false,
+    preset: null,
+  });
 
   // カード長押しメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
@@ -308,6 +320,30 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * プリセットを一括設定
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
+    // 現在のフィールドに値があるかチェック
+    const hasValues = Boolean(
+      currentName ||
+      currentOrigin ||
+      currentSpecification ||
+      currentQuantityPerPackage ||
+      currentUnit
+    );
+
+    if (hasValues) {
+      // 値がある場合は確認ダイアログを表示
+      setPresetConfirmDialog({ open: true, preset });
+      setPresetModalOpen(false);
+    } else {
+      // 値がない場合は直接上書き
+      applyPreset(preset);
+      setPresetModalOpen(false);
+    }
+  };
+
+  /**
+   * プリセットを現在のカードに適用
+   */
+  const applyPreset = (preset: ProductHistoryItem) => {
     setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
     setValue(`products.${index}.supplier`, preset.supplier);
     setValue(`products.${index}.name`, preset.name);
@@ -316,6 +352,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
     showSuccess('プリセットを読み込みました');
+  };
+
+  /**
+   * プリセットを上書き（確認後）
+   */
+  const handleOverwritePreset = () => {
+    if (presetConfirmDialog.preset) {
+      applyPreset(presetConfirmDialog.preset);
+      setPresetConfirmDialog({ open: false, preset: null });
+    }
+  };
+
+  /**
+   * プリセットを新規カードとして追加（確認後）
+   */
+  const handleAddAsNewCard = () => {
+    if (presetConfirmDialog.preset && onAddProductFromPreset) {
+      onAddProductFromPreset(presetConfirmDialog.preset);
+      setPresetConfirmDialog({ open: false, preset: null });
+      showSuccess('新規カードとして追加しました');
+    }
   };
 
   /**
@@ -1092,6 +1149,72 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         <DialogActions>
           <Button onClick={() => setSupplierSelectOpen(false)} color="inherit">
             閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* プリセット上書き確認ダイアログ */}
+      <Dialog
+        open={presetConfirmDialog.open}
+        onClose={() => setPresetConfirmDialog({ open: false, preset: null })}
+      >
+        <DialogTitle>プリセットの読み込み</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            現在のカードにはすでに入力された値があります。どのように読み込みますか？
+          </DialogContentText>
+          {presetConfirmDialog.preset && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              {presetConfirmDialog.preset.categoryCode && (
+                <Typography variant="body2" color="text.secondary">
+                  カテゴリー: {getCategoryName(presetConfirmDialog.preset.categoryCode)}
+                </Typography>
+              )}
+              <Typography variant="body2" fontWeight="medium">
+                品名: {presetConfirmDialog.preset.name}
+              </Typography>
+              <Typography variant="body2">
+                産地: {presetConfirmDialog.preset.origin}
+              </Typography>
+              {presetConfirmDialog.preset.specification && (
+                <Typography variant="body2">
+                  規格: {presetConfirmDialog.preset.specification}
+                </Typography>
+              )}
+              {presetConfirmDialog.preset.quantityPerPackage && (
+                <Typography variant="body2">
+                  入数: {presetConfirmDialog.preset.quantityPerPackage}
+                  {presetConfirmDialog.preset.unit && ` ${presetConfirmDialog.preset.unit}`}
+                </Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ flexDirection: 'column', gap: 1, px: 3, pb: 2 }}>
+          <Button
+            onClick={handleOverwritePreset}
+            color="warning"
+            variant="contained"
+            fullWidth
+          >
+            現在のカードに上書き
+          </Button>
+          {onAddProductFromPreset && (
+            <Button
+              onClick={handleAddAsNewCard}
+              color="primary"
+              variant="contained"
+              fullWidth
+            >
+              新規カードとして追加
+            </Button>
+          )}
+          <Button
+            onClick={() => setPresetConfirmDialog({ open: false, preset: null })}
+            color="inherit"
+            fullWidth
+          >
+            キャンセル
           </Button>
         </DialogActions>
       </Dialog>

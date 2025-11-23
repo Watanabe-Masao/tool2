@@ -149,6 +149,32 @@ export const NewOrderPage: React.FC = () => {
   });
 
   /**
+   * 商品削除ハンドラー（FloatingProgressSummary用）
+   */
+  const handleRemoveProduct = (index: number) => {
+    if (productFields.length <= 1) return; // 最後の1つは削除しない
+    removeProduct(index);
+    // アクティブなインデックスを調整
+    if (activeProductIndex >= index && activeProductIndex > 0) {
+      setActiveProductIndex(activeProductIndex - 1);
+    }
+  };
+
+  /**
+   * 商品フィールドクリアハンドラー（FloatingProgressSummary用）
+   */
+  const handleClearProduct = (index: number) => {
+    const defaultSupplier = suppliers && suppliers.length > 0 ? suppliers[0] : '';
+    setValue(`products.${index}.categoryCode`, '');
+    setValue(`products.${index}.supplier`, defaultSupplier);
+    setValue(`products.${index}.name`, '');
+    setValue(`products.${index}.origin`, '');
+    setValue(`products.${index}.specification`, '');
+    setValue(`products.${index}.quantityPerPackage`, null);
+    setValue(`products.${index}.unit`, '');
+  };
+
+  /**
    * ページロード時に下書きを復元
    */
   useEffect(() => {
@@ -762,6 +788,8 @@ export const NewOrderPage: React.FC = () => {
             activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
             onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
             onHeightChange={setProgressSummaryHeight}
+            onRemoveProduct={handleRemoveProduct}
+            onClearProduct={handleClearProduct}
           />
         )}
 
