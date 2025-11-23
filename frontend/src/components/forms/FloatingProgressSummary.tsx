@@ -26,8 +26,8 @@ import {
   DeleteOutline,
   ClearAll,
 } from '@mui/icons-material';
-import { Splide, SplideSlide } from '@splidejs/react-splide';
-import '@splidejs/splide/dist/css/splide.min.css';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { FreeMode } from 'swiper/modules';
 import './FloatingProgressSummary.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -208,6 +208,26 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const progress = Math.round((completedCount / steps.length) * 100);
 
   /**
+   * 商品の完了状態を判定
+   */
+  const getProductStatus = (product: OrderFormData['products'][0]) => {
+    const hasBasicInfo = !!(product.name && product.origin);
+    const hasPricing = !!(product.storeCost && product.priceExcludingTax && product.totalDelivery);
+    const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
+    const hasAllocation = totalAllocated === product.totalDelivery && totalAllocated > 0;
+    const hasOverAllocation = totalAllocated > product.totalDelivery;
+
+    return {
+      hasBasicInfo,
+      hasPricing,
+      hasAllocation,
+      hasOverAllocation,
+      totalAllocated,
+      remaining: product.totalDelivery - totalAllocated,
+    };
+  };
+
+  /**
    * 商品カード表示用の横スクロールリスト
    */
   const renderProductCards = () => {
@@ -269,40 +289,22 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           )}
         </Box>
 
-        {/* Splideスライダー */}
+        {/* Swiperスライダー */}
         <Box sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
-          <Splide
-            options={{
-              type: 'slide',
-              perPage: 'auto',
-              gap: '8px',
-              pagination: false,
-              arrows: false,
-              drag: true,
-              autoWidth: true,
-              start: 0,
-              padding: { left: '4px', right: '4px' },
-              updateOnMove: true,
-              trimSpace: false,
-              speed: 0,
-              rewind: false,
-              rewindSpeed: 0,
-              flickPower: 800,
-              dragMinThreshold: 1,
-              waitForTransition: false,
-              easing: 'linear',
-              reducedMotion: true,
-            }}
-            aria-label="商品カードスライダー"
+          <Swiper
+            modules={[FreeMode]}
+            slidesPerView="auto"
+            spaceBetween={8}
+            freeMode={true}
+            speed={0}
+            style={{ paddingLeft: '4px', paddingRight: '4px' }}
           >
             {formData.products.map((product, index) => {
+              const status = getProductStatus(product);
               const isActive = index === activeProductIndex;
-              const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-              const hasBasicInfo = !!(product.name && product.origin);
-              const isComplete = totalAllocated === product.totalDelivery && totalAllocated > 0;
 
               return (
-                <SplideSlide key={index}>
+                <SwiperSlide key={index} style={{ width: 'auto' }}>
                   <Card
                     onClick={() => onProductChange?.(index)}
                     onContextMenu={(e) => {
@@ -311,63 +313,152 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                       setCardMenuAnchor(e.currentTarget);
                     }}
                     sx={{
-                      minWidth: 160,
-                      maxWidth: 160,
+                      minWidth: 180,
+                      maxWidth: 180,
                       cursor: 'pointer',
                       border: isActive ? 2 : 1,
-                      borderColor: isActive ? 'primary.main' : 'divider',
+                      borderColor: isActive ? 'primary.main' : 'grey.300',
                       bgcolor: isActive ? 'primary.50' : 'background.paper',
                     }}
                   >
                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                      {/* 商品番号とステータス */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.75rem' }}>
-                          #{index + 1}
+                      {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                            #{index + 1}
+                          </Typography>
+                          {product.supplier && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontSize: '0.65rem',
+                                color: 'text.secondary',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {product.supplier}
+                            </Typography>
+                          )}
+                        </Box>
+                        {/* ステータスアイコン（右側） */}
+                        <Stack direction="row" spacing={0.5}>
+                          {status.hasBasicInfo ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                          {status.hasPricing ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                          {status.hasAllocation ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : status.hasOverAllocation ? (
+                            <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Stack>
+                      </Box>
+
+                      {/* 2行目: 産地 | 品名 */}
+                      <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                        {product.origin && (
+                          <>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                              {product.origin}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              |
+                            </Typography>
+                          </>
+                        )}
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            color: 'text.primary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                        >
+                          {product.name || '未入力'}
                         </Typography>
-                        {isComplete ? (
-                          <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                        ) : hasBasicInfo ? (
-                          <UncheckedIcon sx={{ fontSize: 16, color: 'warning.main' }} />
-                        ) : (
-                          <UncheckedIcon sx={{ fontSize: 16, color: 'grey.400' }} />
+                      </Box>
+
+                      {/* 3行目: 規格 | 入数+単位 */}
+                      <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                        {product.specification && (
+                          <>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              {product.specification}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              |
+                            </Typography>
+                          </>
+                        )}
+                        {product.quantityPerPackage && (
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            {product.quantityPerPackage}{product.unit || ''}
+                          </Typography>
                         )}
                       </Box>
 
-                      {/* 品名 */}
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          mb: 0.5,
-                        }}
-                      >
-                        {product.name || '未入力'}
-                      </Typography>
-
-                      {/* 産地 */}
-                      {product.origin && (
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                          {product.origin}
-                        </Typography>
+                      {/* 4行目: 店着原価 | 税込売価（ステップ3以降のみ） */}
+                      {activeStep >= 2 && status.hasPricing && (
+                        <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                          {product.storeCost && (
+                            <>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                ¥{product.storeCost.toLocaleString()}
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                |
+                              </Typography>
+                            </>
+                          )}
+                          {product.priceExcludingTax && (
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                            </Typography>
+                          )}
+                        </Box>
                       )}
 
                       {/* 配分状況 */}
-                      {product.totalDelivery > 0 && (
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                          {totalAllocated} / {product.totalDelivery}
-                        </Typography>
+                      {status.hasPricing && (
+                        <Box sx={{ mt: 0.75, pt: 0.75, borderTop: 1, borderColor: 'grey.200' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            配分: {status.totalAllocated} / {product.totalDelivery}
+                            {status.remaining !== 0 && (
+                              <Box
+                                component="span"
+                                sx={{
+                                  ml: 0.5,
+                                  color: status.remaining > 0 ? 'warning.main' : 'error.main',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
+                              </Box>
+                            )}
+                          </Typography>
+                        </Box>
                       )}
                     </CardContent>
                   </Card>
-                </SplideSlide>
+                </SwiperSlide>
               );
             })}
-          </Splide>
+          </Swiper>
         </Box>
       </Box>
     );

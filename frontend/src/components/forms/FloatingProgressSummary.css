@@ -1,38 +1,29 @@
-/* Splide カスタムスタイル */
-.splide__track {
+/* Swiper基本スタイル */
+@import 'swiper/css';
+@import 'swiper/css/free-mode';
+
+/* Swiperカスタムスタイル */
+.swiper {
   overflow: hidden !important;
 }
 
-.splide__list {
+.swiper-wrapper {
   display: flex !important;
   align-items: stretch !important;
-  flex-direction: row !important;
-  width: auto !important;
 }
 
-.splide__slide {
+.swiper-slide {
   display: flex !important;
   align-items: stretch !important;
   height: auto !important;
-  width: auto !important;
   flex-shrink: 0 !important;
 }
 
-/* スライドのトランジション */
-.splide__slide {
-  transition: transform 0.3s ease;
-}
-
-/* アクティブなスライドを少し強調 */
-.splide__slide.is-active {
-  transform: scale(1.02);
-}
-
 /* スムーズなスクロール */
-.splide__track {
+.swiper {
   cursor: grab;
 }
 
-.splide__track:active {
+.swiper:active {
   cursor: grabbing;
 }
