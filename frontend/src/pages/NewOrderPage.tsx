@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
+import type { Swiper as SwiperType } from 'swiper';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -89,6 +92,9 @@ export const NewOrderPage: React.FC = () => {
 
   // FloatingProgressSummaryの高さ
   const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
+
+  // Swiper インスタンスへの参照
+  const swiperRef = useRef<SwiperType | null>(null);
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -193,6 +199,15 @@ export const NewOrderPage: React.FC = () => {
       setRestoreDialogOpen(true);
     }
   }, [user]);
+
+  /**
+   * activeStepが変更されたときにSwiperを同期
+   */
+  useEffect(() => {
+    if (swiperRef.current && swiperRef.current.activeIndex !== activeStep) {
+      swiperRef.current.slideTo(activeStep);
+    }
+  }, [activeStep]);
 
   /**
    * ユーザー設定を読み込み
@@ -359,10 +374,21 @@ export const NewOrderPage: React.FC = () => {
   }, [hasUnsavedChanges]);
 
   /**
-   * タブ変更時の処理
+   * タブ変更時の処理（Material-UI Tabs用 - Swiperと同期）
    */
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveStep(newValue);
+    // Swiperスライドも同期
+    if (swiperRef.current) {
+      swiperRef.current.slideTo(newValue);
+    }
+  };
+
+  /**
+   * Swiperスライド変更時の処理
+   */
+  const handleSwiperSlideChange = (swiper: SwiperType) => {
+    setActiveStep(swiper.activeIndex);
   };
 
   /**
@@ -673,108 +699,122 @@ export const NewOrderPage: React.FC = () => {
                 <Tab label="プレビュー" />
               </Tabs>
 
-              {/* Step 1: 店着日・帳合先 */}
-              {activeStep === 0 && (
-                <Box sx={{ py: 2 }}>
-                  <DeliveryDateForm
-                    control={control}
-                    errors={errors}
-                    supplierOptions={supplierAutocomplete.options}
-                    onSuppliersChange={handleSuppliersChange}
-                  />
-                </Box>
-              )}
+              {/* Swiperスライド */}
+              <Swiper
+                modules={[Navigation, Pagination]}
+                spaceBetween={0}
+                slidesPerView={1}
+                onSwiper={(swiper) => {
+                  swiperRef.current = swiper;
+                }}
+                onSlideChange={handleSwiperSlideChange}
+                initialSlide={activeStep}
+                allowTouchMove={true}
+                style={{ width: '100%' }}
+              >
+                {/* Step 1: 店着日・帳合先 */}
+                <SwiperSlide>
+                  <Box sx={{ py: 2 }}>
+                    <DeliveryDateForm
+                      control={control}
+                      errors={errors}
+                      supplierOptions={supplierAutocomplete.options}
+                      onSuppliersChange={handleSuppliersChange}
+                    />
+                  </Box>
+                </SwiperSlide>
 
-              {/* Step 2: 商品情報（基本） */}
-              {activeStep === 1 && (
-                <Box sx={{ py: 2 }}>
-                  <ProductBasicInfoForm
-                    control={control}
-                    errors={errors}
-                    productNameOptions={productNameAutocomplete.options}
-                    originOptions={originAutocomplete.options}
-                    suppliers={formData.suppliers}
-                    fields={productFields}
-                    append={appendProduct}
-                    remove={removeProduct}
-                    move={moveProduct}
-                    onNavigateToStep={setActiveStep}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
+                {/* Step 2: 商品情報（基本） */}
+                <SwiperSlide>
+                  <Box sx={{ py: 2 }}>
+                    <ProductBasicInfoForm
+                      control={control}
+                      errors={errors}
+                      productNameOptions={productNameAutocomplete.options}
+                      originOptions={originAutocomplete.options}
+                      suppliers={formData.suppliers}
+                      fields={productFields}
+                      append={appendProduct}
+                      remove={removeProduct}
+                      move={moveProduct}
+                      onNavigateToStep={setActiveStep}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
+                    />
+                  </Box>
+                </SwiperSlide>
 
-              {/* Step 3: 商品情報2（価格・総納品数） */}
-              {activeStep === 2 && (
-                <Box sx={{ py: 2 }}>
-                  <ProductPricingForm
-                    control={control}
-                    errors={errors}
-                    fields={productFields}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
+                {/* Step 3: 商品情報2（価格・総納品数） */}
+                <SwiperSlide>
+                  <Box sx={{ py: 2 }}>
+                    <ProductPricingForm
+                      control={control}
+                      errors={errors}
+                      fields={productFields}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
+                    />
+                  </Box>
+                </SwiperSlide>
 
-              {/* Step 4: 店舗配分 */}
-              {activeStep === 3 && (
-                <Box sx={{ py: 2 }}>
-                  <StoreAllocationForm
-                    control={control}
-                    errors={errors}
-                    fields={productFields}
-                    lockedStores={lockedStores}
-                    setLockedStores={setLockedStores}
-                    selectedCategories={selectedCategories}
-                    setSelectedCategories={setSelectedCategories}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
-
-              {/* Step 5: プレビュー・生成 */}
-              {activeStep === 4 && (
-                <Box sx={{ py: 2 }}>
-                  {!showGeneratedPreview ? (
-                    /* 生成前のプレビュー */
-                    <AllocationPreviewContent
-                      formData={formData}
-                      pdfFilename={undefined}
-                      onGenerate={handleSubmit(onSubmit)}
-                      onAllocationChange={handleAllocationChange}
+                {/* Step 4: 店舗配分 */}
+                <SwiperSlide>
+                  <Box sx={{ py: 2 }}>
+                    <StoreAllocationForm
+                      control={control}
+                      errors={errors}
+                      fields={productFields}
                       lockedStores={lockedStores}
                       setLockedStores={setLockedStores}
                       selectedCategories={selectedCategories}
                       setSelectedCategories={setSelectedCategories}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
                     />
-                  ) : (
-                    /* 生成後のプレビュー */
-                    generatedFiles && (
+                  </Box>
+                </SwiperSlide>
+
+                {/* Step 5: プレビュー・生成 */}
+                <SwiperSlide>
+                  <Box sx={{ py: 2 }}>
+                    {!showGeneratedPreview ? (
+                      /* 生成前のプレビュー */
                       <AllocationPreviewContent
                         formData={formData}
-                        pdfFilename={generatedFiles.pdfFilename}
-                        pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
-                        onDownloadExcel={handleDownloadExcel}
-                        onDownloadPdf={handleDownloadPdf}
-                        onSendEmail={() => setShowEmailModal(true)}
-                        onBack={() => {
-                          setShowGeneratedPreview(false);
-                          setGeneratedFiles(null);
-                          setExcelBlob(null);
-                        }}
+                        pdfFilename={undefined}
+                        onGenerate={handleSubmit(onSubmit)}
                         onAllocationChange={handleAllocationChange}
                         lockedStores={lockedStores}
                         setLockedStores={setLockedStores}
                         selectedCategories={selectedCategories}
                         setSelectedCategories={setSelectedCategories}
                       />
-                    )
-                  )}
-                </Box>
-              )}
+                    ) : (
+                      /* 生成後のプレビュー */
+                      generatedFiles && (
+                        <AllocationPreviewContent
+                          formData={formData}
+                          pdfFilename={generatedFiles.pdfFilename}
+                          pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
+                          onDownloadExcel={handleDownloadExcel}
+                          onDownloadPdf={handleDownloadPdf}
+                          onSendEmail={() => setShowEmailModal(true)}
+                          onBack={() => {
+                            setShowGeneratedPreview(false);
+                            setGeneratedFiles(null);
+                            setExcelBlob(null);
+                          }}
+                          onAllocationChange={handleAllocationChange}
+                          lockedStores={lockedStores}
+                          setLockedStores={setLockedStores}
+                          selectedCategories={selectedCategories}
+                          setSelectedCategories={setSelectedCategories}
+                        />
+                      )
+                    )}
+                  </Box>
+                </SwiperSlide>
+              </Swiper>
             </Box>
           </Container>
         </Box>
