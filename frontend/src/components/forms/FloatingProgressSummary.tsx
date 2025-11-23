@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -75,76 +75,14 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
 }) => {
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const splideContainerRef = useRef<HTMLDivElement>(null);
 
-  // カード長押しメニューの状態
+  // カードコンテキストメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProductIndex, setMenuProductIndex] = useState<number | null>(null);
   const cardMenuOpen = Boolean(cardMenuAnchor);
 
-  // カード長押しタイマー
-  const cardLongPressTimer = useRef<number | null>(null);
-  const cardLongPressStartPos = useRef<{ x: number; y: number } | null>(null);
-  // Splideドラッグ状態を追跡（ドラッグ中は長押し検出を無効化）
-  const isDragging = useRef(false);
-
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
-
-  /**
-   * カード長押し開始
-   */
-  const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
-    // Splideドラッグ中は長押し検出をスキップ
-    if (isDragging.current) return;
-
-    const target = e.currentTarget as HTMLElement;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    // タッチ開始位置を保存
-    cardLongPressStartPos.current = { x: clientX, y: clientY };
-
-    cardLongPressTimer.current = window.setTimeout(() => {
-      setMenuProductIndex(index);
-      setCardMenuAnchor(target);
-    }, 500); // 500ms長押しでメニュー表示
-  };
-
-  /**
-   * カード長押し中の移動（スクロール検出）
-   */
-  const handleCardLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
-    // Splideドラッグ中は処理をスキップ
-    if (isDragging.current) return;
-    if (!cardLongPressStartPos.current || !cardLongPressTimer.current) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const deltaX = Math.abs(clientX - cardLongPressStartPos.current.x);
-    const deltaY = Math.abs(clientY - cardLongPressStartPos.current.y);
-
-    // 5px以上移動したらスクロールとみなして長押しをキャンセル
-    if (deltaX > 5 || deltaY > 5) {
-      if (cardLongPressTimer.current) {
-        window.clearTimeout(cardLongPressTimer.current);
-        cardLongPressTimer.current = null;
-      }
-      cardLongPressStartPos.current = null;
-    }
-  };
-
-  /**
-   * カード長押し終了
-   */
-  const handleCardLongPressEnd = () => {
-    if (cardLongPressTimer.current) {
-      window.clearTimeout(cardLongPressTimer.current);
-      cardLongPressTimer.current = null;
-    }
-    cardLongPressStartPos.current = null;
-  };
 
   /**
    * カードメニューを閉じる
@@ -196,38 +134,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       resizeObserver.disconnect();
     };
   }, [onHeightChange, expanded, isProductMode, formData.products.length]);
-
-  /**
-   * Splideのドラッグイベントを監視
-   */
-  useEffect(() => {
-    if (!splideContainerRef.current || !isProductMode) return;
-
-    // SplideインスタンスをDOM要素から取得
-    const splideElement = splideContainerRef.current.querySelector('.splide') as any;
-    if (!splideElement || !splideElement.splide) return;
-
-    const splide = splideElement.splide;
-
-    // ドラッグ開始時
-    const onDragHandler = () => {
-      isDragging.current = true;
-      handleCardLongPressEnd(); // 既存の長押しタイマーをキャンセル
-    };
-
-    // ドラッグ終了時
-    const onDraggedHandler = () => {
-      isDragging.current = false;
-    };
-
-    splide.on('drag', onDragHandler);
-    splide.on('dragged', onDraggedHandler);
-
-    return () => {
-      splide.off('drag', onDragHandler);
-      splide.off('dragged', onDraggedHandler);
-    };
-  }, [isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -302,26 +208,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const progress = Math.round((completedCount / steps.length) * 100);
 
   /**
-   * 商品の完了状態を判定
-   */
-  const getProductStatus = (product: OrderFormData['products'][0]) => {
-    const hasBasicInfo = !!(product.name && product.origin);
-    const hasPricing = !!(product.storeCost && product.priceExcludingTax && product.totalDelivery);
-    const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-    const hasAllocation = totalAllocated === product.totalDelivery && totalAllocated > 0;
-    const hasOverAllocation = totalAllocated > product.totalDelivery;
-
-    return {
-      hasBasicInfo,
-      hasPricing,
-      hasAllocation,
-      hasOverAllocation,
-      totalAllocated,
-      remaining: product.totalDelivery - totalAllocated,
-    };
-  };
-
-  /**
    * 商品カード表示用の横スクロールリスト
    */
   const renderProductCards = () => {
@@ -384,7 +270,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         </Box>
 
         {/* Splideスライダー */}
-        <Box ref={splideContainerRef} sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
+        <Box sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
           <Splide
             options={{
               type: 'slide',
@@ -395,189 +281,92 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
               drag: true,
               autoWidth: true,
               start: 0,
-              padding: { left: 0, right: 0 },
-              updateOnMove: true, // リアルタイム更新を有効化
+              padding: { left: '4px', right: '4px' },
+              updateOnMove: true,
               trimSpace: false,
-              speed: 0, // 指と完全同期（即座に移動）
+              speed: 0,
               rewind: false,
               rewindSpeed: 0,
-              flickPower: 800, // フリック感度をさらに上げる
-              dragMinThreshold: 1, // ドラッグ開始の閾値をさらに最小化
-              waitForTransition: false, // トランジション待機なし
-              easing: 'linear', // リニアイージング
-              reducedMotion: true, // アニメーション削減
+              flickPower: 800,
+              dragMinThreshold: 1,
+              waitForTransition: false,
+              easing: 'linear',
+              reducedMotion: true,
             }}
             aria-label="商品カードスライダー"
           >
             {formData.products.map((product, index) => {
-            const status = getProductStatus(product);
-            const isActive = index === activeProductIndex;
+              const isActive = index === activeProductIndex;
+              const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
+              const hasBasicInfo = !!(product.name && product.origin);
+              const isComplete = totalAllocated === product.totalDelivery && totalAllocated > 0;
 
-            return (
-              <SplideSlide key={index}>
-                <Card
-                onClick={() => onProductChange && onProductChange(index)}
-                onTouchStart={(e) => handleCardLongPressStart(e, index)}
-                onTouchMove={handleCardLongPressMove}
-                onTouchEnd={handleCardLongPressEnd}
-                onMouseDown={(e) => handleCardLongPressStart(e, index)}
-                onMouseMove={handleCardLongPressMove}
-                onMouseUp={handleCardLongPressEnd}
-                onMouseLeave={handleCardLongPressEnd}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setMenuProductIndex(index);
-                  setCardMenuAnchor(e.currentTarget);
-                }}
-                sx={{
-                  minWidth: 180,
-                  maxWidth: 180,
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                  border: isActive ? 2 : 1,
-                  borderColor: isActive ? 'primary.main' : 'grey.300',
-                  bgcolor: isActive ? 'primary.50' : 'background.paper',
-                  willChange: 'transform', // GPU加速を有効化
-                  touchAction: 'pan-y', // 縦スクロールを許可、横はSplideに任せる
-                }}
-              >
-                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                  {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                        #{index + 1}
-                      </Typography>
-                      {product.supplier && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontSize: '0.65rem',
-                            color: 'text.secondary',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {product.supplier}
+              return (
+                <SplideSlide key={index}>
+                  <Card
+                    onClick={() => onProductChange?.(index)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenuProductIndex(index);
+                      setCardMenuAnchor(e.currentTarget);
+                    }}
+                    sx={{
+                      minWidth: 160,
+                      maxWidth: 160,
+                      cursor: 'pointer',
+                      border: isActive ? 2 : 1,
+                      borderColor: isActive ? 'primary.main' : 'divider',
+                      bgcolor: isActive ? 'primary.50' : 'background.paper',
+                    }}
+                  >
+                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      {/* 商品番号とステータス */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.75rem' }}>
+                          #{index + 1}
                         </Typography>
-                      )}
-                    </Box>
-                    {/* ステータスアイコン（右側） */}
-                    <Stack direction="row" spacing={0.5}>
-                      {status.hasBasicInfo ? (
-                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                      ) : (
-                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                      )}
-                      {status.hasPricing ? (
-                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                      ) : (
-                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                      )}
-                      {status.hasAllocation ? (
-                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                      ) : status.hasOverAllocation ? (
-                        <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
-                      ) : (
-                        <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                      )}
-                    </Stack>
-                  </Box>
+                        {isComplete ? (
+                          <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                        ) : hasBasicInfo ? (
+                          <UncheckedIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+                        ) : (
+                          <UncheckedIcon sx={{ fontSize: 16, color: 'grey.400' }} />
+                        )}
+                      </Box>
 
-                  {/* 2行目: 産地 | 品名 */}
-                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                    {product.origin && (
-                      <>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                      {/* 品名 */}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          mb: 0.5,
+                        }}
+                      >
+                        {product.name || '未入力'}
+                      </Typography>
+
+                      {/* 産地 */}
+                      {product.origin && (
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block', mb: 0.5 }}>
                           {product.origin}
                         </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                          |
-                        </Typography>
-                      </>
-                    )}
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: 'text.primary',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        flex: 1,
-                      }}
-                    >
-                      {product.name || '未入力'}
-                    </Typography>
-                  </Box>
-
-                  {/* 3行目: 規格 | 入数+単位 */}
-                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                    {product.specification && (
-                      <>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                          {product.specification}
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                          |
-                        </Typography>
-                      </>
-                    )}
-                    {product.quantityPerPackage && (
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                        {product.quantityPerPackage}{product.unit || ''}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  {/* 4行目: 店着原価 | 税込売価（ステップ3以降のみ） */}
-                  {activeStep >= 2 && status.hasPricing && (
-                    <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                      {product.storeCost && (
-                        <>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                            ¥{product.storeCost.toLocaleString()}
-                          </Typography>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                            |
-                          </Typography>
-                        </>
                       )}
-                      {product.priceExcludingTax && (
+
+                      {/* 配分状況 */}
+                      {product.totalDelivery > 0 && (
                         <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                          ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                          {totalAllocated} / {product.totalDelivery}
                         </Typography>
                       )}
-                    </Box>
-                  )}
-
-                  {/* 配分状況 */}
-                  {status.hasPricing && (
-                    <Box sx={{ mt: 0.75, pt: 0.75, borderTop: 1, borderColor: 'grey.200' }}>
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                        配分: {status.totalAllocated} / {product.totalDelivery}
-                        {status.remaining !== 0 && (
-                          <Box
-                            component="span"
-                            sx={{
-                              ml: 0.5,
-                              color: status.remaining > 0 ? 'warning.main' : 'error.main',
-                              fontWeight: 700,
-                            }}
-                          >
-                            ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
-                          </Box>
-                        )}
-                      </Typography>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-              </SplideSlide>
-            );
-          })}
+                    </CardContent>
+                  </Card>
+                </SplideSlide>
+              );
+            })}
           </Splide>
         </Box>
       </Box>
