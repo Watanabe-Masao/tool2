@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -129,21 +129,22 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   };
 
   /**
-   * 複数選択した履歴をまとめて適用
+   * 選択中の履歴リストを取得（日付順）
    */
-  const handleBulkApply = () => {
-    if (selectedHistories.size === 0) return;
+  const selectedHistoriesList = React.useMemo(() => {
+    return matchingHistories
+      .filter((h) => selectedHistories.has(h.id))
+      .sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime());
+  }, [matchingHistories, selectedHistories]);
 
-    // 最初に選択された履歴を適用（複数ある場合は最新のものを優先）
-    const selectedItems = matchingHistories.filter((h) => selectedHistories.has(h.id));
-    if (selectedItems.length > 0) {
-      // 最新のもの（最終使用日が最も新しいもの）を適用
-      const latestItem = selectedItems.sort(
-        (a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime()
-      )[0];
-      onSelect(latestItem);
-      onClose();
-    }
+  /**
+   * 複数選択した履歴から1つを選んで適用
+   */
+  const handleApplySelected = (history: PricingHistoryItem) => {
+    onSelect(history);
+    onClose();
+    setBulkSelectMode(false);
+    setSelectedHistories(new Set());
   };
 
   /**
@@ -384,21 +385,72 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
           )}
         </DialogContent>
 
-        {/* 複数選択モード時のアクションボタン */}
+        {/* 複数選択モード時の選択済み履歴一覧 */}
         {bulkSelectMode && selectedHistories.size > 0 && (
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: 'primary.50' }}>
-            <Alert severity="info" sx={{ flex: 1, py: 0 }}>
-              選択した{selectedHistories.size}件の履歴から最新のものを適用します
-            </Alert>
-            <Button
-              variant="contained"
-              onClick={handleBulkApply}
-              startIcon={<Download />}
-              disabled={selectedHistories.size === 0}
-            >
-              適用
-            </Button>
-          </DialogActions>
+          <Box sx={{ borderTop: 2, borderColor: 'primary.main', bgcolor: 'primary.50' }}>
+            <Box sx={{ px: 3, py: 2 }}>
+              <Typography variant="subtitle2" fontWeight="700" gutterBottom>
+                選択中の履歴 ({selectedHistoriesList.length}件)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                適用したい履歴を選んでください
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 200, overflowY: 'auto' }}>
+                {selectedHistoriesList.map((history, index) => {
+                  const profitMargin = calculateProfitMargin(history);
+                  return (
+                    <Box
+                      key={history.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        p: 1.5,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: index === 0 ? 'success.main' : 'grey.300',
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          {index === 0 && (
+                            <Chip label="最新" size="small" color="success" sx={{ fontSize: '0.65rem', height: 18 }} />
+                          )}
+                          <Typography variant="caption" fontWeight="600">
+                            {history.productName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {format(history.lastUsedAt, 'MM/dd')}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            店着: ¥{history.storeCost.toLocaleString()}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                            売価: ¥{history.priceExcludingTax.toLocaleString()}
+                          </Typography>
+                          <Typography variant="caption" color="info.main" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                            値入率: {profitMargin}%
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleApplySelected(history)}
+                        sx={{ minWidth: 60 }}
+                      >
+                        適用
+                      </Button>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          </Box>
         )}
       </Dialog>
 

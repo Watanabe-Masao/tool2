@@ -243,8 +243,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     if (!isProductMode || activeProductIndex === undefined) return null;
 
     return (
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Box>
+        <Box sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
             商品 {activeProductIndex + 1} / {formData.products.length}
           </Typography>
@@ -286,7 +286,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             display: 'flex',
             gap: 1,
             overflowX: 'auto',
-            pb: 1,
+            pb: 2,
+            px: 2,
             '&::-webkit-scrollbar': {
               height: 4,
             },
