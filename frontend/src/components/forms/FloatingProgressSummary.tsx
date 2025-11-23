@@ -75,11 +75,35 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
 
   /**
-   * カード順序の初期化
+   * カード順序の初期化と更新
    */
   React.useEffect(() => {
-    if (formData.products.length > 0 && cardOrder.length === 0) {
-      setCardOrder(formData.products.map((_, i) => i));
+    if (formData.products.length > 0) {
+      setCardOrder((prevOrder) => {
+        // 初期化
+        if (prevOrder.length === 0) {
+          return formData.products.map((_, i) => i);
+        }
+
+        // 商品が追加された場合、新しいインデックスを末尾に追加
+        if (prevOrder.length < formData.products.length) {
+          const newIndices = [];
+          for (let i = prevOrder.length; i < formData.products.length; i++) {
+            newIndices.push(i);
+          }
+          return [...prevOrder, ...newIndices];
+        }
+
+        // 商品が削除された場合、範囲外のインデックスを除去
+        if (prevOrder.length > formData.products.length) {
+          return prevOrder.filter(index => index < formData.products.length);
+        }
+
+        return prevOrder;
+      });
+    } else {
+      // 商品がすべて削除された場合
+      setCardOrder([]);
     }
   }, [formData.products.length]);
 
