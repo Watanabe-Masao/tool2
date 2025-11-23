@@ -21,7 +21,7 @@ import {
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { Splide, SplideSlide } from '@splidejs/react-splide';
-import '@splidejs/react-splide/dist/css/splide.min.css';
+import '@splidejs/splide/dist/css/splide.min.css';
 import './FloatingProgressSummary.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';

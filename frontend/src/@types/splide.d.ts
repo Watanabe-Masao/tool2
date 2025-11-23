@@ -37,7 +37,7 @@ declare module '@splidejs/react-splide' {
   export const SplideSlide: ComponentType<SplideSlideProps>;
 }
 
-declare module '@splidejs/react-splide/dist/css/splide.min.css' {
+declare module '@splidejs/splide/dist/css/splide.min.css' {
   const content: any;
   export default content;
 }
