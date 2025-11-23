@@ -88,7 +88,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onGenerate,
   onAllocationChange,
   lockedStores,
-  setLockedStores,
+  setLockedStores: _setLockedStores, // 未使用（将来の拡張用）
   selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
   setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
 }) => {
