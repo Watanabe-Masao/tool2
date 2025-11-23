@@ -110,7 +110,7 @@ export const ProductBulkAddModal: React.FC<ProductBulkAddModalProps> = ({
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6">履歴から商品を追加</Typography>
+          <Typography variant="h6">PLから商品を追加</Typography>
           <IconButton onClick={handleClose} size="small">
             <Close />
           </IconButton>
@@ -121,7 +121,7 @@ export const ProductBulkAddModal: React.FC<ProductBulkAddModalProps> = ({
         {presets.length === 0 ? (
           <Box sx={{ py: 4, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              商品履歴がありません
+              保存されたプリセットがありません
             </Typography>
           </Box>
         ) : (

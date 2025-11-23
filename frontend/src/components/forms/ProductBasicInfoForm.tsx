@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight, NoteAdd, History } from '@mui/icons-material';
+import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2 } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import { ProductBulkAddModal } from '@/components/modals/ProductBulkAddModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -82,8 +82,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // 商品一括追加モーダルの状態
   const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
 
-  // 商品履歴を取得（全帳合先の履歴）
-  const { history: productHistory } = useProductHistory(suppliers, undefined);
+  // PL（プリセット）履歴を取得（全帳合先の履歴）
+  const { history: presetHistory } = useProductHistory(suppliers, undefined);
 
   /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
@@ -158,8 +158,34 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
    * 選択した商品を一括追加
    */
   const handleBulkAddProducts = (presets: ProductHistoryItem[]) => {
-    // 選択された商品を順番に追加
-    presets.forEach((preset) => {
+    if (presets.length === 0) return;
+
+    // 現在のアクティブな商品が空かどうかをチェック
+    const currentProduct = products[activeTabIndex];
+    const isCurrentEmpty = currentProduct &&
+      !currentProduct.name &&
+      !currentProduct.origin &&
+      !currentProduct.specification &&
+      !currentProduct.quantityPerPackage;
+
+    let startIndex = 0;
+
+    // 空のカードがある場合は最初のプリセットで上書き
+    if (isCurrentEmpty && fields.length === 1) {
+      const firstPreset = presets[0];
+      setValue(`products.${activeTabIndex}.categoryCode`, firstPreset.categoryCode || '');
+      setValue(`products.${activeTabIndex}.supplier`, firstPreset.supplier);
+      setValue(`products.${activeTabIndex}.name`, firstPreset.name);
+      setValue(`products.${activeTabIndex}.origin`, firstPreset.origin);
+      setValue(`products.${activeTabIndex}.specification`, firstPreset.specification);
+      setValue(`products.${activeTabIndex}.quantityPerPackage`, firstPreset.quantityPerPackage);
+      setValue(`products.${activeTabIndex}.unit`, firstPreset.unit);
+      startIndex = 1; // 2番目のプリセットから追加開始
+    }
+
+    // 残りの商品を追加
+    for (let i = startIndex; i < presets.length; i++) {
+      const preset = presets[i];
       append({
         ...DEFAULT_PRODUCT_FORM_DATA,
         categoryCode: preset.categoryCode || '',
@@ -172,9 +198,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         totalDelivery: 0,
         storeAllocations: new Array(STORE_COUNT).fill(0),
       });
-    });
+    }
+
     // 最後に追加された商品のタブに切り替え
-    if (presets.length > 0) {
+    if (startIndex === 1) {
+      // 最初のカードを上書きした場合
+      if (presets.length > 1) {
+        setActiveTabIndex(fields.length + presets.length - 2);
+      } else {
+        setActiveTabIndex(0);
+      }
+    } else {
+      // すべて新規追加した場合
       setActiveTabIndex(fields.length + presets.length - 1);
     }
   };
@@ -254,11 +289,11 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </MenuItem>
         <MenuItem onClick={handleAddFromHistory}>
           <ListItemIcon>
-            <History fontSize="small" />
+            <Inventory2 fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="履歴から追加"
-            secondary="過去の商品を選択"
+            primary="PLから追加"
+            secondary="保存したプリセットを選択"
           />
         </MenuItem>
       </Menu>
@@ -360,7 +395,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         open={bulkAddModalOpen}
         onClose={() => setBulkAddModalOpen(false)}
         onAddProducts={handleBulkAddProducts}
-        presets={productHistory}
+        presets={presetHistory}
       />
     </Box>
   );
