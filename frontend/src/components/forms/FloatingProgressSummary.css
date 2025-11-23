@@ -7,12 +7,15 @@
   display: flex !important;
   align-items: stretch !important;
   flex-direction: row !important;
+  width: auto !important;
 }
 
 .splide__slide {
   display: flex !important;
   align-items: stretch !important;
   height: auto !important;
+  width: auto !important;
+  flex-shrink: 0 !important;
 }
 
 /* スライドのトランジション */
