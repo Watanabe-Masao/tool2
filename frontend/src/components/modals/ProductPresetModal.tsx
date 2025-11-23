@@ -14,6 +14,7 @@ import {
   Button,
   DialogActions,
   DialogContentText,
+  Checkbox,
 } from '@mui/material';
 import { Close, Inventory2, Delete, PushPin, PushPinOutlined } from '@mui/icons-material';
 import {
@@ -57,6 +58,9 @@ interface SortablePresetItemProps {
     currentY: number;
     isSwiping: boolean;
   };
+  multiSelect?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (preset: ProductHistoryItem) => void;
 }
 
 /**
@@ -69,6 +73,9 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   onSwipeMove,
   onSwipeEnd,
   swipeState,
+  multiSelect = false,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const {
     attributes,
@@ -148,29 +155,44 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
       )}
 
       <ListItemButton
-        onClick={() => onSelect(preset)}
-        onTouchStart={(e) => onSwipeStart(e, preset.id)}
-        onTouchMove={onSwipeMove}
-        onTouchEnd={() => onSwipeEnd(preset)}
-        onMouseDown={(e) => onSwipeStart(e, preset.id)}
-        onMouseMove={onSwipeMove}
-        onMouseUp={() => onSwipeEnd(preset)}
-        onMouseLeave={() => onSwipeEnd(preset)}
-        {...(preset.pinned ? listeners : {})}
-        {...(preset.pinned ? attributes : {})}
+        onClick={() => {
+          if (multiSelect && onToggleSelect) {
+            onToggleSelect(preset);
+          } else {
+            onSelect(preset);
+          }
+        }}
+        onTouchStart={(e) => !multiSelect ? onSwipeStart(e, preset.id) : undefined}
+        onTouchMove={(e) => !multiSelect ? onSwipeMove(e) : undefined}
+        onTouchEnd={() => !multiSelect ? onSwipeEnd(preset) : undefined}
+        onMouseDown={(e) => !multiSelect ? onSwipeStart(e, preset.id) : undefined}
+        onMouseMove={(e) => !multiSelect ? onSwipeMove(e) : undefined}
+        onMouseUp={() => !multiSelect ? onSwipeEnd(preset) : undefined}
+        onMouseLeave={() => !multiSelect ? onSwipeEnd(preset) : undefined}
+        {...(preset.pinned && !multiSelect ? listeners : {})}
+        {...(preset.pinned && !multiSelect ? attributes : {})}
         sx={{
           py: 1.5,
           px: 2,
-          transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
-          transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
-          bgcolor: 'background.paper',
-          cursor: isCurrentSwiping ? 'grabbing' : preset.pinned ? 'grab' : 'pointer',
-          touchAction: 'none',
+          transform: isCurrentSwiping && !multiSelect ? `translateX(${deltaX}px)` : 'translateX(0)',
+          transition: isCurrentSwiping && !multiSelect ? 'none' : 'transform 0.2s',
+          bgcolor: isSelected ? 'action.selected' : 'background.paper',
+          cursor: multiSelect ? 'pointer' : isCurrentSwiping ? 'grabbing' : preset.pinned ? 'grab' : 'pointer',
+          touchAction: multiSelect ? 'auto' : 'none',
         }}
       >
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* 複数選択モードのチェックボックス */}
+          {multiSelect && (
+            <Checkbox
+              checked={isSelected}
+              onChange={() => onToggleSelect?.(preset)}
+              onClick={(e) => e.stopPropagation()}
+              sx={{ p: 0, mr: 1 }}
+            />
+          )}
           {/* ピン留めアイコン */}
-          {preset.pinned && (
+          {!multiSelect && preset.pinned && (
             <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
           )}
           <Box sx={{ flex: 1 }}>
@@ -220,7 +242,7 @@ interface ProductPresetModalProps {
   open: boolean;
   /** 閉じる時のハンドラー */
   onClose: () => void;
-  /** プリセット選択時のハンドラー */
+  /** プリセット選択時のハンドラー（単一選択） */
   onSelect: (preset: ProductHistoryItem) => void;
   /** プリセット削除時のハンドラー */
   onDelete: (presetId: string) => Promise<void>;
@@ -234,6 +256,10 @@ interface ProductPresetModalProps {
   supplier?: string;
   /** 利用可能な帳合先リスト（複数帳合先対応） - オプション */
   suppliers?: string[];
+  /** 複数選択モード */
+  multiSelect?: boolean;
+  /** プリセット複数選択時のハンドラー */
+  onSelectMultiple?: (presets: ProductHistoryItem[]) => void;
 }
 
 /**
@@ -251,9 +277,14 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   userId,
   supplier,
   suppliers,
+  multiSelect = false,
+  onSelectMultiple,
 }) => {
   // 選択された帳合先（複数帳合先対応）
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+
+  // 複数選択モード用の選択されたプリセットID
+  const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
 
   // カテゴリーフィルターのタブ（0: 全て, 1: 果実, 2: 野菜）
   const [categoryFilter, setCategoryFilter] = useState(0);
@@ -268,6 +299,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   useEffect(() => {
     if (open) {
       setSelectedSupplier(supplier || suppliers?.[0] || '');
+      setSelectedPresetIds(new Set()); // 複数選択状態をリセット
     }
   }, [open, supplier, suppliers]);
 
@@ -405,13 +437,40 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   });
 
   /**
-   * プリセットを選択
+   * プリセットを選択（単一モード）
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
     // スワイプ中は選択しない
     if (swipeState.isSwiping) return;
     onSelect(preset);
     onClose();
+  };
+
+  /**
+   * プリセットの選択をトグル（複数選択モード）
+   */
+  const handleTogglePreset = (preset: ProductHistoryItem) => {
+    setSelectedPresetIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(preset.id)) {
+        newSet.delete(preset.id);
+      } else {
+        newSet.add(preset.id);
+      }
+      return newSet;
+    });
+  };
+
+  /**
+   * 複数選択を確定
+   */
+  const handleConfirmMultiSelect = () => {
+    const selectedPresets = presets.filter((p) => selectedPresetIds.has(p.id));
+    if (selectedPresets.length > 0 && onSelectMultiple) {
+      onSelectMultiple(selectedPresets);
+      setSelectedPresetIds(new Set());
+      onClose();
+    }
   };
 
   /**
@@ -723,6 +782,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                         onSwipeMove={handleSwipeMove}
                         onSwipeEnd={handleSwipeEnd}
                         swipeState={swipeState}
+                        multiSelect={multiSelect}
+                        isSelected={selectedPresetIds.has(preset.id)}
+                        onToggleSelect={handleTogglePreset}
                       />
                     ))}
                 </SortableContext>
@@ -739,6 +801,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                       onSwipeMove={handleSwipeMove}
                       onSwipeEnd={handleSwipeEnd}
                       swipeState={swipeState}
+                      multiSelect={multiSelect}
+                      isSelected={selectedPresetIds.has(preset.id)}
+                      onToggleSelect={handleTogglePreset}
                     />
                   ))}
               </List>
@@ -803,6 +868,25 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
             </DndContext>
           )}
         </DialogContent>
+
+        {/* 複数選択モードの確定ボタン */}
+        {multiSelect && (
+          <DialogActions sx={{ px: 2, py: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto' }}>
+              {selectedPresetIds.size}件選択中
+            </Typography>
+            <Button onClick={handleClose} color="inherit">
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleConfirmMultiSelect}
+              variant="contained"
+              disabled={selectedPresetIds.size === 0}
+            >
+              選択を完了
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
 
       {/* 削除確認ダイアログ */}

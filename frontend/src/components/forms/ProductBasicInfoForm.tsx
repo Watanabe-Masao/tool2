@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, Button } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Box, Typography, Alert, Button, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Add, Inventory2, NoteAdd } from '@mui/icons-material';
 // @ts-ignore - Splide types issue
 import { Splide, SplideSlide } from '@splidejs/react-splide';
 // @ts-ignore - CSS import
 import '@splidejs/react-splide/css/core';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
+import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
+import { useProductHistory } from '@/hooks/useProductHistory';
+import { useAuthContext } from '@/context/AuthContext';
+import { FirestoreService } from '@/services/firebase/firestoreService';
+import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 
 /**
  * ProductBasicInfoFormのProps
@@ -64,6 +69,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // 店着日を監視
   const deliveryDate = useWatch({ control, name: 'deliveryDate' });
 
+  // 追加メニューのアンカー
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // プリセットモーダルの状態
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+
+  // 認証コンテキスト
+  const { user } = useAuthContext();
+
+  // 商品履歴フック
+  const { history: presetHistory, loadHistory: reloadPresetHistory } = useProductHistory(suppliers, undefined);
+
   /**
    * 最後に選択された帳合先を取得
    */
@@ -76,9 +93,24 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   };
 
   /**
-   * 商品を追加
+   * 追加メニューを開く
    */
-  const handleAddProduct = () => {
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchor(event.currentTarget);
+  };
+
+  /**
+   * 追加メニューを閉じる
+   */
+  const handleCloseMenu = () => {
+    setMenuAnchor(null);
+  };
+
+  /**
+   * 空白の商品カードを追加
+   */
+  const handleAddBlankProduct = () => {
+    handleCloseMenu();
     // 手前で選択している帳合先をデフォルトとして設定
     const defaultSupplier = getLastSelectedSupplier();
     append({
@@ -89,6 +121,51 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     });
     // 新しく追加された商品のカードに切り替え
     setCurrentIndex(fields.length);
+  };
+
+  /**
+   * PLから追加モーダルを開く
+   */
+  const handleOpenPresetModal = () => {
+    handleCloseMenu();
+    setPresetModalOpen(true);
+  };
+
+  /**
+   * 複数プリセットを選択して追加
+   */
+  const handleSelectMultiplePresets = (presets: ProductHistoryItem[]) => {
+    const defaultSupplier = getLastSelectedSupplier();
+    // 選択された各プリセットを新しいカードとして追加
+    presets.forEach((preset) => {
+      append({
+        ...DEFAULT_PRODUCT_FORM_DATA,
+        categoryCode: preset.categoryCode || '',
+        supplier: preset.supplier || defaultSupplier,
+        name: preset.name,
+        origin: preset.origin,
+        specification: preset.specification || '',
+        quantityPerPackage: preset.quantityPerPackage || 0,
+        unit: preset.unit || '',
+        totalDelivery: 0,
+        storeAllocations: new Array(STORE_COUNT).fill(0),
+      });
+    });
+    // 最後に追加されたカードに移動
+    setCurrentIndex(fields.length + presets.length - 1);
+  };
+
+  /**
+   * プリセットを削除
+   */
+  const handleDeletePreset = async (presetId: string) => {
+    try {
+      await FirestoreService.deleteProductHistoryById(presetId);
+      await reloadPresetHistory();
+    } catch (error) {
+      console.error('[ProductBasicInfoForm] Failed to delete preset:', error);
+      throw error;
+    }
   };
 
   /**
@@ -169,7 +246,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       {/* 商品を追加ボタン */}
       <Button
         startIcon={<Add />}
-        onClick={handleAddProduct}
+        onClick={handleOpenMenu}
         variant="outlined"
         fullWidth
         disabled={fields.length >= 50}
@@ -177,6 +254,49 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       >
         商品を追加
       </Button>
+
+      {/* 追加メニュー */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleCloseMenu}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+      >
+        <MenuItem onClick={handleAddBlankProduct}>
+          <ListItemIcon>
+            <NoteAdd fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>空白のカードを追加</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleOpenPresetModal}>
+          <ListItemIcon>
+            <Inventory2 fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>PLから追加</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* プリセット選択モーダル（複数選択モード） */}
+      <ProductPresetModal
+        open={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
+        onSelect={() => {}} // 単一選択は使用しない
+        onSelectMultiple={handleSelectMultiplePresets}
+        onDelete={handleDeletePreset}
+        presets={presetHistory}
+        onReload={reloadPresetHistory}
+        userId={user?.uid}
+        supplier={getLastSelectedSupplier()}
+        suppliers={suppliers}
+        multiSelect={true}
+      />
     </Box>
   );
 };
