@@ -38,6 +38,8 @@ interface FloatingProgressSummaryProps {
   activeProductIndex?: number;
   /** 商品切り替えハンドラー */
   onProductChange?: (index: number) => void;
+  /** 高さ変更コールバック */
+  onHeightChange?: (height: number) => void;
 }
 
 /**
@@ -54,11 +56,36 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   totalSteps,
   activeProductIndex,
   onProductChange,
+  onHeightChange,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
+
+  /**
+   * コンテナの高さを監視して親に通知
+   */
+  React.useEffect(() => {
+    if (!containerRef.current || !onHeightChange) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height;
+        onHeightChange(height);
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    // 初回の高さを通知
+    onHeightChange(containerRef.current.offsetHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [onHeightChange, expanded, isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -380,6 +407,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
 
   return (
     <Paper
+      ref={containerRef}
       elevation={8}
       sx={{
         position: 'fixed',

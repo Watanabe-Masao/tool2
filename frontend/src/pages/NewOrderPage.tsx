@@ -82,6 +82,9 @@ export const NewOrderPage: React.FC = () => {
   // 現在編集中の商品インデックス（ステップ2-4で使用）
   const [activeProductIndex, setActiveProductIndex] = useState(0);
 
+  // FloatingProgressSummaryの高さ
+  const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
+
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -589,7 +592,7 @@ export const NewOrderPage: React.FC = () => {
 
           {/* タブナビゲーション */}
           <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2 }}>
+            <Box sx={{ width: '100%', py: 2, pb: `${progressSummaryHeight + 16}px` }}>
               <Tabs
                 value={activeStep}
                 onChange={handleTabChange}
@@ -758,6 +761,7 @@ export const NewOrderPage: React.FC = () => {
             totalSteps={TOTAL_STEPS}
             activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
             onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
+            onHeightChange={setProgressSummaryHeight}
           />
         )}
 

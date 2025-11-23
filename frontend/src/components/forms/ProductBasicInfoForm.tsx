@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
-import { Box, Typography, Alert, IconButton, Chip, Tooltip } from '@mui/material';
-import { Add, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Box, Typography, Alert, Button } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -78,17 +78,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // 初回マウント判定（初回レンダリング時はアニメーションを無効化）
   const isMountedRef = useRef(false);
 
-  // タブコンテナのref（自動センタリング用）
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  // スクロール終了検出用タイマー
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
-
-  // 店着日を監視
-  const deliveryDate = useWatch({ control, name: 'deliveryDate' });
 
   /**
    * 初回マウント後にフラグを立てる（アニメーション制御用）
@@ -117,62 +108,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   }, [activeTabIndex, fields.length]);
 
   /**
-   * タブスクロール時に中央のタブを検出して選択
-   */
-  const handleTabScroll = () => {
-    if (!tabsRef.current) return;
-
-    // 既存のタイマーをクリア
-    if (scrollTimerRef.current) {
-      clearTimeout(scrollTimerRef.current);
-    }
-
-    // スクロール終了後に中央のタブを検出
-    scrollTimerRef.current = setTimeout(() => {
-      if (!tabsRef.current) return;
-
-      const container = tabsRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const containerCenter = containerRect.left + containerRect.width / 2;
-
-      // 全てのチップ要素を取得
-      const chips = container.querySelectorAll('[data-chip-index]');
-      let closestIndex = activeTabIndex;
-      let minDistance = Infinity;
-
-      chips.forEach((chip) => {
-        const chipRect = chip.getBoundingClientRect();
-        const chipCenter = chipRect.left + chipRect.width / 2;
-        const distance = Math.abs(containerCenter - chipCenter);
-
-        if (distance < minDistance) {
-          minDistance = distance;
-          const index = parseInt(chip.getAttribute('data-chip-index') || '0', 10);
-          closestIndex = index;
-        }
-      });
-
-      // 中央に最も近いタブをアクティブに
-      if (closestIndex !== activeTabIndex) {
-        setActiveTabIndex(closestIndex);
-      }
-    }, 100); // スクロール終了後100msで判定（より高速に）
-  };
-
-  /**
-   * アクティブタブの自動センタリング
-   */
-  useEffect(() => {
-    if (tabsRef.current) {
-      const chips = tabsRef.current.querySelectorAll('[data-chip-index]');
-      const targetChip = chips[activeTabIndex];
-      if (targetChip) {
-        targetChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  }, [activeTabIndex]);
-
-  /**
    * タブ切り替え時のスライド方向を設定
    */
   useEffect(() => {
@@ -183,78 +118,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     }
     prevTabIndexRef.current = activeTabIndex;
   }, [activeTabIndex]);
-
-  /**
-   * クリーンアップ：タイマーをクリア
-   */
-  useEffect(() => {
-    return () => {
-      if (scrollTimerRef.current) {
-        clearTimeout(scrollTimerRef.current);
-      }
-    };
-  }, []);
-
-  /**
-   * 商品の未入力項目数を計算
-   */
-  const getIncompleteCount = (index: number): number => {
-    const product = products?.[index];
-    if (!product) return 0;
-
-    let count = 0;
-    if (!product.name) count++;
-    if (!product.origin) count++;
-    if (!product.supplier) count++;
-    if (!product.specification) count++;
-    if (!product.quantityPerPackage) count++;
-    if (!product.unit) count++;
-
-    return count;
-  };
-
-  /**
-   * 未入力項目のラベルリストを取得
-   */
-  const getIncompleteItems = (index: number): string[] => {
-    const product = products?.[index];
-    if (!product) return [];
-
-    const items: string[] = [];
-    if (!product.name) items.push('品名');
-    if (!product.origin) items.push('産地');
-    if (!product.supplier) items.push('帳合先');
-    if (!product.specification) items.push('規格');
-    if (!product.quantityPerPackage) items.push('入数');
-    if (!product.unit) items.push('単位');
-
-    return items;
-  };
-
-  /**
-   * タブのラベルを作成（#番号 + 品名8文字まで）
-   */
-  const getTabLabel = (index: number): string => {
-    const product = products?.[index];
-    const name = product?.name || '';
-    const truncated = name.length > 8 ? name.slice(0, 8) + '...' : name;
-    return `#${index + 1}${truncated ? ' ' + truncated : ''}`;
-  };
-
-  /**
-   * タブのツールチップコンテンツを作成
-   */
-  const getTabTooltip = (index: number): string => {
-    const product = products?.[index];
-    const name = product?.name || `商品${index + 1}`;
-    const incompleteItems = getIncompleteItems(index);
-
-    if (incompleteItems.length === 0) {
-      return `${name}\n✓ すべて入力済み`;
-    } else {
-      return `${name}\n未入力: ${incompleteItems.join('、')}`;
-    }
-  };
 
   /**
    * 最後に選択された帳合先を取得
@@ -297,10 +160,20 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   return (
     <Box>
       {/* ヘッダーセクション */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="subtitle1" fontWeight="medium">
-          商品情報を入力してください
+          商品情報1
         </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<Add />}
+          onClick={handleAddProduct}
+          disabled={fields.length >= 50}
+          sx={{ fontSize: '0.8rem' }}
+        >
+          商品を追加
+        </Button>
       </Box>
 
       {/* エラー表示 */}
@@ -309,164 +182,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           {errors.products.message}
         </Alert>
       )}
-
-      {/* 商品ナビゲーション情報 */}
-      <Box sx={{ mb: 2, px: 1 }}>
-        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold' }}>
-          商品{activeTabIndex + 1}（{activeTabIndex + 1}/{fields.length}）　店着日：{deliveryDate ? new Date(deliveryDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '未設定'}　帳合先：{products?.[activeTabIndex]?.supplier || '未選択'}
-        </Typography>
-        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold', color: 'primary.main' }}>
-          産地：{products?.[activeTabIndex]?.origin || '－'}　品名：{products?.[activeTabIndex]?.name || '－'}　規格：{products?.[activeTabIndex]?.specification || '－'}　入数：{products?.[activeTabIndex]?.quantityPerPackage || '－'}　単位：{products?.[activeTabIndex]?.unit || '－'}
-        </Typography>
-      </Box>
-
-      {/* チップ型タブナビゲーション */}
-      <Box
-        ref={tabsRef}
-        onScroll={handleTabScroll}
-        sx={{
-          display: 'flex',
-          gap: 1,
-          overflowX: 'auto',
-          pb: 1,
-          mb: 2,
-          scrollBehavior: 'smooth',
-          px: 'calc(50vw - 60px)', // 左右に画面幅の半分のパディングを追加（チップ幅の半分を引く）
-          '&::-webkit-scrollbar': {
-            height: 6,
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(0,0,0,0.2)',
-            borderRadius: 3,
-          },
-        }}
-      >
-        {fields.map((field, index) => {
-          const incompleteCount = getIncompleteCount(index);
-          const isActive = activeTabIndex === index;
-          const isComplete = incompleteCount === 0;
-
-          return (
-            <Tooltip key={field.id} title={getTabTooltip(index)} arrow placement="top">
-              <Chip
-                data-chip-index={index}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchMove={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: isActive ? 'bold' : 'normal',
-                        fontSize: isActive ? '0.8rem' : '0.7rem',
-                      }}
-                    >
-                      {getTabLabel(index)}
-                    </Typography>
-                    {incompleteCount > 0 && (
-                      <Box
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          bgcolor: 'warning.main',
-                          color: 'white',
-                          fontSize: '0.6rem',
-                          fontWeight: 'bold',
-                          px: 0.3,
-                        }}
-                      >
-                        {incompleteCount}
-                      </Box>
-                    )}
-                    {fields.length > 1 && (
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveProduct(index);
-                        }}
-                        sx={{
-                          ml: 0.3,
-                          p: 0.2,
-                          '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
-                        }}
-                      >
-                        <Close sx={{ fontSize: 12 }} />
-                      </IconButton>
-                    )}
-                  </Box>
-                }
-                onClick={() => setActiveTabIndex(index)}
-                sx={{
-                  height: isActive ? 36 : 28,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                  borderRadius: 2,
-                  bgcolor: isComplete
-                    ? isActive
-                      ? 'success.main'
-                      : 'success.light'
-                    : isActive
-                    ? 'warning.main'
-                    : 'warning.light',
-                  color: isActive ? 'white' : 'text.primary',
-                  boxShadow: isActive ? 3 : 1,
-                  transform: isActive ? 'scale(1.05)' : 'scale(1)',
-                  '&:hover': {
-                    boxShadow: 4,
-                    transform: 'scale(1.05)',
-                  },
-                  '&:active': {
-                    transform: 'scale(0.98)',
-                  },
-                  '& .MuiChip-label': {
-                    px: 1.5,
-                  },
-                }}
-              />
-            </Tooltip>
-          );
-        })}
-        {/* 追加チップ */}
-        <Chip
-          icon={<Add sx={{ fontSize: 16 }} />}
-          label="追加"
-          onClick={handleAddProduct}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
-          disabled={fields.length >= 50}
-          sx={{
-            height: 28,
-            cursor: fields.length >= 50 ? 'not-allowed' : 'pointer',
-            borderRadius: 2,
-            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-            bgcolor: fields.length >= 50 ? 'action.disabledBackground' : 'primary.light',
-            color: fields.length >= 50 ? 'action.disabled' : 'primary.main',
-            '&:hover': fields.length >= 50
-              ? {}
-              : {
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                  boxShadow: 2,
-                },
-            '&:active': fields.length >= 50
-              ? {}
-              : {
-                  transform: 'scale(0.95)',
-                },
-            '& .MuiChip-label': {
-              px: 1,
-              fontSize: '0.7rem',
-            },
-          }}
-        />
-      </Box>
 
       {/* スワイプ可能な商品カード表示エリア */}
       <Box

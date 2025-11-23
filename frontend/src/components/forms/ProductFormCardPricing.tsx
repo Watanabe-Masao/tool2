@@ -393,7 +393,6 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
-              helperText={`センター着原価 × ${(1 + centerFeeRate / 100).toFixed(2)}`}
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.200',
@@ -433,14 +432,13 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Grid>
           <Grid item xs={6}>
             <TextField
-              label="差益"
+              label="差益（全体）"
               value={profitAmount ? `¥${profitAmount.toLocaleString()}` : '-'}
               size="small"
               fullWidth
               InputProps={{
                 readOnly: true,
               }}
-              helperText="(店着原価 - センターフィー込原価) × (総納品数 × 入数)"
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.200',
@@ -488,7 +486,6 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               InputProps={{
                 readOnly: true,
               }}
-              helperText="(売価 - 店着原価) / 売価 × 100"
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: 'grey.200',
@@ -498,6 +495,53 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             />
           </Grid>
         </Grid>
+
+        {/* カード下部：単位あたりの情報 */}
+        {(centerCostWithFee || storeCost) && (
+          <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
+              単位あたりの情報
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {centerCostWithFee > 0 && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                    センターフィー込原価
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                    ¥{centerCostWithFee.toLocaleString()}
+                  </Typography>
+                </Box>
+              )}
+              {storeCost > 0 && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                    店着原価
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                    ¥{storeCost.toLocaleString()}
+                  </Typography>
+                </Box>
+              )}
+              {centerCostWithFee > 0 && storeCost > 0 && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                    差益（1単位）
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 'medium',
+                      color: (storeCost - centerCostWithFee) < 0 ? 'error.main' : 'text.primary'
+                    }}
+                  >
+                    ¥{(storeCost - centerCostWithFee).toLocaleString()}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
       </CardContent>
 
       {/* 価格履歴選択モーダル */}
