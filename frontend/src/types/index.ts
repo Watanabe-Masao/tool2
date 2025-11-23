@@ -161,10 +161,12 @@ export interface TemplateResponse {
   success: boolean;
   /** 生成されたExcelファイル名 */
   filename: string;
-  /** ダウンロードURL */
+  /** ExcelダウンロードURL */
   download_url: string;
   /** 生成されたPDFファイル名（オプション） */
   pdf_filename?: string;
+  /** PDFダウンロードURL（オプション） */
+  pdf_download_url?: string;
   /** メッセージ */
   message: string;
 }

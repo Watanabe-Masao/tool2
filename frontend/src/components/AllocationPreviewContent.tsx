@@ -29,6 +29,8 @@ interface AllocationPreviewContentProps {
   formData: OrderFormData;
   /** PDFファイル名（file_id） */
   pdfFilename?: string;
+  /** PDFダウンロードURL */
+  pdfDownloadUrl?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
   /** PDFダウンロードハンドラ */
@@ -81,6 +83,7 @@ interface GridRowData {
 export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> = ({
   formData,
   pdfFilename,
+  pdfDownloadUrl,
   onDownloadExcel,
   onDownloadPdf,
   onSendEmail,
@@ -99,8 +102,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // 店舗別統計モーダルの開閉状態
   const [showStatsModal, setShowStatsModal] = useState(false);
 
-  // PDF URL
-  const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
+  // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
+  const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
 
   // カスタムブック名を生成（配分表_{customName}_{YYYYMMDD}）
   const bookName = useMemo(() => {

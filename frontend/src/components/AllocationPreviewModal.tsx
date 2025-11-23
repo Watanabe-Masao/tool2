@@ -34,6 +34,8 @@ interface AllocationPreviewModalProps {
   formData: OrderFormData;
   /** PDFファイル名（file_id） */
   pdfFilename?: string;
+  /** PDFダウンロードURL */
+  pdfDownloadUrl?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
 }
@@ -68,13 +70,14 @@ export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   onClose,
   formData,
   pdfFilename,
+  pdfDownloadUrl,
   onDownloadExcel,
 }) => {
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
 
-  // PDF URL
-  const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
+  // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
+  const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
 
   /**
    * グリッド行データを生成

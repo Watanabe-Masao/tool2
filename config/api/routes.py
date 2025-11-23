@@ -67,11 +67,15 @@ async def generate_template(req: TemplateRequest):
 
         # PDF生成
         pdf_filename = None
+        pdf_download_url = None
         try:
             pdf_path = settings.temp_dir / f"{file_id}.pdf"
             PDFService.prepare_for_conversion(output_path)
             PDFService.convert_to_pdf(output_path, pdf_path)
             pdf_filename = file_id
+            # PDFのファイル名を生成（.xlsxを.pdfに置き換え）
+            pdf_file_display_name = filename.replace(".xlsx", ".pdf")
+            pdf_download_url = f"/api/download/{file_id}?filename={pdf_file_display_name}&ext=pdf"
             logger.info(f"PDF generated successfully: {pdf_path}")
         except Exception as pdf_error:
             # PDF生成エラーはログに記録するが、Excelの生成は成功しているので続行
@@ -82,7 +86,8 @@ async def generate_template(req: TemplateRequest):
             message="テンプレートの生成に成功しました",
             download_url=download_url,
             filename=filename,
-            pdf_filename=pdf_filename
+            pdf_filename=pdf_filename,
+            pdf_download_url=pdf_download_url
         )
 
     except Exception as e:
@@ -138,8 +143,8 @@ async def download_template(
         if ext == "pdf":
             media_type = "application/pdf"
             default_filename = "template.pdf"
-            # PDFファイル名がカスタマイズされていない場合はデフォルト名を使用
-            if filename == "配分表_テンプレート.xlsx":
+            # .xlsxを.pdfに置き換え
+            if filename.endswith(".xlsx"):
                 filename = filename.replace(".xlsx", ".pdf")
         else:
             media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

@@ -56,6 +56,7 @@ export const NewOrderPage: React.FC = () => {
     filename: string;
     downloadUrl: string;
     pdfFilename?: string;
+    pdfDownloadUrl?: string;
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
@@ -474,6 +475,7 @@ export const NewOrderPage: React.FC = () => {
           filename: response.filename,
           downloadUrl: response.download_url,
           pdfFilename: response.pdf_filename,
+          pdfDownloadUrl: response.pdf_download_url,
         });
 
         // ExcelファイルをBlobとして取得（メール送信用）
@@ -723,6 +725,7 @@ export const NewOrderPage: React.FC = () => {
                       <AllocationPreviewContent
                         formData={formData}
                         pdfFilename={generatedFiles.pdfFilename}
+                        pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
                         onDownloadExcel={handleDownloadExcel}
                         onDownloadPdf={handleDownloadPdf}
                         onSendEmail={() => setShowEmailModal(true)}
@@ -746,11 +749,11 @@ export const NewOrderPage: React.FC = () => {
         </Box>
 
       {/* PDFプレビューモーダル */}
-        {generatedFiles && generatedFiles.pdfFilename && (
+        {generatedFiles && generatedFiles.pdfDownloadUrl && (
           <PDFPreviewModal
             open={showPDFPreview}
             onClose={() => setShowPDFPreview(false)}
-            pdfUrl={TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename)}
+            pdfUrl={generatedFiles.pdfDownloadUrl}
             onDownloadExcel={handleDownloadExcel}
             onSendEmail={() => setShowEmailModal(true)}
           />
