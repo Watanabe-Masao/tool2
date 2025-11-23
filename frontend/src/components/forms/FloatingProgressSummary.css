@@ -1,0 +1,33 @@
+/* Splide カスタムスタイル */
+.splide__track {
+  overflow: visible !important;
+}
+
+.splide__list {
+  display: flex;
+  align-items: stretch;
+}
+
+.splide__slide {
+  display: flex;
+  flex-direction: column;
+}
+
+/* スライドのトランジション */
+.splide__slide {
+  transition: transform 0.3s ease;
+}
+
+/* アクティブなスライドを少し強調 */
+.splide__slide.is-active {
+  transform: scale(1.02);
+}
+
+/* スムーズなスクロール */
+.splide__track {
+  cursor: grab;
+}
+
+.splide__track:active {
+  cursor: grabbing;
+}

@@ -20,6 +20,9 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
+import { Splide, SplideSlide } from '@splidejs/react-splide';
+import '@splidejs/react-splide/css';
+import './FloatingProgressSummary.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -275,29 +278,30 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         {!isDragging && formData.products.length > 1 && (
           <Box sx={{ px: 2, pb: 1 }}>
             <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-              💡 カードを長押しして順番を入れ替えられます
+              💡 スワイプで移動、長押しして順番を入れ替え
             </Typography>
           </Box>
         )}
 
-        {/* 横スクロール可能な商品カードリスト */}
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1,
-            overflowX: 'auto',
-            pb: 2,
-            px: 2,
-            '&::-webkit-scrollbar': {
-              height: 4,
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              borderRadius: 2,
-            },
-          }}
-        >
-          {(cardOrder.length > 0 ? cardOrder : formData.products.map((_, i) => i)).map((originalIndex, displayIndex) => {
+        {/* Splideスライダー */}
+        <Box sx={{ px: 2, pb: 2 }}>
+          <Splide
+            options={{
+              type: 'slide',
+              perPage: 'auto',
+              gap: '8px',
+              pagination: false,
+              arrows: false,
+              drag: !isDragging, // ドラッグ中はSplideのドラッグを無効化
+              snap: true,
+              focus: activeProductIndex,
+              fixedWidth: '180px',
+              padding: { left: 0, right: 0 },
+              updateOnMove: true,
+            }}
+            aria-label="商品カードスライダー"
+          >
+            {(cardOrder.length > 0 ? cardOrder : formData.products.map((_, i) => i)).map((originalIndex, displayIndex) => {
             const product = formData.products[originalIndex];
             const status = getProductStatus(product);
             const isActive = originalIndex === activeProductIndex;
@@ -305,8 +309,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             const isDropTarget = displayIndex === dragOverIndex;
 
             return (
-              <Card
-                key={originalIndex}
+              <SplideSlide key={originalIndex}>
+                <Card
                 onClick={() => !isDragging && onProductChange && onProductChange(originalIndex)}
                 onTouchStart={() => handleLongPressStart(displayIndex)}
                 onTouchEnd={handleLongPressEnd}
@@ -492,8 +496,10 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                   )}
                 </CardContent>
               </Card>
+              </SplideSlide>
             );
           })}
+          </Splide>
         </Box>
       </Box>
     );
