@@ -12,15 +12,12 @@ import {
   Button,
   DialogActions,
   DialogContentText,
-  Checkbox,
 } from '@mui/material';
 import {
   Close,
   History,
   Delete,
   TrendingUp,
-  SelectAll,
-  Deselect,
 } from '@mui/icons-material';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { format } from 'date-fns';
@@ -45,14 +42,6 @@ interface PricingHistoryModalProps {
   specification?: string;
   /** 現在の入数（フィルタリング用） */
   quantityPerPackage?: number;
-  /** 現在入力されている価格情報（上書き確認用） */
-  currentPricing?: {
-    centerCost?: number;
-    storeCost?: number;
-    priceExcludingTax?: number;
-  };
-  /** 新規商品として追加するハンドラー（複数選択モード用） */
-  onAddNew?: (history: PricingHistoryItem) => void;
 }
 
 /**
@@ -69,20 +58,10 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   productName,
   specification,
   quantityPerPackage,
-  currentPricing,
-  onAddNew,
 }) => {
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [historyToDelete, setHistoryToDelete] = useState<PricingHistoryItem | null>(null);
-
-  // 複数選択モードの状態
-  const [bulkSelectMode, setBulkSelectMode] = useState(false);
-  const [selectedHistories, setSelectedHistories] = useState<Set<string>>(new Set());
-
-  // 上書き確認ダイアログの状態
-  const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
-  const [historyToApply, setHistoryToApply] = useState<PricingHistoryItem | null>(null);
 
   /**
    * 現在の商品にマッチする履歴のみをフィルタリング
@@ -99,117 +78,11 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
   });
 
   /**
-   * 履歴を選択（単一選択）
+   * 履歴を選択
    */
   const handleSelectHistory = (history: PricingHistoryItem) => {
-    if (bulkSelectMode) {
-      // 複数選択モード: チェックボックスをトグル
-      handleToggleSelection(history.id);
-    } else {
-      // 通常モード: 即座に適用して閉じる
-      onSelect(history);
-      onClose();
-    }
-  };
-
-  /**
-   * チェックボックスのトグル
-   */
-  const handleToggleSelection = (historyId: string) => {
-    const newSelection = new Set(selectedHistories);
-    if (newSelection.has(historyId)) {
-      newSelection.delete(historyId);
-    } else {
-      newSelection.add(historyId);
-    }
-    setSelectedHistories(newSelection);
-  };
-
-  /**
-   * 全選択
-   */
-  const handleSelectAll = () => {
-    const allIds = new Set(matchingHistories.map((h) => h.id));
-    setSelectedHistories(allIds);
-  };
-
-  /**
-   * 全選択解除
-   */
-  const handleDeselectAll = () => {
-    setSelectedHistories(new Set());
-  };
-
-  /**
-   * 選択中の履歴リストを取得（日付順）
-   */
-  const selectedHistoriesList = React.useMemo(() => {
-    return matchingHistories
-      .filter((h) => selectedHistories.has(h.id))
-      .sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime());
-  }, [matchingHistories, selectedHistories]);
-
-  /**
-   * 現在の価格情報が入力されているかチェック
-   */
-  const hasPricingData = () => {
-    if (!currentPricing) return false;
-    return !!(
-      currentPricing.centerCost ||
-      currentPricing.storeCost ||
-      currentPricing.priceExcludingTax
-    );
-  };
-
-  /**
-   * 複数選択した履歴から1つを選んで適用
-   */
-  const handleApplySelected = (history: PricingHistoryItem) => {
-    // 価格情報が既に入力されている場合は確認ダイアログを表示
-    if (hasPricingData()) {
-      setHistoryToApply(history);
-      setOverwriteDialogOpen(true);
-    } else {
-      // 未入力の場合は直接適用
-      onSelect(history);
-      onClose();
-      setBulkSelectMode(false);
-      setSelectedHistories(new Set());
-    }
-  };
-
-  /**
-   * 上書き確認ダイアログで「上書き」を選択
-   */
-  const handleConfirmOverwrite = () => {
-    if (!historyToApply) return;
-    onSelect(historyToApply);
-    setOverwriteDialogOpen(false);
-    setHistoryToApply(null);
+    onSelect(history);
     onClose();
-    setBulkSelectMode(false);
-    setSelectedHistories(new Set());
-  };
-
-  /**
-   * 上書き確認ダイアログで「新規追加」を選択
-   */
-  const handleConfirmAddNew = () => {
-    if (!historyToApply || !onAddNew) return;
-    onAddNew(historyToApply);
-    setOverwriteDialogOpen(false);
-    setHistoryToApply(null);
-    onClose();
-    setBulkSelectMode(false);
-    setSelectedHistories(new Set());
-  };
-
-  /**
-   * 複数選択モードの切り替え
-   */
-  const handleToggleBulkMode = () => {
-    setBulkSelectMode(!bulkSelectMode);
-    setSelectedHistories(new Set());
   };
 
   /**
@@ -252,7 +125,7 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
         }}
       >
         <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <History />
               <Typography variant="h6">価格履歴から選択</Typography>
@@ -260,34 +133,6 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
             <IconButton size="small" onClick={onClose} edge="end">
               <Close />
             </IconButton>
-          </Box>
-
-          {/* 複数選択モード切り替えボタン */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Button
-              size="small"
-              variant={bulkSelectMode ? 'contained' : 'outlined'}
-              onClick={handleToggleBulkMode}
-              startIcon={bulkSelectMode ? <Deselect /> : <SelectAll />}
-            >
-              {bulkSelectMode ? '選択モード解除' : '複数選択モード'}
-            </Button>
-
-            {bulkSelectMode && (
-              <>
-                <Button size="small" onClick={handleSelectAll} startIcon={<SelectAll />}>
-                  全選択
-                </Button>
-                <Button size="small" onClick={handleDeselectAll} startIcon={<Deselect />}>
-                  解除
-                </Button>
-                <Chip
-                  label={`${selectedHistories.size}件選択中`}
-                  color="primary"
-                  size="small"
-                />
-              </>
-            )}
           </Box>
         </DialogTitle>
 
@@ -335,33 +180,18 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
                 );
                 const profitPerUnit = history.storeCost - centerCostWithFee;
                 const profitMargin = calculateProfitMargin(history);
-                const isSelected = selectedHistories.has(history.id);
 
                 return (
                   <ListItemButton
                     key={history.id}
                     onClick={() => handleSelectHistory(history)}
-                    selected={isSelected}
                     sx={{
                       py: 2,
                       px: 2,
                       borderBottom: '1px solid',
                       borderColor: 'divider',
-                      bgcolor: isSelected ? 'primary.50' : 'transparent',
-                      '&:hover': {
-                        bgcolor: isSelected ? 'primary.100' : 'action.hover',
-                      },
                     }}
                   >
-                    {/* チェックボックス（複数選択モード時のみ表示） */}
-                    {bulkSelectMode && (
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => handleToggleSelection(history.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        sx={{ mr: 1 }}
-                      />
-                    )}
                     <Box sx={{ flex: 1 }}>
                       {/* 1行目: 商品情報 */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -441,74 +271,6 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
             </List>
           )}
         </DialogContent>
-
-        {/* 複数選択モード時の選択済み履歴一覧 */}
-        {bulkSelectMode && selectedHistories.size > 0 && (
-          <Box sx={{ borderTop: 2, borderColor: 'primary.main', bgcolor: 'primary.50' }}>
-            <Box sx={{ px: 3, py: 2 }}>
-              <Typography variant="subtitle2" fontWeight="700" gutterBottom>
-                選択中の履歴 ({selectedHistoriesList.length}件)
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                適用したい履歴を選んでください
-              </Typography>
-
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 200, overflowY: 'auto' }}>
-                {selectedHistoriesList.map((history, index) => {
-                  const profitMargin = calculateProfitMargin(history);
-                  return (
-                    <Box
-                      key={history.id}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        p: 1.5,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: 1,
-                        borderColor: index === 0 ? 'success.main' : 'grey.300',
-                      }}
-                    >
-                      <Box sx={{ flex: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          {index === 0 && (
-                            <Chip label="最新" size="small" color="success" sx={{ fontSize: '0.65rem', height: 18 }} />
-                          )}
-                          <Typography variant="caption" fontWeight="600">
-                            {history.productName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {format(history.lastUsedAt, 'MM/dd')}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1.5 }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            店着: ¥{history.storeCost.toLocaleString()}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            売価: ¥{history.priceExcludingTax.toLocaleString()}
-                          </Typography>
-                          <Typography variant="caption" color="info.main" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
-                            値入率: {profitMargin}%
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => handleApplySelected(history)}
-                        sx={{ minWidth: 60 }}
-                      >
-                        適用
-                      </Button>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-          </Box>
-        )}
       </Dialog>
 
       {/* 削除確認ダイアログ */}
@@ -542,100 +304,6 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
           </Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained">
             削除
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 上書き確認ダイアログ */}
-      <Dialog
-        open={overwriteDialogOpen}
-        onClose={() => {
-          setOverwriteDialogOpen(false);
-          setHistoryToApply(null);
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>価格履歴の適用方法</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            現在の商品には既に価格情報が入力されています。どのように適用しますか？
-          </DialogContentText>
-
-          {/* 現在の価格情報 */}
-          {currentPricing && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'warning.50', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
-              <Typography variant="caption" fontWeight="bold" color="warning.dark" gutterBottom>
-                現在の価格情報
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                {currentPricing.centerCost && (
-                  <Typography variant="body2" color="text.secondary">
-                    センター着: ¥{currentPricing.centerCost.toLocaleString()}
-                  </Typography>
-                )}
-                {currentPricing.storeCost && (
-                  <Typography variant="body2" color="text.secondary">
-                    店着: ¥{currentPricing.storeCost.toLocaleString()}
-                  </Typography>
-                )}
-                {currentPricing.priceExcludingTax && (
-                  <Typography variant="body2" color="text.secondary">
-                    売価: ¥{currentPricing.priceExcludingTax.toLocaleString()}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          )}
-
-          {/* 適用する履歴 */}
-          {historyToApply && (
-            <Box sx={{ p: 2, bgcolor: 'primary.50', borderRadius: 1, border: 1, borderColor: 'primary.main' }}>
-              <Typography variant="caption" fontWeight="bold" color="primary.dark" gutterBottom>
-                適用する履歴
-              </Typography>
-              <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>
-                {historyToApply.productName} ({historyToApply.specification})
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  センター着: ¥{historyToApply.centerCost.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  店着: ¥{historyToApply.storeCost.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  売価: ¥{historyToApply.priceExcludingTax.toLocaleString()}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button
-            onClick={() => {
-              setOverwriteDialogOpen(false);
-              setHistoryToApply(null);
-            }}
-            color="inherit"
-          >
-            キャンセル
-          </Button>
-          {onAddNew && (
-            <Button
-              onClick={handleConfirmAddNew}
-              color="success"
-              variant="outlined"
-            >
-              新しい商品として追加
-            </Button>
-          )}
-          <Button
-            onClick={handleConfirmOverwrite}
-            color="primary"
-            variant="contained"
-          >
-            現在の商品を上書き
           </Button>
         </DialogActions>
       </Dialog>
