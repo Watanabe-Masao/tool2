@@ -87,6 +87,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   // ドラッグ＆ドロップの状態
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0); // 指の移動オフセット
   const longPressTimer = React.useRef<number | null>(null);
   const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
   const isDragging = React.useRef(false);
@@ -142,12 +143,14 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       return;
     }
 
-    // ドラッグ中の場合、ドロップ位置を計算
+    // ドラッグ中の場合、ドロップ位置とオフセットを計算
     if (isDragging.current && dragIndex !== null) {
-      // TODO: カーソル位置から最も近いカードのインデックスを計算
-      // 簡易実装：水平方向の移動距離から推定
-      const cardWidth = 188; // カード幅 + gap
+      // 水平方向の移動距離を計算
       const moveDistance = clientX - dragStartPos.current.x;
+      setDragOffset(moveDistance); // 指の移動オフセットを更新
+
+      // ドロップ位置を計算
+      const cardWidth = 188; // カード幅 + gap
       const offset = Math.round(moveDistance / cardWidth);
       const newDropIndex = Math.max(0, Math.min(formData.products.length - 1, dragIndex + offset));
       setDropIndex(newDropIndex);
@@ -172,6 +175,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     isDragging.current = false;
     setDragIndex(null);
     setDropIndex(null);
+    setDragOffset(0);
     dragStartPos.current = null;
   };
 
@@ -421,11 +425,13 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                       bgcolor: isActive ? 'primary.50' : 'background.paper',
                       opacity: isBeingDragged ? 0.9 : 1,
                       transform: isBeingDragged
-                        ? 'translateY(-12px) rotate(-3deg) scale(1.08)'
+                        ? `translateX(${dragOffset}px) translateY(-12px) rotate(-3deg) scale(1.08)`
                         : isDropTarget
                         ? 'scale(1.05)'
                         : 'scale(1)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transition: isBeingDragged
+                        ? 'opacity 0.2s, box-shadow 0.2s, z-index 0s'
+                        : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       boxShadow: isBeingDragged ? 12 : isDropTarget ? 4 : 1,
                       zIndex: isBeingDragged ? 10 : 1,
                     }}
