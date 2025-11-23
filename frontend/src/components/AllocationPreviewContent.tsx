@@ -88,7 +88,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onGenerate,
   onAllocationChange,
   lockedStores,
-  setLockedStores: _setLockedStores, // TODO: カテゴリフィルター UI で使用予定
+  setLockedStores,
   selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
   setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
 }) => {
@@ -186,20 +186,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         cellRenderer: (params: any) => {
           if (!params.data) return null;
           const productIndex = params.data.productIndex;
-          const productLockedStores = lockedStores.get(productIndex) || new Set();
-          const isLocked = productLockedStores.has(store.code);
           const value = params.value as number;
 
           // 長押し検出用の変数
           let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-          let isLongPress = false;
 
-          const handleTouchStart = (e: TouchEvent) => {
-            isLongPress = false;
+          const handleTouchStart = () => {
             longPressTimer = setTimeout(() => {
-              isLongPress = true;
               // 長押しでロックをトグル
-              setLockedStores((prev) => {
+              setLockedStores((prev: Map<number, Set<string>>) => {
                 const newMap = new Map(prev);
                 const currentSet = prev.get(productIndex) || new Set();
                 const newSet = new Set(currentSet);
@@ -239,7 +234,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           return cellDiv;
         },
         cellStyle: (params) => {
-          if (!params.data) return {};
+          if (!params.data) return {} as any;
           const productIndex = params.data.productIndex;
           const productLockedStores = lockedStores.get(productIndex) || new Set();
           const isLocked = productLockedStores.has(store.code);
@@ -250,7 +245,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
             cursor: Boolean(onGenerate) && !isLocked ? 'text' : Boolean(onGenerate) ? 'pointer' : 'default',
-          };
+          } as any;
         },
         valueFormatter: (params) => {
           const value = params.value as number;
