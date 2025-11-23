@@ -64,6 +64,7 @@ interface SortablePresetItemProps {
   };
   multiSelect?: boolean;
   isSelected?: boolean;
+  isDuplicate?: boolean;
 }
 
 /**
@@ -78,6 +79,7 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   swipeState,
   multiSelect = false,
   isSelected = false,
+  isDuplicate = false,
 }) => {
   const {
     attributes,
@@ -206,6 +208,14 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
                   sx={{ fontSize: '0.65rem', height: 18 }}
                 />
               )}
+              {isDuplicate && (
+                <Chip
+                  label="追加済み"
+                  size="small"
+                  color="warning"
+                  sx={{ fontSize: '0.65rem', height: 18 }}
+                />
+              )}
             </Box>
             {/* 2行目: 産地、規格、入り数を横並び */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -257,6 +267,13 @@ interface ProductPresetModalProps {
   multiSelect?: boolean;
   /** 複数選択時のハンドラー */
   onSelectMultiple?: (presets: ProductHistoryItem[]) => void;
+  /** 現在の商品データ（重複チェック用） */
+  currentProducts?: Array<{
+    name: string;
+    origin: string;
+    specification?: string;
+    supplier?: string;
+  }>;
 }
 
 /**
@@ -276,6 +293,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   suppliers,
   multiSelect = false,
   onSelectMultiple,
+  currentProducts = [],
 }) => {
   // 選択された帳合先（複数帳合先対応）
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -311,8 +329,25 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   const [unpinDialogOpen, setUnpinDialogOpen] = useState(false);
   const [presetToUnpin, setPresetToUnpin] = useState<ProductHistoryItem | null>(null);
 
+  // 重複確認ダイアログの状態
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicatePreset, setDuplicatePreset] = useState<ProductHistoryItem | null>(null);
+
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
+
+  /**
+   * プリセットが既存の商品と重複しているかチェック
+   */
+  const isDuplicate = (preset: ProductHistoryItem): boolean => {
+    return currentProducts.some(
+      (product) =>
+        product.name === preset.name &&
+        product.origin === preset.origin &&
+        product.specification === preset.specification &&
+        product.supplier === preset.supplier
+    );
+  };
 
   // ドラッグ中のアイテムID (dnd-kit用)
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -493,10 +528,37 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       // 複数選択モード: チェックボックスをトグル
       handleToggleSelect(preset.id);
     } else {
-      // 単一選択モード: プリセットを選択してモーダルを閉じる
-      onSelect(preset);
+      // 単一選択モード: 重複チェック
+      if (isDuplicate(preset)) {
+        // 重複している場合は確認ダイアログを表示
+        setDuplicatePreset(preset);
+        setDuplicateDialogOpen(true);
+      } else {
+        // 重複していない場合はそのまま選択
+        onSelect(preset);
+        onClose();
+      }
+    }
+  };
+
+  /**
+   * 重複確認ダイアログで「追加する」を選択
+   */
+  const handleConfirmDuplicate = () => {
+    if (duplicatePreset) {
+      onSelect(duplicatePreset);
+      setDuplicateDialogOpen(false);
+      setDuplicatePreset(null);
       onClose();
     }
+  };
+
+  /**
+   * 重複確認ダイアログで「キャンセル」を選択
+   */
+  const handleCancelDuplicate = () => {
+    setDuplicateDialogOpen(false);
+    setDuplicatePreset(null);
   };
 
   /**
@@ -854,6 +916,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                           swipeState={swipeState}
                           multiSelect={multiSelect}
                           isSelected={selectedIds.has(preset.id)}
+                          isDuplicate={isDuplicate(preset)}
                         />
                       </SortableContext>
                     </DndContext>
@@ -951,6 +1014,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                   swipeState={swipeState}
                                   multiSelect={multiSelect}
                                   isSelected={selectedIds.has(preset.id)}
+                                  isDuplicate={isDuplicate(preset)}
                                 />
                               ))}
                           </SortableContext>
@@ -969,6 +1033,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                 swipeState={swipeState}
                                 multiSelect={multiSelect}
                                 isSelected={selectedIds.has(preset.id)}
+                                isDuplicate={isDuplicate(preset)}
                               />
                             ))}
                         </List>
@@ -1138,6 +1203,47 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
           </Button>
           <Button onClick={handleConfirmUnpin} color="primary" variant="contained">
             ピン留め解除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 重複確認ダイアログ */}
+      <Dialog open={duplicateDialogOpen} onClose={handleCancelDuplicate}>
+        <DialogTitle>重複する商品があります</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            このプリセットと同じ商品がすでに追加されています。それでも追加しますか？
+          </DialogContentText>
+          {duplicatePreset && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.lighter', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+              <Typography variant="body2" fontWeight="medium">
+                {duplicatePreset.name}
+              </Typography>
+              {duplicatePreset.categoryCode && (
+                <Typography variant="body2" color="text.secondary">
+                  カテゴリー: {getCategoryName(duplicatePreset.categoryCode)}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                産地: {duplicatePreset.origin}
+              </Typography>
+              {duplicatePreset.specification && (
+                <Typography variant="body2" color="text.secondary">
+                  規格: {duplicatePreset.specification}
+                </Typography>
+              )}
+            </Box>
+          )}
+          <DialogContentText sx={{ mt: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
+            追加すると、同じ商品が重複して登録されます。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDuplicate} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmDuplicate} color="warning" variant="contained">
+            それでも追加する
           </Button>
         </DialogActions>
       </Dialog>

@@ -112,6 +112,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const currentName = useWatch({ control, name: `products.${index}.name` });
   const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
+  const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
   const currentUnit = useWatch({ control, name: `products.${index}.unit` });
 
@@ -1113,6 +1114,12 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         userId={user?.uid}
         supplier={currentSupplier}
         suppliers={suppliers}
+        currentProducts={allProducts.map((product) => ({
+          name: product.name,
+          origin: product.origin,
+          specification: product.specification,
+          supplier: product.supplier,
+        }))}
       />
 
       {/* 品名履歴モーダル */}

@@ -444,6 +444,12 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         suppliers={suppliers}
         multiSelect={true}
         onSelectMultiple={handleBulkAddProducts}
+        currentProducts={fields.map((field) => ({
+          name: field.name,
+          origin: field.origin,
+          specification: field.specification,
+          supplier: field.supplier,
+        }))}
       />
 
       {/* 商品並べ替えモーダル */}
