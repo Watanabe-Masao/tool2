@@ -135,7 +135,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   /**
    * 商品の完了状態を判定
    */
-  const getProductStatus = (product: OrderFormData['products'][0], index: number) => {
+  const getProductStatus = (product: OrderFormData['products'][0]) => {
     const hasBasicInfo = !!(product.name && product.origin);
     const hasPricing = !!(product.storeCost && product.priceExcludingTax && product.totalDelivery);
     const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
@@ -204,7 +204,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           }}
         >
           {formData.products.map((product, index) => {
-            const status = getProductStatus(product, index);
+            const status = getProductStatus(product);
             const isActive = index === activeProductIndex;
 
             return (
