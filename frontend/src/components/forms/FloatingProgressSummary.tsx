@@ -289,28 +289,55 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     if (!isProductMode || activeProductIndex === undefined) return null;
 
     return (
-      <Box>
+      <Box sx={{ position: 'relative' }}>
         <Box sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            商品 {activeProductIndex + 1} / {formData.products.length}
-          </Typography>
-          <Box sx={{ flexGrow: 1 }} />
-          {/* 前へボタン */}
+          {/* 前へボタン（画面左端） */}
           {activeProductIndex > 0 && onProductChange && (
             <IconButton
               size="small"
               onClick={() => onProductChange(activeProductIndex - 1)}
-              sx={{ bgcolor: 'action.hover' }}
+              sx={{
+                position: 'absolute',
+                left: -4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                opacity: 0.4,
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': {
+                  opacity: 0.7,
+                  bgcolor: 'background.paper',
+                },
+                zIndex: 10,
+              }}
             >
               <ChevronLeftIcon fontSize="small" />
             </IconButton>
           )}
-          {/* 次へボタン */}
+
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', flex: 1, textAlign: 'center' }}>
+            商品 {activeProductIndex + 1} / {formData.products.length}
+          </Typography>
+
+          {/* 次へボタン（画面右端） */}
           {activeProductIndex < formData.products.length - 1 && onProductChange && (
             <IconButton
               size="small"
               onClick={() => onProductChange(activeProductIndex + 1)}
-              sx={{ bgcolor: 'action.hover' }}
+              sx={{
+                position: 'absolute',
+                right: -4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                opacity: 0.4,
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': {
+                  opacity: 0.7,
+                  bgcolor: 'background.paper',
+                },
+                zIndex: 10,
+              }}
             >
               <ChevronRightIcon fontSize="small" />
             </IconButton>

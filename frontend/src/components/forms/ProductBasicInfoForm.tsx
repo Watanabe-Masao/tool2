@@ -336,16 +336,17 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             onClick={() => setActiveTabIndex(Math.max(0, activeTabIndex - 1))}
             sx={{
               position: 'absolute',
-              left: -16,
+              left: -20,
               top: '50%',
               transform: 'translateY(-50%)',
               zIndex: 10,
-              bgcolor: 'primary.main',
-              color: 'white',
+              opacity: 0.4,
+              bgcolor: 'background.paper',
+              boxShadow: 1,
               '&:hover': {
-                bgcolor: 'primary.dark',
+                opacity: 0.7,
+                bgcolor: 'background.paper',
               },
-              boxShadow: 2,
             }}
           >
             <ChevronLeft />
@@ -359,16 +360,17 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             onClick={() => setActiveTabIndex(Math.min(fields.length - 1, activeTabIndex + 1))}
             sx={{
               position: 'absolute',
-              right: -16,
+              right: -20,
               top: '50%',
               transform: 'translateY(-50%)',
               zIndex: 10,
-              bgcolor: 'primary.main',
-              color: 'white',
+              opacity: 0.4,
+              bgcolor: 'background.paper',
+              boxShadow: 1,
               '&:hover': {
-                bgcolor: 'primary.dark',
+                opacity: 0.7,
+                bgcolor: 'background.paper',
               },
-              boxShadow: 2,
             }}
           >
             <ChevronRight />

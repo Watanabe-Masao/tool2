@@ -180,24 +180,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
             }}
             sx={{
               position: 'absolute',
-              left: 0,
+              left: -10,
               top: 0,
               bottom: 0,
               width: 60,
               zIndex: 10,
               cursor: 'pointer',
-              background: 'linear-gradient(to right, rgba(25, 118, 210, 0.1), transparent)',
+              background: 'transparent',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s',
+              justifyContent: 'flex-start',
+              transition: 'opacity 0.2s',
               pointerEvents: 'none', // タッチイベントを透過
-              '&:hover': {
-                background: 'linear-gradient(to right, rgba(25, 118, 210, 0.2), transparent)',
-              },
             }}
           >
-            <ChevronLeft sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
+            <ChevronLeft sx={{ color: 'text.primary', fontSize: 40, opacity: 0.4, pointerEvents: 'auto', '&:hover': { opacity: 0.7 } }} />
           </Box>
         )}
 
@@ -210,24 +207,21 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
             }}
             sx={{
               position: 'absolute',
-              right: 0,
+              right: -10,
               top: 0,
               bottom: 0,
               width: 60,
               zIndex: 10,
               cursor: 'pointer',
-              background: 'linear-gradient(to left, rgba(25, 118, 210, 0.1), transparent)',
+              background: 'transparent',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s',
+              justifyContent: 'flex-end',
+              transition: 'opacity 0.2s',
               pointerEvents: 'none', // タッチイベントを透過
-              '&:hover': {
-                background: 'linear-gradient(to left, rgba(25, 118, 210, 0.2), transparent)',
-              },
             }}
           >
-            <ChevronRight sx={{ color: 'primary.main', fontSize: 40, opacity: 0.7, pointerEvents: 'auto' }} />
+            <ChevronRight sx={{ color: 'text.primary', fontSize: 40, opacity: 0.4, pointerEvents: 'auto', '&:hover': { opacity: 0.7 } }} />
           </Box>
         )}
 
