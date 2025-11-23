@@ -791,6 +791,7 @@ export const NewOrderPage: React.FC = () => {
             onHeightChange={setProgressSummaryHeight}
             onRemoveProduct={handleRemoveProduct}
             onClearProduct={handleClearProduct}
+            onReorderProducts={moveProduct}
           />
         )}
 

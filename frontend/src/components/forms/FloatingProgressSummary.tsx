@@ -53,6 +53,8 @@ interface FloatingProgressSummaryProps {
   onRemoveProduct?: (index: number) => void;
   /** 商品フィールドクリアハンドラー */
   onClearProduct?: (index: number) => void;
+  /** 商品並べ替えハンドラー */
+  onReorderProducts?: (fromIndex: number, toIndex: number) => void;
 }
 
 /**
@@ -72,6 +74,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onHeightChange,
   onRemoveProduct,
   onClearProduct,
+  onReorderProducts,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -80,6 +83,13 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProductIndex, setMenuProductIndex] = useState<number | null>(null);
   const cardMenuOpen = Boolean(cardMenuAnchor);
+
+  // ドラッグ＆ドロップの状態
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const longPressTimer = React.useRef<number | null>(null);
+  const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
+  const isDragging = React.useRef(false);
 
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
@@ -90,6 +100,79 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const handleCardMenuClose = () => {
     setCardMenuAnchor(null);
     setMenuProductIndex(null);
+  };
+
+  /**
+   * 長押し開始（ドラッグ開始の検出）
+   */
+  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    dragStartPos.current = { x: clientX, y: clientY };
+    isDragging.current = false;
+
+    // 500ms長押しでドラッグモード開始
+    longPressTimer.current = window.setTimeout(() => {
+      isDragging.current = true;
+      setDragIndex(index);
+      setDropIndex(index);
+    }, 500);
+  };
+
+  /**
+   * ドラッグ中の移動
+   */
+  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!dragStartPos.current) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = Math.abs(clientX - dragStartPos.current.x);
+    const deltaY = Math.abs(clientY - dragStartPos.current.y);
+
+    // 移動が検出されたら長押しタイマーをキャンセル（ドラッグ開始前のみ）
+    if (!isDragging.current && (deltaX > 10 || deltaY > 10)) {
+      if (longPressTimer.current) {
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+      dragStartPos.current = null;
+      return;
+    }
+
+    // ドラッグ中の場合、ドロップ位置を計算
+    if (isDragging.current && dragIndex !== null) {
+      // TODO: カーソル位置から最も近いカードのインデックスを計算
+      // 簡易実装：水平方向の移動距離から推定
+      const cardWidth = 188; // カード幅 + gap
+      const moveDistance = clientX - dragStartPos.current.x;
+      const offset = Math.round(moveDistance / cardWidth);
+      const newDropIndex = Math.max(0, Math.min(formData.products.length - 1, dragIndex + offset));
+      setDropIndex(newDropIndex);
+    }
+  };
+
+  /**
+   * ドラッグ終了
+   */
+  const handleDragEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    // ドラッグが完了していて、位置が変わった場合、並び替えを実行
+    if (isDragging.current && dragIndex !== null && dropIndex !== null && dragIndex !== dropIndex && onReorderProducts) {
+      onReorderProducts(dragIndex, dropIndex);
+    }
+
+    // 状態をリセット
+    isDragging.current = false;
+    setDragIndex(null);
+    setDropIndex(null);
+    dragStartPos.current = null;
   };
 
   /**
@@ -302,23 +385,44 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             {formData.products.map((product, index) => {
               const status = getProductStatus(product);
               const isActive = index === activeProductIndex;
+              const isBeingDragged = dragIndex === index;
+              const isDropTarget = dropIndex === index && dragIndex !== index;
 
               return (
                 <SwiperSlide key={index} style={{ width: 'auto' }}>
                   <Card
-                    onClick={() => onProductChange?.(index)}
+                    onClick={() => {
+                      // ドラッグ中はクリックを無視
+                      if (!isDragging.current) {
+                        onProductChange?.(index);
+                      }
+                    }}
+                    onTouchStart={(e) => handleLongPressStart(e, index)}
+                    onTouchMove={handleDragMove}
+                    onTouchEnd={handleDragEnd}
+                    onMouseDown={(e) => handleLongPressStart(e, index)}
+                    onMouseMove={handleDragMove}
+                    onMouseUp={handleDragEnd}
+                    onMouseLeave={handleDragEnd}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      setMenuProductIndex(index);
-                      setCardMenuAnchor(e.currentTarget);
+                      // ドラッグ中はコンテキストメニューを無視
+                      if (!isDragging.current) {
+                        setMenuProductIndex(index);
+                        setCardMenuAnchor(e.currentTarget);
+                      }
                     }}
                     sx={{
                       minWidth: 180,
                       maxWidth: 180,
-                      cursor: 'pointer',
+                      cursor: isBeingDragged ? 'grabbing' : 'grab',
                       border: isActive ? 2 : 1,
                       borderColor: isActive ? 'primary.main' : 'grey.300',
                       bgcolor: isActive ? 'primary.50' : 'background.paper',
+                      opacity: isBeingDragged ? 0.5 : 1,
+                      transform: isDropTarget ? 'scale(1.05)' : 'scale(1)',
+                      transition: 'transform 0.2s, opacity 0.2s',
+                      boxShadow: isBeingDragged ? 4 : 1,
                     }}
                   >
                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
