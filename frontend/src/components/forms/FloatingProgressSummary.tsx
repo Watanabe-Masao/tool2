@@ -212,8 +212,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                 key={index}
                 onClick={() => onProductChange && onProductChange(index)}
                 sx={{
-                  minWidth: 240,
-                  maxWidth: 240,
+                  minWidth: 260,
+                  maxWidth: 260,
                   cursor: 'pointer',
                   border: isActive ? 2 : 1,
                   borderColor: isActive ? 'primary.main' : 'grey.300',
@@ -226,86 +226,132 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                 }}
               >
                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                  {/* 商品番号 */}
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block', mb: 0.5 }}>
-                    商品 #{index + 1}
-                  </Typography>
+                  {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}>
+                        商品 #{index + 1}
+                      </Typography>
+                      {product.supplier && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.65rem',
+                            color: 'text.secondary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {product.supplier}
+                        </Typography>
+                      )}
+                    </Box>
+                    {/* ステータスアイコン（右側） */}
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title={status.hasBasicInfo ? '基本情報完了' : '基本情報未完了'} arrow>
+                        <Box>
+                          {status.hasBasicInfo ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title={status.hasPricing ? '価格・数量完了' : '価格・数量未完了'} arrow>
+                        <Box>
+                          {status.hasPricing ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title={status.hasAllocation ? '配分完了' : status.hasOverAllocation ? '配分超過' : '配分未完了'} arrow>
+                        <Box>
+                          {status.hasAllocation ? (
+                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                          ) : status.hasOverAllocation ? (
+                            <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                          ) : (
+                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Stack>
+                  </Box>
 
-                  {/* 商品名 */}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      mb: 0.5,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {product.name || '未入力'}
-                  </Typography>
-
-                  {/* 産地・規格・入数 */}
-                  <Box sx={{ mb: 1 }}>
+                  {/* 2行目: 産地 | 品名 */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
                     {product.origin && (
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
-                        産地: {product.origin}
-                      </Typography>
+                      <>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                          {product.origin}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          |
+                        </Typography>
+                      </>
                     )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flex: 1,
+                      }}
+                    >
+                      {product.name || '未入力'}
+                    </Typography>
+                  </Box>
+
+                  {/* 3行目: 規格 | 入数+単位 */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
                     {product.specification && (
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
-                        規格: {product.specification}
-                      </Typography>
+                      <>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          {product.specification}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          |
+                        </Typography>
+                      </>
                     )}
                     {product.quantityPerPackage && (
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
-                        入数: {product.quantityPerPackage}{product.unit || ''}
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                        {product.quantityPerPackage}{product.unit || ''}
                       </Typography>
                     )}
                   </Box>
 
-                  {/* ステータスアイコン */}
-                  <Stack direction="row" spacing={0.5}>
-                    {/* 基本情報 */}
-                    <Tooltip title={status.hasBasicInfo ? '基本情報完了' : '基本情報未完了'} arrow>
-                      <Box>
-                        {status.hasBasicInfo ? (
-                          <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                        ) : (
-                          <UncheckedIcon sx={{ fontSize: 16, color: 'grey.400' }} />
-                        )}
-                      </Box>
-                    </Tooltip>
-
-                    {/* 価格・数量 */}
-                    <Tooltip title={status.hasPricing ? '価格・数量完了' : '価格・数量未完了'} arrow>
-                      <Box>
-                        {status.hasPricing ? (
-                          <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                        ) : (
-                          <UncheckedIcon sx={{ fontSize: 16, color: 'grey.400' }} />
-                        )}
-                      </Box>
-                    </Tooltip>
-
-                    {/* 配分 */}
-                    <Tooltip title={status.hasAllocation ? '配分完了' : status.hasOverAllocation ? '配分超過' : '配分未完了'} arrow>
-                      <Box>
-                        {status.hasAllocation ? (
-                          <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                        ) : status.hasOverAllocation ? (
-                          <WarningIcon sx={{ fontSize: 16, color: 'error.main' }} />
-                        ) : (
-                          <UncheckedIcon sx={{ fontSize: 16, color: 'grey.400' }} />
-                        )}
-                      </Box>
-                    </Tooltip>
-                  </Stack>
+                  {/* 4行目: 店着原価 | 税込売価（ステップ3以降のみ） */}
+                  {activeStep >= 2 && status.hasPricing && (
+                    <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
+                      {product.storeCost && (
+                        <>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            ¥{product.storeCost.toLocaleString()}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                            |
+                          </Typography>
+                        </>
+                      )}
+                      {product.priceExcludingTax && (
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                          ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
 
                   {/* 配分状況 */}
                   {status.hasPricing && (
-                    <Box sx={{ mt: 1 }}>
+                    <Box sx={{ mt: 0.75, pt: 0.75, borderTop: 1, borderColor: 'grey.200' }}>
                       <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
                         配分: {status.totalAllocated} / {product.totalDelivery}
                         {status.remaining !== 0 && (
