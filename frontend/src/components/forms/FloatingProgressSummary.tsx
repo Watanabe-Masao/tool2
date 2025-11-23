@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -76,6 +76,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
 }) => {
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const splideContainerRef = useRef<HTMLDivElement>(null);
 
   // カード長押しメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
@@ -85,6 +86,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   // カード長押しタイマー
   const cardLongPressTimer = useRef<number | null>(null);
   const cardLongPressStartPos = useRef<{ x: number; y: number } | null>(null);
+  // Splideドラッグ状態を追跡（ドラッグ中は長押し検出を無効化）
+  const isDragging = useRef(false);
 
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
@@ -93,6 +96,9 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
    * カード長押し開始
    */
   const handleCardLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
+    // Splideドラッグ中は長押し検出をスキップ
+    if (isDragging.current) return;
+
     const target = e.currentTarget as HTMLElement;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -110,6 +116,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
    * カード長押し中の移動（スクロール検出）
    */
   const handleCardLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    // Splideドラッグ中は処理をスキップ
+    if (isDragging.current) return;
     if (!cardLongPressStartPos.current || !cardLongPressTimer.current) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -189,6 +197,38 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       resizeObserver.disconnect();
     };
   }, [onHeightChange, expanded, isProductMode, formData.products.length]);
+
+  /**
+   * Splideのドラッグイベントを監視
+   */
+  useEffect(() => {
+    if (!splideContainerRef.current || !isProductMode) return;
+
+    // SplideインスタンスをDOM要素から取得
+    const splideElement = splideContainerRef.current.querySelector('.splide') as any;
+    if (!splideElement || !splideElement.splide) return;
+
+    const splide = splideElement.splide;
+
+    // ドラッグ開始時
+    const onDragHandler = () => {
+      isDragging.current = true;
+      handleCardLongPressEnd(); // 既存の長押しタイマーをキャンセル
+    };
+
+    // ドラッグ終了時
+    const onDraggedHandler = () => {
+      isDragging.current = false;
+    };
+
+    splide.on('drag', onDragHandler);
+    splide.on('dragged', onDraggedHandler);
+
+    return () => {
+      splide.off('drag', onDragHandler);
+      splide.off('dragged', onDraggedHandler);
+    };
+  }, [isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -345,7 +385,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         </Box>
 
         {/* Splideスライダー */}
-        <Box sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
+        <Box ref={splideContainerRef} sx={{ px: 2, pb: 2, overflow: 'hidden' }}>
           <Splide
             options={{
               type: 'slide',
