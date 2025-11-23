@@ -53,8 +53,6 @@ interface FloatingProgressSummaryProps {
   onRemoveProduct?: (index: number) => void;
   /** 商品フィールドクリアハンドラー */
   onClearProduct?: (index: number) => void;
-  /** 商品並べ替えハンドラー */
-  onReorderProducts?: (fromIndex: number, toIndex: number) => void;
 }
 
 /**
@@ -74,7 +72,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onHeightChange,
   onRemoveProduct,
   onClearProduct,
-  onReorderProducts,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -83,14 +80,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProductIndex, setMenuProductIndex] = useState<number | null>(null);
   const cardMenuOpen = Boolean(cardMenuAnchor);
-
-  // ドラッグ＆ドロップの状態
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [dragOffset, setDragOffset] = useState(0); // 指の移動オフセット
-  const longPressTimer = React.useRef<number | null>(null);
-  const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
-  const isDragging = React.useRef(false);
 
   // ステップ2-5では商品情報モードを表示
   const isProductMode = activeStep >= 1 && activeStep <= 4 && activeProductIndex !== undefined;
@@ -101,82 +90,6 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const handleCardMenuClose = () => {
     setCardMenuAnchor(null);
     setMenuProductIndex(null);
-  };
-
-  /**
-   * 長押し開始（ドラッグ開始の検出）
-   */
-  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    dragStartPos.current = { x: clientX, y: clientY };
-    isDragging.current = false;
-
-    // 500ms長押しでドラッグモード開始
-    longPressTimer.current = window.setTimeout(() => {
-      isDragging.current = true;
-      setDragIndex(index);
-      setDropIndex(index);
-    }, 500);
-  };
-
-  /**
-   * ドラッグ中の移動
-   */
-  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!dragStartPos.current) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const deltaX = Math.abs(clientX - dragStartPos.current.x);
-    const deltaY = Math.abs(clientY - dragStartPos.current.y);
-
-    // 移動が検出されたら長押しタイマーをキャンセル（ドラッグ開始前のみ）
-    if (!isDragging.current && (deltaX > 10 || deltaY > 10)) {
-      if (longPressTimer.current) {
-        window.clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-      }
-      dragStartPos.current = null;
-      return;
-    }
-
-    // ドラッグ中の場合、ドロップ位置とオフセットを計算
-    if (isDragging.current && dragIndex !== null) {
-      // 水平方向の移動距離を計算
-      const moveDistance = clientX - dragStartPos.current.x;
-      setDragOffset(moveDistance); // 指の移動オフセットを更新
-
-      // ドロップ位置を計算
-      const cardWidth = 188; // カード幅 + gap
-      const offset = Math.round(moveDistance / cardWidth);
-      const newDropIndex = Math.max(0, Math.min(formData.products.length - 1, dragIndex + offset));
-      setDropIndex(newDropIndex);
-    }
-  };
-
-  /**
-   * ドラッグ終了
-   */
-  const handleDragEnd = () => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-
-    // ドラッグが完了していて、位置が変わった場合、並び替えを実行
-    if (isDragging.current && dragIndex !== null && dropIndex !== null && dragIndex !== dropIndex && onReorderProducts) {
-      onReorderProducts(dragIndex, dropIndex);
-    }
-
-    // 状態をリセット
-    isDragging.current = false;
-    setDragIndex(null);
-    setDropIndex(null);
-    setDragOffset(0);
-    dragStartPos.current = null;
   };
 
   /**
@@ -389,187 +302,163 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
             {formData.products.map((product, index) => {
               const status = getProductStatus(product);
               const isActive = index === activeProductIndex;
-              const isBeingDragged = dragIndex === index;
-              const isDropTarget = dropIndex === index && dragIndex !== index;
 
               return (
                 <SwiperSlide key={index} style={{ width: 'auto' }}>
-                  <Card
-                    onClick={() => {
-                      // ドラッグ中はクリックを無視
-                      if (!isDragging.current) {
+                  <Box>
+                    {/* 商品番号（カード外） */}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        textAlign: 'center',
+                        fontWeight: 700,
+                        color: isActive ? 'primary.main' : 'text.secondary',
+                        fontSize: '0.7rem',
+                        mb: 0.5,
+                      }}
+                    >
+                      商品 {index + 1}
+                    </Typography>
+
+                    <Card
+                      onClick={() => {
+                        // クリックで商品を選択
                         onProductChange?.(index);
-                      }
-                    }}
-                    onTouchStart={(e) => handleLongPressStart(e, index)}
-                    onTouchMove={handleDragMove}
-                    onTouchEnd={handleDragEnd}
-                    onMouseDown={(e) => handleLongPressStart(e, index)}
-                    onMouseMove={handleDragMove}
-                    onMouseUp={handleDragEnd}
-                    onMouseLeave={handleDragEnd}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      // ドラッグ中はコンテキストメニューを無視
-                      if (!isDragging.current) {
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
                         setMenuProductIndex(index);
                         setCardMenuAnchor(e.currentTarget);
-                      }
-                    }}
-                    sx={{
-                      minWidth: 180,
-                      maxWidth: 180,
-                      cursor: isBeingDragged ? 'grabbing' : 'grab',
-                      border: isActive ? 2 : 1,
-                      borderColor: isActive ? 'primary.main' : 'grey.300',
-                      bgcolor: isActive ? 'primary.50' : 'background.paper',
-                      opacity: isBeingDragged ? 0.9 : 1,
-                      transform: isBeingDragged
-                        ? `translateX(${dragOffset}px) translateY(-12px) rotate(-3deg) scale(1.08)`
-                        : isDropTarget
-                        ? 'scale(1.05)'
-                        : 'scale(1)',
-                      transition: isBeingDragged
-                        ? 'opacity 0.2s, box-shadow 0.2s, z-index 0s'
-                        : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: isBeingDragged ? 12 : isDropTarget ? 4 : 1,
-                      zIndex: isBeingDragged ? 10 : 1,
-                    }}
-                  >
-                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                      {/* 1行目: 商品番号 + 帳合先 + ステータスアイコン */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                            #{index + 1}
+                      }}
+                      sx={{
+                        minWidth: 180,
+                        maxWidth: 180,
+                        cursor: 'pointer',
+                        border: isActive ? 2 : 1,
+                        borderColor: isActive ? 'primary.main' : 'grey.300',
+                        bgcolor: isActive ? 'primary.50' : 'background.paper',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          boxShadow: 2,
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                        {/* 1行目: 帳合先 + ステータスアイコン */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              color: 'text.primary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            {product.supplier || '帳合先未設定'}
                           </Typography>
-                          {product.supplier && (
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontSize: '0.65rem',
-                                color: 'text.secondary',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {product.supplier}
-                            </Typography>
-                          )}
+                          {/* ステータスアイコン（右側） */}
+                          <Stack direction="row" spacing={0.5}>
+                            {status.hasBasicInfo ? (
+                              <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                            ) : (
+                              <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                            )}
+                            {status.hasPricing ? (
+                              <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                            ) : (
+                              <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                            )}
+                            {status.hasAllocation ? (
+                              <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                            ) : status.hasOverAllocation ? (
+                              <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                            ) : (
+                              <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                            )}
+                          </Stack>
                         </Box>
-                        {/* ステータスアイコン（右側） */}
-                        <Stack direction="row" spacing={0.5}>
-                          {status.hasBasicInfo ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                          {status.hasPricing ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                          {status.hasAllocation ? (
-                            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                          ) : status.hasOverAllocation ? (
-                            <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
-                          ) : (
-                            <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
-                          )}
-                        </Stack>
-                      </Box>
 
-                      {/* 2行目: 産地 | 品名 */}
-                      <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                        {product.origin && (
-                          <>
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                              {product.origin}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                              |
-                            </Typography>
-                          </>
-                        )}
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            color: 'text.primary',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            flex: 1,
-                          }}
-                        >
-                          {product.name || '未入力'}
-                        </Typography>
-                      </Box>
-
-                      {/* 3行目: 規格 | 入数+単位 */}
-                      <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                        {product.specification && (
-                          <>
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                              {product.specification}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                              |
-                            </Typography>
-                          </>
-                        )}
-                        {product.quantityPerPackage && (
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                            {product.quantityPerPackage}{product.unit || ''}
-                          </Typography>
-                        )}
-                      </Box>
-
-                      {/* 4行目: 店着原価 | 税込売価（ステップ3以降のみ） */}
-                      {activeStep >= 2 && status.hasPricing && (
-                        <Box sx={{ display: 'flex', gap: 1, mb: 0.5, alignItems: 'center' }}>
-                          {product.storeCost && (
+                        {/* 2行目: 産地 | 商品名 */}
+                        <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                          {product.origin && (
                             <>
-                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                                ¥{product.storeCost.toLocaleString()}
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                                {product.origin}
                               </Typography>
                               <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
                                 |
                               </Typography>
                             </>
                           )}
-                          {product.priceExcludingTax && (
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                              ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-
-                      {/* 配分状況 */}
-                      {status.hasPricing && (
-                        <Box sx={{ mt: 0.75, pt: 0.75, borderTop: 1, borderColor: 'grey.200' }}>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                            配分: {status.totalAllocated} / {product.totalDelivery}
-                            {status.remaining !== 0 && (
-                              <Box
-                                component="span"
-                                sx={{
-                                  ml: 0.5,
-                                  color: status.remaining > 0 ? 'warning.main' : 'error.main',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
-                              </Box>
-                            )}
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: 'text.primary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                            }}
+                          >
+                            {product.name || '商品名未入力'}
                           </Typography>
                         </Box>
-                      )}
-                    </CardContent>
-                  </Card>
+
+                        {/* 3行目: 店着原価 | 税込売価 */}
+                        {(product.storeCost || product.priceExcludingTax) && (
+                          <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                            {product.storeCost && (
+                              <>
+                                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                  原価 ¥{product.storeCost.toLocaleString()}
+                                </Typography>
+                                {product.priceExcludingTax && (
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                    |
+                                  </Typography>
+                                )}
+                              </>
+                            )}
+                            {product.priceExcludingTax && (
+                              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                売価 ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+
+                        {/* 配分状況 */}
+                        {status.hasPricing && (
+                          <Box sx={{ mt: 0.5, pt: 0.5, borderTop: 1, borderColor: 'grey.200' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                              配分: {status.totalAllocated} / {product.totalDelivery}
+                              {status.remaining !== 0 && (
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    ml: 0.5,
+                                    color: status.remaining > 0 ? 'warning.main' : 'error.main',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
+                                </Box>
+                              )}
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Box>
                 </SwiperSlide>
               );
             })}

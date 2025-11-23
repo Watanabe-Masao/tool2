@@ -96,6 +96,14 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // 商品並べ替えモーダルの状態
   const [reorderModalOpen, setReorderModalOpen] = useState(false);
 
+  // ドラッグ&ドロップの状態
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0); // 垂直方向の移動オフセット
+  const longPressTimer = React.useRef<number | null>(null);
+  const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
+  const isDragging = React.useRef(false);
+
   // PL（プリセット）履歴を取得（全帳合先の履歴）
   const { history: presetHistory, loadHistory: reloadPresetHistory } = useProductHistory(suppliers, undefined);
 
@@ -271,6 +279,90 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     if (activeTabIndex >= index && activeTabIndex > 0) {
       setActiveTabIndex(activeTabIndex - 1);
     }
+  };
+
+  /**
+   * 長押し開始（ドラッグ開始の検出）
+   */
+  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, index: number) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    dragStartPos.current = { x: clientX, y: clientY };
+    isDragging.current = false;
+
+    // 500ms長押しでドラッグモード開始
+    longPressTimer.current = window.setTimeout(() => {
+      isDragging.current = true;
+      setDragIndex(index);
+      setDropIndex(index);
+    }, 500);
+  };
+
+  /**
+   * ドラッグ中の移動
+   */
+  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!dragStartPos.current) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = Math.abs(clientX - dragStartPos.current.x);
+    const deltaY = Math.abs(clientY - dragStartPos.current.y);
+
+    // 移動が検出されたら長押しタイマーをキャンセル（ドラッグ開始前のみ）
+    if (!isDragging.current && (deltaX > 10 || deltaY > 10)) {
+      if (longPressTimer.current) {
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+      dragStartPos.current = null;
+      return;
+    }
+
+    // ドラッグ中の場合、ドロップ位置とオフセットを計算
+    if (isDragging.current && dragIndex !== null) {
+      // 垂直方向の移動距離を計算
+      const moveDistance = clientY - dragStartPos.current.y;
+      setDragOffset(moveDistance); // 指の移動オフセットを更新
+
+      // ドロップ位置を計算
+      const itemHeight = 65; // ListItem高さの概算
+      const offset = Math.round(moveDistance / itemHeight);
+      const newDropIndex = Math.max(0, Math.min(fields.length - 1, dragIndex + offset));
+      setDropIndex(newDropIndex);
+    }
+  };
+
+  /**
+   * ドラッグ終了
+   */
+  const handleDragEnd = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    // ドラッグが完了していて、位置が変わった場合、並び替えを実行
+    if (isDragging.current && dragIndex !== null && dropIndex !== null && dragIndex !== dropIndex) {
+      move(dragIndex, dropIndex);
+      // アクティブタブのインデックスを調整
+      if (activeTabIndex === dragIndex) {
+        setActiveTabIndex(dropIndex);
+      } else if (dragIndex < dropIndex && activeTabIndex > dragIndex && activeTabIndex <= dropIndex) {
+        setActiveTabIndex(activeTabIndex - 1);
+      } else if (dragIndex > dropIndex && activeTabIndex >= dropIndex && activeTabIndex < dragIndex) {
+        setActiveTabIndex(activeTabIndex + 1);
+      }
+    }
+
+    // 状態をリセット
+    isDragging.current = false;
+    setDragIndex(null);
+    setDropIndex(null);
+    setDragOffset(0);
+    dragStartPos.current = null;
   };
 
   return (
@@ -461,18 +553,41 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       >
         <DialogTitle>商品の並べ替え</DialogTitle>
         <DialogContent>
-          <List sx={{ pt: 0 }}>
+          <List
+            sx={{ pt: 0 }}
+            onTouchMove={handleDragMove}
+            onMouseMove={handleDragMove}
+          >
             {fields.map((field, index) => {
               const product = products?.[index];
+              const isBeingDragged = dragIndex === index;
+              const isDropTarget = dropIndex === index && dragIndex !== index;
               return (
                 <ListItem
                   key={field.id}
+                  onTouchStart={(e) => handleLongPressStart(e, index)}
+                  onTouchEnd={handleDragEnd}
+                  onMouseDown={(e) => handleLongPressStart(e, index)}
+                  onMouseUp={handleDragEnd}
+                  onMouseLeave={handleDragEnd}
                   sx={{
                     border: 1,
-                    borderColor: 'divider',
+                    borderColor: isBeingDragged || isDropTarget ? 'primary.main' : 'divider',
                     borderRadius: 1,
                     mb: 1,
                     bgcolor: 'background.paper',
+                    cursor: isBeingDragged ? 'grabbing' : 'grab',
+                    opacity: isBeingDragged ? 0.9 : 1,
+                    transform: isBeingDragged
+                      ? `translateY(${dragOffset}px) scale(1.05)`
+                      : isDropTarget
+                      ? 'scale(1.03)'
+                      : 'scale(1)',
+                    transition: isBeingDragged
+                      ? 'opacity 0.2s, box-shadow 0.2s, border-color 0.2s'
+                      : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: isBeingDragged ? 8 : isDropTarget ? 2 : 0,
+                    zIndex: isBeingDragged ? 10 : 1,
                   }}
                   secondaryAction={
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -489,7 +604,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                             }
                           }
                         }}
-                        disabled={index === 0}
+                        disabled={index === 0 || isDragging.current}
                       >
                         <ArrowUpward fontSize="small" />
                       </IconButton>
@@ -506,14 +621,14 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                             }
                           }
                         }}
-                        disabled={index === fields.length - 1}
+                        disabled={index === fields.length - 1 || isDragging.current}
                       >
                         <ArrowDownward fontSize="small" />
                       </IconButton>
                     </Box>
                   }
                 >
-                  <ListItemButton sx={{ cursor: 'default', '&:hover': { bgcolor: 'transparent' } }}>
+                  <ListItemButton sx={{ cursor: 'inherit', '&:hover': { bgcolor: 'transparent' } }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" fontWeight="medium">
                         商品 {index + 1}
