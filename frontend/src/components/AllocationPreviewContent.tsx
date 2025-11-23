@@ -172,7 +172,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
             color: value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
-            cursor: 'pointer', // 編集可能を示すカーソル
+            cursor: 'text', // 編集可能を示すカーソル
           };
         },
         valueFormatter: (params) => {
@@ -184,13 +184,16 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           const num = parseInt(params.newValue, 10);
           return isNaN(num) || num < 0 ? 0 : num;
         },
-        onCellValueChanged: (params) => {
-          // セルの値が変更されたときの処理
+        valueSetter: (params) => {
+          // セルの値を更新する代わりに、親コンポーネントに通知
           if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
-            const newValue = params.newValue as number;
+            const parsedValue = parseInt(params.newValue, 10);
+            const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
             onAllocationChange(productIndex, storeIndex, newValue);
           }
+          // AG-Gridに値を更新させない（React側で管理）
+          return false;
         },
       });
     });
@@ -267,6 +270,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       animateRows: true,
       onRowClicked: handleRowClicked,
       rowSelection: 'single',
+      singleClickEdit: true, // シングルクリックで編集開始
+      stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
     }),
     []
   );
