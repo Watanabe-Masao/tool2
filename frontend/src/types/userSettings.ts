@@ -30,6 +30,8 @@ export interface UserSettings {
   userId: string;
   /** メール送信時の表示名 */
   emailSenderName?: string;
+  /** 担当バイヤー名 */
+  buyerName?: string;
   /** 作成日時 */
   createdAt: Date;
   /** 更新日時 */
@@ -44,6 +46,8 @@ export interface CreateUserSettingsInput {
   userId: string;
   /** メール送信時の表示名 */
   emailSenderName?: string;
+  /** 担当バイヤー名 */
+  buyerName?: string;
 }
 
 /**
@@ -52,4 +56,6 @@ export interface CreateUserSettingsInput {
 export interface UpdateUserSettingsInput {
   /** メール送信時の表示名 */
   emailSenderName?: string;
+  /** 担当バイヤー名 */
+  buyerName?: string;
 }

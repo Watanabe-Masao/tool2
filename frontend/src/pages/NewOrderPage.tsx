@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -60,6 +60,10 @@ export const NewOrderPage: React.FC = () => {
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [bookNameDialog, setBookNameDialog] = useState<{
+    open: boolean;
+    bookName: string;
+  }>({ open: false, bookName: '' });
   const [supplierRemovalDialog, setSupplierRemovalDialog] = useState<{
     open: boolean;
     suppliersToRemove: string[];
@@ -113,8 +117,6 @@ export const NewOrderPage: React.FC = () => {
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       deliveryDate: new Date(),
-      customBookName: '',
-      buyerName: '',
       suppliers: [],
       products: [
         {
@@ -133,6 +135,7 @@ export const NewOrderPage: React.FC = () => {
     watch,
     reset,
     setValue,
+    getValues,
     formState: { errors },
   } = methods;
 
@@ -406,8 +409,8 @@ export const NewOrderPage: React.FC = () => {
         return;
       }
 
-      // バイヤー名を取得（カスタム入力 > ユーザー名 > メールアドレス > '匿名'）
-      const buyerName = data.buyerName?.trim() || user?.displayName || user?.email || '匿名';
+      // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
+      const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
 
       // オフライン同期を使用してデータを保存
       // オンライン時: Firestore + API呼び出し
@@ -459,76 +462,97 @@ export const NewOrderPage: React.FC = () => {
         }
       }
 
-      // オンライン時のみテンプレート生成API呼び出し
+      // オンライン時: ブック名ダイアログを表示してからテンプレート生成
       if (isOnline) {
-        // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
-        const dateStr = format(data.deliveryDate, 'yyyyMMdd');
-        const customName = data.customBookName?.trim() || '';
-        const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
-
-        // デバッグログ
-        console.log('📝 Custom filename generation:');
-        console.log('  - data.customBookName:', data.customBookName);
-        console.log('  - customName (trimmed):', customName);
-        console.log('  - dateStr:', dateStr);
-        console.log('  - customFilename:', customFilename);
-
-        const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
-
-        console.log('Template generated:', response);
-
-        // 生成されたファイル情報を保存
-        setGeneratedFiles({
-          filename: response.filename,
-          downloadUrl: response.download_url,
-          pdfFilename: response.pdf_filename,
-          pdfDownloadUrl: response.pdf_download_url,
-        });
-
-        // ExcelファイルをBlobとして取得（メール送信用）
-        try {
-          const blob = await fetchExcelAsBlob(response.download_url);
-          setExcelBlob(blob);
-          console.log('Excel blob fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch Excel blob:', err);
-          // Blobの取得に失敗してもテンプレート生成は成功しているので続行
-        }
-
-        hideLoading();
-
-        // 成功メッセージ
-        showSuccess('テンプレートを生成しました');
-
-        // SessionStorageの下書きをクリア（成功時）
-        if (user) {
-          SessionStorageService.clearDraft(user.uid);
-          setHasUnsavedChanges(false);
-        }
-
-        // プレビュー画面を表示
-        setShowGeneratedPreview(true);
-      } else {
-        // オフライン時
-        hideLoading();
-        showSuccess('データをローカルに保存しました。オンライン復帰時に自動同期されます。');
-
-        // オフライン時もSessionStorageの下書きをクリア
-        if (user) {
-          SessionStorageService.clearDraft(user.uid);
-          setHasUnsavedChanges(false);
-        }
+        // ブック名入力ダイアログを表示
+        setBookNameDialog({ open: true, bookName: '' });
+        return; // ダイアログ確認後にgenerateTemplateWithBookNameを呼び出す
       }
+
+      // オフライン時: テンプレート生成をスキップ
+      showSuccess('オフラインのため配分表を保存しました');
+      hideLoading();
     } catch (error) {
       hideLoading();
-      console.error('Template generation error:', error);
       showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
     }
   };
 
   /**
-   * 現在のステップのコンテンツを返す
+   * ブック名確認後のテンプレート生成
    */
+  const generateTemplateWithBookName = async (data: OrderFormData, buyerName: string, bookName: string) => {
+    try {
+      showLoading();
+
+      // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
+      const dateStr = format(data.deliveryDate, 'yyyyMMdd');
+      const customName = bookName.trim() || '';
+      const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
+
+      // デバッグログ
+      console.log('📝 Custom filename generation:');
+      console.log('  - bookName:', bookName);
+      console.log('  - customName (trimmed):', customName);
+      console.log('  - dateStr:', dateStr);
+      console.log('  - customFilename:', customFilename);
+
+      const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
+
+      console.log('Template generated:', response);
+
+      // 生成されたファイル情報を保存
+      setGeneratedFiles({
+        filename: response.filename,
+        downloadUrl: response.download_url,
+        pdfFilename: response.pdf_filename,
+        pdfDownloadUrl: response.pdf_download_url,
+      });
+
+      // ExcelファイルをBlobとして取得（メール送信用）
+      try {
+        const blob = await fetchExcelAsBlob(response.download_url);
+        setExcelBlob(blob);
+        console.log('Excel blob fetched successfully');
+      } catch (err) {
+        console.error('Failed to fetch Excel blob:', err);
+        // Blobの取得に失敗してもテンプレート生成は成功しているので続行
+      }
+
+      hideLoading();
+
+      // 成功メッセージ
+      showSuccess('テンプレートを生成しました');
+
+      // SessionStorageの下書きをクリア（成功時）
+      if (user) {
+        SessionStorageService.clearDraft(user.uid);
+        setHasUnsavedChanges(false);
+      }
+
+      // プレビュー画面を表示
+      setShowGeneratedPreview(true);
+    } catch (error) {
+      hideLoading();
+      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
+    }
+  };
+
+  /**
+   * ブック名ダイアログの確認ハンドラー
+   */
+  const handleBookNameDialogConfirm = async () => {
+    const data = getValues();
+    // バイヤー名を取得
+    const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
+
+    // ダイアログを閉じる
+    setBookNameDialog({ open: false, bookName: '' });
+
+    // テンプレート生成
+    await generateTemplateWithBookName(data, buyerName, bookNameDialog.bookName);
+  };
+
   /**
    * Excelファイルをダウンロード
    */
@@ -579,7 +603,6 @@ export const NewOrderPage: React.FC = () => {
         window.URL.revokeObjectURL(blobUrl);
 
         hideLoading();
-        showSuccess('PDFをダウンロードしました');
       } catch (error) {
         hideLoading();
         console.error('PDF download error:', error);
@@ -766,6 +789,40 @@ export const NewOrderPage: React.FC = () => {
             onSendEmail={() => setShowEmailModal(true)}
           />
         )}
+
+        {/* ブック名入力ダイアログ */}
+        <Dialog open={bookNameDialog.open} onClose={() => setBookNameDialog({ open: false, bookName: '' })}>
+          <DialogTitle>ブック名を入力</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              生成するExcelファイルのブック名を指定できます（オプション）
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="ブック名"
+              placeholder="例: テスト"
+              fullWidth
+              value={bookNameDialog.bookName}
+              onChange={(e) => setBookNameDialog({ ...bookNameDialog, bookName: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleBookNameDialogConfirm();
+                }
+              }}
+              helperText="未入力の場合は日付のみのファイル名になります"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBookNameDialog({ open: false, bookName: '' })} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleBookNameDialogConfirm} variant="contained" color="primary">
+              生成
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* ダウンロードモーダル（iPhone Safari用） */}
         {generatedFiles && (

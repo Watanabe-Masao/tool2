@@ -32,6 +32,7 @@ export class UserSettingsService {
         id: snapshot.id,
         userId: data.userId,
         emailSenderName: data.emailSenderName,
+        buyerName: data.buyerName,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       };
@@ -53,6 +54,7 @@ export class UserSettingsService {
       const data = {
         userId: input.userId,
         emailSenderName: input.emailSenderName || '',
+        buyerName: input.buyerName || '',
         createdAt: now,
         updatedAt: now,
       };
@@ -63,6 +65,7 @@ export class UserSettingsService {
         id: settingsRef.id,
         userId: input.userId,
         emailSenderName: input.emailSenderName,
+        buyerName: input.buyerName,
         createdAt: now.toDate(),
         updatedAt: now.toDate(),
       };

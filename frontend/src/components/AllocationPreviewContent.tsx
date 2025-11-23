@@ -105,12 +105,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
   const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
 
-  // カスタムブック名を生成（配分表_{customName}_{YYYYMMDD}）
+  // ブック名を生成（配分表_{YYYYMMDD}）
   const bookName = useMemo(() => {
     const dateStr = format(formData.deliveryDate, 'yyyyMMdd');
-    const customName = formData.customBookName?.trim() || '';
-    return customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
-  }, [formData.deliveryDate, formData.customBookName]);
+    return `配分表_${dateStr}`;
+  }, [formData.deliveryDate]);
 
   /**
    * グリッド行データを生成

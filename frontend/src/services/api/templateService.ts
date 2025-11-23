@@ -73,7 +73,6 @@ export class TemplateService {
     // デバッグログ: カスタムファイル名の確認
     console.log('🔍 Template generation debug:');
     console.log('  - customFilename parameter:', customFilename);
-    console.log('  - formData.customBookName:', formData.customBookName);
     console.log('  - formData.deliveryDate:', formData.deliveryDate);
 
     if (customFilename) {

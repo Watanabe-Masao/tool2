@@ -108,20 +108,6 @@ export const orderFormSchema = z
       invalid_type_error: '有効な日付を選択してください',
     }),
 
-    /** カスタムブック名（オプション） */
-    customBookName: z
-      .string()
-      .max(50, 'ブック名は50文字以内で入力してください')
-      .optional()
-      .default(''),
-
-    /** 担当バイヤー名（オプション） */
-    buyerName: z
-      .string()
-      .max(50, 'バイヤー名は50文字以内で入力してください')
-      .optional()
-      .default(''),
-
     /** 帳合先（複数選択可能） */
     suppliers: z
       .array(z.string().max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`))
