@@ -79,6 +79,7 @@ interface ProductStatistics {
   costAmount: number;
   grossProfit: number;
   grossProfitMargin: number;
+  [key: string]: string | number;
 }
 
 /**
@@ -92,6 +93,7 @@ interface CategoryStatistics {
   costAmount: number;
   grossProfit: number;
   grossProfitMargin: number;
+  [key: string]: string | number;
 }
 
 /**
