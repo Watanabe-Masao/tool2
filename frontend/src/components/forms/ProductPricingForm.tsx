@@ -282,107 +282,6 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         </Alert>
       )}
 
-      {/* 全体集計サマリー（折りたたみ可能） */}
-      {fields.length > 0 && (
-        <Accordion defaultExpanded sx={{ mb: 2, bgcolor: 'primary.50', border: '2px solid', borderColor: 'primary.main' }}>
-          <AccordionSummary
-            expandIcon={<ExpandMore />}
-            sx={{ minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
-          >
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'primary.main' }}>
-              全体集計
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={2}>
-              {/* 1列目 */}
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {/* 総原価（センター着） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（センター着）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalCenterCost.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 総原価（センターフィー込） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（センターフィー込）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalCenterCostWithFee.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 全体差益 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      全体差益
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="success.main">
-                      ¥{summary.totalProfit.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 出荷原価率 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      出荷原価率
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="info.main">
-                      {summary.shippingCostRate}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-
-              {/* 2列目 */}
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {/* 総原価（店着） */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総原価（店着）
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalStoreCost.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 総売価 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      総売価
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      ¥{summary.totalSellingPrice.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 粗利額 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      粗利額
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="success.main">
-                      ¥{summary.grossProfit.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {/* 値入率 */}
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      値入率
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="info.main">
-                      {summary.grossProfitMargin}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-      )}
-
       {/* 商品ナビゲーション情報 */}
       <Box sx={{ mb: 2, px: 1 }}>
         <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.6, fontWeight: 'bold' }}>
@@ -617,6 +516,107 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           );
         })}
       </Box>
+
+      {/* 全体集計サマリー（画面最下部） */}
+      {fields.length > 0 && (
+        <Accordion defaultExpanded sx={{ mt: 3, bgcolor: 'primary.50', border: '2px solid', borderColor: 'primary.main' }}>
+          <AccordionSummary
+            expandIcon={<ExpandMore />}
+            sx={{ minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
+          >
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'primary.main' }}>
+              全体集計
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Grid container spacing={2}>
+              {/* 1列目 */}
+              <Grid item xs={6}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* 総原価（センター着） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（センター着）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalCenterCost.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 総原価（センターフィー込） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（センターフィー込）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalCenterCostWithFee.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 全体差益 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      全体差益
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                      ¥{summary.totalProfit.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 出荷原価率 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      出荷原価率
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="info.main">
+                      {summary.shippingCostRate}%
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+
+              {/* 2列目 */}
+              <Grid item xs={6}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* 総原価（店着） */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総原価（店着）
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalStoreCost.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 総売価 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      総売価
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ¥{summary.totalSellingPrice.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 粗利額 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      粗利額
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                      ¥{summary.grossProfit.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {/* 値入率 */}
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                      値入率
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="info.main">
+                      {summary.grossProfitMargin}%
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      )}
     </Box>
   );
 };

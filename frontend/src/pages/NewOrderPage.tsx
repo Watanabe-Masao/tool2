@@ -29,18 +29,19 @@ import { format } from 'date-fns';
 /**
  * フォームのステップ数
  */
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 /**
  * 新規注文作成ページ
  *
- * 4ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
+ * 5ステップのフォームで注文データを入力し、Excelテンプレートを生成します。
  *
  * ステップ:
  * 1. 店着日選択・帳合先入力
  * 2. 商品情報入力（品名、産地、規格、入数）
  * 3. 商品情報2入力（原価、売価、総納品数）
  * 4. 36店舗への配分入力
+ * 5. 配分プレビュー・生成
  */
 export const NewOrderPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -69,6 +70,12 @@ export const NewOrderPage: React.FC = () => {
     affectedProductsCount: 0,
     newSuppliers: [],
   });
+
+  // 店舗のロック状態（ステップ4とステップ5で共有）
+  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
+
+  // カテゴリフィルター（ステップ4とステップ5で共有）
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
 
   // 自動保存用のタイマー
   const autoSaveTimer = useRef<number | null>(null);
@@ -114,6 +121,7 @@ export const NewOrderPage: React.FC = () => {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = methods;
 
@@ -329,6 +337,16 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
+   * プレビュー画面での配分数量変更ハンドラ
+   */
+  const handleAllocationChange = (productIndex: number, storeIndex: number, newValue: number) => {
+    setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  /**
    * フォーム送信
    */
   const onSubmit = async (data: OrderFormData) => {
@@ -381,6 +399,26 @@ export const NewOrderPage: React.FC = () => {
             product.unit || '',
             product.categoryCode
           );
+
+          // 価格履歴を保存（商品名・規格・入数をキーとして）
+          if (
+            product.centerCost &&
+            product.storeCost &&
+            product.priceExcludingTax &&
+            product.quantityPerPackage
+          ) {
+            await FirestoreService.savePricingHistory(
+              user.uid,
+              product.name,
+              product.specification || '',
+              product.quantityPerPackage,
+              product.unit || '',
+              product.centerCost,
+              product.storeCost,
+              product.priceExcludingTax,
+              product.centerFeeRate
+            );
+          }
         }
       }
 
@@ -446,11 +484,17 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleDownloadExcel = () => {
     if (generatedFiles) {
-      // レスポンスの download_url を直接使用
+      // TemplateService.getDownloadUrl()を使用して絶対URLを取得
+      // Firebase HostingからRender.com APIへのアクセスに対応
+      const fileId = generatedFiles.downloadUrl.split('/').pop()?.split('?')[0] || '';
+      const downloadUrl = TemplateService.getDownloadUrl(fileId, 'xlsx');
+
       const link = document.createElement('a');
-      link.href = generatedFiles.downloadUrl;
+      link.href = downloadUrl;
       link.download = generatedFiles.filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -494,37 +538,6 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * プレビュー画面から戻る
-   */
-  const handleBackFromPreview = () => {
-    setShowGeneratedPreview(false);
-    setGeneratedFiles(null);
-    setExcelBlob(null);
-  };
-
-  /**
-   * 最終ステップで送信ボタンを表示
-   */
-  const renderSubmitButton = () => {
-    if (activeStep === TOTAL_STEPS - 1) {
-      return (
-        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleSubmit(onSubmit)}
-            fullWidth
-            sx={{ maxWidth: 400 }}
-          >
-            プレビュー
-          </Button>
-        </Box>
-      );
-    }
-    return null;
-  };
-
-  /**
    * 下書きを復元
    */
   const handleRestoreDraft = () => {
@@ -558,23 +571,8 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      {showGeneratedPreview && generatedFiles ? (
-        /* 生成後のプレビュー画面 */
-        <Container maxWidth="lg">
-          <Box sx={{ py: 2 }}>
-            <AllocationPreviewContent
-              formData={formData}
-              pdfFilename={generatedFiles.pdfFilename}
-              onDownloadExcel={handleDownloadExcel}
-              onDownloadPdf={handleDownloadPdf}
-              onSendEmail={() => setShowEmailModal(true)}
-              onBack={handleBackFromPreview}
-            />
-          </Box>
-        </Container>
-      ) : (
-        /* フォーム入力画面 */
-        <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
+      {/* フォーム入力画面（Step 5がプレビューを含む） */}
+      <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
           {/* オフライン時の警告 */}
           {!isOnline && (
             <Box sx={{ px: 2, pt: 2 }}>
@@ -598,6 +596,7 @@ export const NewOrderPage: React.FC = () => {
                 <Tab label="商品情報" />
                 <Tab label="価格・数量" />
                 <Tab label="店舗配分" />
+                <Tab label="プレビュー" />
               </Tabs>
 
               {/* Step 1: 店着日・帳合先 */}
@@ -647,14 +646,56 @@ export const NewOrderPage: React.FC = () => {
                     control={control}
                     errors={errors}
                     fields={productFields}
+                    lockedStores={lockedStores}
+                    setLockedStores={setLockedStores}
+                    selectedCategories={selectedCategories}
+                    setSelectedCategories={setSelectedCategories}
                   />
-                  {renderSubmitButton()}
+                </Box>
+              )}
+
+              {/* Step 5: プレビュー・生成 */}
+              {activeStep === 4 && (
+                <Box sx={{ py: 2 }}>
+                  {!showGeneratedPreview ? (
+                    /* 生成前のプレビュー */
+                    <AllocationPreviewContent
+                      formData={formData}
+                      pdfFilename={undefined}
+                      onGenerate={handleSubmit(onSubmit)}
+                      onAllocationChange={handleAllocationChange}
+                      lockedStores={lockedStores}
+                      setLockedStores={setLockedStores}
+                      selectedCategories={selectedCategories}
+                      setSelectedCategories={setSelectedCategories}
+                    />
+                  ) : (
+                    /* 生成後のプレビュー */
+                    generatedFiles && (
+                      <AllocationPreviewContent
+                        formData={formData}
+                        pdfFilename={generatedFiles.pdfFilename}
+                        onDownloadExcel={handleDownloadExcel}
+                        onDownloadPdf={handleDownloadPdf}
+                        onSendEmail={() => setShowEmailModal(true)}
+                        onBack={() => {
+                          setShowGeneratedPreview(false);
+                          setGeneratedFiles(null);
+                          setExcelBlob(null);
+                        }}
+                        onAllocationChange={handleAllocationChange}
+                        lockedStores={lockedStores}
+                        setLockedStores={setLockedStores}
+                        selectedCategories={selectedCategories}
+                        setSelectedCategories={setSelectedCategories}
+                      />
+                    )
+                  )}
                 </Box>
               )}
             </Box>
           </Container>
         </Box>
-      )}
 
       {/* PDFプレビューモーダル */}
         {generatedFiles && generatedFiles.pdfFilename && (

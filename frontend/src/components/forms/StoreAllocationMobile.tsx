@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Controller, useWatch } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Box,
@@ -13,11 +13,19 @@ import {
   Alert,
   ToggleButtonGroup,
   ToggleButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  LinearProgress,
 } from '@mui/material';
-import { ExpandMore, Clear, Lock } from '@mui/icons-material';
+import {
+  Lock,
+  Functions,
+  AutoFixHigh,
+  DeleteSweep,
+  CheckCircle,
+  Warning as WarningIcon,
+  Error as ErrorIcon,
+  LockOutlined,
+  LockOpenOutlined,
+} from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
@@ -55,6 +63,14 @@ interface StoreAllocationMobileProps {
   errors: FieldErrors<OrderFormData>;
   /** 総納品数 */
   totalDelivery: number;
+  /** ロックされた店舗のSet */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -69,6 +85,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   control,
   errors,
   totalDelivery,
+  lockedStores,
+  setLockedStores,
+  selectedCategories,
+  setSelectedCategories,
 }) => {
   const { user } = useAuthContext();
   const [storeSettings, setStoreSettings] = useState<Record<string, StoreSettings>>({});
@@ -136,7 +156,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             enabledStores={enabledStores}
             categories={categories}
             storeSettings={storeSettings}
-            control={control}
+            lockedStores={lockedStores}
+            setLockedStores={setLockedStores}
+            selectedCategories={selectedCategories}
+            setSelectedCategories={setSelectedCategories}
           />
         );
       }}
@@ -156,7 +179,14 @@ interface StoreAllocationMobileContentProps {
   enabledStores: Array<typeof STORE_DATA[number]>;
   categories: StoreCategory[];
   storeSettings: Record<string, StoreSettings>;
-  control: Control<OrderFormData>;
+  /** ロックされた店舗のSet（親から渡される） */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet（親から渡される） */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
@@ -175,23 +205,13 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   enabledStores,
   categories,
   storeSettings,
-  control,
+  lockedStores,
+  setLockedStores,
+  selectedCategories,
+  setSelectedCategories,
 }) => {
-  // 商品情報を取得
-  const origin = useWatch({ control, name: `products.${productIndex}.origin` });
-  const productName = useWatch({ control, name: `products.${productIndex}.name` });
-  const specification = useWatch({ control, name: `products.${productIndex}.specification` });
-  const quantityPerPackage = useWatch({ control, name: `products.${productIndex}.quantityPerPackage` });
-  const unit = useWatch({ control, name: `products.${productIndex}.unit` });
-
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('equal');
-  const [lockedStores, setLockedStores] = useState<Set<string>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    category: true,  // デフォルトでオープン
-    stores: false,   // デフォルトで閉じる
-  });
 
   // 長押し検出用のタイマー（固定機能用）
   const longPressTimer = React.useRef<number | null>(null);
@@ -414,19 +434,37 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 選択店舗の配分をクリア
+   * 未ロック店舗のみクリア（デスクトップ版互換）
    */
-  const handleClearAllocations = () => {
+  const handleClearUnlocked = () => {
     const newAllocations = [...allocations];
-    selectedStoresList.forEach((store) => {
-      const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
-      if (storeIndex !== -1) {
-        newAllocations[storeIndex] = 0;
+    STORE_DATA.forEach((store, index) => {
+      if (!lockedStores.has(store.code)) {
+        newAllocations[index] = 0;
       }
     });
     onChange(newAllocations);
+  };
+
+  /**
+   * すべてロック
+   */
+  const handleLockAll = () => {
+    const allCodes = STORE_DATA.filter((_, index) => allocations[index] > 0).map((s) => s.code);
+    setLockedStores(new Set(allCodes));
+  };
+
+  /**
+   * すべてロック解除
+   */
+  const handleUnlockAll = () => {
     setLockedStores(new Set());
   };
+
+  /**
+   * 配分進捗率を計算
+   */
+  const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
   /**
    * 店舗の固定/解除をトグル
@@ -447,7 +485,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const handleLongPressStart = (storeCode: string) => {
     longPressTimer.current = window.setTimeout(() => {
       handleToggleLock(storeCode);
-    }, 500); // 500ms長押しで固定/解除
+    }, 800); // 800ms長押しで固定/解除（以前は500ms）
   };
 
   /**
@@ -648,48 +686,41 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       onChange(newAllocations);
     } else {
       newSelectedCategories.add(categoryId);
-
-      // カテゴリーが選択されたら「配分する店舗を選択」セクションを自動的に開く
-      setExpandedSections((prev) => ({
-        ...prev,
-        stores: true,
-      }));
     }
 
     setSelectedCategories(newSelectedCategories);
   };
 
-  /**
-   * セクションの展開/折りたたみ
-   */
-  const handleToggleSection = (section: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
   return (
     <Box>
-      {/* 縦並びセクション（1-5項目） */}
-      <Stack spacing={1}>
-        {/* 1. タイトル + 総納品数統合 */}
-        <Typography variant="subtitle2" fontWeight="bold">
-          商品{productIndex + 1}：総納品数 {totalDelivery}個
-        </Typography>
-
-        {/* 2. カテゴリー絞り込み（デフォルトオープン） */}
+      {/* 縦並びセクション */}
+      <Stack spacing={1.5}>
+        {/* カテゴリー絞り込み */}
         {categories.length > 0 && (
-          <Accordion
-            expanded={expandedSections.category}
-            onChange={() => handleToggleSection('category')}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                カテゴリで絞り込み ({selectedCategories.size}選択中)
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
+          <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
+                  カテゴリー ({selectedCategories.size}選択)
+                </Typography>
+                {selectedCategories.size > 0 && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setSelectedCategories(new Set());
+                      setSelectedStores(new Set());
+                      const newAllocations = [...allocations];
+                      STORE_DATA.forEach((_, index) => {
+                        newAllocations[index] = 0;
+                      });
+                      onChange(newAllocations);
+                    }}
+                    sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                  >
+                    リセット
+                  </Button>
+                )}
+              </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
@@ -706,6 +737,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         borderColor: color.main,
                         borderWidth: 1,
                         borderStyle: 'solid',
+                        fontSize: '0.7rem',
+                        height: 24,
                         '&:hover': {
                           bgcolor: isSelected ? color.main : color.light,
                         },
@@ -716,45 +749,63 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 <Chip
                   label={`未分類 (${getUncategorizedStores().length})`}
                   onClick={() => handleToggleCategory('uncategorized')}
-                  color={selectedCategories.has('uncategorized') ? 'default' : 'default'}
-                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
                   size="small"
+                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
+                  sx={{ fontSize: '0.7rem', height: 24 }}
                 />
               </Box>
-            </AccordionDetails>
-          </Accordion>
+            </CardContent>
+          </Card>
         )}
 
-        {/* 3. 配分する店舗を選択（デフォルト閉じ） */}
-        <Accordion
-          expanded={expandedSections.stores}
-          onChange={() => handleToggleSection('stores')}
-        >
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="subtitle2" fontWeight="bold">
-              配分する店舗を選択 ({selectedStores.size}/{availableStores.length})
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
-              <Chip
-                label="全選択"
-                onClick={handleSelectAll}
-                color="primary"
-                variant="outlined"
-                size="small"
-                sx={{ fontWeight: 'medium' }}
-              />
-              <Chip
-                label="全クリア"
-                onClick={handleClearAll}
-                color="error"
-                variant="outlined"
-                size="small"
-                sx={{ fontWeight: 'medium' }}
-              />
+        {/* 店舗選択 */}
+        <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem' }}>
+                店舗選択 ({selectedStores.size}/{availableStores.length})
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Button
+                  size="small"
+                  onClick={handleSelectAll}
+                  variant="text"
+                  sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                >
+                  全選択
+                </Button>
+                <Button
+                  size="small"
+                  onClick={handleClearAll}
+                  variant="text"
+                  color="error"
+                  sx={{ fontSize: '0.65rem', minWidth: 'auto', px: 1, py: 0.25 }}
+                >
+                  クリア
+                </Button>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
+            <Box sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              maxHeight: 200,
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: 6,
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                borderRadius: 3,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                borderRadius: 3,
+                '&:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                },
+              },
+            }}>
               {availableStores.map((store) => {
                 const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
                 const quantity = allocations[storeIndex] || 0;
@@ -770,16 +821,16 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     key={store.code}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Typography variant="caption">
-                          {store.code}店
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                          {store.code}
                         </Typography>
                         {quantity > 0 && (
-                          <Typography variant="caption" sx={{ ml: 0.25, fontWeight: 'bold' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
                             ({quantity})
                           </Typography>
                         )}
                         {distributionMode === 'ratio' && ratio > 0 && (
-                          <Typography variant="caption" sx={{ ml: 0.25, color: 'text.secondary', fontSize: '0.65rem' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
                             [{ratio}%]
                           </Typography>
                         )}
@@ -795,49 +846,63 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             borderColor: color.main,
                             borderWidth: 1,
                             borderStyle: 'solid',
+                            height: 24,
                             '&:hover': {
                               bgcolor: isSelected ? color.main : color.light,
                             },
                           }
                         : {
-                            bgcolor: isSelected ? 'default' : 'transparent',
-                            borderColor: isSelected ? 'grey.400' : 'grey.300',
+                            bgcolor: isSelected ? 'primary.main' : 'transparent',
+                            color: isSelected ? 'white' : 'text.primary',
+                            borderColor: isSelected ? 'primary.main' : 'grey.300',
                             borderWidth: 1,
                             borderStyle: 'solid',
+                            height: 24,
+                            '&:hover': {
+                              bgcolor: isSelected ? 'primary.main' : 'grey.100',
+                            },
                           }
                     }
                   />
                 );
               })}
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </CardContent>
+        </Card>
 
-        {/* 4. 配分方法選択 + 統計情報 + 実行ボタン */}
-        <Card variant="outlined">
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                配分方法を選択
-              </Typography>
-              <Chip label={`総: ${totalDelivery}`} size="small" variant="outlined" />
-              <Chip label={`済: ${totalAllocated}`} size="small" variant="outlined" />
-              <Chip
-                label={`残: ${remaining}`}
-                size="small"
-                color={remaining === 0 ? 'success' : remaining < 0 ? 'error' : 'warning'}
-              />
-            </Box>
+        {/* 4. 配分方法選択 + 実行ボタン */}
+        <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
+          <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
             <ToggleButtonGroup
               value={distributionMode}
               exclusive
               onChange={(_, newMode) => newMode && setDistributionMode(newMode)}
               fullWidth
               size="small"
-              sx={{ mb: 1 }}
+              sx={{
+                mb: 0.75,
+                '& .MuiToggleButton-root': {
+                  py: 0.75,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  '&.Mui-selected': {
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                    },
+                  },
+                },
+              }}
             >
-              <ToggleButton value="equal">均等配分</ToggleButton>
-              <ToggleButton value="ratio">構成比配分</ToggleButton>
+              <ToggleButton value="equal">
+                <Functions sx={{ mr: 0.5, fontSize: '0.9rem' }} />
+                均等
+              </ToggleButton>
+              <ToggleButton value="ratio">
+                <AutoFixHigh sx={{ mr: 0.5, fontSize: '0.9rem' }} />
+                構成比
+              </ToggleButton>
             </ToggleButtonGroup>
             <Button
               variant="contained"
@@ -845,93 +910,60 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
               onClick={handleDistribute}
               fullWidth
               disabled={selectedStores.size === 0}
+              sx={{
+                py: 0.75,
+                fontWeight: 700,
+                fontSize: '0.8rem',
+              }}
             >
-              配分実行
+              {distributionMode === 'equal' ? '均等配分実行' : '構成比配分実行'}
             </Button>
           </CardContent>
         </Card>
 
         {/* 5. 配分数量入力（横スクロール形式） */}
         <Box className="swiper-no-swiping">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center', flex: 1 }}>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mr: 0.5 }}>
+          {/* 商品番号 + 配分数量入力 + アクションボタン */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.9rem' }}>
                 商品 {productIndex + 1}:
               </Typography>
-              {origin && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {origin}
-                </Box>
-              )}
-              {productName && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'primary.100',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                    fontWeight: 'medium',
-                  }}
-                >
-                  {productName}
-                </Box>
-              )}
-              {specification && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {specification}
-                </Box>
-              )}
-              {quantityPerPackage && unit && (
-                <Box
-                  component="span"
-                  sx={{
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.5,
-                    bgcolor: 'grey.200',
-                    color: 'text.primary',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {quantityPerPackage}
-                  {unit}
-                </Box>
-              )}
+              <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                配分数量入力
+              </Typography>
             </Box>
-            {selectedStoresList.length > 0 && (
-              <Chip
-                icon={<Clear />}
-                label="クリア"
-                onClick={handleClearAllocations}
-                size="small"
-                color="error"
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              <Button
                 variant="outlined"
-                sx={{ fontSize: '0.7rem', height: 24 }}
-              />
-            )}
+                size="small"
+                startIcon={<DeleteSweep sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleClearUnlocked}
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                クリア
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LockOutlined sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleLockAll}
+                color="warning"
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                全ロック
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LockOpenOutlined sx={{ fontSize: '0.9rem' }} />}
+                onClick={handleUnlockAll}
+                color="info"
+                sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
+              >
+                全解除
+              </Button>
+            </Box>
           </Box>
 
           {selectedStoresList.length > 0 ? (
@@ -1007,12 +1039,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         flexShrink: 0,
                         scrollSnapAlign: 'start',
                         bgcolor: isLocked ? 'warning.50' : quantity > 0 ? 'success.50' : 'background.paper',
-                        borderColor: isLocked ? 'warning.main' : 'divider',
-                        borderWidth: isLocked ? 2 : 1,
+                        borderColor: isLocked ? 'warning.main' : quantity > 0 ? 'success.main' : 'divider',
+                        borderWidth: isLocked || quantity > 0 ? 2 : 1,
                         transition: 'all 0.2s ease',
                         touchAction: 'pan-x', // カード上でも横スワイプのみ許可
+                        boxShadow: quantity > 0 ? 1 : 0,
                         '&:hover': {
-                          boxShadow: 1,
+                          boxShadow: 2,
+                          transform: 'translateY(-2px)',
                         },
                       }}
                     >
@@ -1094,6 +1128,120 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Alert>
           )}
         </Box>
+        {/* 統計表示（画面最下部） */}
+        <Card
+          variant="outlined"
+          sx={{
+            mt: 2,
+            borderWidth: 2,
+            borderColor:
+              remaining === 0
+                ? 'success.main'
+                : remaining < 0
+                ? 'error.main'
+                : 'primary.main',
+          }}
+        >
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            {/* 統計数値（3列グリッド） */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  総納品数
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                  {totalDelivery}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  配分済み
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main', fontSize: '1.1rem' }}>
+                  {totalAllocated}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                  残り
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  {remaining}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* プログレスバー */}
+            <Box sx={{ mb: 1 }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(progressPercentage, 100)}
+                sx={{
+                  height: 8,
+                  borderRadius: 1,
+                  bgcolor: 'grey.200',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor:
+                      remaining === 0
+                        ? 'success.main'
+                        : remaining < 0
+                        ? 'error.main'
+                        : 'primary.main',
+                    borderRadius: 1,
+                  },
+                }}
+              />
+              <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.25, fontSize: '0.65rem', color: 'text.secondary' }}>
+                {progressPercentage.toFixed(1)}%
+              </Typography>
+            </Box>
+
+            {/* ステータス表示 */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {remaining === 0 ? (
+                  <>
+                    <CheckCircle sx={{ fontSize: '1rem', color: 'success.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', fontSize: '0.75rem' }}>
+                      完了
+                    </Typography>
+                  </>
+                ) : remaining < 0 ? (
+                  <>
+                    <ErrorIcon sx={{ fontSize: '1rem', color: 'error.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.main', fontSize: '0.75rem' }}>
+                      超過: {Math.abs(remaining)}個
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <WarningIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.main', fontSize: '0.75rem' }}>
+                      残り: {remaining}個
+                    </Typography>
+                  </>
+                )}
+              </Box>
+
+              {/* 固定店舗数表示 */}
+              {lockedStores.size > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Lock sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    固定: {lockedStores.size}店舗
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
       </Stack>
 
       {/* エラー表示 */}

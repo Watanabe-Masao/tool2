@@ -13,6 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Response, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -74,6 +75,21 @@ app = FastAPI(
     version=settings.app_version
 )
 
+# CORSミドルウェアの設定
+# Firebase HostingからのAPIアクセスを許可
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://haibun-distribution.web.app",
+        "https://haibun-distribution.firebaseapp.com",
+        "http://localhost:3000",  # 開発環境
+        "http://localhost:5173",  # Vite開発サーバー
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 例外ハンドラーを登録 (Phase 3: エラーハンドリング統一)
 register_exception_handlers(app)
 
@@ -117,10 +133,16 @@ async def serve_react_app(full_path: str):
     """
     すべてのパスでReactアプリを配信（SPA フォールバック）
     /api/ で始まるパスは除外（APIルーターで処理）
+    静的ファイル（registerSW.js, manifest.webmanifest等）が存在する場合はそれを返す
     """
     # APIパスは除外（すでにルーターで処理される）
     if full_path.startswith("api/"):
         return Response(status_code=404)
+
+    # 実際のファイルが存在するか確認（registerSW.js、manifest.webmanifest等）
+    requested_file = frontend_dist / full_path
+    if requested_file.is_file():
+        return FileResponse(requested_file)
 
     # React の index.html を配信
     index_path = frontend_dist / "index.html"

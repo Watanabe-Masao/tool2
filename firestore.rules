@@ -194,6 +194,43 @@ service cloud.firestore {
                        resource.data.userId == request.auth.uid;
     }
 
+    // 価格履歴（ステップ3用）
+    // Note: 重複防止ロジック（全く同じ値の場合は更新しない）はアプリケーション層で実装
+    //       firestoreService.ts の savePricingHistory() を参照
+    match /pricing_history/{historyId} {
+      // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+      // 作成: 認証済みユーザーのみ + 必須フィールドチェック
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['productName', 'specification', 'quantityPerPackage', 'unit', 'centerCost', 'storeCost', 'priceExcludingTax', 'userId']) &&
+                       request.resource.data.productName is string &&
+                       request.resource.data.productName.size() > 0 &&
+                       request.resource.data.specification is string &&
+                       request.resource.data.quantityPerPackage is number &&
+                       request.resource.data.quantityPerPackage > 0 &&
+                       request.resource.data.unit is string &&
+                       request.resource.data.centerCost is number &&
+                       request.resource.data.centerCost >= 0 &&
+                       request.resource.data.storeCost is number &&
+                       request.resource.data.storeCost >= 0 &&
+                       request.resource.data.priceExcludingTax is number &&
+                       request.resource.data.priceExcludingTax >= 0;
+      // 更新: 自分の履歴のみ + 価格フィールドのバリデーション
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.centerCost is number &&
+                       request.resource.data.centerCost >= 0 &&
+                       request.resource.data.storeCost is number &&
+                       request.resource.data.storeCost >= 0 &&
+                       request.resource.data.priceExcludingTax is number &&
+                       request.resource.data.priceExcludingTax >= 0;
+      // 削除: 自分の履歴のみ
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+    }
+
     // 店舗カテゴリー（ユーザーごとのサブコレクション）
     match /users/{userId}/store_categories/{categoryId} {
       // 読み取り: 本人のみ

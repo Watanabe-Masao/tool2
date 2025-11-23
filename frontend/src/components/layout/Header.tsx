@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -18,6 +18,9 @@ import {
   useMediaQuery,
   useTheme,
   Chip,
+  LinearProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Logout,
@@ -46,6 +49,12 @@ export const Header: React.FC = () => {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [longPressProgress, setLongPressProgress] = useState(0);
+  const [showClearMessage, setShowClearMessage] = useState(false);
+  const [clearMessage, setClearMessage] = useState('');
+
+  const longPressTimer = useRef<number | null>(null);
+  const longPressInterval = useRef<number | null>(null);
 
   /**
    * ユーザーメニューを開く
@@ -74,6 +83,98 @@ export const Header: React.FC = () => {
     }
   };
 
+  /**
+   * キャッシュクリアと再読み込み
+   */
+  const clearCacheAndReload = useCallback(async () => {
+    try {
+      setClearMessage('キャッシュをクリア中...');
+
+      // Service Worker登録解除
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+      }
+
+      // キャッシュクリア（Cache API）
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+
+      // localStorage クリア（ログイン情報は保持）
+      const authKeys = ['firebase:authUser', 'firebase:host'];
+      const authData: Record<string, string> = {};
+      authKeys.forEach(key => {
+        Object.keys(localStorage).forEach(storageKey => {
+          if (storageKey.includes(key)) {
+            authData[storageKey] = localStorage.getItem(storageKey) || '';
+          }
+        });
+      });
+
+      localStorage.clear();
+
+      Object.entries(authData).forEach(([key, value]) => {
+        if (value) localStorage.setItem(key, value);
+      });
+
+      // sessionStorage クリア
+      sessionStorage.clear();
+
+      setClearMessage('✅ キャッシュをクリアしました！ リロード中...');
+
+      // 2秒後にリロード
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('キャッシュクリアエラー:', error);
+      setClearMessage('❌ キャッシュクリアに失敗しました');
+      window.setTimeout(() => setShowClearMessage(false), 3000);
+    }
+  }, []);
+
+  /**
+   * 長押し開始
+   */
+  const handleLongPressStart = useCallback(() => {
+    setLongPressProgress(0);
+
+    // プログレスバー更新
+    longPressInterval.current = window.setInterval(() => {
+      setLongPressProgress(prev => {
+        if (prev >= 100) {
+          if (longPressInterval.current) window.clearInterval(longPressInterval.current);
+          return 100;
+        }
+        return prev + 5; // 2秒で100%（20回 × 100ms）
+      });
+    }, 100);
+
+    // 2秒後にキャッシュクリア実行
+    longPressTimer.current = window.setTimeout(() => {
+      if (longPressInterval.current) window.clearInterval(longPressInterval.current);
+      setLongPressProgress(100);
+      setShowClearMessage(true);
+      clearCacheAndReload();
+    }, 2000);
+  }, [clearCacheAndReload]);
+
+  /**
+   * 長押し終了（キャンセル）
+   */
+  const handleLongPressEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (longPressInterval.current) {
+      window.clearInterval(longPressInterval.current);
+      longPressInterval.current = null;
+    }
+    setLongPressProgress(0);
+  }, []);
 
   /**
    * ナビゲーションアイテムの定義
@@ -104,23 +205,51 @@ export const Header: React.FC = () => {
           {/* オンライン/オフライン状態・同期状態 */}
           {user && (
             <Box sx={{ display: 'flex', gap: 0.5, mr: 2 }}>
-              {/* オンライン/オフライン */}
-              <Chip
-                label={isOnline ? 'オンライン' : 'オフライン'}
-                color={isOnline ? 'success' : 'warning'}
-                size="small"
-                variant="outlined"
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 500,
-                  borderColor: isOnline ? 'success.light' : 'warning.light',
-                  color: 'white',
-                  '& .MuiChip-label': {
-                    px: 1,
-                  },
-                }}
-              />
+              {/* オンライン/オフライン（長押しでキャッシュクリア） */}
+              <Box sx={{ position: 'relative' }}>
+                <Chip
+                  label={isOnline ? 'オンライン' : 'オフライン'}
+                  color={isOnline ? 'success' : 'warning'}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {}} // クリック無効化
+                  onMouseDown={handleLongPressStart}
+                  onMouseUp={handleLongPressEnd}
+                  onMouseLeave={handleLongPressEnd}
+                  onTouchStart={handleLongPressStart}
+                  onTouchEnd={handleLongPressEnd}
+                  sx={{
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    borderColor: isOnline ? 'success.light' : 'warning.light',
+                    color: 'white',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    '& .MuiChip-label': {
+                      px: 1,
+                    },
+                  }}
+                />
+                {/* 長押しプログレスバー */}
+                {longPressProgress > 0 && (
+                  <LinearProgress
+                    variant="determinate"
+                    value={longPressProgress}
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 2,
+                      borderRadius: '0 0 4px 4px',
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: 'primary.main',
+                      },
+                    }}
+                  />
+                )}
+              </Box>
 
               {/* 同期中 */}
               {isSyncing && (
@@ -294,6 +423,22 @@ export const Header: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* キャッシュクリアメッセージ */}
+      <Snackbar
+        open={showClearMessage}
+        autoHideDuration={6000}
+        onClose={() => setShowClearMessage(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setShowClearMessage(false)}
+          severity={clearMessage.includes('✅') ? 'success' : clearMessage.includes('❌') ? 'error' : 'info'}
+          sx={{ width: '100%' }}
+        >
+          {clearMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

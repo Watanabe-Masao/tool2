@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB (increased for Recharts)
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

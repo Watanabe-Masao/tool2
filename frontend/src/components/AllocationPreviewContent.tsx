@@ -2,25 +2,21 @@ import React, { useMemo, useState } from 'react';
 import {
   Box,
   Typography,
-  Tabs,
-  Tab,
-  Alert,
-  CircularProgress,
   Button,
   Paper,
+  Divider,
 } from '@mui/material';
-import { PictureAsPdf, TableChart, Download, ArrowBack, Description, Send } from '@mui/icons-material';
+import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { TemplateService } from '@/services/api/templateService';
-import { isIPhoneSafari } from '@/utils/deviceDetection';
+import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
+import { StoreStatisticsModal } from '@/components/modals/StoreStatisticsModal';
 
 // AG Grid モジュールを登録
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -41,12 +37,25 @@ interface AllocationPreviewContentProps {
   onSendEmail?: () => void;
   /** 戻るボタンハンドラ */
   onBack?: () => void;
+  /** 生成ボタンハンドラ（生成前のみ） */
+  onGenerate?: () => void;
+  /** 配分数量変更ハンドラ */
+  onAllocationChange?: (productIndex: number, storeIndex: number, newValue: number) => void;
+  /** ロックされた店舗のSet */
+  lockedStores: Set<string>;
+  /** ロック状態更新関数 */
+  setLockedStores: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 選択されたカテゴリのSet */
+  selectedCategories: Set<string>;
+  /** カテゴリ選択更新関数 */
+  setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 /**
  * グリッド行データの型
  */
 interface GridRowData {
+  productIndex: number; // 商品のインデックス
   deliveryDate: string;
   origin: string;
   specification: string;
@@ -76,47 +85,22 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onDownloadPdf,
   onSendEmail,
   onBack,
+  onGenerate,
+  onAllocationChange,
+  lockedStores,
+  setLockedStores: _setLockedStores, // TODO: カテゴリフィルター UI で使用予定
+  selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
+  setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
 }) => {
-  // タブの選択状態（0: 配分表、1: PDFプレビュー）
-  const [tabValue, setTabValue] = useState(0);
   // 選択された行データ
   const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
-  // PDF読み込み状態
-  const [pdfLoading, setPdfLoading] = useState(true);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-
-  // iPhone Safari判定
-  const isIPhone = isIPhoneSafari();
+  // PDFプレビューモーダルの開閉状態
+  const [showPDFModal, setShowPDFModal] = useState(false);
+  // 店舗別統計モーダルの開閉状態
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   // PDF URL
   const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
-
-  /**
-   * タブ変更ハンドラ
-   */
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-    if (newValue === 1) {
-      // PDFタブに切り替えた時、読み込み状態をリセット
-      setPdfLoading(true);
-      setPdfError(null);
-    }
-  };
-
-  /**
-   * PDF iframeの読み込み完了
-   */
-  const handlePdfLoad = () => {
-    setPdfLoading(false);
-  };
-
-  /**
-   * PDF iframeのエラー
-   */
-  const handlePdfError = () => {
-    setPdfLoading(false);
-    setPdfError('PDFの読み込みに失敗しました');
-  };
 
   /**
    * グリッド行データを生成
@@ -124,7 +108,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const rowData = useMemo<GridRowData[]>(() => {
     const rows: GridRowData[] = [];
 
-    formData.products.forEach((product) => {
+    formData.products.forEach((product, productIndex) => {
       // 総パッケージ数を計算
       const totalPackages = product.totalDelivery || 0;
 
@@ -136,6 +120,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
       // 1行にまとめる
       const row: GridRowData = {
+        productIndex, // 商品のインデックスを保存
         deliveryDate: formData.deliveryDate
           ? format(formData.deliveryDate, 'M/d(E)', { locale: ja })
           : '',
@@ -184,25 +169,45 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       },
     ];
 
-    // 36店舗のカラムを追加
-    STORE_DATA.forEach((store) => {
+    // 36店舗のカラムを追加（生成前のみ編集可能、ロック状態を反映）
+    STORE_DATA.forEach((store, storeIndex) => {
+      const isLocked = lockedStores.has(store.code);
       cols.push({
-        headerName: `${store.code}\n${store.name}`,
+        headerName: `${store.code}\n${store.name}${isLocked ? ' 🔒' : ''}`,
         field: `store_${store.code}`,
         width: 55,
         headerClass: 'store-header',
+        // 生成前かつロックされていない場合のみ編集可能
+        editable: Boolean(onGenerate) && !isLocked,
         cellStyle: (params) => {
           const value = params.value as number;
           return {
             textAlign: 'center',
-            backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
-            color: value > 0 ? '#1565c0' : '#bdbdbd',
+            backgroundColor: isLocked ? '#f5f5f5' : value > 0 ? '#e3f2fd' : 'transparent',
+            color: isLocked ? '#999' : value > 0 ? '#1565c0' : '#bdbdbd',
             fontWeight: value > 0 ? '600' : 'normal',
+            cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
           };
         },
         valueFormatter: (params) => {
           const value = params.value as number;
           return value > 0 ? value.toString() : '-';
+        },
+        valueParser: (params) => {
+          // 入力値を数値に変換（無効な値は0にする）
+          const num = parseInt(params.newValue, 10);
+          return isNaN(num) || num < 0 ? 0 : num;
+        },
+        valueSetter: (params) => {
+          // セルの値を更新する代わりに、親コンポーネントに通知
+          if (onAllocationChange && params.data && !isLocked) {
+            const productIndex = params.data.productIndex;
+            const parsedValue = parseInt(params.newValue, 10);
+            const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
+            onAllocationChange(productIndex, storeIndex, newValue);
+          }
+          // AG-Gridに値を更新させない（React側で管理）
+          return false;
         },
       });
     });
@@ -251,7 +256,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, []);
+  }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
    * 行クリック時のハンドラー
@@ -279,31 +284,43 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       animateRows: true,
       onRowClicked: handleRowClicked,
       rowSelection: 'single',
+      singleClickEdit: true, // シングルクリックで編集開始
+      stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
     }),
     []
   );
 
   return (
-    <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ヘッダーとタブを同じ行に配置 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6" sx={{ mr: 3 }}>配分表プレビュー</Typography>
-        {/* タブ */}
-        {pdfFilename && (
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab icon={<TableChart />} iconPosition="start" label="配分表" />
-            <Tab icon={<PictureAsPdf />} iconPosition="start" label="PDFプレビュー" />
-          </Tabs>
-        )}
-      </Box>
+    <>
+      <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        {/* ヘッダー */}
+        <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" fontWeight="700" color="primary.main">
+            配分表プレビュー
+          </Typography>
+          {/* 店舗別統計ボタン */}
+          <Button
+            variant="contained"
+            startIcon={<Assessment />}
+            onClick={() => setShowStatsModal(true)}
+            color="secondary"
+            aria-label="店舗別統計ダッシュボードを開く"
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              boxShadow: 3,
+              '&:hover': { boxShadow: 6 }
+            }}
+          >
+            店舗別統計
+          </Button>
+        </Box>
 
       {/* コンテンツ */}
       <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
-        {/* 配分表タブ */}
-        {tabValue === 0 && (
-          <>
-            {/* 選択行の詳細情報エリア */}
-            {selectedRow && (
+        {/* 選択行の詳細情報エリア */}
+        {selectedRow && (
               <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
                 {/* 1行目: 店着日と集計情報 */}
                 <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
@@ -395,136 +412,137 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 columnDefs={columnDefs}
                 gridOptions={gridOptions}
               />
+        </Box>
+      </Box>
+
+      <Divider />
+
+      {/* アクションボタン */}
+      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: onGenerate ? 'center' : 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        {onGenerate ? (
+          /* 生成前：生成ボタンのみ */
+          <Button
+            variant="contained"
+            size="large"
+            onClick={onGenerate}
+            aria-label="配分表のExcelテンプレートを生成"
+            sx={{
+              px: 6,
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 700,
+              borderRadius: 2,
+              boxShadow: 4,
+              '&:hover': {
+                boxShadow: 8,
+              }
+            }}
+          >
+            テンプレート生成
+          </Button>
+        ) : (
+          <>
+            {/* 生成後：左側に戻るボタン */}
+            <Box>
+              {onBack && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ArrowBack />}
+                  onClick={onBack}
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    borderWidth: 2,
+                    '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
+                  }}
+                >
+                  戻る
+                </Button>
+              )}
+            </Box>
+
+            {/* 生成後：右側にダウンロードと送信ボタン */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {pdfFilename && (
+                <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdf />}
+                  onClick={() => setShowPDFModal(true)}
+                  color="primary"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    borderWidth: 2,
+                    '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
+                  }}
+                >
+                  PDFプレビュー
+                </Button>
+              )}
+              {onDownloadExcel && (
+                <Button
+                  variant="contained"
+                  startIcon={<Description />}
+                  onClick={onDownloadExcel}
+                  color="success"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    boxShadow: 3,
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                >
+                  Excelダウンロード
+                </Button>
+              )}
+              {onSendEmail && (
+                <Button
+                  variant="contained"
+                  startIcon={<Send />}
+                  onClick={onSendEmail}
+                  color="info"
+                  size="large"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    fontWeight: 600,
+                    boxShadow: 3,
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                >
+                  送信
+                </Button>
+              )}
             </Box>
           </>
         )}
-
-        {/* PDFプレビュータブ */}
-        {tabValue === 1 && pdfFilename && (
-          <Box sx={{ width: '100%', height: 'calc(85vh - 230px)', minHeight: 500, position: 'relative' }}>
-            {isIPhone ? (
-              /* iPhone Safari: PDFを開くボタン */
-              <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                <Alert severity="info" sx={{ mb: 3 }}>
-                  iPhone Safariでは、iframe内でのPDFプレビューはサポートされていません。
-                  <br />
-                  下のボタンからPDFを新しいタブで開いて表示できます。
-                </Alert>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PictureAsPdf />}
-                    onClick={() => window.open(pdfUrl, '_blank')}
-                    size="large"
-                    fullWidth
-                    sx={{ maxWidth: 300 }}
-                  >
-                    PDFを開く
-                  </Button>
-                  {onDownloadPdf && (
-                    <Button
-                      variant="outlined"
-                      startIcon={<Download />}
-                      onClick={onDownloadPdf}
-                      size="large"
-                      fullWidth
-                      sx={{ maxWidth: 300 }}
-                    >
-                      PDFをダウンロード
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-            ) : (
-              /* PC: iframeでPDFプレビュー */
-              <>
-                {pdfLoading && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 1,
-                    }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                )}
-                {pdfError && (
-                  <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {pdfError}
-                    </Alert>
-                    {onDownloadPdf && (
-                      <Button
-                        variant="contained"
-                        startIcon={<Download />}
-                        onClick={onDownloadPdf}
-                      >
-                        PDFをダウンロード
-                      </Button>
-                    )}
-                  </Box>
-                )}
-                {!pdfError && (
-                  <iframe
-                    src={pdfUrl}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      display: pdfLoading ? 'none' : 'block',
-                    }}
-                    title="PDFプレビュー"
-                    onLoad={handlePdfLoad}
-                    onError={handlePdfError}
-                  />
-                )}
-              </>
-            )}
-          </Box>
-        )}
       </Box>
 
-      {/* アクションボタン */}
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-        {/* 左側：戻るボタン */}
-        <Box>
-          {onBack && (
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBack />}
-              onClick={onBack}
-            >
-              戻る
-            </Button>
-          )}
-        </Box>
-
-        {/* 右側：ダウンロードと送信ボタン */}
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {onDownloadExcel && (
-            <Button
-              variant="contained"
-              startIcon={<Description />}
-              onClick={onDownloadExcel}
-            >
-              ダウンロード
-            </Button>
-          )}
-          {onSendEmail && (
-            <Button
-              variant="outlined"
-              startIcon={<Send />}
-              onClick={onSendEmail}
-            >
-              送信
-            </Button>
-          )}
-        </Box>
-      </Box>
+      {/* PDFプレビューモーダル */}
+      {pdfFilename && (
+        <PDFPreviewModal
+          open={showPDFModal}
+          onClose={() => setShowPDFModal(false)}
+          pdfUrl={pdfUrl}
+          onDownloadExcel={onDownloadExcel || (() => {})}
+          onDownloadPdf={onDownloadPdf}
+          onSendEmail={onSendEmail}
+        />
+      )}
     </Paper>
+
+    {/* 店舗別統計ダッシュボードモーダル */}
+    <StoreStatisticsModal
+      open={showStatsModal}
+      onClose={() => setShowStatsModal(false)}
+      formData={formData}
+    />
+    </>
   );
 };

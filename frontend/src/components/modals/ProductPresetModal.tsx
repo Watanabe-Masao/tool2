@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -14,8 +14,12 @@ import {
   Button,
   DialogActions,
   DialogContentText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge,
 } from '@mui/material';
-import { Close, Inventory2, Delete, PushPin, PushPinOutlined } from '@mui/icons-material';
+import { Close, Inventory2, Delete, PushPin, PushPinOutlined, ExpandMore } from '@mui/icons-material';
 import {
   DndContext,
   closestCenter,
@@ -405,6 +409,52 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   });
 
   /**
+   * プリセットを品名でグループ化
+   */
+  const groupedPresets = useMemo(() => {
+    const groups = new Map<string, ProductHistoryItem[]>();
+
+    filteredPresets.forEach((preset) => {
+      const productName = preset.name;
+      if (!groups.has(productName)) {
+        groups.set(productName, []);
+      }
+      groups.get(productName)!.push(preset);
+    });
+
+    // グループをピン留め状態でソート
+    return Array.from(groups.entries())
+      .map(([name, items]) => ({
+        name,
+        items: items.sort((a, b) => {
+          // グループ内でもピン留めを優先
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          if (a.pinned && b.pinned) {
+            return (a.pinOrder ?? 9999) - (b.pinOrder ?? 9999);
+          }
+          return 0;
+        }),
+        hasPinned: items.some((item) => item.pinned),
+        minPinOrder: items.reduce((min, item) =>
+          item.pinned && item.pinOrder !== undefined
+            ? Math.min(min, item.pinOrder)
+            : min,
+          9999
+        ),
+      }))
+      .sort((a, b) => {
+        // グループ自体もピン留め優先でソート
+        if (a.hasPinned && !b.hasPinned) return -1;
+        if (!a.hasPinned && b.hasPinned) return 1;
+        if (a.hasPinned && b.hasPinned) {
+          return a.minPinOrder - b.minPinOrder;
+        }
+        return 0;
+      });
+  }, [filteredPresets]);
+
+  /**
    * プリセットを選択
    */
   const handleSelectPreset = (preset: ProductHistoryItem) => {
@@ -699,108 +749,209 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
               </Typography>
             </Box>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDndDragStart}
-              onDragEnd={handleDndDragEnd}
-              modifiers={[restrictToVerticalAxis]}
-            >
-              <List sx={{ py: 0 }}>
-                {/* ピン留めアイテムをソート可能に */}
-                <SortableContext
-                  items={filteredPresets.filter((p) => p.pinned).map((p) => p.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {filteredPresets
-                    .filter((p) => p.pinned)
-                    .map((preset) => (
-                      <SortablePresetItem
-                        key={preset.id}
-                        preset={preset}
-                        onSelect={handleSelectPreset}
-                        onSwipeStart={handleSwipeStart}
-                        onSwipeMove={handleSwipeMove}
-                        onSwipeEnd={handleSwipeEnd}
-                        swipeState={swipeState}
-                      />
-                    ))}
-                </SortableContext>
+            <Box sx={{ py: 0 }}>
+              {groupedPresets.map((group) => {
+                // グループ内のアイテムが1つだけの場合は直接表示
+                if (group.items.length === 1) {
+                  const preset = group.items[0];
+                  return (
+                    <DndContext
+                      key={`single-${preset.id}`}
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragStart={handleDndDragStart}
+                      onDragEnd={handleDndDragEnd}
+                      modifiers={[restrictToVerticalAxis]}
+                    >
+                      <SortableContext
+                        items={preset.pinned ? [preset.id] : []}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <SortablePresetItem
+                          preset={preset}
+                          onSelect={handleSelectPreset}
+                          onSwipeStart={handleSwipeStart}
+                          onSwipeMove={handleSwipeMove}
+                          onSwipeEnd={handleSwipeEnd}
+                          swipeState={swipeState}
+                        />
+                      </SortableContext>
+                    </DndContext>
+                  );
+                }
 
-                {/* 通常アイテム（ピン留めされていない） */}
-                {filteredPresets
-                  .filter((p) => !p.pinned)
-                  .map((preset) => (
-                    <SortablePresetItem
-                      key={preset.id}
-                      preset={preset}
-                      onSelect={handleSelectPreset}
-                      onSwipeStart={handleSwipeStart}
-                      onSwipeMove={handleSwipeMove}
-                      onSwipeEnd={handleSwipeEnd}
-                      swipeState={swipeState}
-                    />
-                  ))}
-              </List>
+                // グループ内に複数アイテムがある場合はアコーディオン表示
+                const categoryCode = group.items[0].categoryCode;
 
-              {/* ドラッグ中のオーバーレイ表示 */}
-              <DragOverlay>
-                {activeId ? (
-                  <Box
+                return (
+                  <Accordion
+                    key={group.name}
+                    disableGutters
+                    elevation={0}
                     sx={{
-                      bgcolor: 'background.paper',
-                      boxShadow: 3,
-                      borderRadius: 1,
-                      opacity: 0.9,
+                      '&:before': { display: 'none' },
+                      borderBottom: '1px solid',
+                      borderColor: 'divider',
                     }}
                   >
-                    {(() => {
-                      const activePreset = filteredPresets.find((p) => p.id === activeId);
-                      if (!activePreset) return null;
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={{
+                        minHeight: 56,
+                        px: 2,
+                        '& .MuiAccordionSummary-content': {
+                          my: 1.5,
+                          alignItems: 'center',
+                          gap: 1,
+                        },
+                      }}
+                    >
+                      {/* ピン留めアイコン（グループ内にピン留めがある場合） */}
+                      {group.hasPinned && (
+                        <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+                      )}
 
-                      return (
-                        <ListItemButton sx={{ py: 1.5, px: 2, cursor: 'grabbing' }}>
-                          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="body2" fontWeight="medium">
-                                  {activePreset.name}
-                                </Typography>
-                                {activePreset.categoryCode && (
-                                  <Chip
-                                    label={getCategoryName(activePreset.categoryCode)}
-                                    size="small"
-                                    color="primary"
-                                    sx={{ fontSize: '0.65rem', height: 18 }}
-                                  />
-                                )}
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <Typography variant="caption" color="text.secondary">
-                                  産地: {activePreset.origin}
-                                </Typography>
-                                {activePreset.specification && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    規格: {activePreset.specification}
-                                  </Typography>
-                                )}
-                                {activePreset.quantityPerPackage && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    入数: {activePreset.quantityPerPackage}
-                                    {activePreset.unit && ` ${activePreset.unit}`}
-                                  </Typography>
-                                )}
-                              </Box>
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" fontWeight="medium">
+                          {group.name}
+                        </Typography>
+
+                        {/* カテゴリーバッジ */}
+                        {categoryCode && (
+                          <Chip
+                            label={getCategoryName(categoryCode)}
+                            size="small"
+                            color="primary"
+                            sx={{ fontSize: '0.65rem', height: 18 }}
+                          />
+                        )}
+
+                        {/* バリエーション数バッジ */}
+                        <Badge
+                          badgeContent={group.items.length}
+                          color="secondary"
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              position: 'static',
+                              transform: 'none',
+                              fontSize: '0.65rem',
+                              height: 18,
+                              minWidth: 18,
+                              borderRadius: '9px',
+                            },
+                          }}
+                        />
+                      </Box>
+                    </AccordionSummary>
+
+                    <AccordionDetails sx={{ p: 0, bgcolor: 'background.default' }}>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDndDragStart}
+                        onDragEnd={handleDndDragEnd}
+                        modifiers={[restrictToVerticalAxis]}
+                      >
+                        <List sx={{ py: 0 }}>
+                          {/* ピン留めアイテムをソート可能に */}
+                          <SortableContext
+                            items={group.items.filter((p) => p.pinned).map((p) => p.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {group.items
+                              .filter((p) => p.pinned)
+                              .map((preset) => (
+                                <SortablePresetItem
+                                  key={preset.id}
+                                  preset={preset}
+                                  onSelect={handleSelectPreset}
+                                  onSwipeStart={handleSwipeStart}
+                                  onSwipeMove={handleSwipeMove}
+                                  onSwipeEnd={handleSwipeEnd}
+                                  swipeState={swipeState}
+                                />
+                              ))}
+                          </SortableContext>
+
+                          {/* 通常アイテム（ピン留めされていない） */}
+                          {group.items
+                            .filter((p) => !p.pinned)
+                            .map((preset) => (
+                              <SortablePresetItem
+                                key={preset.id}
+                                preset={preset}
+                                onSelect={handleSelectPreset}
+                                onSwipeStart={handleSwipeStart}
+                                onSwipeMove={handleSwipeMove}
+                                onSwipeEnd={handleSwipeEnd}
+                                swipeState={swipeState}
+                              />
+                            ))}
+                        </List>
+
+                        {/* ドラッグ中のオーバーレイ表示 */}
+                        <DragOverlay>
+                          {activeId ? (
+                            <Box
+                              sx={{
+                                bgcolor: 'background.paper',
+                                boxShadow: 3,
+                                borderRadius: 1,
+                                opacity: 0.9,
+                              }}
+                            >
+                              {(() => {
+                                const activePreset = group.items.find((p) => p.id === activeId);
+                                if (!activePreset) return null;
+
+                                return (
+                                  <ListItemButton sx={{ py: 1.5, px: 2, cursor: 'grabbing' }}>
+                                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
+                                      <Box sx={{ flex: 1 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                          <Typography variant="body2" fontWeight="medium">
+                                            {activePreset.name}
+                                          </Typography>
+                                          {activePreset.categoryCode && (
+                                            <Chip
+                                              label={getCategoryName(activePreset.categoryCode)}
+                                              size="small"
+                                              color="primary"
+                                              sx={{ fontSize: '0.65rem', height: 18 }}
+                                            />
+                                          )}
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                          <Typography variant="caption" color="text.secondary">
+                                            産地: {activePreset.origin}
+                                          </Typography>
+                                          {activePreset.specification && (
+                                            <Typography variant="caption" color="text.secondary">
+                                              規格: {activePreset.specification}
+                                            </Typography>
+                                          )}
+                                          {activePreset.quantityPerPackage && (
+                                            <Typography variant="caption" color="text.secondary">
+                                              入数: {activePreset.quantityPerPackage}
+                                              {activePreset.unit && ` ${activePreset.unit}`}
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      </Box>
+                                    </Box>
+                                  </ListItemButton>
+                                );
+                              })()}
                             </Box>
-                          </Box>
-                        </ListItemButton>
-                      );
-                    })()}
-                  </Box>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
+                          ) : null}
+                        </DragOverlay>
+                      </DndContext>
+                    </AccordionDetails>
+                  </Accordion>
+                );
+              })}
+            </Box>
           )}
         </DialogContent>
       </Dialog>
