@@ -419,10 +419,15 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                       border: isActive ? 2 : 1,
                       borderColor: isActive ? 'primary.main' : 'grey.300',
                       bgcolor: isActive ? 'primary.50' : 'background.paper',
-                      opacity: isBeingDragged ? 0.5 : 1,
-                      transform: isDropTarget ? 'scale(1.05)' : 'scale(1)',
-                      transition: 'transform 0.2s, opacity 0.2s',
-                      boxShadow: isBeingDragged ? 4 : 1,
+                      opacity: isBeingDragged ? 0.9 : 1,
+                      transform: isBeingDragged
+                        ? 'translateY(-12px) rotate(-3deg) scale(1.08)'
+                        : isDropTarget
+                        ? 'scale(1.05)'
+                        : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: isBeingDragged ? 12 : isDropTarget ? 4 : 1,
+                      zIndex: isBeingDragged ? 10 : 1,
                     }}
                   >
                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
