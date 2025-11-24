@@ -686,7 +686,7 @@ export const NewOrderPage: React.FC = () => {
 
               {/* コンテンツエリア（スクロール可能） */}
               <Box sx={{
-                height: `calc(100vh - 240px - ${progressSummaryHeight}px)`,
+                height: `calc(100vh - 180px - ${progressSummaryHeight}px)`,
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
