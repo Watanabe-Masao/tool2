@@ -18,6 +18,7 @@ import { useDataSync } from '@/hooks/useDataSync';
 import { useOrderSubmit } from '@/hooks/useOrderSubmit';
 import { useSupplierManagement } from '@/hooks/useSupplierManagement';
 import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
+import { useOrderModals } from '@/hooks/useOrderModals';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 
@@ -44,16 +45,7 @@ export const NewOrderPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [activeStep, setActiveStep] = useState(0);
-  const [showPDFPreview, setShowPDFPreview] = useState(false);
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [bookNameDialog, setBookNameDialog] = useState<{
-    open: boolean;
-    bookName: string;
-  }>({ open: false, bookName: '' });
 
   // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
   // Map<商品インデックス, Set<店舗コード>>
@@ -80,6 +72,22 @@ export const NewOrderPage: React.FC = () => {
   const supplierAutocomplete = useAutocomplete('supplier');
   const productNameAutocomplete = useAutocomplete('productName');
   const originAutocomplete = useAutocomplete('origin');
+
+  // モーダル・ダイアログ状態管理
+  const {
+    showPDFPreview,
+    setShowPDFPreview,
+    showDownloadModal,
+    setShowDownloadModal,
+    showPreviewModal,
+    setShowPreviewModal,
+    showEmailModal,
+    setShowEmailModal,
+    showGeneratedPreview,
+    setShowGeneratedPreview,
+    bookNameDialog,
+    setBookNameDialog,
+  } = useOrderModals();
 
   // 注文送信ロジック
   const {
