@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
  * ナビゲーションコンテキストの型定義
@@ -11,6 +12,8 @@ interface NavigationContextType {
   activeStep: number;
   /** 総ステップ数 */
   totalSteps: number;
+  /** フォームデータ */
+  formData?: OrderFormData;
   /** 前のステップへ移動するハンドラー */
   onPrevStep?: () => void;
   /** 次のステップへ移動するハンドラー */
@@ -20,6 +23,7 @@ interface NavigationContextType {
     active: boolean,
     step?: number,
     total?: number,
+    formData?: OrderFormData,
     onPrev?: () => void,
     onNext?: () => void
   ) => void;
@@ -34,6 +38,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isStepNavigationActive, setIsStepNavigationActive] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(0);
+  const [formData, setFormData] = useState<OrderFormData | undefined>(undefined);
   const [onPrevStep, setOnPrevStep] = useState<(() => void) | undefined>(undefined);
   const [onNextStep, setOnNextStep] = useState<(() => void) | undefined>(undefined);
 
@@ -41,12 +46,14 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
     active: boolean,
     step: number = 0,
     total: number = 0,
+    data?: OrderFormData,
     onPrev?: () => void,
     onNext?: () => void
   ) => {
     setIsStepNavigationActive(active);
     setActiveStep(step);
     setTotalSteps(total);
+    setFormData(data);
     setOnPrevStep(() => onPrev);
     setOnNextStep(() => onNext);
   };
@@ -57,6 +64,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
         isStepNavigationActive,
         activeStep,
         totalSteps,
+        formData,
         onPrevStep,
         onNextStep,
         setStepNavigation,

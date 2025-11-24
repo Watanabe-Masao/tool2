@@ -402,6 +402,7 @@ export const NewOrderPage: React.FC = () => {
         true,
         activeStep,
         TOTAL_STEPS,
+        formData,
         activeStep > 0 ? handlePrevStep : undefined,
         activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined
       );
@@ -411,7 +412,7 @@ export const NewOrderPage: React.FC = () => {
     return () => {
       setStepNavigation(false);
     };
-  }, [activeStep, showGeneratedPreview, setStepNavigation]);
+  }, [activeStep, showGeneratedPreview, formData, setStepNavigation]);
 
   /**
    * ExcelファイルをBlobとして取得
@@ -800,8 +801,8 @@ export const NewOrderPage: React.FC = () => {
 
               {/* コンテンツエリア（スクロール可能） */}
               <Box sx={{
-                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary
-                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${progressSummaryHeight}px)`,
+                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary (desktop only)
+                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${isMobile ? 0 : progressSummaryHeight}px)`,
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
@@ -1000,8 +1001,8 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
-        {!showGeneratedPreview && (
+        {/* フローティング進捗サマリー（モバイルでは非表示、ボトムナビゲーションに統合） */}
+        {!showGeneratedPreview && !isMobile && (
           <FloatingProgressSummary
             formData={formData}
             activeStep={activeStep}

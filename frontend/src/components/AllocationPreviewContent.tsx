@@ -5,6 +5,7 @@ import {
   Button,
   Paper,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
@@ -101,6 +102,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const [showPDFModal, setShowPDFModal] = useState(false);
   // 店舗別統計モーダルの開閉状態
   const [showStatsModal, setShowStatsModal] = useState(false);
+  // グリッド初期化完了フラグ
+  const [gridReady, setGridReady] = useState(false);
 
   // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
   const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
@@ -302,11 +305,18 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
-      animateRows: true,
+      animateRows: false, // パフォーマンス向上のためアニメーションを無効化
       onRowClicked: handleRowClicked,
       rowSelection: 'single',
       singleClickEdit: true, // シングルクリックで編集開始
       stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
+      onGridReady: () => {
+        // グリッドの初期化完了後にフラグを設定
+        setTimeout(() => setGridReady(true), 100);
+      },
+      // パフォーマンス最適化
+      rowBuffer: 10,
+      suppressColumnVirtualisation: false,
     }),
     []
   );
@@ -449,6 +459,27 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 },
               }}
             >
+              {/* グリッド初期化中のローディングインジケーター */}
+              {!gridReady && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <CircularProgress size={60} />
+                  <Typography variant="body2" color="text.secondary">
+                    配分表を読み込んでいます...
+                  </Typography>
+                </Box>
+              )}
               <AgGridReact<GridRowData>
                 rowData={rowData}
                 columnDefs={columnDefs}
