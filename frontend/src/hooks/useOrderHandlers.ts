@@ -1,8 +1,11 @@
-import { useCallback } from 'react';
 import type { UseFormReturn, FieldArrayWithId, UseFieldArrayRemove } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { BookNameDialog } from '@/stores/orderFormStore';
-import { SessionStorageService } from '@/utils/sessionStorageService';
+import { useProductActions } from './useProductActions';
+import { useStepActions } from './useStepActions';
+import { useAllocationActions } from './useAllocationActions';
+import { useDraftActions } from './useDraftActions';
+import { useFormSubmitHandler } from './useFormSubmitHandler';
 
 /**
  * useOrderHandlersのパラメータ
@@ -52,7 +55,17 @@ interface UseOrderHandlersParams {
 /**
  * useOrderHandlers
  *
- * 注文フォームの各種ハンドラー関数を提供するカスタムフック
+ * 注文フォームの各種ハンドラー関数を提供するカスタムフック（統合版）
+ *
+ * このhookは、以下の5つの小さなhooksを組み合わせて構成されています:
+ * - useProductActions: 商品の削除・クリア
+ * - useStepActions: ステップナビゲーション
+ * - useAllocationActions: 配分数量変更・店舗ロック
+ * - useDraftActions: 下書き復元・破棄
+ * - useFormSubmitHandler: フォーム送信・ブック名確認
+ *
+ * 各小hookは単一責任の原則に従い、テストしやすく保守しやすい設計になっています。
+ * この統合hookは既存のインターフェースを維持し、後方互換性を保証します。
  *
  * 責務:
  * - 商品の追加・削除・クリア
@@ -69,7 +82,12 @@ interface UseOrderHandlersParams {
  *   handleTabChange,
  *   handlePrevStep,
  *   handleNextStep,
- *   // ... その他のハンドラー
+ *   handleAllocationChange,
+ *   handleToggleLock,
+ *   onSubmit,
+ *   handleBookNameDialogConfirm,
+ *   handleRestoreDraft,
+ *   handleDiscardDraft,
  * } = useOrderHandlers({ ... });
  * ```
  */
@@ -97,161 +115,51 @@ export const useOrderHandlers = ({
 }: UseOrderHandlersParams) => {
   const { setValue, getValues, reset } = methods;
 
-  /**
-   * 商品削除ハンドラー（FloatingProgressSummary用）
-   */
-  const handleRemoveProduct = useCallback(
-    (index: number) => {
-      if (productFields.length <= 1) return; // 最後の1つは削除しない
-      removeProduct(index);
-      // アクティブなインデックスを調整
-      if (activeProductIndex >= index && activeProductIndex > 0) {
-        setActiveProductIndex(activeProductIndex - 1);
-      }
-    },
-    [productFields.length, removeProduct, activeProductIndex, setActiveProductIndex]
-  );
+  // 1. 商品管理機能
+  const { handleRemoveProduct, handleClearProduct } = useProductActions({
+    setValue,
+    productFields,
+    removeProduct,
+    activeProductIndex,
+    setActiveProductIndex,
+    suppliers,
+  });
 
-  /**
-   * 商品フィールドクリアハンドラー（FloatingProgressSummary用）
-   */
-  const handleClearProduct = useCallback(
-    (index: number) => {
-      const defaultSupplier = suppliers && suppliers.length > 0 ? suppliers[0] : '';
-      setValue(`products.${index}.categoryCode`, '');
-      setValue(`products.${index}.supplier`, defaultSupplier);
-      setValue(`products.${index}.name`, '');
-      setValue(`products.${index}.origin`, '');
-      setValue(`products.${index}.specification`, '');
-      setValue(`products.${index}.quantityPerPackage`, null);
-      setValue(`products.${index}.unit`, '');
-    },
-    [suppliers, setValue]
-  );
+  // 2. ステップナビゲーション機能
+  const { handleTabChange, handlePrevStep, handleNextStep } = useStepActions({
+    activeStep,
+    setActiveStep,
+    TOTAL_STEPS,
+  });
 
-  /**
-   * タブ変更時の処理
-   */
-  const handleTabChange = useCallback(
-    (_event: React.SyntheticEvent, newValue: number) => {
-      setActiveStep(newValue);
-    },
-    [setActiveStep]
-  );
+  // 3. 配分・ロック管理機能
+  const { handleAllocationChange, handleToggleLock } = useAllocationActions({
+    setValue,
+    setLockedStores,
+  });
 
-  /**
-   * 前のステップへ移動
-   */
-  const handlePrevStep = useCallback(() => {
-    if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
-    }
-  }, [activeStep, setActiveStep]);
+  // 4. 下書き管理機能
+  const { handleRestoreDraft, handleDiscardDraft } = useDraftActions({
+    user,
+    reset,
+    setRestoreDialogOpen,
+    showSuccess,
+    setActiveStep,
+    isInitialLoad,
+  });
 
-  /**
-   * 次のステップへ移動
-   */
-  const handleNextStep = useCallback(() => {
-    if (activeStep < TOTAL_STEPS - 1) {
-      setActiveStep(activeStep + 1);
-    }
-  }, [activeStep, TOTAL_STEPS, setActiveStep]);
+  // 5. フォーム送信機能
+  const { onSubmit, handleBookNameDialogConfirm } = useFormSubmitHandler({
+    getValues,
+    submitOrder,
+    setBookNameDialog,
+    bookNameDialog,
+    handleGenerateTemplate,
+    setHasUnsavedChanges,
+    setShowGeneratedPreview,
+  });
 
-  /**
-   * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
-   */
-  const handleAllocationChange = useCallback(
-    (productIndex: number, storeIndex: number, newValue: number) => {
-      setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-    },
-    [setValue]
-  );
-
-  /**
-   * ロック状態切り替えハンドラ（FloatingProgressSummary用）
-   */
-  const handleToggleLock = useCallback(
-    (productIndex: number, storeCode: string) => {
-      setLockedStores((prev) => {
-        const newMap = new Map(prev);
-        const productLocks = new Set(newMap.get(productIndex) || []);
-
-        if (productLocks.has(storeCode)) {
-          productLocks.delete(storeCode);
-        } else {
-          productLocks.add(storeCode);
-        }
-
-        newMap.set(productIndex, productLocks);
-        return newMap;
-      });
-    },
-    [setLockedStores]
-  );
-
-  /**
-   * フォーム送信
-   */
-  const onSubmit = useCallback(
-    async (data: OrderFormData) => {
-      await submitOrder(data, () => setBookNameDialog({ open: true, bookName: '' }));
-    },
-    [submitOrder, setBookNameDialog]
-  );
-
-  /**
-   * ブック名ダイアログの確認ハンドラー
-   */
-  const handleBookNameDialogConfirm = useCallback(async () => {
-    const data = getValues();
-
-    // ダイアログを閉じる
-    setBookNameDialog({ open: false, bookName: '' });
-
-    // テンプレート生成
-    const success = await handleGenerateTemplate(data, bookNameDialog.bookName, setHasUnsavedChanges);
-
-    // 成功時にプレビュー画面を表示
-    if (success) {
-      setShowGeneratedPreview(true);
-    }
-  }, [getValues, setBookNameDialog, bookNameDialog.bookName, handleGenerateTemplate, setHasUnsavedChanges, setShowGeneratedPreview]);
-
-  /**
-   * 下書きを復元
-   */
-  const handleRestoreDraft = useCallback(() => {
-    if (!user) return;
-
-    const draft = SessionStorageService.loadDraft(user.uid);
-    if (draft) {
-      reset(draft);
-      setRestoreDialogOpen(false);
-      showSuccess('下書きを復元しました');
-
-      // 最初のステップに戻す
-      setActiveStep(0);
-
-      isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
-      setTimeout(() => {
-        isInitialLoad.current = false;
-      }, 1000);
-    }
-  }, [user, reset, setRestoreDialogOpen, showSuccess, setActiveStep, isInitialLoad]);
-
-  /**
-   * 下書きを破棄
-   */
-  const handleDiscardDraft = useCallback(() => {
-    if (!user) return;
-
-    SessionStorageService.clearDraft(user.uid);
-    setRestoreDialogOpen(false);
-  }, [user, setRestoreDialogOpen]);
-
+  // 既存のインターフェースを維持（後方互換性）
   return {
     handleRemoveProduct,
     handleClearProduct,
