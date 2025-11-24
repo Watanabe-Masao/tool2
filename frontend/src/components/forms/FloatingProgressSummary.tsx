@@ -512,7 +512,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       elevation={8}
       sx={{
         position: 'fixed',
-        bottom: 0,
+        bottom: isMobile ? '64px' : 0,
         left: 0,
         right: 0,
         zIndex: 1000,
