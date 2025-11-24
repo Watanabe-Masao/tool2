@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
-import { OrderFormSteps } from '@/components/order/OrderFormSteps';
+import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
 import { OrderModals } from '@/components/order/OrderModals';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -279,79 +279,43 @@ export const NewOrderPage: React.FC = () => {
           )}
 
           {/* タブナビゲーション */}
-          <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2 }}>
-              <Tabs
-                value={activeStep}
-                onChange={handleTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-              >
-                <Tab label="店着日・帳合先" />
-                <Tab label="商品情報" />
-                <Tab label="価格・数量" />
-                <Tab label="店舗配分" />
-                <Tab label="プレビュー" />
-              </Tabs>
-
-              {/* コンテンツエリア（スクロール可能） */}
-              <Box sx={{
-                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary (desktop only)
-                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${isMobile ? 0 : progressSummaryHeight}px)`,
-                overflow: 'auto',
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: '#f1f1f1',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: '#888',
-                  borderRadius: '4px',
-                },
-                '&::-webkit-scrollbar-thumb:hover': {
-                  background: '#555',
-                },
-              }}>
-                <OrderFormSteps
-                  activeStep={activeStep}
-                  control={control}
-                  errors={errors}
-                  productFields={productFields}
-                  appendProduct={appendProduct}
-                  removeProduct={removeProduct}
-                  moveProduct={moveProduct}
-                  supplierOptions={supplierAutocomplete.options}
-                  onSuppliersChange={handleSuppliersChange}
-                  productNameOptions={productNameAutocomplete.options}
-                  originOptions={originAutocomplete.options}
-                  suppliers={suppliers || []}
-                  activeProductIndex={activeProductIndex}
-                  onProductIndexChange={setActiveProductIndex}
-                  onNavigateToStep={setActiveStep}
-                  lockedStores={lockedStores}
-                  setLockedStores={setLockedStores}
-                  selectedCategories={selectedCategories}
-                  setSelectedCategories={setSelectedCategories}
-                  showGeneratedPreview={showGeneratedPreview}
-                  deliveryDate={deliveryDate}
-                  products={products || []}
-                  generatedFiles={generatedFiles}
-                  onSubmit={handleSubmit(onSubmit)}
-                  onAllocationChange={handleAllocationChange}
-                  onDownloadExcel={handleDownloadExcel}
-                  onDownloadPdf={handleDownloadPdf}
-                  onSendEmail={() => setShowEmailModal(true)}
-                  onBackToEdit={() => {
-                    setShowGeneratedPreview(false);
-                    setGeneratedFiles(null);
-                    setExcelBlob(null);
-                  }}
-                />
-              </Box>
-            </Box>
-          </Container>
+          <OrderFormWithTabs
+            activeStep={activeStep}
+            handleTabChange={handleTabChange}
+            setActiveStep={setActiveStep}
+            isMobile={isMobile}
+            progressSummaryHeight={progressSummaryHeight}
+            control={control}
+            errors={errors}
+            productFields={productFields}
+            appendProduct={appendProduct}
+            removeProduct={removeProduct}
+            moveProduct={moveProduct}
+            handleSubmit={handleSubmit}
+            supplierOptions={supplierAutocomplete.options}
+            productNameOptions={productNameAutocomplete.options}
+            originOptions={originAutocomplete.options}
+            suppliers={suppliers || []}
+            products={products || []}
+            deliveryDate={deliveryDate}
+            generatedFiles={generatedFiles}
+            activeProductIndex={activeProductIndex}
+            setActiveProductIndex={setActiveProductIndex}
+            lockedStores={lockedStores}
+            setLockedStores={setLockedStores}
+            selectedCategories={selectedCategories}
+            setSelectedCategories={setSelectedCategories}
+            showGeneratedPreview={showGeneratedPreview}
+            setShowGeneratedPreview={setShowGeneratedPreview}
+            setGeneratedFiles={setGeneratedFiles}
+            setExcelBlob={setExcelBlob}
+            setShowEmailModal={setShowEmailModal}
+            handleSuppliersChange={handleSuppliersChange}
+            onSubmit={onSubmit}
+            handleAllocationChange={handleAllocationChange}
+            handleDownloadExcel={handleDownloadExcel}
+            handleDownloadPdf={handleDownloadPdf}
+          />
         </Box>
 
       {/* 注文関連ダイアログ */}
