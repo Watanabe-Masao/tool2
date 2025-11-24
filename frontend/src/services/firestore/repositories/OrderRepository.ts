@@ -1,6 +1,5 @@
 import {
   Firestore,
-  collection,
   query,
   where,
   orderBy,
@@ -10,8 +9,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { FirestoreBaseService, PaginatedResult, QueryOptions } from '../base/FirestoreBaseService';
-import type { OrderData, FirestoreOrderData } from '@/types';
+import { FirestoreBaseService, type PaginatedResult, type QueryOptions } from '../base/FirestoreBaseService';
+import type { OrderData } from '@/types';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
 
 /**

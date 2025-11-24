@@ -7,7 +7,6 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  query,
   Query,
   DocumentSnapshot,
   Timestamp,
@@ -48,14 +47,17 @@ import {
  * ```
  */
 export abstract class FirestoreBaseService<T, F = any> {
+  protected collectionName: string;
+  protected db: Firestore;
+
   /**
    * @param collectionName - Firestoreコレクション名
    * @param db - Firestoreインスタンス
    */
-  constructor(
-    protected collectionName: string,
-    protected db: Firestore
-  ) {}
+  constructor(collectionName: string, db: Firestore) {
+    this.collectionName = collectionName;
+    this.db = db;
+  }
 
   /**
    * エンティティをFirestore保存形式に変換

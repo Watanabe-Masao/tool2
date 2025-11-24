@@ -228,6 +228,7 @@ describe('OrderRepository', () => {
         products: [],
         buyerName: 'テストバイヤー',
         userId: '', // 空のuserIdは上書きされる
+        timestamp: new Date(),
       } as OrderData;
 
       const orderId = await repository.saveOrder(orderData, 'user-123');
