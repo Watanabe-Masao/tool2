@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -44,6 +44,10 @@ const TOTAL_STEPS = 5;
  * 5. 配分プレビュー・生成
  */
 export const NewOrderPage: React.FC = () => {
+  // テーマとメディアクエリ
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -752,7 +756,8 @@ export const NewOrderPage: React.FC = () => {
 
               {/* コンテンツエリア（スクロール可能） */}
               <Box sx={{
-                height: `calc(100vh - 144px - ${progressSummaryHeight}px)`,
+                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary
+                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${progressSummaryHeight}px)`,
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
