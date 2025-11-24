@@ -248,9 +248,7 @@ export const NewOrderPage: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      {/* フォーム入力画面（Step 5がプレビューを含む） */}
       <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
-          {/* オフライン時の警告 */}
           {!isOnline && (
             <Box sx={{ px: 2, pt: 2 }}>
               <Alert severity="warning">
@@ -258,8 +256,6 @@ export const NewOrderPage: React.FC = () => {
               </Alert>
             </Box>
           )}
-
-          {/* タブナビゲーション */}
           <OrderFormWithTabs
             activeStep={activeStep}
             handleTabChange={handleTabChange}
@@ -298,8 +294,6 @@ export const NewOrderPage: React.FC = () => {
             handleDownloadPdf={handleDownloadPdf}
           />
         </Box>
-
-      {/* 注文関連ダイアログ */}
         <OrderDialogs
           bookNameDialog={bookNameDialog}
           onBookNameDialogChange={setBookNameDialog}
@@ -311,8 +305,6 @@ export const NewOrderPage: React.FC = () => {
           onConfirmSupplierRemoval={handleConfirmSupplierRemoval}
           onCancelSupplierRemoval={handleCancelSupplierRemoval}
         />
-
-        {/* 注文関連モーダル */}
         <OrderModals
           generatedFiles={generatedFiles}
           excelBlob={excelBlob}
@@ -332,8 +324,6 @@ export const NewOrderPage: React.FC = () => {
           onDownloadExcel={handleDownloadExcel}
           onSendEmail={() => setShowEmailModal(true)}
         />
-
-        {/* フローティング進捗サマリー */}
         {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
             formData={{
