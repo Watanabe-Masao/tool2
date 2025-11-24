@@ -20,6 +20,7 @@ import { useOrderModals } from '@/hooks/useOrderModals';
 import { useOrderHandlers } from '@/hooks/useOrderHandlers';
 import { useStepNavigation } from '@/hooks/useStepNavigation';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { useFormUIState } from '@/hooks/useFormUIState';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 
 /**
@@ -46,20 +47,6 @@ export const NewOrderPage: React.FC = () => {
 
   const [activeStep, setActiveStep] = useState(0);
 
-  // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
-  // Map<商品インデックス, Set<店舗コード>>
-  const [lockedStores, setLockedStores] = useState<Map<number, Set<string>>>(new Map());
-
-  // カテゴリフィルター（商品別、ステップ4とステップ5で共有）
-  // Map<商品インデックス, Set<カテゴリコード>>
-  const [selectedCategories, setSelectedCategories] = useState<Map<number, Set<string>>>(new Map());
-
-  // 現在編集中の商品インデックス（ステップ2-4で使用）
-  const [activeProductIndex, setActiveProductIndex] = useState(0);
-
-  // FloatingProgressSummaryの高さ
-  const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
-
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
   const { setStepNavigation, showProgressSummary } = useNavigationContext();
@@ -74,6 +61,18 @@ export const NewOrderPage: React.FC = () => {
 
   // ユーザー設定
   const userSettings = useUserSettings(user);
+
+  // フォームUI状態管理
+  const {
+    activeProductIndex,
+    setActiveProductIndex,
+    lockedStores,
+    setLockedStores,
+    selectedCategories,
+    setSelectedCategories,
+    progressSummaryHeight,
+    setProgressSummaryHeight,
+  } = useFormUIState();
 
   // モーダル・ダイアログ状態管理
   const {
