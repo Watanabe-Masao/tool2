@@ -44,11 +44,15 @@ interface AllocationPreviewContentProps {
   /** ロックされた店舗のMap（商品別） */
   lockedStores: Map<number, Set<string>>;
   /** ロック状態更新関数 */
-  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setLockedStores: (
+    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
   /** 選択されたカテゴリのMap（商品別） */
   selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setSelectedCategories: (
+    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
   /** 現在選択中の商品インデックス（進捗サマリーとの連動用） */
   activeProductIndex?: number;
   /** 商品選択変更ハンドラ（表の行クリック時） */

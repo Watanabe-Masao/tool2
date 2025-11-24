@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
@@ -13,13 +13,12 @@ import { useNavigationContext } from '@/context/NavigationContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { useUserSettings } from '@/hooks/useUserSettings';
-import { useFormUIState } from '@/hooks/useFormUIState';
-import { useOrderModals } from '@/hooks/useOrderModals';
 import { useOrderSubmit } from '@/hooks/useOrderSubmit';
 import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { useSupplierManagement } from '@/hooks/useSupplierManagement';
 import { useOrderHandlers } from '@/hooks/useOrderHandlers';
 import { useStepNavigation } from '@/hooks/useStepNavigation';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 
 /**
@@ -44,8 +43,6 @@ export const NewOrderPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [activeStep, setActiveStep] = useState(0);
-
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
   const { setStepNavigation, showProgressSummary } = useNavigationContext();
@@ -61,33 +58,31 @@ export const NewOrderPage: React.FC = () => {
   // ユーザー設定
   const userSettings = useUserSettings(user);
 
-  // フォームUI状態管理
-  const {
-    activeProductIndex,
-    setActiveProductIndex,
-    lockedStores,
-    setLockedStores,
-    selectedCategories,
-    setSelectedCategories,
-    progressSummaryHeight,
-    setProgressSummaryHeight,
-  } = useFormUIState();
+  // UI状態管理（Zustand Store）
+  const activeStep = useOrderFormStore((state) => state.activeStep);
+  const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
+  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
+  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
+  const lockedStores = useOrderFormStore((state) => state.lockedStores);
+  const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
+  const selectedCategories = useOrderFormStore((state) => state.selectedCategories);
+  const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
+  const progressSummaryHeight = useOrderFormStore((state) => state.progressSummaryHeight);
+  const setProgressSummaryHeight = useOrderFormStore((state) => state.setProgressSummaryHeight);
 
-  // モーダル・ダイアログ状態管理
-  const {
-    showPDFPreview,
-    setShowPDFPreview,
-    showDownloadModal,
-    setShowDownloadModal,
-    showPreviewModal,
-    setShowPreviewModal,
-    showEmailModal,
-    setShowEmailModal,
-    showGeneratedPreview,
-    setShowGeneratedPreview,
-    bookNameDialog,
-    setBookNameDialog,
-  } = useOrderModals();
+  // モーダル状態管理（Zustand Store）
+  const showPDFPreview = useOrderFormStore((state) => state.showPDFPreview);
+  const setShowPDFPreview = useOrderFormStore((state) => state.setShowPDFPreview);
+  const showDownloadModal = useOrderFormStore((state) => state.showDownloadModal);
+  const setShowDownloadModal = useOrderFormStore((state) => state.setShowDownloadModal);
+  const showPreviewModal = useOrderFormStore((state) => state.showPreviewModal);
+  const setShowPreviewModal = useOrderFormStore((state) => state.setShowPreviewModal);
+  const showEmailModal = useOrderFormStore((state) => state.showEmailModal);
+  const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
+  const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
+  const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
+  const bookNameDialog = useOrderFormStore((state) => state.bookNameDialog);
+  const setBookNameDialog = useOrderFormStore((state) => state.setBookNameDialog);
 
   // 注文送信ロジック
   const {

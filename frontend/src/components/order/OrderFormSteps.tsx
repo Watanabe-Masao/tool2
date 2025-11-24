@@ -70,9 +70,13 @@ interface OrderFormStepsProps {
 
   // Step 3: 店舗配分
   lockedStores: Map<number, Set<string>>;
-  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setLockedStores: (
+    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
   selectedCategories: Map<number, Set<string>>;
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setSelectedCategories: (
+    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
 
   // Step 4: プレビュー
   showGeneratedPreview: boolean;

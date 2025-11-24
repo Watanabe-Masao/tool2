@@ -59,9 +59,13 @@ interface OrderFormWithTabsProps {
   activeProductIndex: number;
   setActiveProductIndex: (index: number) => void;
   lockedStores: Map<number, Set<string>>;
-  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setLockedStores: (
+    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
   selectedCategories: Map<number, Set<string>>;
-  setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setSelectedCategories: (
+    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
   showGeneratedPreview: boolean;
   setShowGeneratedPreview: (show: boolean) => void;
   setGeneratedFiles: (files: GeneratedFiles | null) => void;

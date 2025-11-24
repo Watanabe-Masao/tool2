@@ -19,7 +19,9 @@ interface UseOrderHandlersParams {
   activeProductIndex: number;
   setActiveProductIndex: (index: number) => void;
   suppliers: string[] | undefined;
-  setLockedStores: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  setLockedStores: (
+    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
+  ) => void;
 
   // Modal/Dialog state
   setBookNameDialog: (state: BookNameDialogState) => void;
