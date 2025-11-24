@@ -3,17 +3,13 @@ import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
+import { OrderFormSteps } from '@/components/order/OrderFormSteps';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
-import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
-import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
-import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
-import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
@@ -588,120 +584,41 @@ export const NewOrderPage: React.FC = () => {
                   background: '#555',
                 },
               }}>
-                {/* Step 1: 店着日・帳合先 */}
-                {activeStep === 0 && (
-                  <Box sx={{ py: 2 }}>
-                    <DeliveryDateForm
-                      control={control}
-                      errors={errors}
-                      supplierOptions={supplierAutocomplete.options}
-                      onSuppliersChange={handleSuppliersChange}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 2: 商品情報（基本） */}
-                {activeStep === 1 && (
-                  <Box sx={{ py: 2 }}>
-                    <ProductBasicInfoForm
-                      control={control}
-                      errors={errors}
-                      productNameOptions={productNameAutocomplete.options}
-                      originOptions={originAutocomplete.options}
-                      suppliers={suppliers || []}
-                      fields={productFields}
-                      append={appendProduct}
-                      remove={removeProduct}
-                      move={moveProduct}
-                      onNavigateToStep={setActiveStep}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 3: 商品情報2（価格・総納品数） */}
-                {activeStep === 2 && (
-                  <Box sx={{ py: 2 }}>
-                    <ProductPricingForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 4: 店舗配分 */}
-                {activeStep === 3 && (
-                  <Box sx={{ py: 2 }}>
-                    <StoreAllocationForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                      lockedStores={lockedStores}
-                      setLockedStores={setLockedStores}
-                      selectedCategories={selectedCategories}
-                      setSelectedCategories={setSelectedCategories}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 5: プレビュー・生成 */}
-                {activeStep === 4 && (
-                  <Box sx={{ py: 2 }}>
-                    {!showGeneratedPreview ? (
-                      /* 生成前のプレビュー */
-                      <AllocationPreviewContent
-                        formData={{
-                          deliveryDate: deliveryDate || new Date(),
-                          suppliers: suppliers || [],
-                          products: products || [],
-                        }}
-                        pdfFilename={undefined}
-                        onGenerate={handleSubmit(onSubmit)}
-                        onAllocationChange={handleAllocationChange}
-                        lockedStores={lockedStores}
-                        setLockedStores={setLockedStores}
-                        selectedCategories={selectedCategories}
-                        setSelectedCategories={setSelectedCategories}
-                        activeProductIndex={activeProductIndex}
-                        onProductChange={setActiveProductIndex}
-                      />
-                    ) : (
-                      /* 生成後のプレビュー */
-                      generatedFiles && (
-                        <AllocationPreviewContent
-                          formData={{
-                            deliveryDate: deliveryDate || new Date(),
-                            suppliers: suppliers || [],
-                            products: products || [],
-                          }}
-                          pdfFilename={generatedFiles.pdfFilename}
-                          pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
-                          onDownloadExcel={handleDownloadExcel}
-                          onDownloadPdf={handleDownloadPdf}
-                          onSendEmail={() => setShowEmailModal(true)}
-                          onBack={() => {
-                            setShowGeneratedPreview(false);
-                            setGeneratedFiles(null);
-                            setExcelBlob(null);
-                          }}
-                          onAllocationChange={handleAllocationChange}
-                          lockedStores={lockedStores}
-                          setLockedStores={setLockedStores}
-                          selectedCategories={selectedCategories}
-                          setSelectedCategories={setSelectedCategories}
-                          activeProductIndex={activeProductIndex}
-                          onProductChange={setActiveProductIndex}
-                        />
-                      )
-                    )}
-                  </Box>
-                )}
+                <OrderFormSteps
+                  activeStep={activeStep}
+                  control={control}
+                  errors={errors}
+                  productFields={productFields}
+                  appendProduct={appendProduct}
+                  removeProduct={removeProduct}
+                  moveProduct={moveProduct}
+                  supplierOptions={supplierAutocomplete.options}
+                  onSuppliersChange={handleSuppliersChange}
+                  productNameOptions={productNameAutocomplete.options}
+                  originOptions={originAutocomplete.options}
+                  suppliers={suppliers || []}
+                  activeProductIndex={activeProductIndex}
+                  onProductIndexChange={setActiveProductIndex}
+                  onNavigateToStep={setActiveStep}
+                  lockedStores={lockedStores}
+                  setLockedStores={setLockedStores}
+                  selectedCategories={selectedCategories}
+                  setSelectedCategories={setSelectedCategories}
+                  showGeneratedPreview={showGeneratedPreview}
+                  deliveryDate={deliveryDate}
+                  products={products || []}
+                  generatedFiles={generatedFiles}
+                  onSubmit={handleSubmit(onSubmit)}
+                  onAllocationChange={handleAllocationChange}
+                  onDownloadExcel={handleDownloadExcel}
+                  onDownloadPdf={handleDownloadPdf}
+                  onSendEmail={() => setShowEmailModal(true)}
+                  onBackToEdit={() => {
+                    setShowGeneratedPreview(false);
+                    setGeneratedFiles(null);
+                    setExcelBlob(null);
+                  }}
+                />
               </Box>
             </Box>
           </Container>
