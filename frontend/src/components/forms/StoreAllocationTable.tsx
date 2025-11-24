@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -10,6 +10,7 @@ import {
   Button,
   Divider,
   LinearProgress,
+  IconButton,
 } from '@mui/material';
 import {
   LockOpenOutlined,
@@ -20,15 +21,13 @@ import {
   CheckCircle,
   Error as ErrorIcon,
   Warning as WarningIcon,
+  Lock,
+  LockOpen,
 } from '@mui/icons-material';
-import { AgGridReact } from 'ag-grid-react';
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, GridOptions, ValueSetterParams, CellClassParams } from 'ag-grid-community';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
-
-// AG Grid モジュールを登録
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
  * StoreAllocationTableのProps
@@ -56,17 +55,17 @@ interface StoreAllocationTableProps {
  * グリッド行データの型
  */
 interface StoreRowData {
+  id: string;
   storeCode: string;
   storeName: string;
   allocation: number;
-  index: number;
   locked: boolean;
 }
 
 /**
  * Step 4: 36店舗配分テーブル
  *
- * AG Gridを使用した表形式で36店舗への配分数を入力します。
+ * MUI DataGridを使用した表形式で36店舗への配分数を入力します。
  * - 編集可能なテーブル
  * - ロック機能（店舗ごとに配分を固定）
  * - リアルタイムバリデーション
@@ -79,50 +78,15 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
   totalDelivery,
   lockedStores,
   setLockedStores,
-  selectedCategories: _selectedCategories, // TODO: カテゴリフィルター機能で使用予定
-  setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター機能で使用予定
+  selectedCategories: _selectedCategories,
+  setSelectedCategories: _setSelectedCategories,
 }) => {
   const productErrors = errors.products?.[productIndex];
 
-  // React#185対策: マウント状態を追跡
-  const isMountedRef = useRef<boolean>(true);
-  const gridApiRef = useRef<any>(null);
-
   /**
-   * クリーンアップ処理（React#185対策）
-   */
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    return () => {
-      isMountedRef.current = false;
-
-      // AG Gridのインスタンスを完全に破棄
-      if (gridApiRef.current) {
-        try {
-          gridApiRef.current.stopEditing(true);
-          gridApiRef.current.deselectAll();
-          gridApiRef.current.destroy();
-        } catch (e) {
-          console.warn('AG Grid cleanup error:', e);
-        } finally {
-          gridApiRef.current = null;
-        }
-      }
-    };
-  }, []);
-
-  /**
-   * ロック状態をトグル（React#185対策: 直接実行）
+   * ロック状態をトグル
    */
   const toggleLock = useCallback((storeCode: string) => {
-    // コンポーネントがマウントされている場合のみ処理
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    // 直接実行（startTransitionは使わない）
-    // onCellClickedから呼ばれるため、レンダリング外
     setLockedStores((prev) => {
       const next = new Set(prev);
       if (next.has(storeCode)) {
@@ -239,160 +203,120 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         /**
          * 行データを生成
          */
-        const rowData = useMemo<StoreRowData[]>(() => {
+        const rows = useMemo<StoreRowData[]>(() => {
           return STORE_DATA.map((store, index) => ({
+            id: store.code,
             storeCode: store.code,
             storeName: store.name,
             allocation: allocations[index] || 0,
-            index,
             locked: lockedStores.has(store.code),
           }));
         }, [allocations, lockedStores]);
 
         /**
-         * セルクリックハンドラー（React#185対策: イベントリスナーを使わない）
+         * カラム定義
          */
-        const handleCellClicked = useCallback((event: any) => {
-          if (!isMountedRef.current || !event.data) return;
+        const columns = useMemo<GridColDef<StoreRowData>[]>(() => [
+          {
+            field: 'locked',
+            headerName: 'ロック',
+            width: 80,
+            sortable: false,
+            filterable: false,
+            disableColumnMenu: true,
+            renderCell: (params: GridRenderCellParams<StoreRowData>) => (
+              <IconButton
+                size="small"
+                onClick={() => toggleLock(params.row.storeCode)}
+                sx={{
+                  color: params.row.locked ? '#f57c00' : '#9e9e9e',
+                }}
+              >
+                {params.row.locked ? <Lock /> : <LockOpen />}
+              </IconButton>
+            ),
+          },
+          {
+            field: 'storeCode',
+            headerName: '店番',
+            width: 90,
+            sortable: false,
+            filterable: false,
+            disableColumnMenu: true,
+          },
+          {
+            field: 'storeName',
+            headerName: '店舗名',
+            width: 200,
+            sortable: false,
+            filterable: false,
+            disableColumnMenu: true,
+          },
+          {
+            field: 'allocation',
+            headerName: '配分数',
+            width: 120,
+            sortable: false,
+            filterable: false,
+            disableColumnMenu: true,
+            editable: true,
+            type: 'number',
+            renderCell: (params: GridRenderCellParams<StoreRowData>) => {
+              const value = params.value as number;
+              return (
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '700',
+                    fontSize: '1.1rem',
+                    color: params.row.locked
+                      ? '#f57c00'
+                      : value > 0
+                      ? '#1565c0'
+                      : '#bdbdbd',
+                  }}
+                >
+                  {value > 0 ? value : '-'}
+                </Box>
+              );
+            },
+          },
+        ], [toggleLock, lockedStores]);
 
-          // ロック列がクリックされた場合のみ処理
-          if (event.column.getColId() === 'locked') {
-            toggleLock(event.data.storeCode);
+        /**
+         * セル更新処理
+         */
+        const processRowUpdate = useCallback((newRow: StoreRowData, oldRow: StoreRowData) => {
+          // ロックされている場合は更新しない
+          if (newRow.locked) {
+            return oldRow;
           }
-        }, [toggleLock]);
+
+          // 値を検証
+          const value = Math.max(0, Math.floor(newRow.allocation || 0));
+
+          // 配列のインデックスを取得
+          const storeIndex = STORE_DATA.findIndex((store) => store.code === newRow.storeCode);
+          if (storeIndex === -1) return oldRow;
+
+          // 新しい配列を作成して更新
+          const newAllocations = [...allocations];
+          newAllocations[storeIndex] = value;
+          field.onChange(newAllocations);
+
+          return { ...newRow, allocation: value };
+        }, [allocations, field, lockedStores]);
 
         /**
-         * カラム定義（React#185対策: イベントリスナーを完全に排除）
+         * セルが編集可能かどうか
          */
-        const columnDefs = useMemo<ColDef<StoreRowData>[]>(
-          () => [
-            {
-              headerName: 'ロック',
-              field: 'locked',
-              colId: 'locked',
-              width: 80,
-              cellRenderer: (params: any) => {
-                if (!params.data) return '';
-                const locked = params.data.locked;
-
-                // イベントリスナーを一切使わない純粋な表示のみ
-                return `
-                  <div style="
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100%;
-                    cursor: pointer;
-                    font-size: 20px;
-                    color: ${locked ? '#f57c00' : '#9e9e9e'};
-                    user-select: none;
-                  " title="${locked ? 'ロック解除' : 'ロック'}">
-                    ${locked ? '🔒' : '🔓'}
-                  </div>
-                `;
-              },
-              cellStyle: { textAlign: 'center', padding: '0' } as any,
-            },
-            {
-              headerName: '店番',
-              field: 'storeCode',
-              width: 90,
-              cellStyle: { fontWeight: 600, fontSize: '0.9rem', textAlign: 'center' } as any,
-            },
-            {
-              headerName: '店舗名',
-              field: 'storeName',
-              width: 200,
-              cellStyle: { fontWeight: 500, fontSize: '0.9rem' } as any,
-            },
-            {
-              headerName: '配分数',
-              field: 'allocation',
-              width: 120,
-              editable: (params) => params.data ? !params.data.locked : false,
-              valueSetter: (params: ValueSetterParams<StoreRowData>) => {
-                // React#185対策: コンポーネントがマウントされている場合のみ処理
-                if (!isMountedRef.current || !params.data) {
-                  return false;
-                }
-                const value = parseInt(params.newValue, 10);
-                if (!isNaN(value) && value >= 0) {
-                  // 直接field.onChangeを呼び出し（handleChangeを経由しない）
-                  const newAllocations = [...allocations];
-                  newAllocations[params.data.index] = value;
-                  field.onChange(newAllocations);
-                  return true;
-                }
-                return false;
-              },
-              cellClass: (params: CellClassParams<StoreRowData>) => {
-                if (!params.data) return [];
-                const classes = ['allocation-cell'];
-                if (params.data.locked) {
-                  classes.push('locked-cell');
-                } else if (params.value && params.value > 0) {
-                  classes.push('allocated-cell');
-                }
-                return classes;
-              },
-              cellStyle: (params) => {
-                if (!params.data) return {};
-                return {
-                  textAlign: 'center',
-                  fontWeight: '700',
-                  fontSize: '1.1rem',
-                  backgroundColor: params.data.locked
-                    ? '#fff3e0'
-                    : params.value && params.value > 0
-                    ? '#e3f2fd'
-                    : 'transparent',
-                  color: params.data.locked
-                    ? '#f57c00'
-                    : params.value && params.value > 0
-                    ? '#1565c0'
-                    : '#bdbdbd',
-                  cursor: params.data.locked ? 'not-allowed' : 'pointer',
-                } as any;
-              },
-              valueFormatter: (params) => {
-                return params.value && params.value > 0 ? params.value.toString() : '-';
-              },
-            },
-          ],
-          []  // 依存配列を空に: lockedStoresとallocationsは動的に評価され、columnDefs構造は不変
-        );
-
-        /**
-         * グリッド初期化完了ハンドラー（React#185対策）
-         */
-        const handleGridReady = useCallback((params: any) => {
-          gridApiRef.current = params.api;
+        const isCellEditable = useCallback((params: any) => {
+          return params.field === 'allocation' && !params.row.locked;
         }, []);
-
-        /**
-         * グリッドオプション（React#185対策）
-         */
-        const gridOptions = useMemo<GridOptions<StoreRowData>>(
-          () => ({
-            defaultColDef: {
-              resizable: true,
-              sortable: true,
-              filter: false,
-            },
-            rowHeight: 45,
-            headerHeight: 45,
-            suppressMovableColumns: true,
-            suppressCellFocus: false,
-            enableCellTextSelection: false,
-            animateRows: false, // React#185対策: アニメーションを無効化
-            singleClickEdit: true,
-            stopEditingWhenCellsLoseFocus: true,
-            suppressReactUi: true, // React#185対策: ReactUIを抑制してDOM操作に統一
-            onGridReady: handleGridReady,
-            onCellClicked: handleCellClicked, // React#185対策: セルクリックで処理
-          }),
-          [handleGridReady, handleCellClicked]
-        );
 
         return (
           <Box sx={{ py: 2 }}>
@@ -587,74 +511,49 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
 
             {/* 店舗配分テーブル */}
             <Card variant="outlined" sx={{ borderColor: 'grey.300', overflow: 'hidden' }}>
-              <Box
-                className="ag-theme-alpine"
-                sx={{
-                  width: '100%',
-                  height: 500,
-                  '& .ag-root-wrapper': {
+              <Box sx={{ height: 500, width: '100%' }}>
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  processRowUpdate={processRowUpdate}
+                  isCellEditable={isCellEditable}
+                  disableRowSelectionOnClick
+                  hideFooter
+                  sx={{
                     border: 'none',
-                  },
-                  '& .ag-header': {
-                    backgroundColor: 'primary.main',
-                    borderBottom: '3px solid',
-                    borderBottomColor: 'primary.dark',
-                  },
-                  '& .ag-header-cell': {
-                    fontWeight: '700',
-                    fontSize: '0.9rem',
-                    padding: '8px',
-                    color: 'white',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-                  },
-                  '& .ag-header-cell:last-child': {
-                    borderRight: 'none',
-                  },
-                  '& .ag-cell': {
-                    fontSize: '0.9rem',
-                    lineHeight: '45px',
-                    padding: '0 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    borderRight: '1px solid #e0e0e0',
-                  },
-                  '& .ag-cell:last-child': {
-                    borderRight: 'none',
-                  },
-                  '& .ag-row': {
-                    borderBottom: '1px solid #e0e0e0',
-                  },
-                  '& .ag-row:hover': {
-                    backgroundColor: '#f5f5f5 !important',
-                    boxShadow: 'inset 0 0 0 1px rgba(25, 118, 210, 0.2)',
-                  },
-                  '& .ag-row-even': {
-                    backgroundColor: '#ffffff',
-                  },
-                  '& .ag-row-odd': {
-                    backgroundColor: '#fafafa',
-                  },
-                  '& .allocation-cell': {
-                    transition: 'all 0.2s ease-in-out',
-                  },
-                  '& .locked-cell': {
-                    cursor: 'not-allowed',
-                    boxShadow: 'inset 0 0 0 1px rgba(245, 124, 0, 0.3)',
-                  },
-                  '& .allocated-cell': {
-                    boxShadow: 'inset 0 0 0 1px rgba(21, 101, 192, 0.2)',
-                  },
-                  '& .allocated-cell:hover': {
-                    backgroundColor: '#bbdefb !important',
-                    boxShadow: 'inset 0 0 0 2px rgba(21, 101, 192, 0.4)',
-                    transform: 'scale(1.02)',
-                  },
-                }}
-              >
-                <AgGridReact<StoreRowData>
-                  rowData={rowData}
-                  columnDefs={columnDefs}
-                  gridOptions={gridOptions}
+                    '& .MuiDataGrid-cell': {
+                      borderRight: '1px solid #e0e0e0',
+                    },
+                    '& .MuiDataGrid-cell:last-child': {
+                      borderRight: 'none',
+                    },
+                    '& .MuiDataGrid-columnHeader': {
+                      backgroundColor: 'primary.main',
+                      color: 'white',
+                      fontWeight: '700',
+                      fontSize: '0.9rem',
+                      borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    },
+                    '& .MuiDataGrid-columnHeader:last-child': {
+                      borderRight: 'none',
+                    },
+                    '& .MuiDataGrid-row:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                    '& .MuiDataGrid-row:nth-of-type(even)': {
+                      backgroundColor: '#ffffff',
+                    },
+                    '& .MuiDataGrid-row:nth-of-type(odd)': {
+                      backgroundColor: '#fafafa',
+                    },
+                    '& .MuiDataGrid-cell[data-field="allocation"]': {
+                      backgroundColor: (theme) => {
+                        const row = rows.find(r => r.id === (theme as any).id);
+                        if (!row) return 'transparent';
+                        return row.locked ? '#fff3e0' : row.allocation > 0 ? '#e3f2fd' : 'transparent';
+                      },
+                    },
+                  }}
                 />
               </Box>
             </Card>
