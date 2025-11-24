@@ -5,10 +5,12 @@ import {
   Button,
   Paper,
   Divider,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -46,6 +48,10 @@ interface AllocationPreviewContentProps {
   selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
   setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  /** 現在選択中の商品インデックス（進捗サマリーとの連動用） */
+  activeProductIndex?: number;
+  /** 商品選択変更ハンドラ（表の行クリック時） */
+  onProductChange?: (productIndex: number) => void;
 }
 
 /**
@@ -89,7 +95,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   setLockedStores: _setLockedStores,
   selectedCategories: _selectedCategories,
   setSelectedCategories: _setSelectedCategories,
+  activeProductIndex,
+  onProductChange,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
 
@@ -220,7 +231,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       cols.push({
         field: `store_${store.code}`,
         headerName: `${store.code}\n${store.name}`,
-        width: 55,
+        width: isMobile ? 80 : 55, // モバイル時は幅を広げてタップしやすく
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
@@ -342,7 +353,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onGenerate, lockedStores]);
+  }, [onGenerate, lockedStores, isMobile]);
 
   /**
    * セル更新処理（React#185対策: 非同期更新）
@@ -516,11 +527,21 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             isCellEditable={isCellEditable}
             disableRowSelectionOnClick
             hideFooter
+            onRowClick={(params: GridRowParams) => {
+              // 行クリック時に商品選択を変更（進捗サマリーと連動）
+              if (onProductChange) {
+                onProductChange(params.row.productIndex);
+              }
+            }}
+            getRowClassName={(params) => {
+              // activeProductIndexと一致する行をハイライト
+              return params.row.productIndex === activeProductIndex ? 'highlighted-row' : '';
+            }}
             sx={{
               border: 'none',
               '& .MuiDataGrid-cell': {
                 borderRight: '1px solid #e0e0e0',
-                fontSize: '0.85rem',
+                fontSize: isMobile ? '0.75rem' : '0.85rem',
               },
               '& .MuiDataGrid-cell:last-child': {
                 borderRight: 'none',
@@ -529,7 +550,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 backgroundColor: 'primary.main',
                 color: 'white',
                 fontWeight: '700',
-                fontSize: '0.75rem',
+                fontSize: isMobile ? '0.7rem' : '0.75rem',
                 borderRight: '1px solid rgba(255, 255, 255, 0.1)',
                 whiteSpace: 'pre-wrap',
                 lineHeight: '1.2',
@@ -539,6 +560,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               },
               '& .MuiDataGrid-row:hover': {
                 backgroundColor: '#f5f5f5',
+                cursor: onProductChange ? 'pointer' : 'default',
+              },
+              // ハイライトされた行のスタイル
+              '& .highlighted-row': {
+                backgroundColor: '#e3f2fd !important',
+                borderLeft: '4px solid #1976d2',
+              },
+              '& .highlighted-row:hover': {
+                backgroundColor: '#bbdefb !important',
               },
             }}
           />

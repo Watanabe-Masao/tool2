@@ -917,6 +917,8 @@ export const NewOrderPage: React.FC = () => {
                         setLockedStores={setLockedStores}
                         selectedCategories={selectedCategories}
                         setSelectedCategories={setSelectedCategories}
+                        activeProductIndex={activeProductIndex}
+                        onProductChange={setActiveProductIndex}
                       />
                     ) : (
                       /* 生成後のプレビュー */
@@ -942,6 +944,8 @@ export const NewOrderPage: React.FC = () => {
                           setLockedStores={setLockedStores}
                           selectedCategories={selectedCategories}
                           setSelectedCategories={setSelectedCategories}
+                          activeProductIndex={activeProductIndex}
+                          onProductChange={setActiveProductIndex}
                         />
                       )
                     )}
