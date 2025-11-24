@@ -637,7 +637,15 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         </IconButton>
 
         {/* 中央：ステップ表示 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flex: 1,
+          justifyContent: 'center',
+          maxWidth: '33%',
+          margin: '0 auto',
+        }}>
           <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
             ステップ {activeStep + 1} / {totalSteps}
           </Typography>

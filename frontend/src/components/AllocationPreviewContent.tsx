@@ -498,9 +498,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   color="primary"
                   startIcon={<Description />}
                   onClick={onDownloadExcel}
-                  sx={{ flex: 1 }}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '120px',
+                    px: isMobile ? 1 : 2,
+                  }}
                 >
-                  Excelダウンロード
+                  Excel
                 </Button>
               )}
 
@@ -510,9 +515,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   color="secondary"
                   startIcon={<PictureAsPdf />}
                   onClick={onDownloadPdf}
-                  sx={{ flex: 1 }}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '120px',
+                    px: isMobile ? 1 : 2,
+                  }}
                 >
-                  PDFダウンロード
+                  PDF
                 </Button>
               )}
 
@@ -521,9 +531,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   variant="outlined"
                   startIcon={<PictureAsPdf />}
                   onClick={handlePDFPreview}
-                  sx={{ flex: 1 }}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 0.8 : 2,
+                  }}
                 >
-                  PDFプレビュー
+                  {isMobile ? 'プレビュー' : 'PDFプレビュー'}
                 </Button>
               )}
 
@@ -533,9 +548,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   color="info"
                   startIcon={<Send />}
                   onClick={onSendEmail}
-                  sx={{ flex: 1 }}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 1 : 2,
+                  }}
                 >
-                  メール送信
+                  送信
                 </Button>
               )}
 
@@ -544,9 +564,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   variant="outlined"
                   startIcon={<ArrowBack />}
                   onClick={onBack}
-                  sx={{ flex: 1 }}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 0.8 : 2,
+                  }}
                 >
-                  編集に戻る
+                  {isMobile ? '編集' : '編集に戻る'}
                 </Button>
               )}
             </>
