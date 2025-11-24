@@ -2,7 +2,7 @@
 
 **開始日**: 2025-01-24
 **最終更新**: 2025-01-24
-**現在のフェーズ**: Phase 1 - 基盤コード分割
+**現在のフェーズ**: Phase 2 - NewOrderPageリファクタリング
 
 ---
 
@@ -10,13 +10,13 @@
 
 ```
 Phase 0: ドキュメント整備 ████████████████████ 100% ✅
-Phase 1: 基盤コード分割   ████████████░░░░░░░░  60% 🔄
+Phase 1: 基盤コード分割   ████████████████████ 100% ✅
 Phase 2: NewOrderPage    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 3: レスポンシブ    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 4: 配分実績管理    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 5: データ分析      ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 
-全体進捗: ██████░░░░░░░░░░░░░░ 33%
+全体進捗: ████████░░░░░░░░░░░░ 40%
 ```
 
 ---
@@ -41,104 +41,113 @@ Phase 5: データ分析      ░░░░░░░░░░░░░░░░�
 - [x] `docs/05-TESTING-GUIDE.md` - テスト戦略ガイド
 - [x] `docs/rfcs/001-comprehensive-refactoring-plan.md` - リファクタリング計画書
 
-### Phase 1: 基盤コード分割 (60%)
+### Phase 1: 基盤コード分割 (100%) ✅
 
 #### ✅ Repository パターン基盤
 - [x] `frontend/src/services/firestore/base/` ディレクトリ作成
 - [x] `FirestoreBaseService.ts` - 抽象基底クラス実装
 
-#### ✅ Repository実装 (4/6 完了)
+#### ✅ Repository実装 (6/6 完了)
 - [x] `OrderRepository.ts` + テスト - 注文データ管理、ページネーション対応
 - [x] `ProductHistoryRepository.ts` + テスト - 商品履歴管理、ピン留め機能
 - [x] `PricingHistoryRepository.ts` + テスト - 価格履歴管理、スマート更新ロジック
-- [x] `AutocompleteRepository.ts` + テスト - オートコンプリート履歴、重複排除
+- [x] `AutocompleteRepository.ts` + テスト - オートコンプリート履歴、重複排除（最大50件）
+- [x] `PresetRepository.ts` + テスト - 帳合先プリセット管理、リアルタイム購読
+- [x] `EmailAddressRepository.ts` + テスト - メールアドレス帳管理、並び順管理
+
+#### ✅ Facade実装
+- [x] `FirestoreServiceFacade.ts` - 既存コードとの互換性レイヤー
+- [x] `FirestoreServiceFacade.test.ts` - Facadeのユニットテスト
+- [x] `README.md` - Repository層の使い方ドキュメント
+
+**成果物**:
+- 合計コード量: 約3,500行（実装 + テスト）
+- テストカバレッジ目標: 90%以上
+- リポジトリ数: 6クラス
+- テストファイル: 7ファイル
 
 ---
 
 ## 🔄 進行中のタスク
 
-### Phase 1: 基盤コード分割 (継続中)
+### Phase 2: NewOrderPageリファクタリング (次のフェーズ)
 
-#### 🔄 残りのRepository実装 (2/6)
-- [ ] **PresetRepository.ts** (次のタスク)
-  - 帳合先プリセット管理
-  - 並び順管理（displayOrder）
-  - リアルタイム購読（onSnapshot）
-  - テスト作成
+**目標**: NewOrderPage.tsx (1125行) → 150行以下
 
-- [ ] **EmailAddressRepository.ts**
-  - メールアドレス帳管理
-  - 並び順管理（displayOrder）
-  - リアルタイム購読（onSnapshot）
-  - テスト作成
+#### 📋 主要タスク
+- [ ] **カスタムフック抽出**
+  - `useOrderFormState` - フォーム状態管理
+  - `useOrderModals` - モーダル制御
+  - `useOrderSubmit` - 注文送信ロジック
 
-#### 🔄 統合と移行
-- [ ] **FirestoreServiceFacade.ts** 作成
-  - 既存のFirestoreServiceとの互換性レイヤー
-  - 段階的移行を可能にする
+- [ ] **OrderService作成**
+  - ビジネスロジックの分離
+  - 価格計算ロジック
+  - 配分計算ロジック
 
-- [ ] **既存コードの移行**
-  - FirestoreService.tsの使用箇所を特定
-  - 新しいRepositoryへ段階的に移行
-  - テストで動作確認
+- [ ] **コンポーネント分割**
+  - `OrderFormContainer` - メインコンテナ
+  - `StepNavigator` - ステップ制御
+  - 各ステップコンポーネントの分離
 
-- [ ] **統合テスト**
-  - Firestore Emulatorを使用した統合テスト
-  - 実際のFirestore操作の確認
+- [ ] **テスト作成**
+  - カスタムフックのテスト
+  - OrderServiceのテスト
+  - コンポーネント統合テスト
 
 ---
 
 ## ⏭️ ネクストステップ (優先順位順)
 
-### 🎯 即座に着手すべきタスク
+### 🎯 Phase 2: NewOrderPageリファクタリング
 
-#### 1. ProductHistoryRepository実装 (2-3時間)
-```bash
-# 作業内容
-1. ProductHistoryRepository.ts を作成
-2. 既存の商品履歴関連メソッドを移植
-3. ピン留め機能の実装
-4. ユニットテストの作成
-5. 動作確認
+**推定時間**: 2週間
 
-# 期待される成果
-- frontend/src/services/firestore/repositories/ProductHistoryRepository.ts
-- frontend/src/services/firestore/repositories/__tests__/ProductHistoryRepository.test.ts
-- テストカバレッジ: 90%以上
+#### Step 1: カスタムフック抽出 (3-4日)
+```typescript
+// useOrderFormState.ts
+// - フォーム状態管理（suppliers, products, deliveryDate）
+// - バリデーション
+// - 状態更新ロジック
+
+// useOrderModals.ts
+// - モーダル開閉状態
+// - 選択されたデータの管理
+
+// useOrderSubmit.ts
+// - 注文送信ロジック
+// - エラーハンドリング
+// - 履歴保存
 ```
 
-#### 2. PricingHistoryRepository実装 (2時間)
-```bash
-# 作業内容
-1. PricingHistoryRepository.ts を作成
-2. 価格履歴の保存・取得メソッドを実装
-3. ユニットテストの作成
-4. 動作確認
-
-# 期待される成果
-- frontend/src/services/firestore/repositories/PricingHistoryRepository.ts
-- frontend/src/services/firestore/repositories/__tests__/PricingHistoryRepository.test.ts
+#### Step 2: OrderService作成 (2-3日)
+```typescript
+// OrderService.ts
+// - 価格計算ロジック（センターコスト、店着原価、本体価格）
+// - 配分計算ロジック（総配分数、店舗別配分）
+// - バリデーションルール
+// - ビジネスロジックの集約
 ```
 
-#### 3. 残りのRepository実装 (4-5時間)
-```bash
-# AutocompleteRepository (1.5時間)
-# PresetRepository (1.5時間)
-# EmailAddressRepository (1.5時間)
+#### Step 3: コンポーネント分割 (4-5日)
+```typescript
+// OrderFormContainer.tsx (メインコンテナ)
+// StepNavigator.tsx (ステップ制御)
+// Step1_Suppliers/ (帳合先選択)
+// Step2_Products/ (商品入力)
+// Step3_Allocation/ (配分入力)
+// Step4_Review/ (確認)
 ```
 
-#### 4. FirestoreServiceFacade実装 (3-4時間)
-```bash
-# 作業内容
-1. Facadeクラスの作成
-2. 既存のFirestoreService.tsから移行
-3. 既存コードとの互換性確保
-4. 統合テストの実施
+#### Step 4: テスト作成 (2-3日)
+- カスタムフックのテスト
+- OrderServiceのテスト
+- コンポーネント統合テスト
 
-# 期待される成果
-- 既存コードを壊さずに新Repositoryを導入
-- 段階的な移行が可能
-```
+**期待される成果**:
+- NewOrderPage.tsx: 1125行 → 150行以下
+- 保守性の向上
+- テストカバレッジ: 85%以上
 
 ---
 
@@ -258,21 +267,23 @@ pytest --cov                      # カバレッジ付き
 
 ## 🎯 今週の目標
 
-### Week 1 (現在)
+### Week 1 (完了) ✅
 - [x] Phase 0完了
 - [x] OrderRepository実装
 - [x] ProductHistoryRepository実装
 - [x] PricingHistoryRepository実装
 - [x] AutocompleteRepository実装
-- [ ] PresetRepository実装
-- [ ] EmailAddressRepository実装
+- [x] PresetRepository実装
+- [x] EmailAddressRepository実装
+- [x] FirestoreServiceFacade実装
+- [x] Phase 1完了
 
 ### Week 2 (予定)
-- [ ] PresetRepository実装
-- [ ] EmailAddressRepository実装
-- [ ] FirestoreServiceFacade実装
-- [ ] 既存コードの移行開始
-- [ ] Phase 1完了
+- [ ] Phase 2開始
+- [ ] useOrderFormState抽出
+- [ ] useOrderModals抽出
+- [ ] useOrderSubmit抽出
+- [ ] OrderServiceの設計と実装開始
 
 ---
 
