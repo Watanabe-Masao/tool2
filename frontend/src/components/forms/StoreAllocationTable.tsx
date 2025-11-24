@@ -266,7 +266,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         }, [allocations, lockedStores]);
 
         /**
-         * カラム定義
+         * カラム定義（React#185対策: cellRendererをHTML要素のみに変更）
          */
         const columnDefs = useMemo<ColDef<StoreRowData>[]>(
           () => [
@@ -275,26 +275,44 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
               field: 'locked',
               width: 80,
               cellRenderer: (params: any) => {
-                if (!params.data) return null;
+                if (!params.data) return '';
                 const locked = params.data.locked;
-                return (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                    <Tooltip title={locked ? 'ロック解除' : 'ロック'}>
-                      <IconButton
-                        size="small"
-                        onClick={() => toggleLock(params.data.storeCode)}
-                        sx={{
-                          color: locked ? 'warning.main' : 'action.disabled',
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        {locked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                );
+                const storeCode = params.data.storeCode;
+
+                // シンプルなHTML要素を返す（Reactコンポーネントを使わない）
+                const icon = document.createElement('div');
+                icon.style.cssText = `
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  height: 100%;
+                  cursor: pointer;
+                  font-size: 20px;
+                  color: ${locked ? '#f57c00' : '#9e9e9e'};
+                  transition: color 0.2s;
+                `;
+                icon.innerHTML = locked ? '🔒' : '🔓';
+                icon.title = locked ? 'ロック解除' : 'ロック';
+
+                // イベントリスナーを追加（React外で管理）
+                icon.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  if (isMountedRef.current) {
+                    toggleLock(storeCode);
+                  }
+                });
+
+                icon.addEventListener('mouseenter', () => {
+                  icon.style.color = locked ? '#e65100' : '#757575';
+                });
+
+                icon.addEventListener('mouseleave', () => {
+                  icon.style.color = locked ? '#f57c00' : '#9e9e9e';
+                });
+
+                return icon;
               },
-              cellStyle: { textAlign: 'center' } as any,
+              cellStyle: { textAlign: 'center', padding: '0' } as any,
             },
             {
               headerName: '店番',
@@ -370,7 +388,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         }, []);
 
         /**
-         * グリッドオプション
+         * グリッドオプション（React#185対策）
          */
         const gridOptions = useMemo<GridOptions<StoreRowData>>(
           () => ({
@@ -384,9 +402,10 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
             suppressMovableColumns: true,
             suppressCellFocus: false,
             enableCellTextSelection: false,
-            animateRows: true,
+            animateRows: false, // React#185対策: アニメーションを無効化
             singleClickEdit: true,
             stopEditingWhenCellsLoseFocus: true,
+            suppressReactUi: true, // React#185対策: ReactUIを抑制してDOM操作に統一
             onGridReady: handleGridReady,
           }),
           [handleGridReady]

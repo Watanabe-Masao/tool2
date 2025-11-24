@@ -368,7 +368,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   }, []);
 
   /**
-   * グリッドオプション
+   * グリッドオプション（React#185対策）
    */
   const gridOptions = useMemo<GridOptions<GridRowData>>(
     () => ({
@@ -383,12 +383,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
-      animateRows: false, // パフォーマンス向上のためアニメーションを無効化
+      animateRows: false, // パフォーマンス向上＋React#185対策
       onRowClicked: handleRowClicked,
       rowSelection: { mode: 'singleRow' }, // AG Grid 32.2.1以降の新しい形式
       singleClickEdit: true, // シングルクリックで編集開始
       stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
       onGridReady: handleGridReady,
+      suppressReactUi: true, // React#185対策: ReactUIを抑制してDOM操作に統一
       // パフォーマンス最適化
       rowBuffer: 10,
       suppressColumnVirtualisation: false,
