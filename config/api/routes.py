@@ -126,14 +126,31 @@ async def download_template(
     Raises:
         AppFileNotFoundError: ファイルが存在しない場合
     """
+    # デバッグログ: ダウンロードリクエストの詳細
+    logger.info(f"📥 Download request received:")
+    logger.info(f"  - file_id: {file_id}")
+    logger.info(f"  - filename: {filename}")
+    logger.info(f"  - ext: {ext}")
+
     # ファイル拡張子を検証
     if ext not in ["xlsx", "pdf"]:
+        logger.error(f"  - ❌ Invalid file extension: {ext}")
         raise HTTPException(status_code=400, detail="無効なファイル拡張子です")
 
     # ファイルパス取得
     temp_path = settings.temp_dir / f"{file_id}.{ext}"
+    logger.info(f"  - temp_path: {temp_path}")
+    logger.info(f"  - temp_path exists: {temp_path.exists()}")
 
     if not temp_path.exists():
+        logger.error(f"  - ❌ File not found at: {temp_path}")
+        # List all files in temp directory for debugging
+        try:
+            all_files = list(settings.temp_dir.glob(f"{file_id}.*"))
+            logger.error(f"  - Available files with same ID: {all_files}")
+        except Exception as e:
+            logger.error(f"  - Could not list files: {e}")
+
         raise AppFileNotFoundError(
             message="ファイルが見つかりません",
             detail=f"ファイルID: {file_id}, 拡張子: {ext}"
@@ -143,6 +160,8 @@ async def download_template(
         # ファイルを読み込み
         with open(temp_path, "rb") as f:
             file_content = f.read()
+
+        logger.info(f"  - ✅ File read successfully, size: {len(file_content)} bytes")
 
         # 注意: ファイルは削除せず、複数回ダウンロード可能にする
         # クリーンアップはshutdownイベントで実行される
@@ -158,8 +177,12 @@ async def download_template(
             media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             default_filename = "template.xlsx"
 
+        logger.info(f"  - media_type: {media_type}")
+        logger.info(f"  - filename: {filename}")
+
         # 日本語ファイル名のエンコード（RFC 5987対応）
         encoded_filename = quote(filename.encode('utf-8'))
+        logger.info(f"  - encoded_filename: {encoded_filename}")
 
         # ストリーミングレスポンス
         return StreamingResponse(

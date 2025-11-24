@@ -500,7 +500,17 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
                 <Alert severity="error" sx={{ mb: 3 }}>
                   {error}
                 </Alert>
-                <Button variant="contained" startIcon={<Download />} onClick={onDownloadExcel}>
+                <Button
+                  variant="contained"
+                  startIcon={<Download />}
+                  onClick={onDownloadExcel}
+                  size="medium"
+                  sx={{
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    py: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
+                  }}
+                >
                   Excelファイルをダウンロード
                 </Button>
               </Box>
@@ -553,20 +563,40 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
       </DialogContent>
 
       {/* フッター */}
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+      <DialogActions sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, sm: 2 }, gap: { xs: 0.5, sm: 1 } }}>
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1, color: 'text.secondary' }}>
           <Typography variant="caption">
             キーボード: ← → (ページ) / + - (ズーム) / R (回転) / F (フルスクリーン)
           </Typography>
         </Box>
         <Box sx={{ flexGrow: 1 }} />
         {onSendEmail && (
-          <Button variant="outlined" startIcon={<Email />} onClick={onSendEmail}>
+          <Button
+            variant="outlined"
+            startIcon={<Email />}
+            onClick={onSendEmail}
+            size="medium"
+            sx={{
+              px: { xs: 1.5, sm: 2, md: 3 },
+              py: { xs: 0.75, sm: 1 },
+              fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
+            }}
+          >
             メールで送信
           </Button>
         )}
         {onDownloadPdf && !isIPhone && (
-          <Button variant="outlined" startIcon={<Download />} onClick={onDownloadPdf}>
+          <Button
+            variant="outlined"
+            startIcon={<Download />}
+            onClick={onDownloadPdf}
+            size="medium"
+            sx={{
+              px: { xs: 1.5, sm: 2, md: 3 },
+              py: { xs: 0.75, sm: 1 },
+              fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
+            }}
+          >
             PDFダウンロード
           </Button>
         )}
@@ -576,6 +606,12 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
             startIcon={<Download />}
             onClick={onDownloadExcel}
             color="success"
+            size="medium"
+            sx={{
+              px: { xs: 1.5, sm: 2, md: 3 },
+              py: { xs: 0.75, sm: 1 },
+              fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
+            }}
           >
             Excelダウンロード
           </Button>

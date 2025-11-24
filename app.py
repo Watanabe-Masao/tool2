@@ -135,8 +135,12 @@ async def serve_react_app(full_path: str):
     /api/ で始まるパスは除外（APIルーターで処理）
     静的ファイル（registerSW.js, manifest.webmanifest等）が存在する場合はそれを返す
     """
+    # デバッグログ: catch-allルートがヒットした場合
+    logger.debug(f"🔍 Catch-all route hit: /{full_path}")
+
     # APIパスは除外（すでにルーターで処理される）
     if full_path.startswith("api/"):
+        logger.warning(f"⚠️ API path hit catch-all route: /{full_path} - This should not happen!")
         return Response(status_code=404)
 
     # 実際のファイルが存在するか確認（registerSW.js、manifest.webmanifest等）
