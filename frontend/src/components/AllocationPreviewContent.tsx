@@ -224,7 +224,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
-        editable: Boolean(onGenerate), // 生成前のみ編集可能
+        editable: true, // 編集可否はisCellEditableで制御
         type: 'number',
         renderCell: (params: GridRenderCellParams<GridRowData>) => {
           if (!params.row) return null;
