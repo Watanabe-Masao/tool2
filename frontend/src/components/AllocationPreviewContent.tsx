@@ -296,9 +296,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
-   * 行クリック時のハンドラー
+   * 行クリック時のハンドラー（React#185対策）
    */
   const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
+    // コンポーネントがマウントされている場合のみ処理
+    if (!isMountedRef.current) {
+      return;
+    }
     setSelectedRow(event.data || null);
   }, []);
 

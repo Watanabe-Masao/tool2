@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -88,10 +88,43 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
 }) => {
   const productErrors = errors.products?.[productIndex];
 
+  // React#185対策: マウント状態を追跡
+  const isMountedRef = useRef<boolean>(true);
+  const gridApiRef = useRef<any>(null);
+
   /**
-   * ロック状態をトグル
+   * クリーンアップ処理（React#185対策）
+   */
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+
+      // AG Gridのインスタンスを完全に破棄
+      if (gridApiRef.current) {
+        try {
+          gridApiRef.current.stopEditing(true);
+          gridApiRef.current.deselectAll();
+          gridApiRef.current.destroy();
+        } catch (e) {
+          console.warn('AG Grid cleanup error:', e);
+        } finally {
+          gridApiRef.current = null;
+        }
+      }
+    };
+  }, []);
+
+  /**
+   * ロック状態をトグル（React#185対策）
    */
   const toggleLock = useCallback((storeCode: string) => {
+    // コンポーネントがマウントされている場合のみ処理
+    if (!isMountedRef.current) {
+      return;
+    }
+
     setLockedStores((prev) => {
       const next = new Set(prev);
       if (next.has(storeCode)) {
@@ -101,7 +134,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
       }
       return next;
     });
-  }, []);
+  }, [setLockedStores]);
 
   return (
     <Controller
@@ -126,9 +159,14 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
         /**
-         * 配分数変更ハンドラー
+         * 配分数変更ハンドラー（React#185対策）
          */
         const handleChange = (index: number, value: number) => {
+          // コンポーネントがマウントされている場合のみ処理
+          if (!isMountedRef.current) {
+            return;
+          }
+
           const newAllocations = [...allocations];
           newAllocations[index] = value < 0 ? 0 : value;
           field.onChange(newAllocations);
@@ -276,7 +314,10 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
               width: 120,
               editable: (params) => params.data ? !params.data.locked : false,
               valueSetter: (params: ValueSetterParams<StoreRowData>) => {
-                if (!params.data) return false;
+                // React#185対策: コンポーネントがマウントされている場合のみ処理
+                if (!isMountedRef.current || !params.data) {
+                  return false;
+                }
                 const value = parseInt(params.newValue, 10);
                 if (!isNaN(value) && value >= 0) {
                   handleChange(params.data.index, value);
@@ -322,6 +363,13 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         );
 
         /**
+         * グリッド初期化完了ハンドラー（React#185対策）
+         */
+        const handleGridReady = useCallback((params: any) => {
+          gridApiRef.current = params.api;
+        }, []);
+
+        /**
          * グリッドオプション
          */
         const gridOptions = useMemo<GridOptions<StoreRowData>>(
@@ -339,8 +387,9 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
             animateRows: true,
             singleClickEdit: true,
             stopEditingWhenCellsLoseFocus: true,
+            onGridReady: handleGridReady,
           }),
-          []
+          [handleGridReady]
         );
 
         return (
