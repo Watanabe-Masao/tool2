@@ -285,9 +285,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   /**
    * 行クリック時のハンドラー
    */
-  const handleRowClicked = (event: RowClickedEvent<GridRowData>) => {
+  const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
     setSelectedRow(event.data || null);
-  };
+  }, []);
 
   /**
    * グリッド初期化完了ハンドラ
@@ -327,7 +327,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       rowBuffer: 10,
       suppressColumnVirtualisation: false,
     }),
-    [handleGridReady]
+    [handleGridReady, handleRowClicked]
   );
 
   return (
