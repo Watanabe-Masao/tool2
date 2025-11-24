@@ -7,10 +7,11 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  TextField,
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridRenderEditCellParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -259,6 +260,44 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             >
               {value > 0 ? value : '-'}
             </Box>
+          );
+        },
+        renderEditCell: (params: GridRenderEditCellParams<GridRowData>) => {
+          const { id, value, field, api } = params;
+          const productIndex = params.row.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const isLocked = productLockedStores.has(store.code);
+
+          return (
+            <TextField
+              value={value || ''}
+              type="number"
+              disabled={isLocked}
+              onChange={(e) => {
+                const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                api.setEditCellValue({ id, field, value: Math.max(0, newValue) });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  api.stopCellEditMode({ id, field });
+                }
+              }}
+              variant="standard"
+              fullWidth
+              autoFocus
+              InputProps={{
+                sx: {
+                  fontSize: isMobile ? '1.1rem' : '0.9rem', // モバイル時は大きめに
+                  height: isMobile ? '48px' : '36px',
+                },
+              }}
+              sx={{
+                '& input': {
+                  textAlign: 'center',
+                  padding: isMobile ? '12px 8px' : '6px 4px',
+                },
+              }}
+            />
           );
         },
       });
@@ -525,6 +564,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             columns={columns}
             processRowUpdate={processRowUpdate}
             isCellEditable={isCellEditable}
+            editMode="cell"
             disableRowSelectionOnClick
             hideFooter
             onCellClick={(params) => {
