@@ -226,7 +226,11 @@ export const MobileBottomNav: React.FC = () => {
                             cursor: 'pointer',
                             border: isActive ? 2 : 1,
                             borderColor: isActive ? 'primary.main' : 'grey.300',
-                            bgcolor: isActive ? (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50' : 'background.paper',
+                            bgcolor: isActive
+                              ? (theme) => theme.palette.mode === 'dark'
+                                ? 'rgba(25, 118, 210, 0.08)'
+                                : 'primary.50'
+                              : 'background.paper',
                             transition: 'all 0.2s',
                             '&:hover': {
                               borderColor: 'primary.main',
