@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
@@ -17,6 +17,7 @@ import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { useOrderSubmit } from '@/hooks/useOrderSubmit';
 import { useSupplierManagement } from '@/hooks/useSupplierManagement';
+import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 
@@ -47,8 +48,6 @@ export const NewOrderPage: React.FC = () => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [bookNameDialog, setBookNameDialog] = useState<{
@@ -69,12 +68,6 @@ export const NewOrderPage: React.FC = () => {
 
   // FloatingProgressSummaryの高さ
   const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
-
-  // 自動保存用のタイマー
-  const autoSaveTimer = useRef<number | null>(null);
-
-  // 初回ロードフラグ
-  const isInitialLoad = useRef(true);
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
@@ -168,6 +161,20 @@ export const NewOrderPage: React.FC = () => {
     name: 'deliveryDate',
   });
 
+  // 下書き管理ロジック
+  const {
+    restoreDialogOpen,
+    setRestoreDialogOpen,
+    setHasUnsavedChanges,
+    isInitialLoad,
+  } = useOrderDraftManagement({
+    user,
+    methods,
+    products,
+    suppliers,
+    deliveryDate,
+  });
+
   // 帳合先管理ロジック
   const {
     supplierRemovalDialog,
@@ -208,20 +215,6 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * ページロード時に下書きを復元
-   */
-  useEffect(() => {
-    if (!user || !isInitialLoad.current) return;
-
-    isInitialLoad.current = false;
-
-    const draft = SessionStorageService.loadDraft(user.uid);
-    if (draft) {
-      setRestoreDialogOpen(true);
-    }
-  }, [user]);
-
-  /**
    * ユーザー設定を読み込み
    */
   useEffect(() => {
@@ -238,53 +231,6 @@ export const NewOrderPage: React.FC = () => {
 
     loadUserSettings();
   }, [user]);
-
-  /**
-   * フォームデータの自動保存（debounce付き）
-   * React#185対策: watch()を使わず、必要なフィールドのみ監視
-   */
-  useEffect(() => {
-    if (!user || isInitialLoad.current) return;
-
-    // 変更があることをマーク
-    setHasUnsavedChanges(true);
-
-    // 既存のタイマーをクリア
-    if (autoSaveTimer.current) {
-      window.clearTimeout(autoSaveTimer.current);
-    }
-
-    // 2秒後に自動保存
-    autoSaveTimer.current = window.setTimeout(() => {
-      const currentFormData = getValues();
-      SessionStorageService.saveDraft(user.uid, currentFormData);
-      console.log('Form auto-saved');
-    }, 2000);
-
-    return () => {
-      if (autoSaveTimer.current) {
-        window.clearTimeout(autoSaveTimer.current);
-      }
-    };
-  }, [products, suppliers, deliveryDate, user]);
-
-  /**
-   * ページ離脱時の警告
-   */
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
 
   /**
    * タブ変更時の処理
