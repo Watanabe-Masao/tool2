@@ -83,31 +83,37 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   }, []);
 
   /**
-   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化）
+   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋非同期化）
    */
   const createSetLockedStoresForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      setLockedStores((prev) => {
-        const newMap = new Map(prev);
-        const currentSet = prev.get(productIndex) || new Set();
-        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-        newMap.set(productIndex, newSet);
-        return newMap;
+      // React#185対策: 状態更新を非同期で実行
+      queueMicrotask(() => {
+        setLockedStores((prev) => {
+          const newMap = new Map(prev);
+          const currentSet = prev.get(productIndex) || new Set();
+          const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+          newMap.set(productIndex, newSet);
+          return newMap;
+        });
       });
     };
   }, [setLockedStores]);
 
   /**
-   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化）
+   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋非同期化）
    */
   const createSetSelectedCategoriesForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      setSelectedCategories((prev) => {
-        const newMap = new Map(prev);
-        const currentSet = prev.get(productIndex) || new Set();
-        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-        newMap.set(productIndex, newSet);
-        return newMap;
+      // React#185対策: 状態更新を非同期で実行
+      queueMicrotask(() => {
+        setSelectedCategories((prev) => {
+          const newMap = new Map(prev);
+          const currentSet = prev.get(productIndex) || new Set();
+          const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+          newMap.set(productIndex, newSet);
+          return newMap;
+        });
       });
     };
   }, [setSelectedCategories]);

@@ -36,8 +36,9 @@ import App from './App.tsx';
   },
 });*/
 
+// React#185対策: StrictModeを一時的に無効化（AG Gridとの互換性問題）
+// 本番環境では問題ないが、開発環境でReact#185エラーが発生する場合は
+// StrictModeを無効化する
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <App />
 )
