@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { Controller } from 'react-hook-form';
-import type { Control, FieldErrors } from 'react-hook-form';
+import type { Control, FieldError, FieldErrors } from 'react-hook-form';
 import {
   Box,
   Typography,
@@ -42,7 +42,9 @@ interface StoreRowData {
   locked: boolean;
 }
 
-type ProductErrors = FieldErrors<OrderFormData['products'][number]>;
+type ProductErrors = FieldErrors<OrderFormData['products'][number]> & {
+  storeAllocations?: FieldError | (FieldError | undefined)[];
+};
 
 interface StoreAllocationGridProps {
   allocations: number[];
@@ -271,6 +273,11 @@ const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
     []
   );
 
+  const storeAllocationsError = productErrors?.storeAllocations;
+  const storeAllocationsMessage = Array.isArray(storeAllocationsError)
+    ? storeAllocationsError.find((error) => error?.message)?.message
+    : storeAllocationsError?.message;
+
   return (
     <Box sx={{ py: 2 }}>
       {/* ヘッダー */}
@@ -279,9 +286,9 @@ const StoreAllocationGrid: React.FC<StoreAllocationGridProps> = ({
       </Typography>
 
       {/* エラー表示 */}
-      {productErrors?.storeAllocations && (
+      {storeAllocationsMessage && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {productErrors.storeAllocations.message}
+          {storeAllocationsMessage}
         </Alert>
       )}
 
