@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Fade } from '@mui/material';
 import {
-  SwipeHorizontal,
-  SwipeVertical,
   TouchApp,
   SwipeLeft,
   SwipeRight,
@@ -83,9 +81,9 @@ export const GestureHint: React.FC<GestureHintProps> = ({
   const getIcon = () => {
     switch (type) {
       case 'swipe-horizontal':
-        return <SwipeHorizontal sx={{ fontSize: '16px' }} />;
+        return <SwipeLeft sx={{ fontSize: '16px' }} />;
       case 'swipe-vertical':
-        return <SwipeVertical sx={{ fontSize: '16px' }} />;
+        return <SwipeUp sx={{ fontSize: '16px' }} />;
       case 'swipe-left':
         return <SwipeLeft sx={{ fontSize: '16px' }} />;
       case 'swipe-right':

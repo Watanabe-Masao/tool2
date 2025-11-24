@@ -22,6 +22,7 @@ import {
   TextField,
 } from '@mui/material';
 import { Close, Inventory2, Delete, PushPin, PushPinOutlined, ExpandMore } from '@mui/icons-material';
+import { PresetItemSkeleton } from '@/components/common/ProductCardSkeleton';
 import {
   DndContext,
   closestCenter,
@@ -305,6 +306,8 @@ interface ProductPresetModalProps {
     specification?: string;
     supplier?: string;
   }>;
+  /** ローディング状態 */
+  loading?: boolean;
 }
 
 /**
@@ -325,6 +328,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   multiSelect = false,
   onSelectMultiple,
   currentProducts = [],
+  loading = false,
 }) => {
   // 選択された帳合先（複数帳合先対応）
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -937,7 +941,13 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
         </Box>
 
         <DialogContent dividers sx={{ p: 0, flexGrow: 1, overflow: 'auto' }}>
-          {filteredPresets.length === 0 ? (
+          {loading ? (
+            <Box sx={{ py: 0 }}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <PresetItemSkeleton key={index} />
+              ))}
+            </Box>
+          ) : filteredPresets.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 {categoryFilter === 0

@@ -1,4 +1,4 @@
-import { createTheme, PaletteMode } from '@mui/material/styles';
+import { createTheme, type PaletteMode } from '@mui/material/styles';
 import { jaJP } from '@mui/material/locale';
 
 /**

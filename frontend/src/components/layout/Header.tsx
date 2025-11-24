@@ -31,12 +31,14 @@ import {
   Settings,
   DarkMode,
   LightMode,
+  Keyboard,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
+import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 
@@ -62,6 +64,7 @@ export const Header: React.FC = () => {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [buyerName, setBuyerName] = useState('');
   const [isSavingBuyerName, setIsSavingBuyerName] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
 
   const longPressTimer = useRef<number | null>(null);
   const longPressInterval = useRef<number | null>(null);
@@ -425,6 +428,23 @@ export const Header: React.FC = () => {
                 )}
               </IconButton>
 
+              {/* キーボードショートカットヘルプボタン */}
+              <IconButton
+                size="small"
+                onClick={() => setShortcutsDialogOpen(true)}
+                color="inherit"
+                aria-label="キーボードショートカット"
+                title="キーボードショートカット (Ctrl+/)"
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                }}
+              >
+                <Keyboard fontSize="small" />
+              </IconButton>
+
               {/* ビルド情報ボタン */}
               <BuildInfo />
 
@@ -560,6 +580,12 @@ export const Header: React.FC = () => {
           {clearMessage}
         </Alert>
       </Snackbar>
+
+      {/* キーボードショートカットヘルプダイアログ */}
+      <ShortcutsHelpDialog
+        open={shortcutsDialogOpen}
+        onClose={() => setShortcutsDialogOpen(false)}
+      />
     </>
   );
 };

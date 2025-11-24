@@ -6,7 +6,6 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
-  Badge,
 } from '@mui/material';
 import {
   AddCircle,
