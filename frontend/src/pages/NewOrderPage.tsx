@@ -455,6 +455,25 @@ export const NewOrderPage: React.FC = () => {
   }, [setValue]);
 
   /**
+   * ロック状態切り替えハンドラ（FloatingProgressSummary用）
+   */
+  const handleToggleLock = useCallback((productIndex: number, storeCode: string) => {
+    setLockedStores(prev => {
+      const newMap = new Map(prev);
+      const productLocks = new Set(newMap.get(productIndex) || []);
+
+      if (productLocks.has(storeCode)) {
+        productLocks.delete(storeCode);
+      } else {
+        productLocks.add(storeCode);
+      }
+
+      newMap.set(productIndex, productLocks);
+      return newMap;
+    });
+  }, []);
+
+  /**
    * フォーム送信
    */
   const onSubmit = async (data: OrderFormData) => {
@@ -1053,6 +1072,9 @@ export const NewOrderPage: React.FC = () => {
             onClearProduct={handleClearProduct}
             onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
             onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
+            onAllocationChange={activeStep === 4 ? handleAllocationChange : undefined}
+            lockedStores={lockedStores}
+            onToggleLock={activeStep === 4 ? handleToggleLock : undefined}
           />
         )}
 
