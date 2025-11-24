@@ -20,6 +20,7 @@ import { useSupplierManagement } from '@/hooks/useSupplierManagement';
 import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { useOrderModals } from '@/hooks/useOrderModals';
 import { useOrderHandlers } from '@/hooks/useOrderHandlers';
+import { useStepNavigation } from '@/hooks/useStepNavigation';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 
 /**
@@ -230,6 +231,22 @@ export const NewOrderPage: React.FC = () => {
     TOTAL_STEPS,
   });
 
+  // ステップナビゲーション管理
+  useStepNavigation({
+    activeStep,
+    activeProductIndex,
+    showGeneratedPreview,
+    TOTAL_STEPS,
+    products,
+    suppliers,
+    deliveryDate,
+    getValues,
+    setStepNavigation,
+    setActiveProductIndex,
+    handlePrevStep,
+    handleNextStep,
+  });
+
   /**
    * ユーザー設定を読み込み
    */
@@ -247,37 +264,6 @@ export const NewOrderPage: React.FC = () => {
 
     loadUserSettings();
   }, [user]);
-
-  /**
-   * NavigationContextを更新（ステップナビゲーション表示状態）
-   * React#185対策: formDataを直接監視せず、getValues()を使用
-   */
-  useEffect(() => {
-    // 生成後のプレビュー表示中はステップナビゲーションを非アクティブに
-    if (showGeneratedPreview) {
-      setStepNavigation(false);
-    } else {
-      // フォーム入力中はステップナビゲーションをアクティブに
-      // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
-      const isProductMode = activeStep >= 1 && activeStep <= 3;
-      const currentFormData = getValues();
-      setStepNavigation(
-        true,
-        activeStep,
-        TOTAL_STEPS,
-        currentFormData,
-        isProductMode ? activeProductIndex : undefined,
-        activeStep > 0 ? handlePrevStep : undefined,
-        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
-        isProductMode ? setActiveProductIndex : undefined
-      );
-    }
-
-    // コンポーネントがアンマウントされる時にステップナビゲーションを非アクティブに
-    return () => {
-      setStepNavigation(false);
-    };
-  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate, getValues, setStepNavigation, handlePrevStep, handleNextStep, setActiveProductIndex]);
 
   return (
     <FormProvider {...methods}>
