@@ -109,6 +109,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const rafIdRef = React.useRef<number | null>(null);
   const timerIdRef = React.useRef<number | null>(null);
 
+  // AG Grid APIリファレンス
+  const gridApiRef = React.useRef<any>(null);
+
   // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
   const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
 
@@ -296,7 +299,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   /**
    * グリッド初期化完了ハンドラ
    */
-  const handleGridReady = React.useCallback(() => {
+  const handleGridReady = React.useCallback((params: any) => {
+    // AG Grid APIを保存
+    gridApiRef.current = params.api;
+
     // 少し遅延させてローディングを非表示に
     rafIdRef.current = requestAnimationFrame(() => {
       timerIdRef.current = window.setTimeout(() => {
@@ -316,6 +322,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       }
       if (timerIdRef.current !== null) {
         clearTimeout(timerIdRef.current);
+      }
+      // AG Gridのインスタンスを破棄
+      if (gridApiRef.current) {
+        try {
+          gridApiRef.current.destroy();
+        } catch (e) {
+          // destroy中のエラーは無視（既に破棄されている可能性）
+        }
       }
     };
   }, []);
