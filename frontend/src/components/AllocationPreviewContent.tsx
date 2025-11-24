@@ -105,6 +105,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // グリッド初期化完了フラグ
   const [gridReady, setGridReady] = useState(false);
 
+  // 非同期処理のキャンセル用
+  const rafIdRef = React.useRef<number | null>(null);
+  const timerIdRef = React.useRef<number | null>(null);
+
   // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
   const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
 
@@ -294,11 +298,26 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
    */
   const handleGridReady = React.useCallback(() => {
     // 少し遅延させてローディングを非表示に
-    requestAnimationFrame(() => {
-      setTimeout(() => {
+    rafIdRef.current = requestAnimationFrame(() => {
+      timerIdRef.current = window.setTimeout(() => {
         setGridReady(true);
       }, 200);
     });
+  }, []);
+
+  /**
+   * クリーンアップ処理
+   */
+  React.useEffect(() => {
+    return () => {
+      // コンポーネントがアンマウントされたら非同期処理をキャンセル
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      if (timerIdRef.current !== null) {
+        clearTimeout(timerIdRef.current);
+      }
+    };
   }, []);
 
   /**
