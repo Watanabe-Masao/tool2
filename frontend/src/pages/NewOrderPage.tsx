@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
@@ -8,8 +8,6 @@ import { OrderModals } from '@/components/order/OrderModals';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
-import { UserSettingsService } from '@/services/firebase/userSettingsService';
-import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNavigationContext } from '@/context/NavigationContext';
@@ -21,6 +19,7 @@ import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { useOrderModals } from '@/hooks/useOrderModals';
 import { useOrderHandlers } from '@/hooks/useOrderHandlers';
 import { useStepNavigation } from '@/hooks/useStepNavigation';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 
 /**
@@ -46,7 +45,6 @@ export const NewOrderPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [activeStep, setActiveStep] = useState(0);
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
 
   // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
   // Map<商品インデックス, Set<店舗コード>>
@@ -73,6 +71,9 @@ export const NewOrderPage: React.FC = () => {
   const supplierAutocomplete = useAutocomplete('supplier');
   const productNameAutocomplete = useAutocomplete('productName');
   const originAutocomplete = useAutocomplete('origin');
+
+  // ユーザー設定
+  const userSettings = useUserSettings(user);
 
   // モーダル・ダイアログ状態管理
   const {
@@ -246,24 +247,6 @@ export const NewOrderPage: React.FC = () => {
     handlePrevStep,
     handleNextStep,
   });
-
-  /**
-   * ユーザー設定を読み込み
-   */
-  useEffect(() => {
-    const loadUserSettings = async () => {
-      if (!user) return;
-
-      try {
-        const settings = await UserSettingsService.getOrCreate(user.uid);
-        setUserSettings(settings);
-      } catch (error) {
-        console.error('Error loading user settings:', error);
-      }
-    };
-
-    loadUserSettings();
-  }, [user]);
 
   return (
     <FormProvider {...methods}>
