@@ -290,6 +290,18 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   };
 
   /**
+   * グリッド初期化完了ハンドラ
+   */
+  const handleGridReady = React.useCallback(() => {
+    // 少し遅延させてローディングを非表示に
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        setGridReady(true);
+      }, 200);
+    });
+  }, []);
+
+  /**
    * グリッドオプション
    */
   const gridOptions = useMemo<GridOptions<GridRowData>>(
@@ -310,15 +322,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       rowSelection: 'single',
       singleClickEdit: true, // シングルクリックで編集開始
       stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
-      onGridReady: () => {
-        // グリッドの初期化完了後にフラグを設定
-        setTimeout(() => setGridReady(true), 100);
-      },
+      onGridReady: handleGridReady,
       // パフォーマンス最適化
       rowBuffer: 10,
       suppressColumnVirtualisation: false,
     }),
-    []
+    [handleGridReady]
   );
 
   return (

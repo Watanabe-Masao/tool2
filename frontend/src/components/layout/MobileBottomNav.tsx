@@ -12,6 +12,8 @@ import {
   Collapse,
   Chip,
   Stack,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   AddCircle,
@@ -26,6 +28,8 @@ import {
   RadioButtonUnchecked as UncheckedIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { FreeMode } from 'swiper/modules';
 import { haptic } from '@/utils/hapticFeedback';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useNavigationContext } from '@/context/NavigationContext';
@@ -76,8 +80,10 @@ export const MobileBottomNav: React.FC = () => {
     activeStep,
     totalSteps,
     formData,
+    activeProductIndex,
     onPrevStep,
     onNextStep,
+    onProductChange,
   } = useNavigationContext();
 
   // 進捗詳細の展開状態
@@ -87,6 +93,30 @@ export const MobileBottomNav: React.FC = () => {
   if (!isMobile) {
     return null;
   }
+
+  // 商品モード判定（ステップ2-4）
+  const isProductMode = isStepNavigationActive && formData && activeStep >= 1 && activeStep <= 3 && activeProductIndex !== undefined;
+
+  /**
+   * 商品の完了状態を判定
+   */
+  const getProductStatus = (product: any) => {
+    if (!product) return { hasBasicInfo: false, hasPricing: false, hasAllocation: false, hasOverAllocation: false, totalAllocated: 0, remaining: 0 };
+    const hasBasicInfo = !!(product.name && product.origin);
+    const hasPricing = !!(product.storeCost && product.priceExcludingTax && product.totalDelivery);
+    const totalAllocated = product.storeAllocations?.reduce((sum: number, val: number) => sum + val, 0) || 0;
+    const hasAllocation = totalAllocated === product.totalDelivery && totalAllocated > 0;
+    const hasOverAllocation = totalAllocated > product.totalDelivery;
+
+    return {
+      hasBasicInfo,
+      hasPricing,
+      hasAllocation,
+      hasOverAllocation,
+      totalAllocated,
+      remaining: (product.totalDelivery || 0) - totalAllocated,
+    };
+  };
 
   // ステップナビゲーション表示中は専用UIを表示
   if (isStepNavigationActive && formData) {
@@ -160,55 +190,245 @@ export const MobileBottomNav: React.FC = () => {
       >
         {/* 詳細情報（折りたたみ可能） */}
         <Collapse in={expanded}>
-          <Box sx={{ p: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
-              入力状況
-            </Typography>
+          {isProductMode ? (
+            /* 商品モード: 商品カードを表示 */
+            <Box sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', pb: 2 }}>
+              <Box sx={{ px: 2, pt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                  商品 {activeProductIndex! + 1} / {formData.products.length}
+                </Typography>
+              </Box>
 
-            <Stack spacing={1.5} sx={{ mt: 1 }}>
-              {steps.map((step, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    opacity: index <= activeStep ? 1 : 0.5,
-                  }}
+              {/* Swiperスライダー */}
+              <Box sx={{ px: 2, overflow: 'hidden' }}>
+                <Swiper
+                  modules={[FreeMode]}
+                  slidesPerView="auto"
+                  spaceBetween={8}
+                  freeMode={true}
+                  speed={0}
+                  initialSlide={activeProductIndex}
+                  style={{ paddingLeft: '4px', paddingRight: '4px' }}
                 >
-                  {/* アイコン */}
-                  {step.completed ? (
-                    <CheckCircleIcon fontSize="small" color="success" />
-                  ) : step.warning ? (
-                    <WarningIcon fontSize="small" color="error" />
-                  ) : (
-                    <UncheckedIcon fontSize="small" color="disabled" />
-                  )}
+                  {formData.products.map((product, index) => {
+                    const status = getProductStatus(product);
+                    const isActive = index === activeProductIndex;
 
-                  {/* ラベル */}
-                  <Typography
-                    variant="body2"
+                    return (
+                      <SwiperSlide key={index} style={{ width: 'auto' }}>
+                        <Card
+                          onClick={() => {
+                            onProductChange?.(index);
+                          }}
+                          sx={{
+                            minWidth: 180,
+                            maxWidth: 180,
+                            cursor: 'pointer',
+                            border: isActive ? 2 : 1,
+                            borderColor: isActive ? 'primary.main' : 'grey.300',
+                            bgcolor: isActive ? (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50' : 'background.paper',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              boxShadow: 2,
+                            },
+                          }}
+                        >
+                          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            {/* 帳合先 + ステータスアイコン */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: 'text.primary',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {product.supplier || '帳合先未設定'}
+                              </Typography>
+                              <Stack direction="row" spacing={0.5}>
+                                {status.hasBasicInfo ? (
+                                  <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                                ) : (
+                                  <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                                )}
+                                {status.hasPricing ? (
+                                  <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                                ) : (
+                                  <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                                )}
+                                {status.hasAllocation ? (
+                                  <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                                ) : status.hasOverAllocation ? (
+                                  <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} />
+                                ) : (
+                                  <UncheckedIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+                                )}
+                              </Stack>
+                            </Box>
+
+                            {/* 産地 | 商品名 */}
+                            <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                              {product.origin && (
+                                <>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                                    {product.origin}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                    |
+                                  </Typography>
+                                </>
+                              )}
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  color: 'text.primary',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                }}
+                              >
+                                {product.name || '商品名未入力'}
+                              </Typography>
+                            </Box>
+
+                            {/* 規格 | 入数 */}
+                            {(product.specification || product.quantityPerPackage) && (
+                              <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                                {product.specification && (
+                                  <>
+                                    <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                      {product.specification}
+                                    </Typography>
+                                    {product.quantityPerPackage && (
+                                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                        |
+                                      </Typography>
+                                    )}
+                                  </>
+                                )}
+                                {product.quantityPerPackage && (
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                    {product.quantityPerPackage}{product.unit || ''}
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+
+                            {/* 店着原価 | 税込売価 */}
+                            <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
+                              {product.storeCost ? (
+                                <>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                    原価 ¥{product.storeCost.toLocaleString()}
+                                  </Typography>
+                                  {product.priceExcludingTax && (
+                                    <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                      |
+                                    </Typography>
+                                  )}
+                                </>
+                              ) : (
+                                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.disabled' }}>
+                                  原価 未入力
+                                </Typography>
+                              )}
+                              {product.priceExcludingTax && (
+                                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                  売価 ¥{Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
+                                </Typography>
+                              )}
+                            </Box>
+
+                            {/* 配分状況 */}
+                            {status.hasPricing && (
+                              <Box sx={{ mt: 0.5, pt: 0.5, borderTop: 1, borderColor: 'grey.200' }}>
+                                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                                  配分: {status.totalAllocated} / {product.totalDelivery}
+                                  {status.remaining !== 0 && (
+                                    <Box
+                                      component="span"
+                                      sx={{
+                                        ml: 0.5,
+                                        color: status.remaining > 0 ? 'warning.main' : 'error.main',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      ({status.remaining > 0 ? `+${status.remaining}` : status.remaining})
+                                    </Box>
+                                  )}
+                                </Typography>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </SwiperSlide>
+                    );
+                  })}
+                </Swiper>
+              </Box>
+            </Box>
+          ) : (
+            /* 通常モード: 入力状況を表示 */
+            <Box sx={{ p: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" gutterBottom>
+                入力状況
+              </Typography>
+
+              <Stack spacing={1.5} sx={{ mt: 1 }}>
+                {steps.map((step, index) => (
+                  <Box
+                    key={index}
                     sx={{
-                      minWidth: '80px',
-                      fontWeight: index === activeStep ? 'bold' : 'normal',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      opacity: index <= activeStep ? 1 : 0.5,
                     }}
                   >
-                    {step.label}
-                  </Typography>
+                    {/* アイコン */}
+                    {step.completed ? (
+                      <CheckCircleIcon fontSize="small" color="success" />
+                    ) : step.warning ? (
+                      <WarningIcon fontSize="small" color="error" />
+                    ) : (
+                      <UncheckedIcon fontSize="small" color="disabled" />
+                    )}
 
-                  {/* 値 */}
-                  {step.value && (
-                    <Chip
-                      label={step.value}
-                      size="small"
-                      color={step.warning ? 'error' : step.completed ? 'success' : 'default'}
-                      variant={step.completed ? 'filled' : 'outlined'}
-                    />
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          </Box>
+                    {/* ラベル */}
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        minWidth: '80px',
+                        fontWeight: index === activeStep ? 'bold' : 'normal',
+                      }}
+                    >
+                      {step.label}
+                    </Typography>
+
+                    {/* 値 */}
+                    {step.value && (
+                      <Chip
+                        label={step.value}
+                        size="small"
+                        color={step.warning ? 'error' : step.completed ? 'success' : 'default'}
+                        variant={step.completed ? 'filled' : 'outlined'}
+                      />
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
         </Collapse>
 
         {/* メインナビゲーション */}

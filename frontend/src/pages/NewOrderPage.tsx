@@ -398,13 +398,17 @@ export const NewOrderPage: React.FC = () => {
       setStepNavigation(false);
     } else {
       // フォーム入力中はステップナビゲーションをアクティブに
+      // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
+      const isProductMode = activeStep >= 1 && activeStep <= 3;
       setStepNavigation(
         true,
         activeStep,
         TOTAL_STEPS,
         formData,
+        isProductMode ? activeProductIndex : undefined,
         activeStep > 0 ? handlePrevStep : undefined,
-        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined
+        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
+        isProductMode ? setActiveProductIndex : undefined
       );
     }
 
@@ -412,7 +416,7 @@ export const NewOrderPage: React.FC = () => {
     return () => {
       setStepNavigation(false);
     };
-  }, [activeStep, showGeneratedPreview, formData, setStepNavigation]);
+  }, [activeStep, activeProductIndex, showGeneratedPreview, formData, setStepNavigation]);
 
   /**
    * ExcelファイルをBlobとして取得

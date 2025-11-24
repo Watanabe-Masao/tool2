@@ -14,18 +14,24 @@ interface NavigationContextType {
   totalSteps: number;
   /** フォームデータ */
   formData?: OrderFormData;
+  /** 現在の商品インデックス（ステップ2-4で使用） */
+  activeProductIndex?: number;
   /** 前のステップへ移動するハンドラー */
   onPrevStep?: () => void;
   /** 次のステップへ移動するハンドラー */
   onNextStep?: () => void;
+  /** 商品切り替えハンドラー */
+  onProductChange?: (index: number) => void;
   /** ステップナビゲーション状態を設定 */
   setStepNavigation: (
     active: boolean,
     step?: number,
     total?: number,
     formData?: OrderFormData,
+    activeProductIndex?: number,
     onPrev?: () => void,
-    onNext?: () => void
+    onNext?: () => void,
+    onProductChange?: (index: number) => void
   ) => void;
 }
 
@@ -39,23 +45,29 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   const [activeStep, setActiveStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(0);
   const [formData, setFormData] = useState<OrderFormData | undefined>(undefined);
+  const [activeProductIndex, setActiveProductIndex] = useState<number | undefined>(undefined);
   const [onPrevStep, setOnPrevStep] = useState<(() => void) | undefined>(undefined);
   const [onNextStep, setOnNextStep] = useState<(() => void) | undefined>(undefined);
+  const [onProductChange, setOnProductChange] = useState<((index: number) => void) | undefined>(undefined);
 
   const setStepNavigation = (
     active: boolean,
     step: number = 0,
     total: number = 0,
     data?: OrderFormData,
+    productIndex?: number,
     onPrev?: () => void,
-    onNext?: () => void
+    onNext?: () => void,
+    onProdChange?: (index: number) => void
   ) => {
     setIsStepNavigationActive(active);
     setActiveStep(step);
     setTotalSteps(total);
     setFormData(data);
+    setActiveProductIndex(productIndex);
     setOnPrevStep(() => onPrev);
     setOnNextStep(() => onNext);
+    setOnProductChange(() => onProdChange);
   };
 
   return (
@@ -65,8 +77,10 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
         activeStep,
         totalSteps,
         formData,
+        activeProductIndex,
         onPrevStep,
         onNextStep,
+        onProductChange,
         setStepNavigation,
       }}
     >
