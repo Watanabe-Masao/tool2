@@ -18,8 +18,6 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as UncheckedIcon,
   Warning as WarningIcon,
@@ -34,6 +32,7 @@ import './FloatingProgressSummary.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { useNavigationContext } from '@/context/NavigationContext';
 
 /**
  * FloatingProgressSummaryのProps
@@ -55,6 +54,10 @@ interface FloatingProgressSummaryProps {
   onRemoveProduct?: (index: number) => void;
   /** 商品フィールドクリアハンドラー */
   onClearProduct?: (index: number) => void;
+  /** 前のステップへ移動するハンドラー */
+  onPrevStep?: () => void;
+  /** 次のステップへ移動するハンドラー */
+  onNextStep?: () => void;
 }
 
 /**
@@ -74,10 +77,12 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onHeightChange,
   onRemoveProduct,
   onClearProduct,
+  onPrevStep,
+  onNextStep,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [expanded, setExpanded] = useState(false);
+  const { showProgressSummary } = useNavigationContext();
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // カードコンテキストメニューの状態
@@ -137,7 +142,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     return () => {
       resizeObserver.disconnect();
     };
-  }, [onHeightChange, expanded, isProductMode, formData.products.length]);
+  }, [onHeightChange, showProgressSummary, isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -528,32 +533,56 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           alignItems: 'center',
           justifyContent: 'space-between',
           p: isMobile ? 1 : 2,
-          cursor: 'pointer',
           bgcolor: 'primary.main',
           color: 'primary.contrastText',
-          borderRadius: expanded ? '16px 16px 0 0' : '16px 16px 0 0',
+          borderRadius: showProgressSummary ? '16px 16px 0 0' : '16px 16px 0 0',
         }}
-        onClick={() => setExpanded(!expanded)}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2 }}>
+        {/* 前へボタン */}
+        <IconButton
+          size="small"
+          onClick={onPrevStep}
+          disabled={!onPrevStep}
+          sx={{
+            color: 'inherit',
+            p: isMobile ? 0.5 : 1,
+            '&.Mui-disabled': {
+              color: 'rgba(255, 255, 255, 0.3)',
+            },
+          }}
+        >
+          <ChevronLeftIcon fontSize={isMobile ? 'small' : 'medium'} />
+        </IconButton>
+
+        {/* 中央：ステップ表示 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
           <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
-            進捗: {progress}%
+            ステップ {activeStep + 1} / {totalSteps}
           </Typography>
           <Typography variant={isMobile ? 'caption' : 'body2'}>
-            ステップ {activeStep + 1} / {totalSteps}
+            • {progress}%
           </Typography>
         </Box>
 
+        {/* 次へボタン */}
         <IconButton
           size="small"
-          sx={{ color: 'inherit', p: isMobile ? 0.5 : 1 }}
+          onClick={onNextStep}
+          disabled={!onNextStep}
+          sx={{
+            color: 'inherit',
+            p: isMobile ? 0.5 : 1,
+            '&.Mui-disabled': {
+              color: 'rgba(255, 255, 255, 0.3)',
+            },
+          }}
         >
-          {expanded ? <ExpandMoreIcon fontSize={isMobile ? 'small' : 'medium'} /> : <ExpandLessIcon fontSize={isMobile ? 'small' : 'medium'} />}
+          <ChevronRightIcon fontSize={isMobile ? 'small' : 'medium'} />
         </IconButton>
       </Box>
 
       {/* 詳細（折りたたみ可能） */}
-      <Collapse in={expanded}>
+      <Collapse in={showProgressSummary}>
         {isProductMode ? (
           /* 商品モード: 商品カードを表示 */
           <Box sx={{ bgcolor: 'background.paper' }}>
