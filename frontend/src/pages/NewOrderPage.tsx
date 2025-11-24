@@ -567,16 +567,51 @@ export const NewOrderPage: React.FC = () => {
   /**
    * Excelファイルをダウンロード
    */
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     if (generatedFiles) {
-      // バックエンドから返されたdownload_urlをそのまま使用
-      // （filenameパラメータが含まれている）
-      const link = document.createElement('a');
-      link.href = generatedFiles.downloadUrl;
-      link.download = generatedFiles.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        showLoading();
+        console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
+
+        // fetchでファイルを取得してContent-Typeを確認
+        const response = await fetch(generatedFiles.downloadUrl);
+        console.log('Response status:', response.status);
+        console.log('Response Content-Type:', response.headers.get('Content-Type'));
+
+        if (!response.ok) {
+          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('Content-Type') || '';
+
+        // HTMLが返された場合はエラー
+        if (contentType.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
+          throw new Error('サーバーからHTMLが返されました。ファイルが生成されていない可能性があります。');
+        }
+
+        const blob = await response.blob();
+        console.log('Downloaded blob size:', blob.size, 'bytes');
+
+        // Blobからダウンロードリンクを作成
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = generatedFiles.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Blob URLをクリーンアップ
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        console.error('Excel download error:', error);
+        showError(error instanceof Error ? error.message : 'Excelファイルのダウンロードに失敗しました');
+      }
     }
   };
 
@@ -587,17 +622,28 @@ export const NewOrderPage: React.FC = () => {
     if (generatedFiles && generatedFiles.pdfDownloadUrl) {
       try {
         showLoading();
-        // バックエンドから返されたpdf_download_urlをそのまま使用
-        // （filenameパラメータが含まれている）
-        const pdfUrl = generatedFiles.pdfDownloadUrl;
+        console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
 
         // PDFをfetchしてblobとして取得
-        const response = await fetch(pdfUrl);
+        const response = await fetch(generatedFiles.pdfDownloadUrl);
+        console.log('Response status:', response.status);
+        console.log('Response Content-Type:', response.headers.get('Content-Type'));
+
         if (!response.ok) {
-          throw new Error('PDFのダウンロードに失敗しました');
+          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('Content-Type') || '';
+
+        // HTMLが返された場合はエラー
+        if (contentType.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
+          throw new Error('サーバーからHTMLが返されました。PDFファイルが生成されていない可能性があります。');
         }
 
         const blob = await response.blob();
+        console.log('Downloaded blob size:', blob.size, 'bytes');
 
         // Blobからダウンロードリンクを作成
         const blobUrl = window.URL.createObjectURL(blob);
