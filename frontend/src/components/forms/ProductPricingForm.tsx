@@ -269,7 +269,15 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
 
       {/* 全体集計サマリー（画面最下部） */}
       {fields.length > 0 && (
-        <Accordion defaultExpanded sx={{ mt: 3, bgcolor: 'primary.50', border: '2px solid', borderColor: 'primary.main' }}>
+        <Accordion
+          defaultExpanded
+          sx={{
+            mt: 3,
+            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50',
+            border: '2px solid',
+            borderColor: 'primary.main'
+          }}
+        >
           <AccordionSummary
             expandIcon={<ExpandMore />}
             sx={{ minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}

@@ -315,7 +315,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     <>
       <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         {/* ヘッダー */}
-        <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{
+          p: 2.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <Box>
             <Typography variant="h5" fontWeight="700" color="primary.main">
               {bookName}
@@ -350,19 +358,24 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
         {/* 選択行の詳細情報エリア */}
         {selectedRow && (
-              <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+              <Box sx={{
+                p: 2,
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.100',
+                borderBottom: 1,
+                borderColor: 'divider'
+              }}>
                 {/* 1行目: 店着日と集計情報 */}
                 <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? 'error.main' : 'success.main' }}>
                     差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
                   </Typography>
                 </Box>
@@ -423,16 +436,16 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   padding: '0 8px',
                 },
                 '& .ag-row:hover': {
-                  backgroundColor: '#f8f9fa !important',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05) !important' : '#f8f9fa !important',
                 },
                 '& .ag-row-even': {
-                  backgroundColor: '#ffffff',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
                 },
                 '& .ag-row-odd': {
-                  backgroundColor: '#fafafa',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
                 },
                 '& .ag-row-selected': {
-                  backgroundColor: '#e3f2fd !important',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.16) !important' : '#e3f2fd !important',
                 },
               }}
             >
@@ -447,7 +460,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Divider />
 
       {/* アクションボタン */}
-      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: onGenerate ? 'center' : 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box sx={{
+        p: 3,
+        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.50',
+        display: 'flex',
+        gap: 2,
+        justifyContent: onGenerate ? 'center' : 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
         {onGenerate ? (
           /* 生成前：生成ボタンのみ */
           <Button
@@ -510,7 +531,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                     fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     borderWidth: 2,
-                    '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
+                    '&:hover': {
+                      borderWidth: 2,
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50'
+                    }
                   }}
                 >
                   PDFプレビュー
