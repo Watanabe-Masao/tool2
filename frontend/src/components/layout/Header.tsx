@@ -407,7 +407,10 @@ export const Header: React.FC = () => {
                 size="small"
                 onClick={handleMenuOpen}
                 color="inherit"
-                aria-label="ユーザーメニュー"
+                aria-label="ユーザーメニューを開く"
+                aria-haspopup="true"
+                aria-expanded={Boolean(anchorEl)}
+                aria-controls={anchorEl ? 'user-menu' : undefined}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -424,9 +427,14 @@ export const Header: React.FC = () => {
 
               {/* ユーザーメニュー */}
               <Menu
+                id="user-menu"
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
+                MenuListProps={{
+                  'aria-labelledby': 'user-menu',
+                  role: 'menu',
+                }}
                 anchorOrigin={{
                   vertical: 'bottom',
                   horizontal: 'right',
@@ -469,7 +477,11 @@ export const Header: React.FC = () => {
                 <Divider />
 
                 {/* ログアウト */}
-                <MenuItem onClick={handleLogout}>
+                <MenuItem
+                  onClick={handleLogout}
+                  role="menuitem"
+                  aria-label="ログアウトする"
+                >
                   <Logout fontSize="small" sx={{ mr: 1 }} />
                   ログアウト
                 </MenuItem>
