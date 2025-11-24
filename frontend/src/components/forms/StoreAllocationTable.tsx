@@ -157,23 +157,6 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
         /**
-         * 配分数変更ハンドラー（React#185対策: useCallback + 直接実行）
-         */
-        const handleChange = useCallback((index: number, value: number) => {
-          // コンポーネントがマウントされている場合のみ処理
-          if (!isMountedRef.current) {
-            return;
-          }
-
-          const newAllocations = [...allocations];
-          newAllocations[index] = value < 0 ? 0 : value;
-
-          // 直接実行（startTransitionは使わない）
-          // valueSetterは既にユーザー操作後に呼ばれるため、レンダリング外
-          field.onChange(newAllocations);
-        }, [allocations, field]);
-
-        /**
          * 均等配分（ロックされていない店舗に）
          */
         const handleEqualDistribution = () => {
@@ -334,7 +317,10 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
                 }
                 const value = parseInt(params.newValue, 10);
                 if (!isNaN(value) && value >= 0) {
-                  handleChange(params.data.index, value);
+                  // 直接field.onChangeを呼び出し（handleChangeを経由しない）
+                  const newAllocations = [...allocations];
+                  newAllocations[params.data.index] = value;
+                  field.onChange(newAllocations);
                   return true;
                 }
                 return false;
@@ -373,7 +359,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
               },
             },
           ],
-          [lockedStores, handleChange]
+          []  // 依存配列を空に: lockedStoresとallocationsは動的に評価され、columnDefs構造は不変
         );
 
         /**

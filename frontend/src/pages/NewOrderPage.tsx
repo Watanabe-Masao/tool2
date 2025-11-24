@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
@@ -430,14 +430,14 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * プレビュー画面での配分数量変更ハンドラ
+   * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
    */
-  const handleAllocationChange = (productIndex: number, storeIndex: number, newValue: number) => {
+  const handleAllocationChange = useCallback((productIndex: number, storeIndex: number, newValue: number) => {
     setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
       shouldValidate: true,
       shouldDirty: true,
     });
-  };
+  }, [setValue]);
 
   /**
    * フォーム送信

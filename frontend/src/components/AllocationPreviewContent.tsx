@@ -296,7 +296,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onAllocationChange, lockedStores, onGenerate]);
+  }, [onAllocationChange, onGenerate]);  // lockedStoresは動的評価されるため依存配列から除外
 
   /**
    * 行クリック時のハンドラー（React#185対策: 直接実行）
