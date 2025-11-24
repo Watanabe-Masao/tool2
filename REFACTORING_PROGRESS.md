@@ -10,13 +10,13 @@
 
 ```
 Phase 0: ドキュメント整備 ████████████████████ 100% ✅
-Phase 1: 基盤コード分割   ██████░░░░░░░░░░░░░░  30% 🔄
+Phase 1: 基盤コード分割   ████████████░░░░░░░░  60% 🔄
 Phase 2: NewOrderPage    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 3: レスポンシブ    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 4: 配分実績管理    ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase 5: データ分析      ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 
-全体進捗: ████░░░░░░░░░░░░░░░░ 21%
+全体進捗: ██████░░░░░░░░░░░░░░ 33%
 ```
 
 ---
@@ -41,13 +41,17 @@ Phase 5: データ分析      ░░░░░░░░░░░░░░░░�
 - [x] `docs/05-TESTING-GUIDE.md` - テスト戦略ガイド
 - [x] `docs/rfcs/001-comprehensive-refactoring-plan.md` - リファクタリング計画書
 
-### Phase 1: 基盤コード分割 (30%)
+### Phase 1: 基盤コード分割 (60%)
 
 #### ✅ Repository パターン基盤
 - [x] `frontend/src/services/firestore/base/` ディレクトリ作成
 - [x] `FirestoreBaseService.ts` - 抽象基底クラス実装
-- [x] `OrderRepository.ts` - 注文Repository実装
-- [x] `OrderRepository.test.ts` - ユニットテスト実装
+
+#### ✅ Repository実装 (4/6 完了)
+- [x] `OrderRepository.ts` + テスト - 注文データ管理、ページネーション対応
+- [x] `ProductHistoryRepository.ts` + テスト - 商品履歴管理、ピン留め機能
+- [x] `PricingHistoryRepository.ts` + テスト - 価格履歴管理、スマート更新ロジック
+- [x] `AutocompleteRepository.ts` + テスト - オートコンプリート履歴、重複排除
 
 ---
 
@@ -55,35 +59,17 @@ Phase 5: データ分析      ░░░░░░░░░░░░░░░░�
 
 ### Phase 1: 基盤コード分割 (継続中)
 
-#### 🔄 残りのRepository実装
-- [ ] **ProductHistoryRepository.ts** (次のタスク)
-  - 商品履歴の保存・取得
-  - 帳合先フィルタリング
-  - ピン留め機能
-  - テスト作成
-
-- [ ] **PricingHistoryRepository.ts**
-  - 価格履歴の保存・取得
-  - 商品名・規格・入数による検索
-  - 使用回数カウント
-  - テスト作成
-
-- [ ] **AutocompleteRepository.ts**
-  - オートコンプリート履歴管理
-  - フィールド別の履歴取得
-  - 重複排除
-  - テスト作成
-
-- [ ] **PresetRepository.ts**
+#### 🔄 残りのRepository実装 (2/6)
+- [ ] **PresetRepository.ts** (次のタスク)
   - 帳合先プリセット管理
-  - 並び順管理
-  - リアルタイム購読
+  - 並び順管理（displayOrder）
+  - リアルタイム購読（onSnapshot）
   - テスト作成
 
 - [ ] **EmailAddressRepository.ts**
   - メールアドレス帳管理
-  - 並び順管理
-  - リアルタイム購読
+  - 並び順管理（displayOrder）
+  - リアルタイム購読（onSnapshot）
   - テスト作成
 
 #### 🔄 統合と移行
@@ -275,9 +261,11 @@ pytest --cov                      # カバレッジ付き
 ### Week 1 (現在)
 - [x] Phase 0完了
 - [x] OrderRepository実装
-- [ ] ProductHistoryRepository実装
-- [ ] PricingHistoryRepository実装
-- [ ] AutocompleteRepository実装
+- [x] ProductHistoryRepository実装
+- [x] PricingHistoryRepository実装
+- [x] AutocompleteRepository実装
+- [ ] PresetRepository実装
+- [ ] EmailAddressRepository実装
 
 ### Week 2 (予定)
 - [ ] PresetRepository実装
