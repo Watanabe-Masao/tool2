@@ -214,8 +214,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   // 長押し+スワイプ検出用の状態
   const longPressTimer = React.useRef<number | null>(null);
   const touchStartY = React.useRef<number | null>(null);
+  const touchStartX = React.useRef<number | null>(null);
   const touchStartTime = React.useRef<number | null>(null);
   const currentTouchStore = React.useRef<string | null>(null);
+  const isLongPressActivated = React.useRef<boolean>(false);
+  const isInputFieldTouch = React.useRef<boolean>(false);
   const [swipePreview, setSwipePreview] = React.useState<{ storeCode: string; direction: 'up' | 'down' } | null>(null);
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
@@ -485,41 +488,65 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * タッチ開始（長押し+スワイプ用）
    */
   const handleTouchStart = (storeCode: string, event: React.TouchEvent) => {
-    // 入力フィールド内でのタッチは無視（横スワイプを許可するため）
+    // 入力フィールド内でのタッチは完全に無視
     const target = event.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.closest('input')) {
+      isInputFieldTouch.current = true;
       return;
     }
 
+    isInputFieldTouch.current = false;
+    isLongPressActivated.current = false;
+
     const touch = event.touches[0];
     touchStartY.current = touch.clientY;
+    touchStartX.current = touch.clientX;
     touchStartTime.current = Date.now();
     currentTouchStore.current = storeCode;
 
-    // 長押し判定を500msに延長（誤操作防止）
+    // 長押し判定を600msに延長（誤操作防止）
     longPressTimer.current = window.setTimeout(() => {
-      // 長押しが成立したらスワイプ待機状態
-      setSwipePreview({ storeCode, direction: 'up' });
-    }, 500);
+      // 長押しが成立
+      isLongPressActivated.current = true;
+    }, 600);
   };
 
   /**
    * タッチ移動（スワイプ検出）
    */
   const handleTouchMove = (event: React.TouchEvent) => {
-    if (!touchStartY.current || !currentTouchStore.current || !touchStartTime.current) return;
+    // 入力フィールド内のタッチは無視
+    if (isInputFieldTouch.current) return;
+
+    if (!touchStartY.current || !touchStartX.current || !currentTouchStore.current || !touchStartTime.current) return;
 
     const touch = event.touches[0];
     const deltaY = touch.clientY - touchStartY.current;
-    const deltaTime = Date.now() - touchStartTime.current;
+    const deltaX = touch.clientX - touchStartX.current;
 
-    // 長押し後のスワイプ判定（500ms以上経過後、誤操作防止のため延長）
-    if (deltaTime >= 500) {
-      if (Math.abs(deltaY) > 50) { // 50px以上のスワイプ（誤操作防止のため延長）
-        if (deltaY < -50) {
+    // 長押しが成立している場合のみスワイプ検出
+    if (isLongPressActivated.current) {
+      // 横方向の移動が大きい場合は、横スクロールとみなして無視
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 20) {
+        // 横スワイプを検出したらロック操作をキャンセル
+        if (longPressTimer.current) {
+          window.clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        isLongPressActivated.current = false;
+        setSwipePreview(null);
+        return;
+      }
+
+      // 縦方向のスワイプを検出（70px以上）
+      if (Math.abs(deltaY) > 70) {
+        // スクロールを防ぐ（縦スワイプが検出されたら）
+        event.preventDefault();
+
+        if (deltaY < -70) {
           // 上スワイプ
           setSwipePreview({ storeCode: currentTouchStore.current, direction: 'up' });
-        } else if (deltaY > 50) {
+        } else if (deltaY > 70) {
           // 下スワイプ
           setSwipePreview({ storeCode: currentTouchStore.current, direction: 'down' });
         }
@@ -531,12 +558,19 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * タッチ終了（スワイプ実行）
    */
   const handleTouchEnd = () => {
+    // 入力フィールド内のタッチは無視
+    if (isInputFieldTouch.current) {
+      isInputFieldTouch.current = false;
+      return;
+    }
+
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
 
-    if (swipePreview && currentTouchStore.current) {
+    // 長押し+スワイプが成立した場合のみロック操作を実行
+    if (isLongPressActivated.current && swipePreview && currentTouchStore.current) {
       const storeCode = currentTouchStore.current;
 
       if (swipePreview.direction === 'up') {
@@ -554,8 +588,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
 
     // リセット
     touchStartY.current = null;
+    touchStartX.current = null;
     touchStartTime.current = null;
     currentTouchStore.current = null;
+    isLongPressActivated.current = false;
+    isInputFieldTouch.current = false;
     setSwipePreview(null);
   };
 
@@ -1083,9 +1120,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   scrollBehavior: 'smooth',
                   scrollSnapType: 'x proximity',
                   scrollbarWidth: 'thin',
-                  // 重要: 横スクロールのみを許可、縦スクロールを無効化
-                  touchAction: 'pan-x',
-                  // スクロール中は縦スクロールをブロック
+                  // 横スクロールを許可（カード内のジェスチャーは個別に制御）
+                  touchAction: 'pan-x pan-y',
                   overscrollBehaviorX: 'contain',
                   overscrollBehaviorY: 'none',
                   '&::-webkit-scrollbar': {
@@ -1115,13 +1151,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     <Card
                       key={store.code}
                       variant="outlined"
-                      onTouchStart={(e) => handleTouchStart(store.code, e)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleToggleLock(store.code);
-                      }}
                       sx={{
                         minWidth: 70,
                         maxWidth: 70,
@@ -1149,8 +1178,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             : 'divider',
                         borderWidth: isLocked || quantity > 0 || swipePreview?.storeCode === store.code ? 2 : 1,
                         transition: 'all 0.15s ease',
-                        // 長押し+縦スワイプを有効にするため
-                        touchAction: 'none',
                         boxShadow: quantity > 0 ? 1 : 0,
                         transform:
                           swipePreview?.storeCode === store.code
@@ -1163,49 +1190,70 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         },
                       }}
                     >
-                      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                        {/* ヘッダー部分（長押し+スワイプ操作エリア） */}
+                        <Box
+                          onTouchStart={(e) => handleTouchStart(store.code, e)}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            handleToggleLock(store.code);
+                          }}
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            p: 0.75,
+                            pb: 0.5,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            // このエリアでは長押し+縦スワイプを検出
+                            touchAction: 'none',
+                          }}
+                        >
                           <Typography variant="caption" fontWeight="medium" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
                             {store.code}店
                           </Typography>
                           {isLocked && <Lock sx={{ fontSize: '0.8rem', color: 'warning.main' }} />}
                         </Box>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={quantity || ''}
-                          placeholder={hasPreview ? String(previewValue) : ''}
-                          onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
-                          fullWidth
-                          inputProps={{
-                            inputMode: 'numeric',
-                            pattern: '[0-9]*',
-                            min: 0,
-                            style: {
-                              textAlign: 'center',
-                              fontSize: '0.85rem',
-                              fontWeight: quantity > 0 ? 'bold' : 'normal',
-                              padding: '6px 4px'
-                            },
-                          }}
-                          sx={{
-                            // 入力フィールド内では通常のタッチ操作を許可（カーソル移動、テキスト選択など）
-                            touchAction: 'manipulation',
-                            '& .MuiOutlinedInput-root': {
-                              fontSize: '0.75rem',
-                              touchAction: 'manipulation', // input要素にも適用
-                            },
-                            '& .MuiInputBase-input': {
-                              padding: '6px 4px',
-                              touchAction: 'manipulation', // input要素にも適用
-                              '&::placeholder': {
-                                color: 'grey.400',
-                                opacity: 0.7,
-                                fontWeight: 'normal',
+                        {/* 入力フィールドエリア */}
+                        <Box sx={{ px: 0.75, pb: 0.75 }}>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={quantity || ''}
+                            placeholder={hasPreview ? String(previewValue) : ''}
+                            onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                            fullWidth
+                            inputProps={{
+                              inputMode: 'numeric',
+                              pattern: '[0-9]*',
+                              min: 0,
+                              style: {
+                                textAlign: 'center',
+                                fontSize: '0.85rem',
+                                fontWeight: quantity > 0 ? 'bold' : 'normal',
+                                padding: '6px 4px'
                               },
-                            },
-                          }}
-                        />
+                            }}
+                            sx={{
+                              // 入力フィールド内では通常のタッチ操作を許可
+                              touchAction: 'manipulation',
+                              '& .MuiOutlinedInput-root': {
+                                fontSize: '0.75rem',
+                              },
+                              '& .MuiInputBase-input': {
+                                padding: '6px 4px',
+                                '&::placeholder': {
+                                  color: 'grey.400',
+                                  opacity: 0.7,
+                                  fontWeight: 'normal',
+                                },
+                              },
+                            }}
+                          />
+                        </Box>
                       </CardContent>
                     </Card>
                   );
