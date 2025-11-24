@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -527,9 +527,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             isCellEditable={isCellEditable}
             disableRowSelectionOnClick
             hideFooter
-            onRowClick={(params: GridRowParams) => {
-              // 行クリック時に商品選択を変更（進捗サマリーと連動）
-              if (onProductChange) {
+            onCellClick={(params) => {
+              // 編集可能なセル（店舗セル）以外をクリックした時のみ商品選択を変更
+              // これにより、店舗セルは編集可能で、他のセルをクリックすると商品が切り替わる
+              if (onProductChange && !params.field.startsWith('store_')) {
                 onProductChange(params.row.productIndex);
               }
             }}
@@ -560,7 +561,6 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               },
               '& .MuiDataGrid-row:hover': {
                 backgroundColor: '#f5f5f5',
-                cursor: onProductChange ? 'pointer' : 'default',
               },
               // ハイライトされた行のスタイル
               '& .highlighted-row': {
@@ -569,6 +569,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               },
               '& .highlighted-row:hover': {
                 backgroundColor: '#bbdefb !important',
+              },
+              // 編集可能なセルのカーソル
+              '& .MuiDataGrid-cell[data-field^="store_"]': {
+                cursor: 'cell',
               },
             }}
           />
