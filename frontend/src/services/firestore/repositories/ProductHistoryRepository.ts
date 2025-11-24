@@ -1,6 +1,6 @@
 import {
   Firestore,
-  collection,
+
   query,
   where,
   orderBy,
@@ -163,7 +163,6 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     if (!snapshot.empty) {
       // 既存のレコードがあれば更新
       const docRef = snapshot.docs[0].ref;
-      const existingData = snapshot.docs[0].data();
 
       await updateDoc(docRef, {
         updatedAt: Timestamp.now(),

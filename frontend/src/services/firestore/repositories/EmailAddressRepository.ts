@@ -1,13 +1,13 @@
 import {
   Firestore,
-  collection,
+
   query,
   where,
   orderBy,
   onSnapshot,
   updateDoc,
   Timestamp,
-  Unsubscribe,
+  type Unsubscribe,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
 

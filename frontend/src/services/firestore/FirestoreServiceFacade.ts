@@ -1,4 +1,4 @@
-import { Firestore, Unsubscribe } from 'firebase/firestore';
+import { Firestore, type Unsubscribe } from 'firebase/firestore';
 import { OrderRepository } from './repositories/OrderRepository';
 import { ProductHistoryRepository } from './repositories/ProductHistoryRepository';
 import { PricingHistoryRepository } from './repositories/PricingHistoryRepository';
@@ -322,6 +322,9 @@ export class FirestoreServiceFacade {
       quantityPerPackage,
       unit,
       categoryCode,
+      usageCount: 1,
+      pinned: false,
+      pinOrder: 9999,
     });
   }
 

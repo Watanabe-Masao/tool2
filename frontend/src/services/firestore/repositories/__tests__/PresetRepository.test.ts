@@ -233,7 +233,7 @@ describe('PresetRepository', () => {
       };
 
       // onSnapshotの第1引数（成功コールバック）を即座に呼び出す
-      mockOnSnapshot.mockImplementation((q: any, onSuccess: any, onError: any) => {
+      mockOnSnapshot.mockImplementation((_q: any, onSuccess: any, _onError: any) => {
         onSuccess(mockSnapshot);
         return vi.fn(); // unsubscribe関数のモック
       });
@@ -258,7 +258,7 @@ describe('PresetRepository', () => {
     it('should call onError when subscription fails', () => {
       const mockError = new Error('Subscription failed');
 
-      mockOnSnapshot.mockImplementation((q: any, onSuccess: any, onError: any) => {
+      mockOnSnapshot.mockImplementation((_q: any, onSuccess: any, _onError: any) => {
         onError(mockError);
         return vi.fn();
       });
@@ -300,7 +300,7 @@ describe('PresetRepository', () => {
         forEach: (callback: any) => mockPresets.forEach(callback),
       };
 
-      mockOnSnapshot.mockImplementation((q: any, onSuccess: any, onError: any) => {
+      mockOnSnapshot.mockImplementation((_q: any, onSuccess: any, _onError: any) => {
         onSuccess(mockSnapshot);
         return vi.fn();
       });

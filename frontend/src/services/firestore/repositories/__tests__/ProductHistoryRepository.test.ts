@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ProductHistoryRepository, ProductHistory } from '../ProductHistoryRepository';
+import { ProductHistoryRepository, type ProductHistory } from '../ProductHistoryRepository';
 import { Timestamp } from 'firebase/firestore';
 
 // Firestoreのモック

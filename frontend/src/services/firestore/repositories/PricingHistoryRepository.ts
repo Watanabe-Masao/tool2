@@ -1,6 +1,6 @@
 import {
   Firestore,
-  collection,
+
   query,
   where,
   orderBy,

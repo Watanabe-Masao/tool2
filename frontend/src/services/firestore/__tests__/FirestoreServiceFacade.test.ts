@@ -35,6 +35,7 @@ describe('FirestoreServiceFacade', () => {
         products: [],
         buyerName: 'テストバイヤー',
         userId: 'user-123',
+        timestamp: new Date(),
       } as OrderData;
 
       const saveOrderSpy = vi.spyOn(facade['orderRepo'], 'saveOrder');
@@ -237,6 +238,8 @@ describe('FirestoreServiceFacade', () => {
           quantityPerPackage: 10,
           unit: '個',
           usageCount: 1,
+          pinned: false,
+          pinOrder: 9999,
         },
       ]);
 
