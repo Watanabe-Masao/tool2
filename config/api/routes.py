@@ -53,8 +53,16 @@ async def generate_template(req: TemplateRequest):
         TemplateCreationError: テンプレート生成失敗時
     """
     try:
+        # デバッグログ: リクエストの内容を確認
+        logger.info(f"Template generation request received:")
+        logger.info(f"  - output_filename: {req.output_filename}")
+        logger.info(f"  - delivery_date: {req.delivery_date}")
+        logger.info(f"  - supplier: {req.supplier}")
+        logger.info(f"  - buyer_name: {req.buyer_name}")
+
         # ファイル名の生成
         filename = ExcelService.generate_filename(req.output_filename)
+        logger.info(f"  - generated filename: {filename}")
 
         # テンプレート生成
         output_path, file_id = ExcelService.create_template(
@@ -67,11 +75,15 @@ async def generate_template(req: TemplateRequest):
 
         # PDF生成
         pdf_filename = None
+        pdf_download_url = None
         try:
             pdf_path = settings.temp_dir / f"{file_id}.pdf"
             PDFService.prepare_for_conversion(output_path)
             PDFService.convert_to_pdf(output_path, pdf_path)
             pdf_filename = file_id
+            # PDFのファイル名を生成（.xlsxを.pdfに置き換え）
+            pdf_file_display_name = filename.replace(".xlsx", ".pdf")
+            pdf_download_url = f"/api/download/{file_id}?filename={pdf_file_display_name}&ext=pdf"
             logger.info(f"PDF generated successfully: {pdf_path}")
         except Exception as pdf_error:
             # PDF生成エラーはログに記録するが、Excelの生成は成功しているので続行
@@ -82,7 +94,8 @@ async def generate_template(req: TemplateRequest):
             message="テンプレートの生成に成功しました",
             download_url=download_url,
             filename=filename,
-            pdf_filename=pdf_filename
+            pdf_filename=pdf_filename,
+            pdf_download_url=pdf_download_url
         )
 
     except Exception as e:
@@ -113,14 +126,31 @@ async def download_template(
     Raises:
         AppFileNotFoundError: ファイルが存在しない場合
     """
+    # デバッグログ: ダウンロードリクエストの詳細
+    logger.info(f"📥 Download request received:")
+    logger.info(f"  - file_id: {file_id}")
+    logger.info(f"  - filename: {filename}")
+    logger.info(f"  - ext: {ext}")
+
     # ファイル拡張子を検証
     if ext not in ["xlsx", "pdf"]:
+        logger.error(f"  - ❌ Invalid file extension: {ext}")
         raise HTTPException(status_code=400, detail="無効なファイル拡張子です")
 
     # ファイルパス取得
     temp_path = settings.temp_dir / f"{file_id}.{ext}"
+    logger.info(f"  - temp_path: {temp_path}")
+    logger.info(f"  - temp_path exists: {temp_path.exists()}")
 
     if not temp_path.exists():
+        logger.error(f"  - ❌ File not found at: {temp_path}")
+        # List all files in temp directory for debugging
+        try:
+            all_files = list(settings.temp_dir.glob(f"{file_id}.*"))
+            logger.error(f"  - Available files with same ID: {all_files}")
+        except Exception as e:
+            logger.error(f"  - Could not list files: {e}")
+
         raise AppFileNotFoundError(
             message="ファイルが見つかりません",
             detail=f"ファイルID: {file_id}, 拡張子: {ext}"
@@ -131,6 +161,8 @@ async def download_template(
         with open(temp_path, "rb") as f:
             file_content = f.read()
 
+        logger.info(f"  - ✅ File read successfully, size: {len(file_content)} bytes")
+
         # 注意: ファイルは削除せず、複数回ダウンロード可能にする
         # クリーンアップはshutdownイベントで実行される
 
@@ -138,15 +170,19 @@ async def download_template(
         if ext == "pdf":
             media_type = "application/pdf"
             default_filename = "template.pdf"
-            # PDFファイル名がカスタマイズされていない場合はデフォルト名を使用
-            if filename == "配分表_テンプレート.xlsx":
+            # .xlsxを.pdfに置き換え
+            if filename.endswith(".xlsx"):
                 filename = filename.replace(".xlsx", ".pdf")
         else:
             media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             default_filename = "template.xlsx"
 
+        logger.info(f"  - media_type: {media_type}")
+        logger.info(f"  - filename: {filename}")
+
         # 日本語ファイル名のエンコード（RFC 5987対応）
         encoded_filename = quote(filename.encode('utf-8'))
+        logger.info(f"  - encoded_filename: {encoded_filename}")
 
         # ストリーミングレスポンス
         return StreamingResponse(

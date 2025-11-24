@@ -29,6 +29,8 @@ interface AllocationPreviewContentProps {
   formData: OrderFormData;
   /** PDFファイル名（file_id） */
   pdfFilename?: string;
+  /** PDFダウンロードURL */
+  pdfDownloadUrl?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
   /** PDFダウンロードハンドラ */
@@ -81,6 +83,7 @@ interface GridRowData {
 export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> = ({
   formData,
   pdfFilename,
+  pdfDownloadUrl,
   onDownloadExcel,
   onDownloadPdf,
   onSendEmail,
@@ -99,8 +102,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // 店舗別統計モーダルの開閉状態
   const [showStatsModal, setShowStatsModal] = useState(false);
 
-  // PDF URL
-  const pdfUrl = pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '';
+  // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
+  const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
+
+  // ブック名を生成（配分表_{YYYYMMDD}）
+  const bookName = useMemo(() => {
+    const dateStr = format(formData.deliveryDate, 'yyyyMMdd');
+    return `配分表_${dateStr}`;
+  }, [formData.deliveryDate]);
 
   /**
    * グリッド行データを生成
@@ -307,19 +316,27 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         {/* ヘッダー */}
         <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h5" fontWeight="700" color="primary.main">
-            配分表プレビュー
-          </Typography>
+          <Box>
+            <Typography variant="h5" fontWeight="700" color="primary.main">
+              {bookName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              配分表プレビュー
+            </Typography>
+          </Box>
           {/* 店舗別統計ボタン */}
           <Button
             variant="contained"
             startIcon={<Assessment />}
             onClick={() => setShowStatsModal(true)}
             color="secondary"
+            size="medium"
             aria-label="店舗別統計ダッシュボードを開く"
             sx={{
               borderRadius: 2,
-              px: 3,
+              px: { xs: 1.5, sm: 2, md: 3 },
+              py: { xs: 0.75, sm: 1 },
+              fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
               fontWeight: 600,
               boxShadow: 3,
               '&:hover': { boxShadow: 6 }
@@ -435,13 +452,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           /* 生成前：生成ボタンのみ */
           <Button
             variant="contained"
-            size="large"
+            size="medium"
             onClick={onGenerate}
             aria-label="配分表のExcelテンプレートを生成"
             sx={{
-              px: 6,
-              py: 1.5,
-              fontSize: '1.1rem',
+              px: { xs: 3, sm: 4, md: 6 },
+              py: { xs: 1, sm: 1.25, md: 1.5 },
+              fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
               fontWeight: 700,
               borderRadius: 2,
               boxShadow: 4,
@@ -461,10 +478,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   variant="outlined"
                   startIcon={<ArrowBack />}
                   onClick={onBack}
-                  size="large"
+                  size="medium"
                   sx={{
                     borderRadius: 2,
-                    px: 3,
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    py: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     borderWidth: 2,
                     '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
@@ -476,17 +495,19 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             </Box>
 
             {/* 生成後：右側にダウンロードと送信ボタン */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5, md: 2 }, flexWrap: 'wrap' }}>
               {pdfFilename && (
                 <Button
                   variant="outlined"
                   startIcon={<PictureAsPdf />}
                   onClick={() => setShowPDFModal(true)}
                   color="primary"
-                  size="large"
+                  size="medium"
                   sx={{
                     borderRadius: 2,
-                    px: 3,
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    py: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     borderWidth: 2,
                     '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
@@ -501,10 +522,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   startIcon={<Description />}
                   onClick={onDownloadExcel}
                   color="success"
-                  size="large"
+                  size="medium"
                   sx={{
                     borderRadius: 2,
-                    px: 3,
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    py: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     boxShadow: 3,
                     '&:hover': { boxShadow: 6 }
@@ -519,10 +542,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   startIcon={<Send />}
                   onClick={onSendEmail}
                   color="info"
-                  size="large"
+                  size="medium"
                   sx={{
                     borderRadius: 2,
-                    px: 3,
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    py: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     boxShadow: 3,
                     '&:hover': { boxShadow: 6 }

@@ -485,16 +485,22 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * タッチ開始（長押し+スワイプ用）
    */
   const handleTouchStart = (storeCode: string, event: React.TouchEvent) => {
+    // 入力フィールド内でのタッチは無視（横スワイプを許可するため）
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.closest('input')) {
+      return;
+    }
+
     const touch = event.touches[0];
     touchStartY.current = touch.clientY;
     touchStartTime.current = Date.now();
     currentTouchStore.current = storeCode;
 
-    // 短い長押し判定（300ms）
+    // 長押し判定を500msに延長（誤操作防止）
     longPressTimer.current = window.setTimeout(() => {
       // 長押しが成立したらスワイプ待機状態
       setSwipePreview({ storeCode, direction: 'up' });
-    }, 300);
+    }, 500);
   };
 
   /**
@@ -507,13 +513,13 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     const deltaY = touch.clientY - touchStartY.current;
     const deltaTime = Date.now() - touchStartTime.current;
 
-    // 長押し後のスワイプ判定（300ms以上経過後）
-    if (deltaTime >= 300) {
-      if (Math.abs(deltaY) > 30) { // 30px以上のスワイプ
-        if (deltaY < -30) {
+    // 長押し後のスワイプ判定（500ms以上経過後、誤操作防止のため延長）
+    if (deltaTime >= 500) {
+      if (Math.abs(deltaY) > 50) { // 50px以上のスワイプ（誤操作防止のため延長）
+        if (deltaY < -50) {
           // 上スワイプ
           setSwipePreview({ storeCode: currentTouchStore.current, direction: 'up' });
-        } else if (deltaY > 30) {
+        } else if (deltaY > 50) {
           // 下スワイプ
           setSwipePreview({ storeCode: currentTouchStore.current, direction: 'down' });
         }
@@ -1143,7 +1149,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             : 'divider',
                         borderWidth: isLocked || quantity > 0 || swipePreview?.storeCode === store.code ? 2 : 1,
                         transition: 'all 0.15s ease',
-                        touchAction: 'none', // 長押し+スワイプを有効にするため
+                        // 長押し+縦スワイプを有効にするため
+                        touchAction: 'none',
                         boxShadow: quantity > 0 ? 1 : 0,
                         transform:
                           swipePreview?.storeCode === store.code
@@ -1182,11 +1189,15 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             },
                           }}
                           sx={{
+                            // 入力フィールド内では通常のタッチ操作を許可（カーソル移動、テキスト選択など）
+                            touchAction: 'manipulation',
                             '& .MuiOutlinedInput-root': {
                               fontSize: '0.75rem',
+                              touchAction: 'manipulation', // input要素にも適用
                             },
                             '& .MuiInputBase-input': {
                               padding: '6px 4px',
+                              touchAction: 'manipulation', // input要素にも適用
                               '&::placeholder': {
                                 color: 'grey.400',
                                 opacity: 0.7,

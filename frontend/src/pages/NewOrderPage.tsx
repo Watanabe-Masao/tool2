@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -56,9 +56,14 @@ export const NewOrderPage: React.FC = () => {
     filename: string;
     downloadUrl: string;
     pdfFilename?: string;
+    pdfDownloadUrl?: string;
   } | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [bookNameDialog, setBookNameDialog] = useState<{
+    open: boolean;
+    bookName: string;
+  }>({ open: false, bookName: '' });
   const [supplierRemovalDialog, setSupplierRemovalDialog] = useState<{
     open: boolean;
     suppliersToRemove: string[];
@@ -130,6 +135,7 @@ export const NewOrderPage: React.FC = () => {
     watch,
     reset,
     setValue,
+    getValues,
     formState: { errors },
   } = methods;
 
@@ -137,7 +143,7 @@ export const NewOrderPage: React.FC = () => {
   const formData = watch();
 
   // 商品フィールド配列
-  const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
+  const { fields: productFields, append: appendProduct, remove: removeProduct, move: moveProduct } = useFieldArray({
     control,
     name: 'products',
   });
@@ -147,6 +153,32 @@ export const NewOrderPage: React.FC = () => {
     control,
     name: 'suppliers',
   });
+
+  /**
+   * 商品削除ハンドラー（FloatingProgressSummary用）
+   */
+  const handleRemoveProduct = (index: number) => {
+    if (productFields.length <= 1) return; // 最後の1つは削除しない
+    removeProduct(index);
+    // アクティブなインデックスを調整
+    if (activeProductIndex >= index && activeProductIndex > 0) {
+      setActiveProductIndex(activeProductIndex - 1);
+    }
+  };
+
+  /**
+   * 商品フィールドクリアハンドラー（FloatingProgressSummary用）
+   */
+  const handleClearProduct = (index: number) => {
+    const defaultSupplier = suppliers && suppliers.length > 0 ? suppliers[0] : '';
+    setValue(`products.${index}.categoryCode`, '');
+    setValue(`products.${index}.supplier`, defaultSupplier);
+    setValue(`products.${index}.name`, '');
+    setValue(`products.${index}.origin`, '');
+    setValue(`products.${index}.specification`, '');
+    setValue(`products.${index}.quantityPerPackage`, null);
+    setValue(`products.${index}.unit`, '');
+  };
 
   /**
    * ページロード時に下書きを復元
@@ -359,7 +391,10 @@ export const NewOrderPage: React.FC = () => {
    */
   const onSubmit = async (data: OrderFormData) => {
     try {
-      showLoading();
+      // オンライン時はダイアログを表示するため、まだローディングを表示しない
+      if (!isOnline) {
+        showLoading();
+      }
 
       console.log('Form data:', data);
 
@@ -369,7 +404,9 @@ export const NewOrderPage: React.FC = () => {
       );
 
       if (invalidProducts.length > 0) {
-        hideLoading();
+        if (!isOnline) {
+          hideLoading();
+        }
         showError(
           `一部の商品の帳合先がステップ1で選択されていません。` +
           `該当する商品の帳合先を修正してください。`
@@ -377,8 +414,13 @@ export const NewOrderPage: React.FC = () => {
         return;
       }
 
-      // バイヤー名を取得（ユーザー名またはメールアドレス）
-      const buyerName = user?.displayName || user?.email || '匿名';
+      // オンライン時: 先にローディングを表示してデータ保存
+      if (isOnline) {
+        showLoading();
+      }
+
+      // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
+      const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
 
       // オフライン同期を使用してデータを保存
       // オンライン時: Firestore + API呼び出し
@@ -430,104 +472,143 @@ export const NewOrderPage: React.FC = () => {
         }
       }
 
-      // オンライン時のみテンプレート生成API呼び出し
+      // オンライン時: データ保存後にローディングを隠してブック名ダイアログを表示
       if (isOnline) {
-        const response = await TemplateService.generateTemplate(data, buyerName);
-
-        console.log('Template generated:', response);
-
-        // 生成されたファイル情報を保存
-        setGeneratedFiles({
-          filename: response.filename,
-          downloadUrl: response.download_url,
-          pdfFilename: response.pdf_filename,
-        });
-
-        // ExcelファイルをBlobとして取得（メール送信用）
-        try {
-          const blob = await fetchExcelAsBlob(response.download_url);
-          setExcelBlob(blob);
-          console.log('Excel blob fetched successfully');
-        } catch (err) {
-          console.error('Failed to fetch Excel blob:', err);
-          // Blobの取得に失敗してもテンプレート生成は成功しているので続行
-        }
-
         hideLoading();
-
-        // 成功メッセージ
-        showSuccess('テンプレートを生成しました');
-
-        // SessionStorageの下書きをクリア（成功時）
-        if (user) {
-          SessionStorageService.clearDraft(user.uid);
-          setHasUnsavedChanges(false);
-        }
-
-        // プレビュー画面を表示
-        setShowGeneratedPreview(true);
-      } else {
-        // オフライン時
-        hideLoading();
-        showSuccess('データをローカルに保存しました。オンライン復帰時に自動同期されます。');
-
-        // オフライン時もSessionStorageの下書きをクリア
-        if (user) {
-          SessionStorageService.clearDraft(user.uid);
-          setHasUnsavedChanges(false);
-        }
+        // ブック名入力ダイアログを表示
+        setBookNameDialog({ open: true, bookName: '' });
+        return; // ダイアログ確認後にgenerateTemplateWithBookNameを呼び出す
       }
+
+      // オフライン時: テンプレート生成をスキップ
+      showSuccess('オフラインのため配分表を保存しました');
+      hideLoading();
     } catch (error) {
       hideLoading();
-      console.error('Template generation error:', error);
       showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
     }
   };
 
   /**
-   * 現在のステップのコンテンツを返す
+   * ブック名確認後のテンプレート生成
    */
-  /**
-   * Excelファイルをダウンロード
-   */
-  const handleDownloadExcel = () => {
-    if (generatedFiles) {
-      // TemplateService.getDownloadUrl()を使用して絶対URLを取得
-      // Firebase HostingからRender.com APIへのアクセスに対応
-      const fileId = generatedFiles.downloadUrl.split('/').pop()?.split('?')[0] || '';
-      const downloadUrl = TemplateService.getDownloadUrl(fileId, 'xlsx');
+  const generateTemplateWithBookName = async (data: OrderFormData, buyerName: string, bookName: string) => {
+    try {
+      showLoading();
 
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = generatedFiles.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
+      const dateStr = format(data.deliveryDate, 'yyyyMMdd');
+      const customName = bookName.trim() || '';
+      const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
+
+      // デバッグログ
+      console.log('📝 Custom filename generation:');
+      console.log('  - bookName:', bookName);
+      console.log('  - customName (trimmed):', customName);
+      console.log('  - dateStr:', dateStr);
+      console.log('  - customFilename:', customFilename);
+
+      const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
+
+      console.log('Template generated:', response);
+
+      // 生成されたファイル情報を保存
+      setGeneratedFiles({
+        filename: response.filename,
+        downloadUrl: response.download_url,
+        pdfFilename: response.pdf_filename,
+        pdfDownloadUrl: response.pdf_download_url,
+      });
+
+      // ExcelファイルをBlobとして取得（メール送信用）
+      try {
+        const blob = await fetchExcelAsBlob(response.download_url);
+        setExcelBlob(blob);
+        console.log('Excel blob fetched successfully');
+      } catch (err) {
+        console.error('Failed to fetch Excel blob:', err);
+        // Blobの取得に失敗してもテンプレート生成は成功しているので続行
+      }
+
+      hideLoading();
+
+      // 成功メッセージ
+      showSuccess('テンプレートを生成しました');
+
+      // SessionStorageの下書きをクリア（成功時）
+      if (user) {
+        SessionStorageService.clearDraft(user.uid);
+        setHasUnsavedChanges(false);
+      }
+
+      // プレビュー画面を表示
+      setShowGeneratedPreview(true);
+    } catch (error) {
+      hideLoading();
+      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
     }
   };
 
   /**
-   * PDFファイルをダウンロード
+   * ブック名ダイアログの確認ハンドラー
    */
-  const handleDownloadPdf = async () => {
-    if (generatedFiles && generatedFiles.pdfFilename) {
+  const handleBookNameDialogConfirm = async () => {
+    const data = getValues();
+    // バイヤー名を取得
+    const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
+
+    // ダイアログを閉じる
+    setBookNameDialog({ open: false, bookName: '' });
+
+    // テンプレート生成
+    await generateTemplateWithBookName(data, buyerName, bookNameDialog.bookName);
+  };
+
+  /**
+   * Excelファイルをダウンロード
+   */
+  const handleDownloadExcel = async () => {
+    if (generatedFiles) {
       try {
         showLoading();
-        const pdfUrl = TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename);
 
-        // PDFをfetchしてblobとして取得
-        const response = await fetch(pdfUrl);
+        // 相対URLを絶対URLに変換
+        // Firebase Hosting版では環境変数のバックエンドURLを使用
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
+          : window.location.origin; // Render版（同一オリジン）
+        const absoluteUrl = new URL(generatedFiles.downloadUrl, baseUrl).href;
+        console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
+        console.log('📥 Base URL:', baseUrl);
+        console.log('📥 Absolute URL:', absoluteUrl);
+
+        // fetchでファイルを取得してContent-Typeを確認
+        const response = await fetch(absoluteUrl);
+        console.log('Response status:', response.status);
+        console.log('Response Content-Type:', response.headers.get('Content-Type'));
+
         if (!response.ok) {
-          throw new Error('PDFのダウンロードに失敗しました');
+          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('Content-Type') || '';
+
+        // HTMLが返された場合はエラー
+        if (contentType.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
+          throw new Error('サーバーからHTMLが返されました。ファイルが生成されていない可能性があります。');
         }
 
         const blob = await response.blob();
+        console.log('Downloaded blob size:', blob.size, 'bytes');
 
         // Blobからダウンロードリンクを作成
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.download = `配分表_${format(formData.deliveryDate || new Date(), 'yyyyMMdd')}.pdf`;
+        link.download = generatedFiles.filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -536,7 +617,69 @@ export const NewOrderPage: React.FC = () => {
         window.URL.revokeObjectURL(blobUrl);
 
         hideLoading();
-        showSuccess('PDFをダウンロードしました');
+      } catch (error) {
+        hideLoading();
+        console.error('Excel download error:', error);
+        showError(error instanceof Error ? error.message : 'Excelファイルのダウンロードに失敗しました');
+      }
+    }
+  };
+
+  /**
+   * PDFファイルをダウンロード
+   */
+  const handleDownloadPdf = async () => {
+    if (generatedFiles && generatedFiles.pdfDownloadUrl) {
+      try {
+        showLoading();
+
+        // 相対URLを絶対URLに変換
+        // Firebase Hosting版では環境変数のバックエンドURLを使用
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
+          : window.location.origin; // Render版（同一オリジン）
+        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, baseUrl).href;
+        console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
+        console.log('📥 Base URL:', baseUrl);
+        console.log('📥 Absolute URL:', absoluteUrl);
+
+        // PDFをfetchしてblobとして取得
+        const response = await fetch(absoluteUrl);
+        console.log('Response status:', response.status);
+        console.log('Response Content-Type:', response.headers.get('Content-Type'));
+
+        if (!response.ok) {
+          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('Content-Type') || '';
+
+        // HTMLが返された場合はエラー
+        if (contentType.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
+          throw new Error('サーバーからHTMLが返されました。PDFファイルが生成されていない可能性があります。');
+        }
+
+        const blob = await response.blob();
+        console.log('Downloaded blob size:', blob.size, 'bytes');
+
+        // Blobからダウンロードリンクを作成
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        // PDFファイル名を生成（Excelファイル名の.xlsxを.pdfに置き換え）
+        const pdfFilename = generatedFiles.filename.replace('.xlsx', '.pdf');
+        link.download = pdfFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Blob URLをクリーンアップ
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideLoading();
       } catch (error) {
         hideLoading();
         console.error('PDF download error:', error);
@@ -592,7 +735,7 @@ export const NewOrderPage: React.FC = () => {
 
           {/* タブナビゲーション */}
           <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2, pb: `${progressSummaryHeight + 16}px` }}>
+            <Box sx={{ width: '100%', py: 2 }}>
               <Tabs
                 value={activeStep}
                 onChange={handleTabChange}
@@ -607,120 +750,175 @@ export const NewOrderPage: React.FC = () => {
                 <Tab label="プレビュー" />
               </Tabs>
 
-              {/* Step 1: 店着日・帳合先 */}
-              {activeStep === 0 && (
-                <Box sx={{ py: 2 }}>
-                  <DeliveryDateForm
-                    control={control}
-                    errors={errors}
-                    supplierOptions={supplierAutocomplete.options}
-                    onSuppliersChange={handleSuppliersChange}
-                  />
-                </Box>
-              )}
+              {/* コンテンツエリア（スクロール可能） */}
+              <Box sx={{
+                height: `calc(100vh - 144px - ${progressSummaryHeight}px)`,
+                overflow: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#f1f1f1',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#888',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#555',
+                },
+              }}>
+                {/* Step 1: 店着日・帳合先 */}
+                {activeStep === 0 && (
+                  <Box sx={{ py: 2 }}>
+                    <DeliveryDateForm
+                      control={control}
+                      errors={errors}
+                      supplierOptions={supplierAutocomplete.options}
+                      onSuppliersChange={handleSuppliersChange}
+                    />
+                  </Box>
+                )}
 
-              {/* Step 2: 商品情報（基本） */}
-              {activeStep === 1 && (
-                <Box sx={{ py: 2 }}>
-                  <ProductBasicInfoForm
-                    control={control}
-                    errors={errors}
-                    productNameOptions={productNameAutocomplete.options}
-                    originOptions={originAutocomplete.options}
-                    suppliers={formData.suppliers}
-                    fields={productFields}
-                    append={appendProduct}
-                    remove={removeProduct}
-                    onNavigateToStep={setActiveStep}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
+                {/* Step 2: 商品情報（基本） */}
+                {activeStep === 1 && (
+                  <Box sx={{ py: 2 }}>
+                    <ProductBasicInfoForm
+                      control={control}
+                      errors={errors}
+                      productNameOptions={productNameAutocomplete.options}
+                      originOptions={originAutocomplete.options}
+                      suppliers={formData.suppliers}
+                      fields={productFields}
+                      append={appendProduct}
+                      remove={removeProduct}
+                      move={moveProduct}
+                      onNavigateToStep={setActiveStep}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
+                    />
+                  </Box>
+                )}
 
-              {/* Step 3: 商品情報2（価格・総納品数） */}
-              {activeStep === 2 && (
-                <Box sx={{ py: 2 }}>
-                  <ProductPricingForm
-                    control={control}
-                    errors={errors}
-                    fields={productFields}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
+                {/* Step 3: 商品情報2（価格・総納品数） */}
+                {activeStep === 2 && (
+                  <Box sx={{ py: 2 }}>
+                    <ProductPricingForm
+                      control={control}
+                      errors={errors}
+                      fields={productFields}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
+                    />
+                  </Box>
+                )}
 
-              {/* Step 4: 店舗配分 */}
-              {activeStep === 3 && (
-                <Box sx={{ py: 2 }}>
-                  <StoreAllocationForm
-                    control={control}
-                    errors={errors}
-                    fields={productFields}
-                    lockedStores={lockedStores}
-                    setLockedStores={setLockedStores}
-                    selectedCategories={selectedCategories}
-                    setSelectedCategories={setSelectedCategories}
-                    activeProductIndex={activeProductIndex}
-                    onProductIndexChange={setActiveProductIndex}
-                  />
-                </Box>
-              )}
-
-              {/* Step 5: プレビュー・生成 */}
-              {activeStep === 4 && (
-                <Box sx={{ py: 2 }}>
-                  {!showGeneratedPreview ? (
-                    /* 生成前のプレビュー */
-                    <AllocationPreviewContent
-                      formData={formData}
-                      pdfFilename={undefined}
-                      onGenerate={handleSubmit(onSubmit)}
-                      onAllocationChange={handleAllocationChange}
+                {/* Step 4: 店舗配分 */}
+                {activeStep === 3 && (
+                  <Box sx={{ py: 2 }}>
+                    <StoreAllocationForm
+                      control={control}
+                      errors={errors}
+                      fields={productFields}
                       lockedStores={lockedStores}
                       setLockedStores={setLockedStores}
                       selectedCategories={selectedCategories}
                       setSelectedCategories={setSelectedCategories}
+                      activeProductIndex={activeProductIndex}
+                      onProductIndexChange={setActiveProductIndex}
                     />
-                  ) : (
-                    /* 生成後のプレビュー */
-                    generatedFiles && (
+                  </Box>
+                )}
+
+                {/* Step 5: プレビュー・生成 */}
+                {activeStep === 4 && (
+                  <Box sx={{ py: 2 }}>
+                    {!showGeneratedPreview ? (
+                      /* 生成前のプレビュー */
                       <AllocationPreviewContent
                         formData={formData}
-                        pdfFilename={generatedFiles.pdfFilename}
-                        onDownloadExcel={handleDownloadExcel}
-                        onDownloadPdf={handleDownloadPdf}
-                        onSendEmail={() => setShowEmailModal(true)}
-                        onBack={() => {
-                          setShowGeneratedPreview(false);
-                          setGeneratedFiles(null);
-                          setExcelBlob(null);
-                        }}
+                        pdfFilename={undefined}
+                        onGenerate={handleSubmit(onSubmit)}
                         onAllocationChange={handleAllocationChange}
                         lockedStores={lockedStores}
                         setLockedStores={setLockedStores}
                         selectedCategories={selectedCategories}
                         setSelectedCategories={setSelectedCategories}
                       />
-                    )
-                  )}
-                </Box>
-              )}
+                    ) : (
+                      /* 生成後のプレビュー */
+                      generatedFiles && (
+                        <AllocationPreviewContent
+                          formData={formData}
+                          pdfFilename={generatedFiles.pdfFilename}
+                          pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
+                          onDownloadExcel={handleDownloadExcel}
+                          onDownloadPdf={handleDownloadPdf}
+                          onSendEmail={() => setShowEmailModal(true)}
+                          onBack={() => {
+                            setShowGeneratedPreview(false);
+                            setGeneratedFiles(null);
+                            setExcelBlob(null);
+                          }}
+                          onAllocationChange={handleAllocationChange}
+                          lockedStores={lockedStores}
+                          setLockedStores={setLockedStores}
+                          selectedCategories={selectedCategories}
+                          setSelectedCategories={setSelectedCategories}
+                        />
+                      )
+                    )}
+                  </Box>
+                )}
+              </Box>
             </Box>
           </Container>
         </Box>
 
       {/* PDFプレビューモーダル */}
-        {generatedFiles && generatedFiles.pdfFilename && (
+        {generatedFiles && generatedFiles.pdfDownloadUrl && (
           <PDFPreviewModal
             open={showPDFPreview}
             onClose={() => setShowPDFPreview(false)}
-            pdfUrl={TemplateService.getPdfPreviewUrl(generatedFiles.pdfFilename)}
+            pdfUrl={generatedFiles.pdfDownloadUrl}
             onDownloadExcel={handleDownloadExcel}
             onSendEmail={() => setShowEmailModal(true)}
           />
         )}
+
+        {/* ブック名入力ダイアログ */}
+        <Dialog open={bookNameDialog.open} onClose={() => setBookNameDialog({ open: false, bookName: '' })}>
+          <DialogTitle>ブック名を入力</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              生成するExcelファイルのブック名を指定できます（オプション）
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="ブック名"
+              placeholder="例: テスト"
+              fullWidth
+              value={bookNameDialog.bookName}
+              onChange={(e) => setBookNameDialog({ ...bookNameDialog, bookName: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleBookNameDialogConfirm();
+                }
+              }}
+              helperText="未入力の場合は日付のみのファイル名になります"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBookNameDialog({ open: false, bookName: '' })} color="inherit">
+              キャンセル
+            </Button>
+            <Button onClick={handleBookNameDialogConfirm} variant="contained" color="primary">
+              生成
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* ダウンロードモーダル（iPhone Safari用） */}
         {generatedFiles && (
@@ -762,6 +960,8 @@ export const NewOrderPage: React.FC = () => {
             activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
             onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
             onHeightChange={setProgressSummaryHeight}
+            onRemoveProduct={handleRemoveProduct}
+            onClearProduct={handleClearProduct}
           />
         )}
 

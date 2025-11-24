@@ -21,16 +21,18 @@ class TemplateResponse(BaseModel):
     Attributes:
         success: 処理成功フラグ
         message: ユーザー向けメッセージ
-        download_url: ダウンロードURL（成功時のみ）
-        filename: 生成されたファイル名（成功時のみ）
+        download_url: ExcelダウンロードURL（成功時のみ）
+        filename: 生成されたExcelファイル名（成功時のみ）
         pdf_filename: 生成されたPDFファイル名（成功時のみ）
+        pdf_download_url: PDFダウンロードURL（成功時のみ）
     """
 
     success: bool = Field(..., description="処理成功フラグ")
     message: str = Field(..., description="ユーザー向けメッセージ")
-    download_url: Optional[str] = Field(default=None, description="ダウンロードURL")
-    filename: Optional[str] = Field(default=None, description="生成されたファイル名")
+    download_url: Optional[str] = Field(default=None, description="ExcelダウンロードURL")
+    filename: Optional[str] = Field(default=None, description="生成されたExcelファイル名")
     pdf_filename: Optional[str] = Field(default=None, description="生成されたPDFファイル名")
+    pdf_download_url: Optional[str] = Field(default=None, description="PDFダウンロードURL")
 
 
 class ErrorResponse(BaseModel):

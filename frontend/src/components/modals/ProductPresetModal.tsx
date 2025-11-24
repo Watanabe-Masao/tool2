@@ -13,6 +13,7 @@ import {
   Tab,
   Button,
   DialogActions,
+  Checkbox,
   DialogContentText,
   Accordion,
   AccordionSummary,
@@ -61,6 +62,9 @@ interface SortablePresetItemProps {
     currentY: number;
     isSwiping: boolean;
   };
+  multiSelect?: boolean;
+  isSelected?: boolean;
+  isDuplicate?: boolean;
 }
 
 /**
@@ -73,6 +77,9 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   onSwipeMove,
   onSwipeEnd,
   swipeState,
+  multiSelect = false,
+  isSelected = false,
+  isDuplicate = false,
 }) => {
   const {
     attributes,
@@ -160,21 +167,31 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
         onMouseMove={onSwipeMove}
         onMouseUp={() => onSwipeEnd(preset)}
         onMouseLeave={() => onSwipeEnd(preset)}
-        {...(preset.pinned ? listeners : {})}
-        {...(preset.pinned ? attributes : {})}
+        {...(preset.pinned && !multiSelect ? listeners : {})}
+        {...(preset.pinned && !multiSelect ? attributes : {})}
         sx={{
           py: 1.5,
           px: 2,
           transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
           transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
-          bgcolor: 'background.paper',
-          cursor: isCurrentSwiping ? 'grabbing' : preset.pinned ? 'grab' : 'pointer',
-          touchAction: 'none',
+          bgcolor: isSelected ? 'primary.50' : 'background.paper',
+          cursor: isCurrentSwiping ? 'grabbing' : (preset.pinned && !multiSelect) ? 'grab' : 'pointer',
+          touchAction: multiSelect ? 'auto' : 'none',
         }}
       >
+        {/* 複数選択モードのチェックボックス */}
+        {multiSelect && (
+          <Checkbox
+            edge="start"
+            checked={isSelected}
+            tabIndex={-1}
+            disableRipple
+            sx={{ mr: 1 }}
+          />
+        )}
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* ピン留めアイコン */}
-          {preset.pinned && (
+          {preset.pinned && !multiSelect && (
             <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
           )}
           <Box sx={{ flex: 1 }}>
@@ -188,6 +205,14 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
                   label={getCategoryName(preset.categoryCode)}
                   size="small"
                   color="primary"
+                  sx={{ fontSize: '0.65rem', height: 18 }}
+                />
+              )}
+              {isDuplicate && (
+                <Chip
+                  label="追加済み"
+                  size="small"
+                  color="warning"
                   sx={{ fontSize: '0.65rem', height: 18 }}
                 />
               )}
@@ -238,6 +263,17 @@ interface ProductPresetModalProps {
   supplier?: string;
   /** 利用可能な帳合先リスト（複数帳合先対応） - オプション */
   suppliers?: string[];
+  /** 複数選択モード */
+  multiSelect?: boolean;
+  /** 複数選択時のハンドラー */
+  onSelectMultiple?: (presets: ProductHistoryItem[]) => void;
+  /** 現在の商品データ（重複チェック用） */
+  currentProducts?: Array<{
+    name: string;
+    origin: string;
+    specification?: string;
+    supplier?: string;
+  }>;
 }
 
 /**
@@ -255,6 +291,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   userId,
   supplier,
   suppliers,
+  multiSelect = false,
+  onSelectMultiple,
+  currentProducts = [],
 }) => {
   // 選択された帳合先（複数帳合先対応）
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -268,12 +307,19 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
+  // 複数選択モード用の選択状態
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // モーダルが開いたときに初期帳合先を設定
   useEffect(() => {
     if (open) {
       setSelectedSupplier(supplier || suppliers?.[0] || '');
+      // モーダルを開いたときに選択状態をクリア
+      if (multiSelect) {
+        setSelectedIds(new Set());
+      }
     }
-  }, [open, supplier, suppliers]);
+  }, [open, supplier, suppliers, multiSelect]);
 
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -283,8 +329,25 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   const [unpinDialogOpen, setUnpinDialogOpen] = useState(false);
   const [presetToUnpin, setPresetToUnpin] = useState<ProductHistoryItem | null>(null);
 
+  // 重複確認ダイアログの状態
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicatePreset, setDuplicatePreset] = useState<ProductHistoryItem | null>(null);
+
   // 長押し検出用のタイマー
   const longPressTimer = useRef<number | null>(null);
+
+  /**
+   * プリセットが既存の商品と重複しているかチェック
+   */
+  const isDuplicate = (preset: ProductHistoryItem): boolean => {
+    return currentProducts.some(
+      (product) =>
+        product.name === preset.name &&
+        product.origin === preset.origin &&
+        product.specification === preset.specification &&
+        product.supplier === preset.supplier
+    );
+  };
 
   // ドラッグ中のアイテムID (dnd-kit用)
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -460,8 +523,85 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   const handleSelectPreset = (preset: ProductHistoryItem) => {
     // スワイプ中は選択しない
     if (swipeState.isSwiping) return;
-    onSelect(preset);
-    onClose();
+
+    if (multiSelect) {
+      // 複数選択モード: チェックボックスをトグル
+      handleToggleSelect(preset.id);
+    } else {
+      // 単一選択モード: 重複チェック
+      if (isDuplicate(preset)) {
+        // 重複している場合は確認ダイアログを表示
+        setDuplicatePreset(preset);
+        setDuplicateDialogOpen(true);
+      } else {
+        // 重複していない場合はそのまま選択
+        onSelect(preset);
+        onClose();
+      }
+    }
+  };
+
+  /**
+   * 重複確認ダイアログで「追加する」を選択
+   */
+  const handleConfirmDuplicate = () => {
+    if (duplicatePreset) {
+      onSelect(duplicatePreset);
+      setDuplicateDialogOpen(false);
+      setDuplicatePreset(null);
+      onClose();
+    }
+  };
+
+  /**
+   * 重複確認ダイアログで「キャンセル」を選択
+   */
+  const handleCancelDuplicate = () => {
+    setDuplicateDialogOpen(false);
+    setDuplicatePreset(null);
+  };
+
+  /**
+   * チェックボックスのトグル（複数選択モード用）
+   */
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  /**
+   * すべて選択/解除（複数選択モード用）
+   */
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredPresets.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredPresets.map((p) => p.id)));
+    }
+  };
+
+  /**
+   * 選択をクリア（複数選択モード用）
+   */
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  /**
+   * 選択した商品を追加（複数選択モード用）
+   */
+  const handleAddSelected = () => {
+    if (onSelectMultiple && selectedIds.size > 0) {
+      const selectedPresets = filteredPresets.filter((p) => selectedIds.has(p.id));
+      onSelectMultiple(selectedPresets);
+      setSelectedIds(new Set());
+      onClose();
+    }
   };
 
   /**
@@ -774,6 +914,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                           onSwipeMove={handleSwipeMove}
                           onSwipeEnd={handleSwipeEnd}
                           swipeState={swipeState}
+                          multiSelect={multiSelect}
+                          isSelected={selectedIds.has(preset.id)}
+                          isDuplicate={isDuplicate(preset)}
                         />
                       </SortableContext>
                     </DndContext>
@@ -869,6 +1012,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                   onSwipeMove={handleSwipeMove}
                                   onSwipeEnd={handleSwipeEnd}
                                   swipeState={swipeState}
+                                  multiSelect={multiSelect}
+                                  isSelected={selectedIds.has(preset.id)}
+                                  isDuplicate={isDuplicate(preset)}
                                 />
                               ))}
                           </SortableContext>
@@ -885,6 +1031,9 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                 onSwipeMove={handleSwipeMove}
                                 onSwipeEnd={handleSwipeEnd}
                                 swipeState={swipeState}
+                                multiSelect={multiSelect}
+                                isSelected={selectedIds.has(preset.id)}
+                                isDuplicate={isDuplicate(preset)}
                               />
                             ))}
                         </List>
@@ -954,6 +1103,36 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
             </Box>
           )}
         </DialogContent>
+
+        {/* 複数選択モード用のアクション */}
+        {multiSelect && (
+          <DialogActions>
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, px: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                {selectedIds.size} / {filteredPresets.length} 選択中
+              </Typography>
+              <Button size="small" onClick={handleSelectAll}>
+                {selectedIds.size === filteredPresets.length ? 'すべて解除' : 'すべて選択'}
+              </Button>
+              {selectedIds.size > 0 && (
+                <Button size="small" onClick={handleClearSelection}>
+                  選択をクリア
+                </Button>
+              )}
+            </Box>
+            <Button onClick={onClose} color="inherit">
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleAddSelected}
+              variant="contained"
+              color="primary"
+              disabled={selectedIds.size === 0}
+            >
+              {selectedIds.size}件追加
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
 
       {/* 削除確認ダイアログ */}
@@ -1024,6 +1203,47 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
           </Button>
           <Button onClick={handleConfirmUnpin} color="primary" variant="contained">
             ピン留め解除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 重複確認ダイアログ */}
+      <Dialog open={duplicateDialogOpen} onClose={handleCancelDuplicate}>
+        <DialogTitle>重複する商品があります</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            このプリセットと同じ商品がすでに追加されています。それでも追加しますか？
+          </DialogContentText>
+          {duplicatePreset && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.lighter', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+              <Typography variant="body2" fontWeight="medium">
+                {duplicatePreset.name}
+              </Typography>
+              {duplicatePreset.categoryCode && (
+                <Typography variant="body2" color="text.secondary">
+                  カテゴリー: {getCategoryName(duplicatePreset.categoryCode)}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                産地: {duplicatePreset.origin}
+              </Typography>
+              {duplicatePreset.specification && (
+                <Typography variant="body2" color="text.secondary">
+                  規格: {duplicatePreset.specification}
+                </Typography>
+              )}
+            </Box>
+          )}
+          <DialogContentText sx={{ mt: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
+            追加すると、同じ商品が重複して登録されます。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDuplicate} color="inherit">
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmDuplicate} color="warning" variant="contained">
+            それでも追加する
           </Button>
         </DialogActions>
       </Dialog>
