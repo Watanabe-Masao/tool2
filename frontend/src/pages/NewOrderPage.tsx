@@ -357,7 +357,7 @@ export const NewOrderPage: React.FC = () => {
         window.clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [products, suppliers, deliveryDate, user, getValues]);
+  }, [products, suppliers, deliveryDate, user]);
 
   /**
    * ページ離脱時の警告
@@ -431,7 +431,7 @@ export const NewOrderPage: React.FC = () => {
     return () => {
       setStepNavigation(false);
     };
-  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate, setStepNavigation, getValues]);
+  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate]);
 
   /**
    * ExcelファイルをBlobとして取得
