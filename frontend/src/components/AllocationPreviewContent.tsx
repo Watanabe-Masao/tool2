@@ -108,6 +108,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   // 非同期処理のキャンセル用
   const rafIdRef = React.useRef<number | null>(null);
   const timerIdRef = React.useRef<number | null>(null);
+  const isMountedRef = React.useRef<boolean>(true);
 
   // AG Grid APIリファレンス
   const gridApiRef = React.useRef<any>(null);
@@ -306,7 +307,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     // 少し遅延させてローディングを非表示に
     rafIdRef.current = requestAnimationFrame(() => {
       timerIdRef.current = window.setTimeout(() => {
-        setGridReady(true);
+        // コンポーネントがまだマウントされている場合のみ状態を更新
+        if (isMountedRef.current) {
+          setGridReady(true);
+        }
       }, 200);
     });
   }, []);
@@ -315,7 +319,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
    * クリーンアップ処理
    */
   React.useEffect(() => {
+    // マウント時にフラグをtrueに設定
+    isMountedRef.current = true;
+
     return () => {
+      // アンマウント時にフラグをfalseに設定
+      isMountedRef.current = false;
+
       // コンポーネントがアンマウントされたら非同期処理をキャンセル
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
