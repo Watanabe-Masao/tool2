@@ -113,7 +113,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
   }, []);
 
   /**
-   * ロック状態をトグル（React#185対策: startTransition使用）
+   * ロック状態をトグル（React#185対策: 直接実行）
    */
   const toggleLock = useCallback((storeCode: string) => {
     // コンポーネントがマウントされている場合のみ処理
@@ -121,17 +121,16 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
       return;
     }
 
-    // React#185対策: startTransitionで低優先度の更新として実行
-    React.startTransition(() => {
-      setLockedStores((prev) => {
-        const next = new Set(prev);
-        if (next.has(storeCode)) {
-          next.delete(storeCode);
-        } else {
-          next.add(storeCode);
-        }
-        return next;
-      });
+    // 直接実行（startTransitionは使わない）
+    // onCellClickedから呼ばれるため、レンダリング外
+    setLockedStores((prev) => {
+      const next = new Set(prev);
+      if (next.has(storeCode)) {
+        next.delete(storeCode);
+      } else {
+        next.add(storeCode);
+      }
+      return next;
     });
   }, [setLockedStores]);
 
@@ -158,9 +157,9 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
         /**
-         * 配分数変更ハンドラー（React#185対策: startTransition使用）
+         * 配分数変更ハンドラー（React#185対策: useCallback + 直接実行）
          */
-        const handleChange = (index: number, value: number) => {
+        const handleChange = useCallback((index: number, value: number) => {
           // コンポーネントがマウントされている場合のみ処理
           if (!isMountedRef.current) {
             return;
@@ -169,11 +168,10 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
           const newAllocations = [...allocations];
           newAllocations[index] = value < 0 ? 0 : value;
 
-          // React#185対策: startTransitionで低優先度の更新として実行
-          React.startTransition(() => {
-            field.onChange(newAllocations);
-          });
-        };
+          // 直接実行（startTransitionは使わない）
+          // valueSetterは既にユーザー操作後に呼ばれるため、レンダリング外
+          field.onChange(newAllocations);
+        }, [allocations, field]);
 
         /**
          * 均等配分（ロックされていない店舗に）

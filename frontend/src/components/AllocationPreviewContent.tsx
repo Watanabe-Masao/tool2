@@ -232,7 +232,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             return false;
           }
 
-          // React#185対策: startTransitionで低優先度の更新として実行
+          // React#185対策: 直接実行
+          // valueSetterは既にユーザー操作後に呼ばれるため、レンダリング外
           if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
             const productLockedStores = lockedStores.get(productIndex) || new Set();
@@ -241,10 +242,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               const parsedValue = parseInt(params.newValue, 10);
               const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
 
-              // startTransitionで低優先度の更新として実行
-              React.startTransition(() => {
-                onAllocationChange(productIndex, storeIndex, newValue);
-              });
+              // 直接実行（startTransitionは使わない）
+              onAllocationChange(productIndex, storeIndex, newValue);
             }
           }
           // AG-Gridに値を更新させない（React側で管理）
@@ -300,7 +299,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
-   * 行クリック時のハンドラー（React#185対策: startTransition使用）
+   * 行クリック時のハンドラー（React#185対策: 直接実行）
    */
   const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
     // コンポーネントがマウントされている場合のみ処理
@@ -308,10 +307,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       return;
     }
 
-    // React#185対策: startTransitionで低優先度の更新として実行
-    React.startTransition(() => {
-      setSelectedRow(event.data || null);
-    });
+    // 直接実行（startTransitionは使わない）
+    // onRowClickedから呼ばれるため、レンダリング外
+    setSelectedRow(event.data || null);
   }, []);
 
   /**

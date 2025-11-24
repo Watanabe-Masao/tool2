@@ -83,37 +83,35 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   }, []);
 
   /**
-   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋startTransition）
+   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋直接実行）
    */
   const createSetLockedStoresForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      // React#185対策: startTransitionで低優先度の更新として実行
-      React.startTransition(() => {
-        setLockedStores((prev) => {
-          const newMap = new Map(prev);
-          const currentSet = prev.get(productIndex) || new Set();
-          const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-          newMap.set(productIndex, newSet);
-          return newMap;
-        });
+      // 直接実行（startTransitionは使わない）
+      // イベントハンドラーから呼ばれるため、レンダリング外
+      setLockedStores((prev) => {
+        const newMap = new Map(prev);
+        const currentSet = prev.get(productIndex) || new Set();
+        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+        newMap.set(productIndex, newSet);
+        return newMap;
       });
     };
   }, [setLockedStores]);
 
   /**
-   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋startTransition）
+   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋直接実行）
    */
   const createSetSelectedCategoriesForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      // React#185対策: startTransitionで低優先度の更新として実行
-      React.startTransition(() => {
-        setSelectedCategories((prev) => {
-          const newMap = new Map(prev);
-          const currentSet = prev.get(productIndex) || new Set();
-          const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-          newMap.set(productIndex, newSet);
-          return newMap;
-        });
+      // 直接実行（startTransitionは使わない）
+      // イベントハンドラーから呼ばれるため、レンダリング外
+      setSelectedCategories((prev) => {
+        const newMap = new Map(prev);
+        const currentSet = prev.get(productIndex) || new Set();
+        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+        newMap.set(productIndex, newSet);
+        return newMap;
       });
     };
   }, [setSelectedCategories]);
