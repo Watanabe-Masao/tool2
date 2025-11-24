@@ -20,6 +20,7 @@ import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
+import { useNavigationContext } from '@/context/NavigationContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -105,6 +106,7 @@ export const NewOrderPage: React.FC = () => {
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+  const { setStepNavigation } = useNavigationContext();
 
   // オフライン同期
   const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
@@ -368,6 +370,48 @@ export const NewOrderPage: React.FC = () => {
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveStep(newValue);
   };
+
+  /**
+   * 前のステップへ移動
+   */
+  const handlePrevStep = () => {
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+    }
+  };
+
+  /**
+   * 次のステップへ移動
+   */
+  const handleNextStep = () => {
+    if (activeStep < TOTAL_STEPS - 1) {
+      setActiveStep(activeStep + 1);
+    }
+  };
+
+  /**
+   * NavigationContextを更新（ステップナビゲーション表示状態）
+   */
+  useEffect(() => {
+    // 生成後のプレビュー表示中はステップナビゲーションを非アクティブに
+    if (showGeneratedPreview) {
+      setStepNavigation(false);
+    } else {
+      // フォーム入力中はステップナビゲーションをアクティブに
+      setStepNavigation(
+        true,
+        activeStep,
+        TOTAL_STEPS,
+        activeStep > 0 ? handlePrevStep : undefined,
+        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined
+      );
+    }
+
+    // コンポーネントがアンマウントされる時にステップナビゲーションを非アクティブに
+    return () => {
+      setStepNavigation(false);
+    };
+  }, [activeStep, showGeneratedPreview, setStepNavigation]);
 
   /**
    * ExcelファイルをBlobとして取得

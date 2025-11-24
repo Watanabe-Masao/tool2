@@ -6,6 +6,7 @@ import { CircularProgress, Box } from '@mui/material';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { NavigationProvider } from './context/NavigationContext';
 import { NetworkStatus } from './components/common/NetworkStatus';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -88,7 +89,9 @@ const App: React.FC = () => {
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <AppContent />
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>

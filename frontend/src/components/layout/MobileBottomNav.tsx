@@ -6,15 +6,20 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
+  Box,
+  Typography,
 } from '@mui/material';
 import {
   AddCircle,
   CalendarToday,
   DarkMode,
   LightMode,
+  ChevronLeft,
+  ChevronRight,
 } from '@mui/icons-material';
 import { haptic } from '@/utils/hapticFeedback';
 import { useThemeContext } from '@/context/ThemeContext';
+import { useNavigationContext } from '@/context/NavigationContext';
 
 /**
  * ナビゲーションアイテムの定義
@@ -55,10 +60,90 @@ export const MobileBottomNav: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { mode: themeMode, toggleTheme } = useThemeContext();
+  const {
+    isStepNavigationActive,
+    activeStep,
+    totalSteps,
+    onPrevStep,
+    onNextStep,
+  } = useNavigationContext();
 
   // モバイル以外では表示しない
   if (!isMobile) {
     return null;
+  }
+
+  // ステップナビゲーション表示中は専用UIを表示
+  if (isStepNavigationActive) {
+    return (
+      <Paper
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1100,
+          boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
+        }}
+        elevation={3}
+      >
+        <Box
+          sx={{
+            height: '64px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 2,
+          }}
+        >
+          {/* 前のステップへ */}
+          <BottomNavigationAction
+            label="前へ"
+            icon={<ChevronLeft />}
+            onClick={() => {
+              haptic('light');
+              onPrevStep?.();
+            }}
+            disabled={!onPrevStep}
+            sx={{
+              flex: 1,
+              maxWidth: '120px',
+              '&.Mui-disabled': {
+                opacity: 0.3,
+              },
+            }}
+          />
+
+          {/* 現在のステップ表示 */}
+          <Box sx={{ flex: 1, textAlign: 'center', px: 1 }}>
+            <Typography variant="body2" fontWeight="600" color="primary">
+              ステップ {activeStep + 1} / {totalSteps}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {['店着日・帳合先', '商品情報', '価格・数量', '店舗配分', 'プレビュー'][activeStep] || ''}
+            </Typography>
+          </Box>
+
+          {/* 次のステップへ */}
+          <BottomNavigationAction
+            label="次へ"
+            icon={<ChevronRight />}
+            onClick={() => {
+              haptic('light');
+              onNextStep?.();
+            }}
+            disabled={!onNextStep}
+            sx={{
+              flex: 1,
+              maxWidth: '120px',
+              '&.Mui-disabled': {
+                opacity: 0.3,
+              },
+            }}
+          />
+        </Box>
+      </Paper>
+    );
   }
 
   // 現在のパスから値を取得
