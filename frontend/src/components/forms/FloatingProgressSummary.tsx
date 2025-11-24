@@ -14,6 +14,8 @@ import {
   ListItemIcon,
   ListItemText,
   Grow,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   ExpandLess as ExpandLessIcon,
@@ -73,6 +75,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onRemoveProduct,
   onClearProduct,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [expanded, setExpanded] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -523,7 +527,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          p: 2,
+          p: isMobile ? 1 : 2,
           cursor: 'pointer',
           bgcolor: 'primary.main',
           color: 'primary.contrastText',
@@ -531,20 +535,20 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         }}
         onClick={() => setExpanded(!expanded)}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body1" fontWeight="bold">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2 }}>
+          <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
             進捗: {progress}%
           </Typography>
-          <Typography variant="body2">
+          <Typography variant={isMobile ? 'caption' : 'body2'}>
             ステップ {activeStep + 1} / {totalSteps}
           </Typography>
         </Box>
 
         <IconButton
           size="small"
-          sx={{ color: 'inherit' }}
+          sx={{ color: 'inherit', p: isMobile ? 0.5 : 1 }}
         >
-          {expanded ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          {expanded ? <ExpandMoreIcon fontSize={isMobile ? 'small' : 'medium'} /> : <ExpandLessIcon fontSize={isMobile ? 'small' : 'medium'} />}
         </IconButton>
       </Box>
 

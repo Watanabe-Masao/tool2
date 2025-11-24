@@ -361,9 +361,9 @@ export const Header: React.FC = () => {
             </Box>
           )}
 
-          {/* ナビゲーションメニュー（モバイルではコンパクト表示） */}
-          {user && (
-            <Box sx={{ flexGrow: 1, display: 'flex', gap: isMobile ? 0.5 : 1 }}>
+          {/* ナビゲーションメニュー（モバイルでは非表示、ボトムナビゲーションを使用） */}
+          {user && !isMobile && (
+            <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
               {navigationItems.map((item) => (
                 <IconButton
                   key={item.path}
@@ -372,7 +372,7 @@ export const Header: React.FC = () => {
                   size="small"
                   sx={{
                     borderRadius: 1,
-                    px: isMobile ? 0.5 : 1.5,
+                    px: 1.5,
                     py: 0.5,
                     color: location.pathname === item.path ? 'primary.main' : 'white',
                     bgcolor: location.pathname === item.path ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
@@ -386,22 +386,23 @@ export const Header: React.FC = () => {
                     fontSize: 'small',
                     sx: { color: location.pathname === item.path ? 'primary.main' : 'white' }
                   })}
-                  {!isMobile && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        ml: 0.5,
-                        fontWeight: location.pathname === item.path ? 600 : 400,
-                        color: location.pathname === item.path ? 'primary.main' : 'white',
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                  )}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      ml: 0.5,
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                      color: location.pathname === item.path ? 'primary.main' : 'white',
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
                 </IconButton>
               ))}
             </Box>
           )}
+
+          {/* モバイル時のスペーサー */}
+          {user && isMobile && <Box sx={{ flexGrow: 1 }} />}
 
           {/* ユーザー情報 */}
           {user && (

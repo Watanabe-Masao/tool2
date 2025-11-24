@@ -756,8 +756,8 @@ export const NewOrderPage: React.FC = () => {
 
               {/* コンテンツエリア（スクロール可能） */}
               <Box sx={{
-                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary
-                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${progressSummaryHeight}px)`,
+                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary + ボトムナビゲーション(64px on mobile)
+                height: `calc(100vh - ${isMobile ? '184px' : '128px'} - ${progressSummaryHeight}px)`,
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
