@@ -14,8 +14,6 @@ import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
 import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
-import { TemplateService } from '@/services/api/templateService';
-import { FirestoreService } from '@/services/firebase/firestoreService';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
@@ -23,9 +21,9 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useNavigationContext } from '@/context/NavigationContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
+import { useOrderSubmit } from '@/hooks/useOrderSubmit';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { SessionStorageService } from '@/utils/sessionStorageService';
-import { format } from 'date-fns';
 
 /**
  * フォームのステップ数
@@ -57,13 +55,6 @@ export const NewOrderPage: React.FC = () => {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
-  const [generatedFiles, setGeneratedFiles] = useState<{
-    filename: string;
-    downloadUrl: string;
-    pdfFilename?: string;
-    pdfDownloadUrl?: string;
-  } | null>(null);
-  const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [bookNameDialog, setBookNameDialog] = useState<{
     open: boolean;
@@ -115,6 +106,31 @@ export const NewOrderPage: React.FC = () => {
   const supplierAutocomplete = useAutocomplete('supplier');
   const productNameAutocomplete = useAutocomplete('productName');
   const originAutocomplete = useAutocomplete('origin');
+
+  // 注文送信ロジック
+  const {
+    generatedFiles,
+    setGeneratedFiles,
+    excelBlob,
+    setExcelBlob,
+    handleSubmit: submitOrder,
+    handleGenerateTemplate,
+    handleDownloadExcel,
+    handleDownloadPdf,
+  } = useOrderSubmit({
+    userId: user?.uid,
+    user,
+    userSettings,
+    isOnline,
+    saveOrderWithSync,
+    supplierAutocomplete,
+    productNameAutocomplete,
+    originAutocomplete,
+    showSuccess,
+    showError,
+    showLoading,
+    hideLoading,
+  });
 
   /**
    * React Hook Form セットアップ
@@ -434,17 +450,6 @@ export const NewOrderPage: React.FC = () => {
   }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate]);
 
   /**
-   * ExcelファイルをBlobとして取得
-   */
-  const fetchExcelAsBlob = async (url: string): Promise<Blob> => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Excelファイルの取得に失敗しました');
-    }
-    return await response.blob();
-  };
-
-  /**
    * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
    */
   const handleAllocationChange = useCallback((productIndex: number, storeIndex: number, newValue: number) => {
@@ -477,163 +482,10 @@ export const NewOrderPage: React.FC = () => {
    * フォーム送信
    */
   const onSubmit = async (data: OrderFormData) => {
-    try {
-      // オンライン時はダイアログを表示するため、まだローディングを表示しない
-      if (!isOnline) {
-        showLoading();
-      }
-
-      console.log('Form data:', data);
-
-      // バリデーション: すべての商品の帳合先がステップ1で選択された帳合先リストに含まれているかチェック
-      const invalidProducts = data.products.filter(
-        (product) => !data.suppliers.includes(product.supplier)
-      );
-
-      if (invalidProducts.length > 0) {
-        if (!isOnline) {
-          hideLoading();
-        }
-        showError(
-          `一部の商品の帳合先がステップ1で選択されていません。` +
-          `該当する商品の帳合先を修正してください。`
-        );
-        return;
-      }
-
-      // オンライン時: 先にローディングを表示してデータ保存
-      if (isOnline) {
-        showLoading();
-      }
-
-      // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
-      const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
-
-      // オフライン同期を使用してデータを保存
-      // オンライン時: Firestore + API呼び出し
-      // オフライン時: IndexedDBのみ
-      await saveOrderWithSync(data, buyerName);
-
-      // オートコンプリート履歴に追加
-      if (user) {
-        // 複数の帳合先を履歴に追加
-        for (const supplier of data.suppliers) {
-          await supplierAutocomplete.addToHistory(supplier);
-        }
-
-        for (const product of data.products) {
-          await productNameAutocomplete.addToHistory(product.name);
-          await originAutocomplete.addToHistory(product.origin);
-
-          // 商品履歴を保存（各商品の帳合先ごとに）
-          await FirestoreService.saveProductHistory(
-            user.uid,
-            product.supplier,
-            product.name,
-            product.origin,
-            product.specification || '',
-            product.quantityPerPackage ?? null,
-            product.unit || '',
-            product.categoryCode
-          );
-
-          // 価格履歴を保存（商品名・規格・入数をキーとして）
-          if (
-            product.centerCost &&
-            product.storeCost &&
-            product.priceExcludingTax &&
-            product.quantityPerPackage
-          ) {
-            await FirestoreService.savePricingHistory(
-              user.uid,
-              product.name,
-              product.specification || '',
-              product.quantityPerPackage,
-              product.unit || '',
-              product.centerCost,
-              product.storeCost,
-              product.priceExcludingTax,
-              product.centerFeeRate
-            );
-          }
-        }
-      }
-
-      // オンライン時: データ保存後にローディングを隠してブック名ダイアログを表示
-      if (isOnline) {
-        hideLoading();
-        // ブック名入力ダイアログを表示
-        setBookNameDialog({ open: true, bookName: '' });
-        return; // ダイアログ確認後にgenerateTemplateWithBookNameを呼び出す
-      }
-
-      // オフライン時: テンプレート生成をスキップ
-      showSuccess('オフラインのため配分表を保存しました');
-      hideLoading();
-    } catch (error) {
-      hideLoading();
-      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
-    }
-  };
-
-  /**
-   * ブック名確認後のテンプレート生成
-   */
-  const generateTemplateWithBookName = async (data: OrderFormData, buyerName: string, bookName: string) => {
-    try {
-      showLoading();
-
-      // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
-      const dateStr = format(data.deliveryDate, 'yyyyMMdd');
-      const customName = bookName.trim() || '';
-      const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
-
-      // デバッグログ
-      console.log('📝 Custom filename generation:');
-      console.log('  - bookName:', bookName);
-      console.log('  - customName (trimmed):', customName);
-      console.log('  - dateStr:', dateStr);
-      console.log('  - customFilename:', customFilename);
-
-      const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
-
-      console.log('Template generated:', response);
-
-      // 生成されたファイル情報を保存
-      setGeneratedFiles({
-        filename: response.filename,
-        downloadUrl: response.download_url,
-        pdfFilename: response.pdf_filename,
-        pdfDownloadUrl: response.pdf_download_url,
-      });
-
-      // ExcelファイルをBlobとして取得（メール送信用）
-      try {
-        const blob = await fetchExcelAsBlob(response.download_url);
-        setExcelBlob(blob);
-        console.log('Excel blob fetched successfully');
-      } catch (err) {
-        console.error('Failed to fetch Excel blob:', err);
-        // Blobの取得に失敗してもテンプレート生成は成功しているので続行
-      }
-
-      hideLoading();
-
-      // 成功メッセージ
-      showSuccess('テンプレートを生成しました');
-
-      // SessionStorageの下書きをクリア（成功時）
-      if (user) {
-        SessionStorageService.clearDraft(user.uid);
-        setHasUnsavedChanges(false);
-      }
-
-      // プレビュー画面を表示
-      setShowGeneratedPreview(true);
-    } catch (error) {
-      hideLoading();
-      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
-    }
+    await submitOrder(
+      data,
+      () => setBookNameDialog({ open: true, bookName: '' })
+    );
   };
 
   /**
@@ -641,137 +493,16 @@ export const NewOrderPage: React.FC = () => {
    */
   const handleBookNameDialogConfirm = async () => {
     const data = getValues();
-    // バイヤー名を取得
-    const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
 
     // ダイアログを閉じる
     setBookNameDialog({ open: false, bookName: '' });
 
     // テンプレート生成
-    await generateTemplateWithBookName(data, buyerName, bookNameDialog.bookName);
-  };
+    const success = await handleGenerateTemplate(data, bookNameDialog.bookName, setHasUnsavedChanges);
 
-  /**
-   * Excelファイルをダウンロード
-   */
-  const handleDownloadExcel = async () => {
-    if (generatedFiles) {
-      try {
-        showLoading();
-
-        // 相対URLを絶対URLに変換
-        // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-          : window.location.origin; // Render版（同一オリジン）
-        const absoluteUrl = new URL(generatedFiles.downloadUrl, baseUrl).href;
-        console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
-        console.log('📥 Base URL:', baseUrl);
-        console.log('📥 Absolute URL:', absoluteUrl);
-
-        // fetchでファイルを取得してContent-Typeを確認
-        const response = await fetch(absoluteUrl);
-        console.log('Response status:', response.status);
-        console.log('Response Content-Type:', response.headers.get('Content-Type'));
-
-        if (!response.ok) {
-          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('Content-Type') || '';
-
-        // HTMLが返された場合はエラー
-        if (contentType.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error('サーバーからHTMLが返されました。ファイルが生成されていない可能性があります。');
-        }
-
-        const blob = await response.blob();
-        console.log('Downloaded blob size:', blob.size, 'bytes');
-
-        // Blobからダウンロードリンクを作成
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = generatedFiles.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Blob URLをクリーンアップ
-        window.URL.revokeObjectURL(blobUrl);
-
-        hideLoading();
-      } catch (error) {
-        hideLoading();
-        console.error('Excel download error:', error);
-        showError(error instanceof Error ? error.message : 'Excelファイルのダウンロードに失敗しました');
-      }
-    }
-  };
-
-  /**
-   * PDFファイルをダウンロード
-   */
-  const handleDownloadPdf = async () => {
-    if (generatedFiles && generatedFiles.pdfDownloadUrl) {
-      try {
-        showLoading();
-
-        // 相対URLを絶対URLに変換
-        // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-          : window.location.origin; // Render版（同一オリジン）
-        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, baseUrl).href;
-        console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
-        console.log('📥 Base URL:', baseUrl);
-        console.log('📥 Absolute URL:', absoluteUrl);
-
-        // PDFをfetchしてblobとして取得
-        const response = await fetch(absoluteUrl);
-        console.log('Response status:', response.status);
-        console.log('Response Content-Type:', response.headers.get('Content-Type'));
-
-        if (!response.ok) {
-          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('Content-Type') || '';
-
-        // HTMLが返された場合はエラー
-        if (contentType.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error('サーバーからHTMLが返されました。PDFファイルが生成されていない可能性があります。');
-        }
-
-        const blob = await response.blob();
-        console.log('Downloaded blob size:', blob.size, 'bytes');
-
-        // Blobからダウンロードリンクを作成
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        // PDFファイル名を生成（Excelファイル名の.xlsxを.pdfに置き換え）
-        const pdfFilename = generatedFiles.filename.replace('.xlsx', '.pdf');
-        link.download = pdfFilename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Blob URLをクリーンアップ
-        window.URL.revokeObjectURL(blobUrl);
-
-        hideLoading();
-      } catch (error) {
-        hideLoading();
-        console.error('PDF download error:', error);
-        showError(error instanceof Error ? error.message : 'PDFのダウンロードに失敗しました');
-      }
+    // 成功時にプレビュー画面を表示
+    if (success) {
+      setShowGeneratedPreview(true);
     }
   };
 

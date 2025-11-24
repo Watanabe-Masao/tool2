@@ -272,7 +272,7 @@ describe('EmailAddressRepository', () => {
     it('should call onError when subscription fails', () => {
       const mockError = new Error('Subscription failed');
 
-      mockOnSnapshot.mockImplementation((_q: any, onSuccess: any, _onError: any) => {
+      mockOnSnapshot.mockImplementation((_q: any, _onSuccess: any, onError: any) => {
         onError(mockError);
         return vi.fn();
       });
