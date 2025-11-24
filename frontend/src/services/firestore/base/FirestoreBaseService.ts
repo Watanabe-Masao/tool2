@@ -1,5 +1,5 @@
+import type { Firestore, Query, DocumentSnapshot } from 'firebase/firestore';
 import {
-  Firestore,
   collection,
   doc,
   addDoc,
@@ -7,8 +7,6 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  Query,
-  DocumentSnapshot,
   Timestamp,
 } from 'firebase/firestore';
 

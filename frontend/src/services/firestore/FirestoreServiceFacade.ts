@@ -1,4 +1,4 @@
-import { Firestore, type Unsubscribe } from 'firebase/firestore';
+import type { Firestore, Unsubscribe } from 'firebase/firestore';
 import { OrderRepository } from './repositories/OrderRepository';
 import { ProductHistoryRepository } from './repositories/ProductHistoryRepository';
 import { PricingHistoryRepository } from './repositories/PricingHistoryRepository';
