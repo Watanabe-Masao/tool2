@@ -63,11 +63,7 @@ export const NewOrderPage: React.FC = () => {
   const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
   const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
   const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
-  const lockedStores = useOrderFormStore((state) => state.lockedStores);
   const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
-  const selectedCategories = useOrderFormStore((state) => state.selectedCategories);
-  const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
-  const progressSummaryHeight = useOrderFormStore((state) => state.progressSummaryHeight);
   const setProgressSummaryHeight = useOrderFormStore((state) => state.setProgressSummaryHeight);
 
   // モーダル状態管理（Zustand Store）
@@ -193,11 +189,9 @@ export const NewOrderPage: React.FC = () => {
   const {
     handleRemoveProduct,
     handleClearProduct,
-    handleTabChange,
     handlePrevStep,
     handleNextStep,
     handleAllocationChange,
-    handleToggleLock,
     onSubmit,
     handleBookNameDialogConfirm,
     handleRestoreDraft,
@@ -252,11 +246,7 @@ export const NewOrderPage: React.FC = () => {
             </Box>
           )}
           <OrderFormWithTabs
-            activeStep={activeStep}
-            handleTabChange={handleTabChange}
-            setActiveStep={setActiveStep}
             isMobile={isMobile}
-            progressSummaryHeight={progressSummaryHeight}
             control={control}
             errors={errors}
             productFields={productFields}
@@ -271,17 +261,8 @@ export const NewOrderPage: React.FC = () => {
             products={products || []}
             deliveryDate={deliveryDate}
             generatedFiles={generatedFiles}
-            activeProductIndex={activeProductIndex}
-            setActiveProductIndex={setActiveProductIndex}
-            lockedStores={lockedStores}
-            setLockedStores={setLockedStores}
-            selectedCategories={selectedCategories}
-            setSelectedCategories={setSelectedCategories}
-            showGeneratedPreview={showGeneratedPreview}
-            setShowGeneratedPreview={setShowGeneratedPreview}
             setGeneratedFiles={setGeneratedFiles}
             setExcelBlob={setExcelBlob}
-            setShowEmailModal={setShowEmailModal}
             handleSuppliersChange={handleSuppliersChange}
             onSubmit={onSubmit}
             handleAllocationChange={handleAllocationChange}
@@ -326,18 +307,13 @@ export const NewOrderPage: React.FC = () => {
               suppliers: suppliers || [],
               products: products || [],
             }}
-            activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
-            activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
-            onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
             onHeightChange={setProgressSummaryHeight}
             onRemoveProduct={handleRemoveProduct}
             onClearProduct={handleClearProduct}
             onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
             onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
             onAllocationChange={activeStep === 4 ? handleAllocationChange : undefined}
-            lockedStores={lockedStores}
-            onToggleLock={activeStep === 4 ? handleToggleLock : undefined}
           />
         )}
 

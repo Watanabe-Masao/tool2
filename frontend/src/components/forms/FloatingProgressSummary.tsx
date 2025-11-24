@@ -34,6 +34,7 @@ import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useNavigationContext } from '@/context/NavigationContext';
 import { StoreAllocationEditModal } from '@/components/modals/StoreAllocationEditModal';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * FloatingProgressSummaryのProps
@@ -41,14 +42,8 @@ import { StoreAllocationEditModal } from '@/components/modals/StoreAllocationEdi
 interface FloatingProgressSummaryProps {
   /** フォームデータ */
   formData: OrderFormData;
-  /** 現在のステップ */
-  activeStep: number;
   /** 総ステップ数 */
   totalSteps: number;
-  /** 現在の商品インデックス（ステップ2-4で使用） */
-  activeProductIndex?: number;
-  /** 商品切り替えハンドラー */
-  onProductChange?: (index: number) => void;
   /** 高さ変更コールバック */
   onHeightChange?: (height: number) => void;
   /** 商品削除ハンドラー */
@@ -61,10 +56,6 @@ interface FloatingProgressSummaryProps {
   onNextStep?: () => void;
   /** 配分数変更ハンドラ（モーダル用） */
   onAllocationChange?: (productIndex: number, storeIndex: number, value: number) => void;
-  /** ロックされた店舗のMap（商品別） */
-  lockedStores?: Map<number, Set<string>>;
-  /** ロック状態変更ハンドラ */
-  onToggleLock?: (productIndex: number, storeCode: string) => void;
 }
 
 /**
@@ -77,23 +68,25 @@ interface FloatingProgressSummaryProps {
  */
 export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = ({
   formData,
-  activeStep,
   totalSteps,
-  activeProductIndex,
-  onProductChange,
   onHeightChange,
   onRemoveProduct,
   onClearProduct,
   onPrevStep,
   onNextStep,
   onAllocationChange,
-  lockedStores,
-  onToggleLock,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showProgressSummary } = useNavigationContext();
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Zustand Store（UI状態）
+  const activeStep = useOrderFormStore((state) => state.activeStep);
+  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
+  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
+  const lockedStores = useOrderFormStore((state) => state.lockedStores);
+  const toggleStoreLock = useOrderFormStore((state) => state.toggleStoreLock);
 
   // 配分編集モーダルの状態
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
@@ -191,8 +184,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
    * ロック切り替え（モーダル用）
    */
   const handleToggleLock = (storeCode: string) => {
-    if (editingProductIndex !== null && onToggleLock) {
-      onToggleLock(editingProductIndex, storeCode);
+    if (editingProductIndex !== null) {
+      toggleStoreLock(editingProductIndex, storeCode);
     }
   };
 
@@ -321,10 +314,10 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       <Box sx={{ position: 'relative' }}>
         <Box sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           {/* 前へボタン（画面左端） */}
-          {activeProductIndex > 0 && onProductChange && (
+          {activeProductIndex > 0 && (
             <IconButton
               size="small"
-              onClick={() => onProductChange(activeProductIndex - 1)}
+              onClick={() => setActiveProductIndex(activeProductIndex - 1)}
               sx={{
                 position: 'absolute',
                 left: -4,
@@ -349,10 +342,10 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           </Typography>
 
           {/* 次へボタン（画面右端） */}
-          {activeProductIndex < formData.products.length - 1 && onProductChange && (
+          {activeProductIndex < formData.products.length - 1 && (
             <IconButton
               size="small"
-              onClick={() => onProductChange(activeProductIndex + 1)}
+              onClick={() => setActiveProductIndex(activeProductIndex + 1)}
               sx={{
                 position: 'absolute',
                 right: -4,
@@ -408,7 +401,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                     <Card
                       onClick={() => {
                         // クリックで商品を選択
-                        onProductChange?.(index);
+                        setActiveProductIndex(index);
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();

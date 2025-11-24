@@ -14,6 +14,7 @@ import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
 import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
 import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
 import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * OrderFormSteps
@@ -45,9 +46,6 @@ interface GeneratedFiles {
 }
 
 interface OrderFormStepsProps {
-  // Step管理
-  activeStep: number;
-
   // React Hook Form
   control: Control<OrderFormData>;
   errors: FieldErrors<OrderFormData>;
@@ -64,22 +62,8 @@ interface OrderFormStepsProps {
   productNameOptions: string[];
   originOptions: string[];
   suppliers: string[];
-  activeProductIndex: number;
-  onProductIndexChange: (index: number) => void;
-  onNavigateToStep: (step: number) => void;
-
-  // Step 3: 店舗配分
-  lockedStores: Map<number, Set<string>>;
-  setLockedStores: (
-    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
-  selectedCategories: Map<number, Set<string>>;
-  setSelectedCategories: (
-    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
 
   // Step 4: プレビュー
-  showGeneratedPreview: boolean;
   deliveryDate: Date | null;
   products: any[];
   generatedFiles: GeneratedFiles | null;
@@ -92,7 +76,6 @@ interface OrderFormStepsProps {
 }
 
 export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
-  activeStep,
   control,
   errors,
   productFields,
@@ -104,14 +87,6 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   productNameOptions,
   originOptions,
   suppliers,
-  activeProductIndex,
-  onProductIndexChange,
-  onNavigateToStep,
-  lockedStores,
-  setLockedStores,
-  selectedCategories,
-  setSelectedCategories,
-  showGeneratedPreview,
   deliveryDate,
   products,
   generatedFiles,
@@ -122,6 +97,17 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   onSendEmail,
   onBackToEdit,
 }) => {
+  // Zustand Store（UI状態）
+  const activeStep = useOrderFormStore((state) => state.activeStep);
+  const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
+  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
+  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
+  const lockedStores = useOrderFormStore((state) => state.lockedStores);
+  const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
+  const selectedCategories = useOrderFormStore((state) => state.selectedCategories);
+  const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
+  const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
+
   return (
     <>
       {/* Step 0: 店着日・帳合先 */}
@@ -149,9 +135,9 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
             append={appendProduct}
             remove={removeProduct}
             move={moveProduct}
-            onNavigateToStep={onNavigateToStep}
+            onNavigateToStep={setActiveStep}
             activeProductIndex={activeProductIndex}
-            onProductIndexChange={onProductIndexChange}
+            onProductIndexChange={setActiveProductIndex}
           />
         </Box>
       )}
@@ -164,7 +150,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
             errors={errors}
             fields={productFields}
             activeProductIndex={activeProductIndex}
-            onProductIndexChange={onProductIndexChange}
+            onProductIndexChange={setActiveProductIndex}
           />
         </Box>
       )}
@@ -176,12 +162,6 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
             control={control}
             errors={errors}
             fields={productFields}
-            lockedStores={lockedStores}
-            setLockedStores={setLockedStores}
-            selectedCategories={selectedCategories}
-            setSelectedCategories={setSelectedCategories}
-            activeProductIndex={activeProductIndex}
-            onProductIndexChange={onProductIndexChange}
           />
         </Box>
       )}
@@ -205,7 +185,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               selectedCategories={selectedCategories}
               setSelectedCategories={setSelectedCategories}
               activeProductIndex={activeProductIndex}
-              onProductChange={onProductIndexChange}
+              onProductChange={setActiveProductIndex}
             />
           ) : (
             /* 生成後のプレビュー */
@@ -228,7 +208,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
                 selectedCategories={selectedCategories}
                 setSelectedCategories={setSelectedCategories}
                 activeProductIndex={activeProductIndex}
-                onProductChange={onProductIndexChange}
+                onProductChange={setActiveProductIndex}
               />
             )
           )}

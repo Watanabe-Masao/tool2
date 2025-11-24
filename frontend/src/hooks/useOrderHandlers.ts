@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { UseFormReturn, FieldArrayWithId, UseFieldArrayRemove } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import type { BookNameDialogState } from '@/hooks/useOrderModals';
+import type { BookNameDialog } from '@/stores/orderFormStore';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 
 /**
@@ -24,8 +24,8 @@ interface UseOrderHandlersParams {
   ) => void;
 
   // Modal/Dialog state
-  setBookNameDialog: (state: BookNameDialogState) => void;
-  bookNameDialog: BookNameDialogState;
+  setBookNameDialog: (state: BookNameDialog) => void;
+  bookNameDialog: BookNameDialog;
   setRestoreDialogOpen: (open: boolean) => void;
   setShowGeneratedPreview: (show: boolean) => void;
 

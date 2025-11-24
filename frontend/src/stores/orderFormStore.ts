@@ -4,7 +4,7 @@ import { devtools, persist } from 'zustand/middleware';
 /**
  * BookNameダイアログの状態
  */
-interface BookNameDialog {
+export interface BookNameDialog {
   open: boolean;
   bookName: string;
 }

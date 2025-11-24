@@ -7,6 +7,7 @@ import { StoreAllocationTable } from './StoreAllocationTable';
 import { StoreAllocationMobile } from './StoreAllocationMobile';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { isMobileDevice } from '@/utils/deviceDetection';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * StoreAllocationFormのProps
@@ -18,22 +19,6 @@ interface StoreAllocationFormProps {
   errors: FieldErrors<OrderFormData>;
   /** 商品フィールド配列 */
   fields: FieldArrayWithId<OrderFormData, 'products', 'id'>[];
-  /** ロックされた店舗のMap（商品別） */
-  lockedStores: Map<number, Set<string>>;
-  /** ロック状態更新関数 */
-  setLockedStores: (
-    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
-  /** 選択されたカテゴリのMap（商品別） */
-  selectedCategories: Map<number, Set<string>>;
-  /** カテゴリ選択更新関数 */
-  setSelectedCategories: (
-    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
-  /** 現在の商品インデックス（外部制御用） */
-  activeProductIndex?: number;
-  /** 商品インデックス変更ハンドラー */
-  onProductIndexChange?: (index: number) => void;
 }
 
 /**
@@ -45,23 +30,20 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   control,
   errors,
   fields,
-  lockedStores,
-  setLockedStores,
-  selectedCategories,
-  setSelectedCategories,
-  activeProductIndex,
-  onProductIndexChange,
 }) => {
-  // アクティブなタブのインデックス（外部制御または内部状態）
-  const [internalTabIndex, setInternalTabIndex] = useState(0);
-  const activeTabIndex = activeProductIndex !== undefined ? activeProductIndex : internalTabIndex;
+  // Zustand Store（UI状態）
+  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
+  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
+  const lockedStores = useOrderFormStore((state) => state.lockedStores);
+  const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
+  const selectedCategories = useOrderFormStore((state) => state.selectedCategories);
+  const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
+
+  // アクティブなタブのインデックス
+  const activeTabIndex = activeProductIndex;
   const setActiveTabIndex = (index: number | ((prev: number) => number)) => {
     const newIndex = typeof index === 'function' ? index(activeTabIndex) : index;
-    if (onProductIndexChange) {
-      onProductIndexChange(newIndex);
-    } else {
-      setInternalTabIndex(newIndex);
-    }
+    setActiveProductIndex(newIndex);
   };
 
   // 前回のタブインデックスを保持（アニメーション方向判定用）

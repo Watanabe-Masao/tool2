@@ -11,6 +11,7 @@ import type {
 } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { OrderFormSteps } from '@/components/order/OrderFormSteps';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * GeneratedFiles型定義
@@ -26,14 +27,8 @@ interface GeneratedFiles {
  * OrderFormWithTabsのProps
  */
 interface OrderFormWithTabsProps {
-  // Step management
-  activeStep: number;
-  handleTabChange: (event: React.SyntheticEvent, newValue: number) => void;
-  setActiveStep: (step: number) => void;
-
   // Layout
   isMobile: boolean;
-  progressSummaryHeight: number;
 
   // React Hook Form
   control: Control<OrderFormData>;
@@ -55,22 +50,9 @@ interface OrderFormWithTabsProps {
   deliveryDate: Date | null;
   generatedFiles: GeneratedFiles | null;
 
-  // State
-  activeProductIndex: number;
-  setActiveProductIndex: (index: number) => void;
-  lockedStores: Map<number, Set<string>>;
-  setLockedStores: (
-    storesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
-  selectedCategories: Map<number, Set<string>>;
-  setSelectedCategories: (
-    categoriesOrUpdater: Map<number, Set<string>> | ((prev: Map<number, Set<string>>) => Map<number, Set<string>>)
-  ) => void;
-  showGeneratedPreview: boolean;
-  setShowGeneratedPreview: (show: boolean) => void;
+  // Actions
   setGeneratedFiles: (files: GeneratedFiles | null) => void;
   setExcelBlob: (blob: Blob | null) => void;
-  setShowEmailModal: (show: boolean) => void;
 
   // Handlers
   handleSuppliersChange: (newValue: string[]) => string[];
@@ -101,11 +83,7 @@ interface OrderFormWithTabsProps {
  * ```
  */
 export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
-  activeStep,
-  handleTabChange,
-  setActiveStep,
   isMobile,
-  progressSummaryHeight,
   control,
   errors,
   productFields,
@@ -120,23 +98,26 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   products,
   deliveryDate,
   generatedFiles,
-  activeProductIndex,
-  setActiveProductIndex,
-  lockedStores,
-  setLockedStores,
-  selectedCategories,
-  setSelectedCategories,
-  showGeneratedPreview,
-  setShowGeneratedPreview,
   setGeneratedFiles,
   setExcelBlob,
-  setShowEmailModal,
   handleSuppliersChange,
   onSubmit,
   handleAllocationChange,
   handleDownloadExcel,
   handleDownloadPdf,
 }) => {
+  // Zustand Store（UI状態）
+  const activeStep = useOrderFormStore((state) => state.activeStep);
+  const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
+  const progressSummaryHeight = useOrderFormStore((state) => state.progressSummaryHeight);
+  const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
+  const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
+
+  // タブ変更ハンドラー
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveStep(newValue);
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ width: '100%', py: 2 }}>
@@ -176,7 +157,6 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
           }}
         >
           <OrderFormSteps
-            activeStep={activeStep}
             control={control}
             errors={errors}
             productFields={productFields}
@@ -188,14 +168,6 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
             productNameOptions={productNameOptions}
             originOptions={originOptions}
             suppliers={suppliers}
-            activeProductIndex={activeProductIndex}
-            onProductIndexChange={setActiveProductIndex}
-            onNavigateToStep={setActiveStep}
-            lockedStores={lockedStores}
-            setLockedStores={setLockedStores}
-            selectedCategories={selectedCategories}
-            setSelectedCategories={setSelectedCategories}
-            showGeneratedPreview={showGeneratedPreview}
             deliveryDate={deliveryDate}
             products={products}
             generatedFiles={generatedFiles}
