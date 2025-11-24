@@ -83,6 +83,40 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   }, []);
 
   /**
+   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋直接実行）
+   */
+  const createSetLockedStoresForProduct = React.useCallback((productIndex: number) => {
+    return (updater: React.SetStateAction<Set<string>>) => {
+      // 直接実行（startTransitionは使わない）
+      // イベントハンドラーから呼ばれるため、レンダリング外
+      setLockedStores((prev) => {
+        const newMap = new Map(prev);
+        const currentSet = prev.get(productIndex) || new Set();
+        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+        newMap.set(productIndex, newSet);
+        return newMap;
+      });
+    };
+  }, [setLockedStores]);
+
+  /**
+   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋直接実行）
+   */
+  const createSetSelectedCategoriesForProduct = React.useCallback((productIndex: number) => {
+    return (updater: React.SetStateAction<Set<string>>) => {
+      // 直接実行（startTransitionは使わない）
+      // イベントハンドラーから呼ばれるため、レンダリング外
+      setSelectedCategories((prev) => {
+        const newMap = new Map(prev);
+        const currentSet = prev.get(productIndex) || new Set();
+        const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
+        newMap.set(productIndex, newSet);
+        return newMap;
+      });
+    };
+  }, [setSelectedCategories]);
+
+  /**
    * キーボードショートカット（Ctrl+← / Ctrl+→）でタブ移動
    */
   useEffect(() => {
@@ -113,6 +147,20 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
     }
     prevTabIndexRef.current = activeTabIndex;
   }, [activeTabIndex]);
+
+  /**
+   * 各商品用のsetLockedStores関数をメモ化（React#185対策）
+   */
+  const productSetLockedStores = React.useMemo(() => {
+    return fields.map((_, index) => createSetLockedStoresForProduct(index));
+  }, [fields.length, createSetLockedStoresForProduct]);
+
+  /**
+   * 各商品用のsetSelectedCategories関数をメモ化（React#185対策）
+   */
+  const productSetSelectedCategories = React.useMemo(() => {
+    return fields.map((_, index) => createSetSelectedCategoriesForProduct(index));
+  }, [fields.length, createSetSelectedCategoriesForProduct]);
 
   return (
     <Box>
@@ -229,25 +277,9 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
                   errors={errors}
                   totalDelivery={product?.totalDelivery || 0}
                   lockedStores={lockedStores.get(index) || new Set()}
-                  setLockedStores={(updater) => {
-                    setLockedStores((prev) => {
-                      const newMap = new Map(prev);
-                      const currentSet = prev.get(index) || new Set();
-                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-                      newMap.set(index, newSet);
-                      return newMap;
-                    });
-                  }}
+                  setLockedStores={productSetLockedStores[index]}
                   selectedCategories={selectedCategories.get(index) || new Set()}
-                  setSelectedCategories={(updater) => {
-                    setSelectedCategories((prev) => {
-                      const newMap = new Map(prev);
-                      const currentSet = prev.get(index) || new Set();
-                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-                      newMap.set(index, newSet);
-                      return newMap;
-                    });
-                  }}
+                  setSelectedCategories={productSetSelectedCategories[index]}
                 />
               ) : (
                 <StoreAllocationTable
@@ -256,25 +288,9 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
                   errors={errors}
                   totalDelivery={product?.totalDelivery || 0}
                   lockedStores={lockedStores.get(index) || new Set()}
-                  setLockedStores={(updater) => {
-                    setLockedStores((prev) => {
-                      const newMap = new Map(prev);
-                      const currentSet = prev.get(index) || new Set();
-                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-                      newMap.set(index, newSet);
-                      return newMap;
-                    });
-                  }}
+                  setLockedStores={productSetLockedStores[index]}
                   selectedCategories={selectedCategories.get(index) || new Set()}
-                  setSelectedCategories={(updater) => {
-                    setSelectedCategories((prev) => {
-                      const newMap = new Map(prev);
-                      const currentSet = prev.get(index) || new Set();
-                      const newSet = typeof updater === 'function' ? updater(currentSet) : updater;
-                      newMap.set(index, newSet);
-                      return newMap;
-                    });
-                  }}
+                  setSelectedCategories={productSetSelectedCategories[index]}
                 />
               )}
             </Box>

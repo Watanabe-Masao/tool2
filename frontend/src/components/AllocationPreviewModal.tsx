@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,18 +9,8 @@ import {
   Typography,
   IconButton,
 } from '@mui/material';
-import { Close as CloseIcon, PictureAsPdf, Download } from '@mui/icons-material';
-import { AgGridReact } from 'ag-grid-react';
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { Close as CloseIcon, Download } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { STORE_DATA } from '@/utils/constants';
-import { TemplateService } from '@/services/api/templateService';
-
-// AG Grid モジュールを登録
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
  * AllocationPreviewModalのProps
@@ -28,394 +18,108 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 interface AllocationPreviewModalProps {
   /** モーダルの開閉状態 */
   open: boolean;
-  /** モーダルを閉じる */
+  /** モーダルを閉じるハンドラ */
   onClose: () => void;
   /** フォームデータ */
   formData: OrderFormData;
   /** PDFファイル名（file_id） */
   pdfFilename?: string;
-  /** PDFダウンロードURL */
-  pdfDownloadUrl?: string;
   /** Excelダウンロードハンドラ */
   onDownloadExcel?: () => void;
 }
 
 /**
- * グリッド行データの型
- */
-interface GridRowData {
-  deliveryDate: string;
-  origin: string;
-  specification: string;
-  productName: string;
-  storeCost: string;
-  priceExcludingTax: string;
-  priceIncludingTax: string;
-  totalPackages: string;
-  quantityPerPackage: string;
-  supplier: string;
-  total: string;
-  totalDelivery: string;
-  difference: number;
-  [key: string]: string | number; // Store allocations (store_01, store_02, etc.)
-}
-
-/**
  * 配分表プレビューモーダル
  *
- * AG-Gridを使用してExcel出力と同様の配分表をプレビュー表示します。
+ * 配分表のプレビューをモーダル表示します。
+ * （注：このコンポーネントは現在使用されていない可能性があります）
  */
 export const AllocationPreviewModal: React.FC<AllocationPreviewModalProps> = ({
   open,
   onClose,
   formData,
   pdfFilename,
-  pdfDownloadUrl,
   onDownloadExcel,
 }) => {
-  // 選択された行データ
-  const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
-
-  // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
-  const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
-
-  /**
-   * グリッド行データを生成
-   */
-  const rowData = useMemo<GridRowData[]>(() => {
-    const rows: GridRowData[] = [];
-
-    formData.products.forEach((product) => {
-      // 総パッケージ数を計算
-      const totalPackages = product.totalDelivery || 0;
-
-      // 各店舗への配分合計を計算
-      const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-
-      // 差異を計算
-      const difference = totalPackages - totalAllocated;
-
-      // 1行にまとめる
-      const row: GridRowData = {
-        deliveryDate: formData.deliveryDate
-          ? format(formData.deliveryDate, 'M/d(E)', { locale: ja })
-          : '',
-        origin: product.origin || '',
-        specification: product.specification || '',
-        productName: product.name || '',
-        storeCost: product.storeCost ? `¥${product.storeCost.toLocaleString()}` : '',
-        priceExcludingTax: product.priceExcludingTax
-          ? `¥${product.priceExcludingTax.toLocaleString()}`
-          : '',
-        priceIncludingTax: product.priceExcludingTax
-          ? `¥${Math.round(product.priceExcludingTax * 1.08).toLocaleString()}`
-          : '',
-        totalPackages: totalPackages ? totalPackages.toString() : '',
-        quantityPerPackage: product.quantityPerPackage
-          ? `${product.quantityPerPackage}${product.unit || ''}`
-          : '',
-        total: totalAllocated.toString(),
-        totalDelivery: totalPackages.toString(),
-        difference: difference,
-        supplier: product.supplier || '',
-      };
-
-      // 各店舗の配分数を追加
-      STORE_DATA.forEach((store, index) => {
-        const allocation = product.storeAllocations[index] || 0;
-        row[`store_${store.code}`] = allocation;
-      });
-
-      rows.push(row);
-    });
-
-    return rows;
-  }, [formData]);
-
-  /**
-   * カラム定義を生成
-   */
-  const columnDefs = useMemo<ColDef<GridRowData>[]>(() => {
-    const cols: ColDef<GridRowData>[] = [
-      {
-        headerName: '品名',
-        field: 'productName',
-        width: 150,
-        cellStyle: { fontWeight: '500', fontSize: '0.85rem' },
-      },
-    ];
-
-    // 36店舗のカラムを追加
-    STORE_DATA.forEach((store) => {
-      cols.push({
-        headerName: `${store.code}\n${store.name}`,
-        field: `store_${store.code}`,
-        width: 55,
-        headerClass: 'store-header',
-        cellStyle: (params) => {
-          const value = params.value as number;
-          return {
-            textAlign: 'center',
-            backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
-            color: value > 0 ? '#1565c0' : '#bdbdbd',
-            fontWeight: value > 0 ? '600' : 'normal',
-          };
-        },
-        valueFormatter: (params) => {
-          const value = params.value as number;
-          return value > 0 ? value.toString() : '-';
-        },
-      });
-    });
-
-    // 集計カラム
-    cols.push(
-      {
-        headerName: '合計',
-        field: 'total',
-        width: 60,
-        cellStyle: {
-          textAlign: 'center',
-          backgroundColor: '#fff8e1',
-          fontWeight: '700',
-          color: '#f57f17',
-        },
-      },
-      {
-        headerName: '納品数',
-        field: 'totalDelivery',
-        width: 65,
-        cellStyle: {
-          textAlign: 'center',
-          fontWeight: '600',
-        },
-      },
-      {
-        headerName: '差異',
-        field: 'difference',
-        width: 60,
-        cellStyle: (params) => {
-          const diff = params.value as number;
-          return {
-            textAlign: 'center',
-            backgroundColor: diff !== 0 ? '#ffebee' : '#e8f5e9',
-            color: diff !== 0 ? '#d32f2f' : '#388e3c',
-            fontWeight: '700',
-          };
-        },
-      },
-      {
-        headerName: '帳合先',
-        field: 'supplier',
-        width: 120,
-      }
-    );
-
-    return cols;
-  }, []);
-
-  /**
-   * 行クリック時のハンドラー
-   */
-  const handleRowClicked = (event: RowClickedEvent<GridRowData>) => {
-    setSelectedRow(event.data || null);
-  };
-
-  /**
-   * グリッドオプション
-   */
-  const gridOptions = useMemo<GridOptions<GridRowData>>(
-    () => ({
-      defaultColDef: {
-        resizable: true,
-        sortable: true,
-        filter: true,
-        floatingFilter: false,
-      },
-      rowHeight: 40,
-      headerHeight: 42,
-      suppressMovableColumns: true,
-      suppressCellFocus: false,
-      enableCellTextSelection: true,
-      animateRows: true,
-      onRowClicked: handleRowClicked,
-      rowSelection: 'single',
-    }),
-    []
-  );
-
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="xl"
+      maxWidth="lg"
       fullWidth
       PaperProps={{
         sx: {
           height: '90vh',
-          maxHeight: '90vh',
         },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6" fontWeight="600">配分表プレビュー</Typography>
-        <IconButton onClick={onClose} size="small" sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-          <CloseIcon />
-        </IconButton>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            配分表プレビュー
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
-      <DialogContent dividers sx={{ p: 0 }}>
-        {/* 配分表 */}
-        <>
-            {/* 選択行の詳細情報エリア */}
-            {selectedRow && (
-          <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-            {/* 1行目: 店着日と集計情報 */}
-            <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
+      <DialogContent>
+        <Box sx={{ py: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            配分表のプレビューを表示します。
+          </Typography>
+
+          {/* 商品リスト */}
+          {formData.products.map((product, index) => (
+            <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                {product.name || `商品 ${index + 1}`}
               </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
-              </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
-                配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
-              </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
-                差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 1 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">産地</Typography>
+                  <Typography variant="body2">{product.origin || '-'}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">規格</Typography>
+                  <Typography variant="body2">{product.specification || '-'}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">総納品数</Typography>
+                  <Typography variant="body2">{product.totalDelivery || 0}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">配分済み</Typography>
+                  <Typography variant="body2">
+                    {product.storeAllocations?.reduce((sum, val) => sum + val, 0) || 0}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          ))}
+
+          {pdfFilename && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+              <Typography variant="body2" color="success.dark">
+                ✓ 配分表が生成されました: {pdfFilename}
               </Typography>
             </Box>
-
-            {/* 2行目: 商品基本情報 */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.secondary">
-                産地: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.origin}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                品名: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.productName}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                規格: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.specification}</Box>
-              </Typography>
-            </Box>
-
-            {/* 3行目: 価格情報 */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.secondary">
-                店着原価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.storeCost}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                税抜売価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.priceExcludingTax}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                入数: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.quantityPerPackage}</Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                帳合先: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.supplier}</Box>
-              </Typography>
-            </Box>
-          </Box>
-        )}
-
-        <Box
-          className="ag-theme-alpine"
-          sx={{
-            width: '100%',
-            height: selectedRow ? 'calc(90vh - 260px)' : 'calc(90vh - 140px)',
-            '& .ag-header': {
-              backgroundColor: '#f8f9fa',
-              borderBottom: '2px solid #dee2e6',
-            },
-            '& .ag-header-cell': {
-              fontWeight: '600',
-              fontSize: '0.75rem',
-              padding: '6px 8px',
-            },
-            '& .store-header': {
-              backgroundColor: '#e7f1ff',
-              fontSize: '0.7rem',
-            },
-            '& .ag-cell': {
-              fontSize: '0.8rem',
-              lineHeight: '40px',
-              padding: '0 8px',
-            },
-            '& .ag-row:hover': {
-              backgroundColor: '#f8f9fa !important',
-            },
-            '& .ag-row-even': {
-              backgroundColor: '#ffffff',
-            },
-            '& .ag-row-odd': {
-              backgroundColor: '#fafafa',
-            },
-            '& .ag-row-selected': {
-              backgroundColor: '#e3f2fd !important',
-            },
-          }}
-        >
-          <AgGridReact<GridRowData>
-            rowData={rowData}
-            columnDefs={columnDefs}
-            gridOptions={gridOptions}
-          />
+          )}
         </Box>
-        </>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, gap: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
-        {/* PDFプレビューボタン */}
-        {pdfFilename && (
-          <Button
-            variant="outlined"
-            startIcon={<PictureAsPdf />}
-            onClick={() => window.open(pdfUrl, '_blank')}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              fontWeight: 600,
-              '&:hover': { bgcolor: 'primary.50' }
-            }}
-          >
-            PDFプレビュー
-          </Button>
-        )}
-
-        {/* Excelダウンロードボタン */}
+      <DialogActions>
+        <Button onClick={onClose}>閉じる</Button>
         {onDownloadExcel && (
           <Button
             variant="contained"
             startIcon={<Download />}
             onClick={onDownloadExcel}
-            color="success"
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              fontWeight: 600,
-              boxShadow: 2,
-              '&:hover': { boxShadow: 4 }
-            }}
           >
             Excelダウンロード
           </Button>
         )}
-
-        {/* スペーサー */}
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* 閉じるボタン */}
-        <Button
-          onClick={onClose}
-          variant="outlined"
-          sx={{
-            borderRadius: 2,
-            px: 3,
-            fontWeight: 600,
-            minWidth: 120
-          }}
-        >
-          閉じる
-        </Button>
       </DialogActions>
     </Dialog>
   );

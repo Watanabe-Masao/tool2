@@ -1,26 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   Box,
   Typography,
   Button,
   Paper,
   Divider,
-  CircularProgress,
+  useTheme,
+  useMediaQuery,
+  TextField,
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
-import { AgGridReact } from 'ag-grid-react';
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, GridOptions, RowClickedEvent } from 'ag-grid-community';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridRenderEditCellParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
-import { TemplateService } from '@/services/api/templateService';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { StoreStatisticsModal } from '@/components/modals/StoreStatisticsModal';
-
-// AG Grid モジュールを登録
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
  * AllocationPreviewContentのProps
@@ -52,34 +49,38 @@ interface AllocationPreviewContentProps {
   selectedCategories: Map<number, Set<string>>;
   /** カテゴリ選択更新関数 */
   setSelectedCategories: React.Dispatch<React.SetStateAction<Map<number, Set<string>>>>;
+  /** 現在選択中の商品インデックス（進捗サマリーとの連動用） */
+  activeProductIndex?: number;
+  /** 商品選択変更ハンドラ（表の行クリック時） */
+  onProductChange?: (productIndex: number) => void;
 }
 
 /**
  * グリッド行データの型
  */
 interface GridRowData {
-  productIndex: number; // 商品のインデックス
+  id: string;
+  productIndex: number;
   deliveryDate: string;
   origin: string;
   specification: string;
   productName: string;
-  storeCost: string;
-  priceExcludingTax: string;
-  priceIncludingTax: string;
-  totalPackages: string;
-  quantityPerPackage: string;
+  storeCost: number;
+  priceExcludingTax: number;
+  priceIncludingTax: number;
+  totalPackages: number;
+  quantityPerPackage: number;
   supplier: string;
-  total: string;
-  totalDelivery: string;
+  total: number;
+  totalDelivery: number;
   difference: number;
-  [key: string]: string | number; // Store allocations (store_01, store_02, etc.)
+  [key: string]: string | number;
 }
 
 /**
  * 配分表プレビューコンテンツ
  *
- * AG-Gridを使用してExcel出力と同様の配分表をプレビュー表示します。
- * タブでPDFプレビューにも切り替え可能です。
+ * MUI DataGridを使用してExcel出力と同様の配分表をプレビュー表示します。
  */
 export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> = ({
   formData,
@@ -92,159 +93,212 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   onGenerate,
   onAllocationChange,
   lockedStores,
-  setLockedStores: _setLockedStores, // 未使用（将来の拡張用）
-  selectedCategories: _selectedCategories, // TODO: カテゴリフィルター UI で使用予定
-  setSelectedCategories: _setSelectedCategories, // TODO: カテゴリフィルター UI で使用予定
+  setLockedStores: _setLockedStores,
+  selectedCategories: _selectedCategories,
+  setSelectedCategories: _setSelectedCategories,
+  activeProductIndex,
+  onProductChange,
 }) => {
-  // 選択された行データ
-  const [selectedRow, setSelectedRow] = useState<GridRowData | null>(null);
-  // PDFプレビューモーダルの開閉状態
-  const [showPDFModal, setShowPDFModal] = useState(false);
-  // 店舗別統計モーダルの開閉状態
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  // グリッド初期化完了フラグ
-  const [gridReady, setGridReady] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // 非同期処理のキャンセル用
-  const rafIdRef = React.useRef<number | null>(null);
-  const timerIdRef = React.useRef<number | null>(null);
-  const isMountedRef = React.useRef<boolean>(true);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
-  // AG Grid APIリファレンス
-  const gridApiRef = React.useRef<any>(null);
-
-  // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
-  const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
-
-  // ブック名を生成（配分表_{YYYYMMDD}）
-  const bookName = useMemo(() => {
-    const dateStr = format(formData.deliveryDate, 'yyyyMMdd');
-    return `配分表_${dateStr}`;
-  }, [formData.deliveryDate]);
+  const isGenerationComplete = Boolean(pdfFilename);
 
   /**
-   * グリッド行データを生成
+   * 行データを生成
    */
-  const rowData = useMemo<GridRowData[]>(() => {
-    const rows: GridRowData[] = [];
+  const rows = useMemo<GridRowData[]>(() => {
+    return formData.products.map((product, productIndex) => {
+      const storeAllocations = product.storeAllocations || new Array(36).fill(0);
+      const total = storeAllocations.reduce((sum: number, val: number) => sum + val, 0);
+      const difference = total - (product.totalDelivery || 0);
 
-    formData.products.forEach((product, productIndex) => {
-      // 総パッケージ数を計算
-      const totalPackages = product.totalDelivery || 0;
-
-      // 各店舗への配分合計を計算
-      const totalAllocated = product.storeAllocations.reduce((sum, val) => sum + val, 0);
-
-      // 差異を計算
-      const difference = totalPackages - totalAllocated;
-
-      // 1行にまとめる
       const row: GridRowData = {
-        productIndex, // 商品のインデックスを保存
-        deliveryDate: formData.deliveryDate
-          ? format(formData.deliveryDate, 'M/d(E)', { locale: ja })
-          : '',
+        id: `product-${productIndex}`,
+        productIndex,
+        deliveryDate: format(formData.deliveryDate, 'M/d(E)', { locale: ja }),
         origin: product.origin || '',
         specification: product.specification || '',
         productName: product.name || '',
-        storeCost: product.storeCost ? `¥${product.storeCost.toLocaleString()}` : '',
-        priceExcludingTax: product.priceExcludingTax
-          ? `¥${product.priceExcludingTax.toLocaleString()}`
-          : '',
-        priceIncludingTax: product.priceExcludingTax
-          ? `¥${Math.round(product.priceExcludingTax * 1.08).toLocaleString()}`
-          : '',
-        totalPackages: totalPackages ? totalPackages.toString() : '',
-        quantityPerPackage: product.quantityPerPackage
-          ? `${product.quantityPerPackage}${product.unit || ''}`
-          : '',
-        total: totalAllocated.toString(),
-        totalDelivery: totalPackages.toString(),
-        difference: difference,
+        storeCost: product.storeCost || 0,
+        priceExcludingTax: product.priceExcludingTax || 0,
+        priceIncludingTax: product.priceExcludingTax ? Math.floor((product.priceExcludingTax || 0) * 1.1) : 0,
+        totalPackages: product.totalDelivery || 0,
+        quantityPerPackage: product.quantityPerPackage || 0,
         supplier: product.supplier || '',
+        total,
+        totalDelivery: product.totalDelivery || 0,
+        difference,
       };
 
       // 各店舗の配分数を追加
       STORE_DATA.forEach((store, index) => {
-        const allocation = product.storeAllocations[index] || 0;
-        row[`store_${store.code}`] = allocation;
+        row[`store_${store.code}`] = storeAllocations[index] || 0;
       });
 
-      rows.push(row);
+      return row;
     });
-
-    return rows;
   }, [formData]);
 
   /**
-   * カラム定義を生成
+   * カラム定義
    */
-  const columnDefs = useMemo<ColDef<GridRowData>[]>(() => {
-    const cols: ColDef<GridRowData>[] = [
+  const columns = useMemo<GridColDef<GridRowData>[]>(() => {
+    const cols: GridColDef<GridRowData>[] = [
       {
-        headerName: '品名',
+        field: 'deliveryDate',
+        headerName: '店着日',
+        width: 80,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+      },
+      {
+        field: 'origin',
+        headerName: '産地',
+        width: 100,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+      },
+      {
+        field: 'specification',
+        headerName: '規格',
+        width: 100,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+      },
+      {
         field: 'productName',
+        headerName: '品名',
         width: 150,
-        cellStyle: { fontWeight: '500', fontSize: '0.85rem' },
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+      },
+      {
+        field: 'storeCost',
+        headerName: '店原',
+        width: 80,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+      },
+      {
+        field: 'priceExcludingTax',
+        headerName: '店売税抜',
+        width: 90,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+      },
+      {
+        field: 'priceIncludingTax',
+        headerName: '店売税込',
+        width: 90,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+      },
+      {
+        field: 'totalPackages',
+        headerName: '総件数',
+        width: 80,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+      },
+      {
+        field: 'quantityPerPackage',
+        headerName: '入数',
+        width: 70,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
       },
     ];
 
-    // 36店舗のカラムを追加（生成前のみ編集可能、ロック状態を反映）
-    STORE_DATA.forEach((store, storeIndex) => {
+    // 36店舗のカラムを追加
+    STORE_DATA.forEach((store) => {
       cols.push({
-        headerName: `${store.code}\n${store.name}`,
         field: `store_${store.code}`,
-        width: 55,
-        headerClass: 'store-header',
-        // 生成前のみ編集可能（ロック状態は商品別に判定）
-        editable: (params) => {
-          if (!Boolean(onGenerate) || !params.data) return false;
-          const productIndex = params.data.productIndex;
-          const productLockedStores = lockedStores.get(productIndex) || new Set();
-          return !productLockedStores.has(store.code);
-        },
-        cellStyle: (params) => {
-          if (!params.data) return {} as any;
-          const productIndex = params.data.productIndex;
+        headerName: `${store.code}\n${store.name}`,
+        width: isMobile ? 80 : 55, // モバイル時は幅を広げてタップしやすく
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        editable: true, // 編集可否はisCellEditableで制御
+        type: 'number',
+        renderCell: (params: GridRenderCellParams<GridRowData>) => {
+          if (!params.row) return null;
+          const value = params.value as number;
+          const productIndex = params.row.productIndex;
           const productLockedStores = lockedStores.get(productIndex) || new Set();
           const isLocked = productLockedStores.has(store.code);
-          const value = params.value as number;
-          return {
-            textAlign: 'center',
-            backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
-            color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
-            fontWeight: value > 0 ? '600' : 'normal',
-            cursor: Boolean(onGenerate) && !isLocked ? 'text' : 'default',
-          } as any;
-        },
-        valueFormatter: (params) => {
-          const value = params.value as number;
-          return value > 0 ? value.toString() : '-';
-        },
-        valueParser: (params) => {
-          // 入力値を数値に変換（無効な値は0にする）
-          const num = parseInt(params.newValue, 10);
-          return isNaN(num) || num < 0 ? 0 : num;
-        },
-        valueSetter: (params) => {
-          // コンポーネントがマウントされている場合のみ処理
-          if (!isMountedRef.current) {
-            return false;
-          }
 
-          // セルの値を更新する代わりに、親コンポーネントに通知
-          if (onAllocationChange && params.data) {
-            const productIndex = params.data.productIndex;
-            const productLockedStores = lockedStores.get(productIndex) || new Set();
-            const isLocked = productLockedStores.has(store.code);
-            if (!isLocked) {
-              const parsedValue = parseInt(params.newValue, 10);
-              const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
-              onAllocationChange(productIndex, storeIndex, newValue);
-            }
-          }
-          // AG-Gridに値を更新させない（React側で管理）
-          return false;
+          return (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: value > 0 ? '600' : 'normal',
+                color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
+                backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
+              }}
+            >
+              {value > 0 ? value : '-'}
+            </Box>
+          );
+        },
+        renderEditCell: (params: GridRenderEditCellParams<GridRowData>) => {
+          const { id, value, field, api } = params;
+          const productIndex = params.row.productIndex;
+          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const isLocked = productLockedStores.has(store.code);
+
+          return (
+            <TextField
+              value={value || ''}
+              type="number"
+              disabled={isLocked}
+              onChange={(e) => {
+                const newValue = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                api.setEditCellValue({ id, field, value: Math.max(0, newValue) });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  api.stopCellEditMode({ id, field });
+                }
+              }}
+              variant="standard"
+              fullWidth
+              autoFocus
+              InputProps={{
+                sx: {
+                  fontSize: isMobile ? '1.1rem' : '0.9rem', // モバイル時は大きめに
+                  height: isMobile ? '48px' : '36px',
+                },
+              }}
+              sx={{
+                '& input': {
+                  textAlign: 'center',
+                  padding: isMobile ? '12px 8px' : '6px 4px',
+                },
+              }}
+            />
+          );
         },
       });
     });
@@ -252,460 +306,361 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     // 集計カラム
     cols.push(
       {
-        headerName: '合計',
         field: 'total',
+        headerName: '合計',
         width: 60,
-        cellStyle: {
-          textAlign: 'center',
-          backgroundColor: '#fff8e1',
-          fontWeight: '700',
-          color: '#f57f17',
-        },
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+        renderCell: (params: GridRenderCellParams<GridRowData>) => (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '700',
+              color: '#f57f17',
+              backgroundColor: '#fff8e1',
+            }}
+          >
+            {params.value}
+          </Box>
+        ),
       },
       {
-        headerName: '納品数',
         field: 'totalDelivery',
+        headerName: '納品数',
         width: 65,
-        cellStyle: {
-          textAlign: 'center',
-          fontWeight: '600',
-        },
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+        renderCell: (params: GridRenderCellParams<GridRowData>) => (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '600',
+            }}
+          >
+            {params.value}
+          </Box>
+        ),
       },
       {
-        headerName: '差異',
         field: 'difference',
+        headerName: '差異',
         width: 60,
-        cellStyle: (params) => {
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        type: 'number',
+        renderCell: (params: GridRenderCellParams<GridRowData>) => {
           const diff = params.value as number;
-          return {
-            textAlign: 'center',
-            backgroundColor: diff !== 0 ? '#ffebee' : '#e8f5e9',
-            color: diff !== 0 ? '#d32f2f' : '#388e3c',
-            fontWeight: '700',
-          };
+          return (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                color: diff !== 0 ? '#d32f2f' : '#388e3c',
+                backgroundColor: diff !== 0 ? '#ffebee' : '#e8f5e9',
+              }}
+            >
+              {diff}
+            </Box>
+          );
         },
       },
       {
-        headerName: '帳合先',
         field: 'supplier',
+        headerName: '帳合先',
         width: 120,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
       }
     );
 
     return cols;
-  }, [onAllocationChange, lockedStores, onGenerate]);
+  }, [onGenerate, lockedStores, isMobile]);
 
   /**
-   * 行クリック時のハンドラー
+   * セル更新処理（React#185対策: 非同期更新）
    */
-  const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
-    setSelectedRow(event.data || null);
-  }, []);
+  const processRowUpdate = useCallback((newRow: GridRowData, oldRow: GridRowData) => {
+    if (!onAllocationChange) return oldRow;
 
-  /**
-   * グリッド初期化完了ハンドラ
-   */
-  const handleGridReady = React.useCallback((params: any) => {
-    // AG Grid APIを保存
-    gridApiRef.current = params.api;
+    // 変更された店舗カラムを検出
+    const changedField = Object.keys(newRow).find(
+      key => key.startsWith('store_') && newRow[key] !== oldRow[key]
+    );
 
-    // 少し遅延させてローディングを非表示に
-    rafIdRef.current = requestAnimationFrame(() => {
-      timerIdRef.current = window.setTimeout(() => {
-        // コンポーネントがまだマウントされている場合のみ状態を更新
-        if (isMountedRef.current) {
-          setGridReady(true);
-        }
-      }, 200);
+    if (!changedField) return oldRow;
+
+    // 店舗コードとインデックスを取得
+    const storeCode = changedField.replace('store_', '');
+    const storeIndex = STORE_DATA.findIndex(store => store.code === storeCode);
+    if (storeIndex === -1) return oldRow;
+
+    // ロックチェック
+    const productIndex = newRow.productIndex;
+    const productLockedStores = lockedStores.get(productIndex) || new Set();
+    if (productLockedStores.has(storeCode)) {
+      return oldRow; // ロックされている場合は更新しない
+    }
+
+    // 値を検証
+    const value = Math.max(0, Math.floor((newRow[changedField] as number) || 0));
+
+    // React#185対策: DataGridの更新サイクル完了後にフォーム更新
+    queueMicrotask(() => {
+      onAllocationChange(productIndex, storeIndex, value);
     });
-  }, []);
+
+    return { ...newRow, [changedField]: value };
+  }, [onAllocationChange, lockedStores]);
 
   /**
-   * クリーンアップ処理
+   * セルが編集可能かどうか
    */
-  React.useEffect(() => {
-    // マウント時にフラグをtrueに設定
-    isMountedRef.current = true;
+  const isCellEditable = useCallback((params: any) => {
+    if (!params.field.startsWith('store_')) return false;
+    if (!onGenerate) return false; // 生成後は編集不可
 
-    return () => {
-      // アンマウント時にフラグをfalseに設定
-      isMountedRef.current = false;
+    const storeCode = params.field.replace('store_', '');
+    const productIndex = params.row.productIndex;
+    const productLockedStores = lockedStores.get(productIndex) || new Set();
 
-      // コンポーネントがアンマウントされたら非同期処理をキャンセル
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      if (timerIdRef.current !== null) {
-        clearTimeout(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-
-      // AG Gridのインスタンスを完全に破棄
-      if (gridApiRef.current) {
-        try {
-          // 編集状態を強制終了
-          gridApiRef.current.stopEditing(true);
-
-          // セル選択を解除
-          gridApiRef.current.deselectAll();
-
-          // グリッドを破棄
-          gridApiRef.current.destroy();
-        } catch (e) {
-          // destroy中のエラーは無視（既に破棄されている可能性）
-          console.warn('AG Grid cleanup error:', e);
-        } finally {
-          // 参照をクリア
-          gridApiRef.current = null;
-        }
-      }
-    };
-  }, []);
+    return !productLockedStores.has(storeCode);
+  }, [onGenerate, lockedStores]);
 
   /**
-   * グリッドオプション
+   * PDFプレビューを開く
    */
-  const gridOptions = useMemo<GridOptions<GridRowData>>(
-    () => ({
-      defaultColDef: {
-        resizable: true,
-        sortable: true,
-        filter: true,
-        floatingFilter: false,
-      },
-      rowHeight: 40,
-      headerHeight: 42,
-      suppressMovableColumns: true,
-      suppressCellFocus: false,
-      enableCellTextSelection: true,
-      animateRows: false, // パフォーマンス向上のためアニメーションを無効化
-      onRowClicked: handleRowClicked,
-      rowSelection: { mode: 'singleRow' }, // AG Grid 32.2.1以降の新しい形式
-      singleClickEdit: true, // シングルクリックで編集開始
-      stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
-      onGridReady: handleGridReady,
-      // パフォーマンス最適化
-      rowBuffer: 10,
-      suppressColumnVirtualisation: false,
-    }),
-    [handleGridReady, handleRowClicked]
-  );
+  const handlePDFPreview = () => {
+    setShowPDFPreview(true);
+  };
+
 
   return (
-    <>
-      <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-        {/* ヘッダー */}
-        <Box sx={{
-          p: 2.5,
-          borderBottom: 1,
-          borderColor: 'divider',
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Box>
-            <Typography variant="h5" fontWeight="700" color="primary.main">
-              {bookName}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              配分表プレビュー
-            </Typography>
-          </Box>
-          {/* 店舗別統計ボタン */}
-          <Button
-            variant="contained"
-            startIcon={<Assessment />}
-            onClick={() => setShowStatsModal(true)}
-            color="secondary"
-            size="medium"
-            aria-label="店舗別統計ダッシュボードを開く"
-            sx={{
-              borderRadius: 2,
-              px: { xs: 1.5, sm: 2, md: 3 },
-              py: { xs: 0.75, sm: 1 },
-              fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-              fontWeight: 600,
-              boxShadow: 3,
-              '&:hover': { boxShadow: 6 }
-            }}
-          >
-            店舗別統計
-          </Button>
-        </Box>
+    <Box sx={{ py: 2 }}>
+      {/* ヘッダー */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+          {isGenerationComplete ? '配分表（生成完了）' : '配分表プレビュー'}
+        </Typography>
 
-      {/* コンテンツ */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
-        {/* 選択行の詳細情報エリア */}
-        {selectedRow && (
-              <Box sx={{
-                p: 2,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.100',
-                borderBottom: 1,
-                borderColor: 'divider'
-              }}>
-                {/* 1行目: 店着日と集計情報 */}
-                <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                    店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                    納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                    配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? 'error.main' : 'success.main' }}>
-                    差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
-                  </Typography>
-                </Box>
-
-                {/* 2行目: 商品基本情報 */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 0.5, flexWrap: 'wrap' }}>
-                  <Typography variant="caption" color="text.secondary">
-                    産地: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.origin}</Box>
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    品名: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.productName}</Box>
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    規格: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.specification}</Box>
-                  </Typography>
-                </Box>
-
-                {/* 3行目: 価格情報 */}
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Typography variant="caption" color="text.secondary">
-                    店着原価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.storeCost}</Box>
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    税抜売価: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.priceExcludingTax}</Box>
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    入数: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.quantityPerPackage}</Box>
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    帳合先: <Box component="span" sx={{ fontWeight: 500 }}>{selectedRow.supplier}</Box>
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-
-            <Box
-              className="ag-theme-alpine"
-              sx={{
-                width: '100%',
-                height: selectedRow ? 'calc(85vh - 350px)' : 'calc(85vh - 230px)',
-                minHeight: 400,
-                '& .ag-header': {
-                  backgroundColor: '#f8f9fa',
-                  borderBottom: '2px solid #dee2e6',
-                },
-                '& .ag-header-cell': {
-                  fontWeight: '600',
-                  fontSize: '0.75rem',
-                  padding: '6px 8px',
-                },
-                '& .store-header': {
-                  backgroundColor: '#e7f1ff',
-                  fontSize: '0.7rem',
-                },
-                '& .ag-cell': {
-                  fontSize: '0.8rem',
-                  lineHeight: '40px',
-                  padding: '0 8px',
-                },
-                '& .ag-row:hover': {
-                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05) !important' : '#f8f9fa !important',
-                },
-                '& .ag-row-even': {
-                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
-                },
-                '& .ag-row-odd': {
-                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
-                },
-                '& .ag-row-selected': {
-                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.16) !important' : '#e3f2fd !important',
-                },
-              }}
-            >
-              {/* グリッド初期化中のローディングインジケーター */}
-              {!gridReady && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 1000,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 2,
-                  }}
-                >
-                  <CircularProgress size={60} />
-                  <Typography variant="body2" color="text.secondary">
-                    配分表を読み込んでいます...
-                  </Typography>
-                </Box>
-              )}
-              <AgGridReact<GridRowData>
-                rowData={rowData}
-                columnDefs={columnDefs}
-                gridOptions={gridOptions}
-              />
-        </Box>
+        {/* 統計モーダルボタン */}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<Assessment />}
+          onClick={() => setShowStatistics(true)}
+          sx={{ mr: 1 }}
+        >
+          店舗別統計
+        </Button>
       </Box>
 
-      <Divider />
-
       {/* アクションボタン */}
-      <Box sx={{
-        p: 3,
-        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.50',
-        display: 'flex',
-        gap: 2,
-        justifyContent: onGenerate ? 'center' : 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap'
-      }}>
-        {onGenerate ? (
-          /* 生成前：生成ボタンのみ */
-          <Button
-            variant="contained"
-            size="medium"
-            onClick={onGenerate}
-            aria-label="配分表のExcelテンプレートを生成"
-            sx={{
-              px: { xs: 3, sm: 4, md: 6 },
-              py: { xs: 1, sm: 1.25, md: 1.5 },
-              fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
-              fontWeight: 700,
-              borderRadius: 2,
-              boxShadow: 4,
-              '&:hover': {
-                boxShadow: 8,
-              }
-            }}
-          >
-            テンプレート生成
-          </Button>
-        ) : (
-          <>
-            {/* 生成後：左側に戻るボタン */}
-            <Box>
-              {onBack && (
+      <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {/* 生成前 */}
+          {!isGenerationComplete && onGenerate && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={<Description />}
+              onClick={onGenerate}
+              sx={{ flex: 1, minWidth: '200px' }}
+            >
+              配分表を生成
+            </Button>
+          )}
+
+          {/* 生成後 */}
+          {isGenerationComplete && (
+            <>
+              {onDownloadExcel && (
                 <Button
-                  variant="outlined"
-                  startIcon={<ArrowBack />}
-                  onClick={onBack}
-                  size="medium"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<Description />}
+                  onClick={onDownloadExcel}
                   sx={{
-                    borderRadius: 2,
-                    px: { xs: 1.5, sm: 2, md: 3 },
-                    py: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                    fontWeight: 600,
-                    borderWidth: 2,
-                    '&:hover': { borderWidth: 2, bgcolor: 'action.hover' }
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '120px',
+                    px: isMobile ? 1 : 2,
                   }}
                 >
-                  戻る
+                  Excel
                 </Button>
               )}
-            </Box>
 
-            {/* 生成後：右側にダウンロードと送信ボタン */}
-            <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5, md: 2 }, flexWrap: 'wrap' }}>
+              {pdfDownloadUrl && onDownloadPdf && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<PictureAsPdf />}
+                  onClick={onDownloadPdf}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '120px',
+                    px: isMobile ? 1 : 2,
+                  }}
+                >
+                  PDF
+                </Button>
+              )}
+
               {pdfFilename && (
                 <Button
                   variant="outlined"
                   startIcon={<PictureAsPdf />}
-                  onClick={() => setShowPDFModal(true)}
-                  color="primary"
-                  size="medium"
+                  onClick={handlePDFPreview}
                   sx={{
-                    borderRadius: 2,
-                    px: { xs: 1.5, sm: 2, md: 3 },
-                    py: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                    fontWeight: 600,
-                    borderWidth: 2,
-                    '&:hover': {
-                      borderWidth: 2,
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50'
-                    }
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 0.8 : 2,
                   }}
                 >
-                  PDFプレビュー
+                  {isMobile ? 'プレビュー' : 'PDFプレビュー'}
                 </Button>
               )}
-              {onDownloadExcel && (
-                <Button
-                  variant="contained"
-                  startIcon={<Description />}
-                  onClick={onDownloadExcel}
-                  color="success"
-                  size="medium"
-                  sx={{
-                    borderRadius: 2,
-                    px: { xs: 1.5, sm: 2, md: 3 },
-                    py: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                    fontWeight: 600,
-                    boxShadow: 3,
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                >
-                  Excelダウンロード
-                </Button>
-              )}
+
               {onSendEmail && (
                 <Button
-                  variant="contained"
+                  variant="outlined"
+                  color="info"
                   startIcon={<Send />}
                   onClick={onSendEmail}
-                  color="info"
-                  size="medium"
                   sx={{
-                    borderRadius: 2,
-                    px: { xs: 1.5, sm: 2, md: 3 },
-                    py: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                    fontWeight: 600,
-                    boxShadow: 3,
-                    '&:hover': { boxShadow: 6 }
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 1 : 2,
                   }}
                 >
                   送信
                 </Button>
               )}
-            </Box>
-          </>
-        )}
-      </Box>
+
+              {onBack && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ArrowBack />}
+                  onClick={onBack}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '100px',
+                    px: isMobile ? 0.8 : 2,
+                  }}
+                >
+                  {isMobile ? '編集' : '編集に戻る'}
+                </Button>
+              )}
+            </>
+          )}
+        </Box>
+      </Paper>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* データグリッド */}
+      <Paper elevation={1} sx={{ overflow: 'hidden' }}>
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            processRowUpdate={processRowUpdate}
+            isCellEditable={isCellEditable}
+            editMode="cell"
+            disableRowSelectionOnClick
+            hideFooter
+            onCellClick={(params) => {
+              // 編集可能なセル（店舗セル）以外をクリックした時のみ商品選択を変更
+              // これにより、店舗セルは編集可能で、他のセルをクリックすると商品が切り替わる
+              if (onProductChange && !params.field.startsWith('store_')) {
+                onProductChange(params.row.productIndex);
+              }
+            }}
+            getRowClassName={(params) => {
+              // activeProductIndexと一致する行をハイライト
+              return params.row.productIndex === activeProductIndex ? 'highlighted-row' : '';
+            }}
+            sx={{
+              border: 'none',
+              '& .MuiDataGrid-cell': {
+                borderRight: '1px solid #e0e0e0',
+                fontSize: isMobile ? '0.75rem' : '0.85rem',
+              },
+              '& .MuiDataGrid-cell:last-child': {
+                borderRight: 'none',
+              },
+              '& .MuiDataGrid-columnHeader': {
+                backgroundColor: 'primary.main',
+                color: 'white',
+                fontWeight: '700',
+                fontSize: isMobile ? '0.7rem' : '0.75rem',
+                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                whiteSpace: 'pre-wrap',
+                lineHeight: '1.2',
+              },
+              '& .MuiDataGrid-columnHeader:last-child': {
+                borderRight: 'none',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: '#f5f5f5',
+              },
+              // ハイライトされた行のスタイル
+              '& .highlighted-row': {
+                backgroundColor: '#e3f2fd !important',
+                borderLeft: '4px solid #1976d2',
+              },
+              '& .highlighted-row:hover': {
+                backgroundColor: '#bbdefb !important',
+              },
+              // 編集可能なセルのカーソル
+              '& .MuiDataGrid-cell[data-field^="store_"]': {
+                cursor: 'cell',
+              },
+            }}
+          />
+        </Box>
+      </Paper>
 
       {/* PDFプレビューモーダル */}
-      {pdfFilename && (
+      {pdfDownloadUrl && onDownloadExcel && onSendEmail && (
         <PDFPreviewModal
-          open={showPDFModal}
-          onClose={() => setShowPDFModal(false)}
-          pdfUrl={pdfUrl}
-          onDownloadExcel={onDownloadExcel || (() => {})}
-          onDownloadPdf={onDownloadPdf}
+          open={showPDFPreview}
+          onClose={() => setShowPDFPreview(false)}
+          pdfUrl={pdfDownloadUrl}
+          onDownloadExcel={onDownloadExcel}
           onSendEmail={onSendEmail}
         />
       )}
-    </Paper>
 
-    {/* 店舗別統計ダッシュボードモーダル */}
-    <StoreStatisticsModal
-      open={showStatsModal}
-      onClose={() => setShowStatsModal(false)}
-      formData={formData}
-    />
-    </>
+      {/* 店舗別統計モーダル */}
+      <StoreStatisticsModal
+        open={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        formData={formData}
+      />
+    </Box>
   );
 };

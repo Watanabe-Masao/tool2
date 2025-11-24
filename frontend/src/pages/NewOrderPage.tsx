@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
@@ -138,15 +138,14 @@ export const NewOrderPage: React.FC = () => {
   const {
     control,
     handleSubmit,
-    watch,
     reset,
     setValue,
     getValues,
     formState: { errors },
   } = methods;
 
-  // フォームデータを監視
-  const formData = watch();
+  // フォームデータを監視（React#185対策: watch()を削除し、必要に応じてgetValues()を使用）
+  // const formData = watch(); // ← これが全フォーム変更で再レンダリングを引き起こす原因！
 
   // 商品フィールド配列
   const { fields: productFields, append: appendProduct, remove: removeProduct, move: moveProduct } = useFieldArray({
@@ -158,6 +157,18 @@ export const NewOrderPage: React.FC = () => {
   const suppliers = useWatch({
     control,
     name: 'suppliers',
+  });
+
+  // 商品データを監視（AllocationPreviewContent用）
+  const products = useWatch({
+    control,
+    name: 'products',
+  });
+
+  // 店着日を監視
+  const deliveryDate = useWatch({
+    control,
+    name: 'deliveryDate',
   });
 
   /**
@@ -321,6 +332,7 @@ export const NewOrderPage: React.FC = () => {
 
   /**
    * フォームデータの自動保存（debounce付き）
+   * React#185対策: watch()を使わず、必要なフィールドのみ監視
    */
   useEffect(() => {
     if (!user || isInitialLoad.current) return;
@@ -335,7 +347,8 @@ export const NewOrderPage: React.FC = () => {
 
     // 2秒後に自動保存
     autoSaveTimer.current = window.setTimeout(() => {
-      SessionStorageService.saveDraft(user.uid, formData);
+      const currentFormData = getValues();
+      SessionStorageService.saveDraft(user.uid, currentFormData);
       console.log('Form auto-saved');
     }, 2000);
 
@@ -344,7 +357,7 @@ export const NewOrderPage: React.FC = () => {
         window.clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [formData, user]);
+  }, [products, suppliers, deliveryDate, user]);
 
   /**
    * ページ離脱時の警告
@@ -391,6 +404,7 @@ export const NewOrderPage: React.FC = () => {
 
   /**
    * NavigationContextを更新（ステップナビゲーション表示状態）
+   * React#185対策: formDataを直接監視せず、getValues()を使用
    */
   useEffect(() => {
     // 生成後のプレビュー表示中はステップナビゲーションを非アクティブに
@@ -400,11 +414,12 @@ export const NewOrderPage: React.FC = () => {
       // フォーム入力中はステップナビゲーションをアクティブに
       // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
       const isProductMode = activeStep >= 1 && activeStep <= 3;
+      const currentFormData = getValues();
       setStepNavigation(
         true,
         activeStep,
         TOTAL_STEPS,
-        formData,
+        currentFormData,
         isProductMode ? activeProductIndex : undefined,
         activeStep > 0 ? handlePrevStep : undefined,
         activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
@@ -416,7 +431,7 @@ export const NewOrderPage: React.FC = () => {
     return () => {
       setStepNavigation(false);
     };
-  }, [activeStep, activeProductIndex, showGeneratedPreview, formData, setStepNavigation]);
+  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate]);
 
   /**
    * ExcelファイルをBlobとして取得
@@ -430,14 +445,33 @@ export const NewOrderPage: React.FC = () => {
   };
 
   /**
-   * プレビュー画面での配分数量変更ハンドラ
+   * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
    */
-  const handleAllocationChange = (productIndex: number, storeIndex: number, newValue: number) => {
+  const handleAllocationChange = useCallback((productIndex: number, storeIndex: number, newValue: number) => {
     setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
       shouldValidate: true,
       shouldDirty: true,
     });
-  };
+  }, [setValue]);
+
+  /**
+   * ロック状態切り替えハンドラ（FloatingProgressSummary用）
+   */
+  const handleToggleLock = useCallback((productIndex: number, storeCode: string) => {
+    setLockedStores(prev => {
+      const newMap = new Map(prev);
+      const productLocks = new Set(newMap.get(productIndex) || []);
+
+      if (productLocks.has(storeCode)) {
+        productLocks.delete(storeCode);
+      } else {
+        productLocks.add(storeCode);
+      }
+
+      newMap.set(productIndex, productLocks);
+      return newMap;
+    });
+  }, []);
 
   /**
    * フォーム送信
@@ -842,7 +876,7 @@ export const NewOrderPage: React.FC = () => {
                       errors={errors}
                       productNameOptions={productNameAutocomplete.options}
                       originOptions={originAutocomplete.options}
-                      suppliers={formData.suppliers}
+                      suppliers={suppliers || []}
                       fields={productFields}
                       append={appendProduct}
                       remove={removeProduct}
@@ -890,7 +924,11 @@ export const NewOrderPage: React.FC = () => {
                     {!showGeneratedPreview ? (
                       /* 生成前のプレビュー */
                       <AllocationPreviewContent
-                        formData={formData}
+                        formData={{
+                          deliveryDate: deliveryDate || new Date(),
+                          suppliers: suppliers || [],
+                          products: products || [],
+                        }}
                         pdfFilename={undefined}
                         onGenerate={handleSubmit(onSubmit)}
                         onAllocationChange={handleAllocationChange}
@@ -898,12 +936,18 @@ export const NewOrderPage: React.FC = () => {
                         setLockedStores={setLockedStores}
                         selectedCategories={selectedCategories}
                         setSelectedCategories={setSelectedCategories}
+                        activeProductIndex={activeProductIndex}
+                        onProductChange={setActiveProductIndex}
                       />
                     ) : (
                       /* 生成後のプレビュー */
                       generatedFiles && (
                         <AllocationPreviewContent
-                          formData={formData}
+                          formData={{
+                            deliveryDate: deliveryDate || new Date(),
+                            suppliers: suppliers || [],
+                            products: products || [],
+                          }}
                           pdfFilename={generatedFiles.pdfFilename}
                           pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
                           onDownloadExcel={handleDownloadExcel}
@@ -919,6 +963,8 @@ export const NewOrderPage: React.FC = () => {
                           setLockedStores={setLockedStores}
                           selectedCategories={selectedCategories}
                           setSelectedCategories={setSelectedCategories}
+                          activeProductIndex={activeProductIndex}
+                          onProductChange={setActiveProductIndex}
                         />
                       )
                     )}
@@ -989,7 +1035,11 @@ export const NewOrderPage: React.FC = () => {
         <AllocationPreviewModal
           open={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
-          formData={formData}
+          formData={{
+            deliveryDate: deliveryDate || new Date(),
+            suppliers: suppliers || [],
+            products: products || [],
+          }}
           pdfFilename={generatedFiles?.pdfFilename}
           onDownloadExcel={handleDownloadExcel}
         />
@@ -1008,7 +1058,11 @@ export const NewOrderPage: React.FC = () => {
         {/* フローティング進捗サマリー */}
         {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
-            formData={formData}
+            formData={{
+              deliveryDate: deliveryDate || new Date(),
+              suppliers: suppliers || [],
+              products: products || [],
+            }}
             activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
             activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
@@ -1018,6 +1072,9 @@ export const NewOrderPage: React.FC = () => {
             onClearProduct={handleClearProduct}
             onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
             onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
+            onAllocationChange={activeStep === 4 ? handleAllocationChange : undefined}
+            lockedStores={lockedStores}
+            onToggleLock={activeStep === 4 ? handleToggleLock : undefined}
           />
         )}
 

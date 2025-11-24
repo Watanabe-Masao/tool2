@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useNavigationContext } from '@/context/NavigationContext';
+import { StoreAllocationEditModal } from '@/components/modals/StoreAllocationEditModal';
 
 /**
  * FloatingProgressSummaryのProps
@@ -58,6 +59,12 @@ interface FloatingProgressSummaryProps {
   onPrevStep?: () => void;
   /** 次のステップへ移動するハンドラー */
   onNextStep?: () => void;
+  /** 配分数変更ハンドラ（モーダル用） */
+  onAllocationChange?: (productIndex: number, storeIndex: number, value: number) => void;
+  /** ロックされた店舗のMap（商品別） */
+  lockedStores?: Map<number, Set<string>>;
+  /** ロック状態変更ハンドラ */
+  onToggleLock?: (productIndex: number, storeCode: string) => void;
 }
 
 /**
@@ -79,11 +86,22 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onClearProduct,
   onPrevStep,
   onNextStep,
+  onAllocationChange,
+  lockedStores,
+  onToggleLock,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showProgressSummary } = useNavigationContext();
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // 配分編集モーダルの状態
+  const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
+
+  // 長押し検知用
+  const longPressTimerRef = React.useRef<number | null>(null);
+  const [isPressing, setIsPressing] = useState(false);
 
   /**
    * 進捗サマリーが非表示になる際にフォーカスを外す（aria-hidden警告を防ぐ）
@@ -133,6 +151,49 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       onClearProduct(menuProductIndex);
     }
     handleCardMenuClose();
+  };
+
+  /**
+   * 長押し開始
+   */
+  const handleTouchStart = (productIndex: number) => {
+    setIsPressing(true);
+    longPressTimerRef.current = window.setTimeout(() => {
+      // 500ms長押しで配分編集モーダルを開く
+      if (onAllocationChange && activeStep === 4) {
+        setEditingProductIndex(productIndex);
+        setAllocationModalOpen(true);
+        setIsPressing(false);
+      }
+    }, 500);
+  };
+
+  /**
+   * 長押し終了/キャンセル
+   */
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setIsPressing(false);
+  };
+
+  /**
+   * 配分編集モーダルを閉じる
+   */
+  const handleAllocationModalClose = () => {
+    setAllocationModalOpen(false);
+    setEditingProductIndex(null);
+  };
+
+  /**
+   * ロック切り替え（モーダル用）
+   */
+  const handleToggleLock = (storeCode: string) => {
+    if (editingProductIndex !== null && onToggleLock) {
+      onToggleLock(editingProductIndex, storeCode);
+    }
   };
 
   /**
@@ -354,6 +415,12 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                         setMenuProductIndex(index);
                         setCardMenuAnchor(e.currentTarget);
                       }}
+                      onTouchStart={() => handleTouchStart(index)}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchCancel={handleTouchEnd}
+                      onMouseDown={() => handleTouchStart(index)}
+                      onMouseUp={handleTouchEnd}
+                      onMouseLeave={handleTouchEnd}
                       sx={{
                         minWidth: 180,
                         maxWidth: 180,
@@ -362,6 +429,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
                         borderColor: isActive ? 'primary.main' : 'grey.300',
                         bgcolor: isActive ? 'primary.50' : 'background.paper',
                         transition: 'all 0.2s',
+                        transform: isPressing && index === activeProductIndex ? 'scale(0.95)' : 'scale(1)',
                         '&:hover': {
                           borderColor: 'primary.main',
                           boxShadow: 2,
@@ -569,7 +637,15 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         </IconButton>
 
         {/* 中央：ステップ表示 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flex: 1,
+          justifyContent: 'center',
+          maxWidth: '33%',
+          margin: '0 auto',
+        }}>
           <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
             ステップ {activeStep + 1} / {totalSteps}
           </Typography>
@@ -770,6 +846,19 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           </MenuItem>
         )}
       </Menu>
+
+      {/* 配分編集モーダル */}
+      {editingProductIndex !== null && onAllocationChange && lockedStores && (
+        <StoreAllocationEditModal
+          open={allocationModalOpen}
+          onClose={handleAllocationModalClose}
+          formData={formData}
+          productIndex={editingProductIndex}
+          onAllocationChange={onAllocationChange}
+          lockedStores={lockedStores.get(editingProductIndex) || new Set()}
+          onToggleLock={handleToggleLock}
+        />
+      )}
     </Paper>
   );
 };
