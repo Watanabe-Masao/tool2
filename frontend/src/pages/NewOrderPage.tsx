@@ -572,9 +572,15 @@ export const NewOrderPage: React.FC = () => {
       try {
         showLoading();
 
-        // 相対URLを絶対URLに変換（Service Worker問題を回避）
-        const absoluteUrl = new URL(generatedFiles.downloadUrl, window.location.origin).href;
+        // 相対URLを絶対URLに変換
+        // Firebase Hosting版では環境変数のバックエンドURLを使用
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
+          : window.location.origin; // Render版（同一オリジン）
+        const absoluteUrl = new URL(generatedFiles.downloadUrl, baseUrl).href;
         console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
+        console.log('📥 Base URL:', baseUrl);
         console.log('📥 Absolute URL:', absoluteUrl);
 
         // fetchでファイルを取得してContent-Typeを確認
@@ -627,9 +633,15 @@ export const NewOrderPage: React.FC = () => {
       try {
         showLoading();
 
-        // 相対URLを絶対URLに変換（Service Worker問題を回避）
-        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, window.location.origin).href;
+        // 相対URLを絶対URLに変換
+        // Firebase Hosting版では環境変数のバックエンドURLを使用
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
+          : window.location.origin; // Render版（同一オリジン）
+        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, baseUrl).href;
         console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
+        console.log('📥 Base URL:', baseUrl);
         console.log('📥 Absolute URL:', absoluteUrl);
 
         // PDFをfetchしてblobとして取得
