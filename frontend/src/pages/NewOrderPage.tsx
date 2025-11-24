@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
+import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
+import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -717,39 +718,18 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* ブック名入力ダイアログ */}
-        <Dialog open={bookNameDialog.open} onClose={() => setBookNameDialog({ open: false, bookName: '' })}>
-          <DialogTitle>ブック名を入力</DialogTitle>
-          <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>
-              生成するExcelファイルのブック名を指定できます（オプション）
-            </DialogContentText>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="ブック名"
-              placeholder="例: テスト"
-              fullWidth
-              value={bookNameDialog.bookName}
-              onChange={(e) => setBookNameDialog({ ...bookNameDialog, bookName: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleBookNameDialogConfirm();
-                }
-              }}
-              helperText="未入力の場合は日付のみのファイル名になります"
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setBookNameDialog({ open: false, bookName: '' })} color="inherit">
-              キャンセル
-            </Button>
-            <Button onClick={handleBookNameDialogConfirm} variant="contained" color="primary">
-              生成
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* 注文関連ダイアログ */}
+        <OrderDialogs
+          bookNameDialog={bookNameDialog}
+          onBookNameDialogChange={setBookNameDialog}
+          onBookNameDialogConfirm={handleBookNameDialogConfirm}
+          restoreDialogOpen={restoreDialogOpen}
+          onRestoreDraft={handleRestoreDraft}
+          onDiscardDraft={handleDiscardDraft}
+          supplierRemovalDialog={supplierRemovalDialog}
+          onConfirmSupplierRemoval={handleConfirmSupplierRemoval}
+          onCancelSupplierRemoval={handleCancelSupplierRemoval}
+        />
 
         {/* ダウンロードモーダル（iPhone Safari用） */}
         {generatedFiles && (
@@ -809,48 +789,6 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* 下書き復元確認ダイアログ */}
-        <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
-          <DialogTitle>下書きを復元しますか？</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              前回の入力内容が見つかりました。続きから入力を再開できます。
-            </DialogContentText>
-            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-              下書きは24時間保存されます。復元しない場合、新規に入力を開始します。
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDiscardDraft} color="inherit">
-              新規入力
-            </Button>
-            <Button onClick={handleRestoreDraft} color="primary" variant="contained">
-              復元する
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* 帳合先削除確認ダイアログ */}
-        <Dialog open={supplierRemovalDialog.open} onClose={handleCancelSupplierRemoval}>
-          <DialogTitle>帳合先の削除確認</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              削除しようとしている帳合先「{supplierRemovalDialog.suppliersToRemove.join('、')}」は
-              {supplierRemovalDialog.affectedProductsCount}件の商品カードで使用されています。
-            </DialogContentText>
-            <DialogContentText sx={{ mt: 1.5 }}>
-              帳合先を削除すると、これらの商品カードも削除されます。続行しますか？
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancelSupplierRemoval} color="inherit">
-              キャンセル
-            </Button>
-            <Button onClick={handleConfirmSupplierRemoval} color="error" variant="contained">
-              削除する
-            </Button>
-          </DialogActions>
-        </Dialog>
     </FormProvider>
   );
 };
