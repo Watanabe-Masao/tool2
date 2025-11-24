@@ -22,6 +22,10 @@ interface NavigationContextType {
   onNextStep?: () => void;
   /** 商品切り替えハンドラー */
   onProductChange?: (index: number) => void;
+  /** FloatingProgressSummaryの表示状態（モバイル用） */
+  showProgressSummary: boolean;
+  /** FloatingProgressSummaryの表示切り替え */
+  toggleProgressSummary: () => void;
   /** ステップナビゲーション状態を設定 */
   setStepNavigation: (
     active: boolean,
@@ -49,6 +53,11 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   const [onPrevStep, setOnPrevStep] = useState<(() => void) | undefined>(undefined);
   const [onNextStep, setOnNextStep] = useState<(() => void) | undefined>(undefined);
   const [onProductChange, setOnProductChange] = useState<((index: number) => void) | undefined>(undefined);
+  const [showProgressSummary, setShowProgressSummary] = useState(false);
+
+  const toggleProgressSummary = () => {
+    setShowProgressSummary((prev) => !prev);
+  };
 
   const setStepNavigation = (
     active: boolean,
@@ -81,6 +90,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
         onPrevStep,
         onNextStep,
         onProductChange,
+        showProgressSummary,
+        toggleProgressSummary,
         setStepNavigation,
       }}
     >

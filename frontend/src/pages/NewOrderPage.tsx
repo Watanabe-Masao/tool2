@@ -106,7 +106,7 @@ export const NewOrderPage: React.FC = () => {
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
-  const { setStepNavigation } = useNavigationContext();
+  const { setStepNavigation, showProgressSummary } = useNavigationContext();
 
   // オフライン同期
   const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
@@ -1005,8 +1005,8 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* フローティング進捗サマリー（モバイルでは非表示、ボトムナビゲーションに統合） */}
-        {!showGeneratedPreview && !isMobile && (
+        {/* フローティング進捗サマリー */}
+        {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
             formData={formData}
             activeStep={activeStep}
