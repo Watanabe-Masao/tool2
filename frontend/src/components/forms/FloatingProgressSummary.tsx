@@ -85,6 +85,20 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const { showProgressSummary } = useNavigationContext();
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  /**
+   * 進捗サマリーが非表示になる際にフォーカスを外す（aria-hidden警告を防ぐ）
+   */
+  React.useEffect(() => {
+    if (!showProgressSummary && containerRef.current) {
+      // コンテナ内のフォーカスされている要素を確認
+      const focusedElement = document.activeElement as HTMLElement;
+      if (containerRef.current.contains(focusedElement)) {
+        // フォーカスを外す
+        focusedElement.blur();
+      }
+    }
+  }, [showProgressSummary]);
+
   // カードコンテキストメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProductIndex, setMenuProductIndex] = useState<number | null>(null);
@@ -582,7 +596,11 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       </Box>
 
       {/* 詳細（折りたたみ可能） */}
-      <Collapse in={showProgressSummary}>
+      <Collapse
+        in={showProgressSummary}
+        timeout="auto"
+        unmountOnExit
+      >
         {isProductMode ? (
           /* 商品モード: 商品カードを表示 */
           <Box sx={{ bgcolor: 'background.paper' }}>

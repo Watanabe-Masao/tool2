@@ -362,7 +362,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       enableCellTextSelection: true,
       animateRows: false, // パフォーマンス向上のためアニメーションを無効化
       onRowClicked: handleRowClicked,
-      rowSelection: 'single',
+      rowSelection: { mode: 'singleRow' }, // AG Grid 32.2.1以降の新しい形式
       singleClickEdit: true, // シングルクリックで編集開始
       stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
       onGridReady: handleGridReady,
