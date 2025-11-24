@@ -4,13 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormSteps } from '@/components/order/OrderFormSteps';
+import { OrderModals } from '@/components/order/OrderModals';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
-import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
-import { DownloadModal } from '@/components/modals/DownloadModal';
-import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
-import { EmailSendModal } from '@/components/modals/EmailSendModal';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
@@ -624,18 +621,7 @@ export const NewOrderPage: React.FC = () => {
           </Container>
         </Box>
 
-      {/* PDFプレビューモーダル */}
-        {generatedFiles && generatedFiles.pdfDownloadUrl && (
-          <PDFPreviewModal
-            open={showPDFPreview}
-            onClose={() => setShowPDFPreview(false)}
-            pdfUrl={generatedFiles.pdfDownloadUrl}
-            onDownloadExcel={handleDownloadExcel}
-            onSendEmail={() => setShowEmailModal(true)}
-          />
-        )}
-
-        {/* 注文関連ダイアログ */}
+      {/* 注文関連ダイアログ */}
         <OrderDialogs
           bookNameDialog={bookNameDialog}
           onBookNameDialogChange={setBookNameDialog}
@@ -648,40 +634,26 @@ export const NewOrderPage: React.FC = () => {
           onCancelSupplierRemoval={handleCancelSupplierRemoval}
         />
 
-        {/* ダウンロードモーダル（iPhone Safari用） */}
-        {generatedFiles && (
-          <DownloadModal
-            open={showDownloadModal}
-            onClose={() => setShowDownloadModal(false)}
-            downloadUrl={generatedFiles.downloadUrl}
-            filename={generatedFiles.filename}
-            onSendEmail={() => setShowEmailModal(true)}
-          />
-        )}
-
-        {/* 配分表プレビューモーダル */}
-        <AllocationPreviewModal
-          open={showPreviewModal}
-          onClose={() => setShowPreviewModal(false)}
-          formData={{
-            deliveryDate: deliveryDate || new Date(),
-            suppliers: suppliers || [],
-            products: products || [],
-          }}
-          pdfFilename={generatedFiles?.pdfFilename}
+        {/* 注文関連モーダル */}
+        <OrderModals
+          generatedFiles={generatedFiles}
+          excelBlob={excelBlob}
+          userSettings={userSettings}
+          user={user}
+          deliveryDate={deliveryDate}
+          suppliers={suppliers || []}
+          products={products || []}
+          showPDFPreview={showPDFPreview}
+          onClosePDFPreview={() => setShowPDFPreview(false)}
+          showDownloadModal={showDownloadModal}
+          onCloseDownloadModal={() => setShowDownloadModal(false)}
+          showPreviewModal={showPreviewModal}
+          onClosePreviewModal={() => setShowPreviewModal(false)}
+          showEmailModal={showEmailModal}
+          onCloseEmailModal={() => setShowEmailModal(false)}
           onDownloadExcel={handleDownloadExcel}
+          onSendEmail={() => setShowEmailModal(true)}
         />
-
-        {/* メール送信モーダル */}
-        {generatedFiles && (
-          <EmailSendModal
-            open={showEmailModal}
-            onClose={() => setShowEmailModal(false)}
-            userName={userSettings?.emailSenderName || user?.displayName || user?.email || undefined}
-            attachment={excelBlob || undefined}
-            filename={generatedFiles.filename}
-          />
-        )}
 
         {/* フローティング進捗サマリー */}
         {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
