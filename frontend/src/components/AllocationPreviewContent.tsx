@@ -345,7 +345,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   }, [onGenerate, lockedStores]);
 
   /**
-   * セル更新処理
+   * セル更新処理（React#185対策: 非同期更新）
    */
   const processRowUpdate = useCallback((newRow: GridRowData, oldRow: GridRowData) => {
     if (!onAllocationChange) return oldRow;
@@ -369,9 +369,13 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       return oldRow; // ロックされている場合は更新しない
     }
 
-    // 値を検証して更新
+    // 値を検証
     const value = Math.max(0, Math.floor((newRow[changedField] as number) || 0));
-    onAllocationChange(productIndex, storeIndex, value);
+
+    // React#185対策: DataGridの更新サイクル完了後にフォーム更新
+    queueMicrotask(() => {
+      onAllocationChange(productIndex, storeIndex, value);
+    });
 
     return { ...newRow, [changedField]: value };
   }, [onAllocationChange, lockedStores]);

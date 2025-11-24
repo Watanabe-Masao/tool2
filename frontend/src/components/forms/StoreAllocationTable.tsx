@@ -288,7 +288,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         ], [toggleLock, lockedStores]);
 
         /**
-         * セル更新処理
+         * セル更新処理（React#185対策: 非同期更新）
          */
         const processRowUpdate = useCallback((newRow: StoreRowData, oldRow: StoreRowData) => {
           // ロックされている場合は更新しない
@@ -303,13 +303,15 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
           const storeIndex = STORE_DATA.findIndex((store) => store.code === newRow.storeCode);
           if (storeIndex === -1) return oldRow;
 
-          // 新しい配列を作成して更新
-          const newAllocations = [...allocations];
-          newAllocations[storeIndex] = value;
-          field.onChange(newAllocations);
+          // React#185対策: DataGridの更新サイクル完了後にフォーム更新
+          queueMicrotask(() => {
+            const newAllocations = [...allocations];
+            newAllocations[storeIndex] = value;
+            field.onChange(newAllocations);
+          });
 
           return { ...newRow, allocation: value };
-        }, [allocations, field, lockedStores]);
+        }, [allocations, field]);
 
         /**
          * セルが編集可能かどうか
