@@ -196,6 +196,8 @@ describe('useHistoryTracking', () => {
     });
 
     it('空の商品リストでも動作する', async () => {
+      vi.clearAllMocks(); // テスト前に明示的にクリア
+
       const dataWithNoProducts: OrderFormData = {
         ...mockFormData,
         products: [],
@@ -213,14 +215,17 @@ describe('useHistoryTracking', () => {
     });
 
     it('specification が空文字の場合も正しく処理', async () => {
+      vi.clearAllMocks(); // テスト前に明示的にクリア
+
       const { result } = renderHook(() => useHistoryTracking(defaultParams));
 
       await act(async () => {
         await result.current.saveAllHistories(mockFormData);
       });
 
-      // Product B（specification: ''）
-      expect(FirestoreService.saveProductHistory).toHaveBeenCalledWith(
+      // Product B（specification: ''） - 2番目の呼び出し
+      expect(FirestoreService.saveProductHistory).toHaveBeenNthCalledWith(
+        2, // 2番目の呼び出し
         'test-user-123',
         'supplier2',
         'Product B',
@@ -233,6 +238,8 @@ describe('useHistoryTracking', () => {
     });
 
     it('複数回呼び出しても動作する', async () => {
+      vi.clearAllMocks(); // テスト前に明示的にクリア
+
       const { result } = renderHook(() => useHistoryTracking(defaultParams));
 
       await act(async () => {

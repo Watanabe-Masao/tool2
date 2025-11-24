@@ -45,20 +45,27 @@ describe('useFileDownloads', () => {
       blob: () => Promise.resolve(new Blob(['test'], { type: 'application/vnd.ms-excel' })),
     } as Response);
 
-    // Mock document.createElement
+    // Mock document.createElement - 'a' タグのみをモック
     mockLink = {
       href: '',
       download: '',
       click: vi.fn(),
     } as unknown as HTMLAnchorElement;
 
-    vi.spyOn(document, 'createElement').mockReturnValue(mockLink);
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'a') {
+        return mockLink;
+      }
+      return originalCreateElement(tagName);
+    });
+
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink);
     vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // vi.restoreAllMocks() を削除 - document.createElement のモックを保持
   });
 
   describe('downloadExcel', () => {
