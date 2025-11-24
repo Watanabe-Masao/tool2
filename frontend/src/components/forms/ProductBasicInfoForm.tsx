@@ -179,7 +179,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   /**
    * 選択した商品を一括追加
    */
-  const handleBulkAddProducts = (presets: ProductHistoryItem[]) => {
+  const handleBulkAddProducts = (presets: Array<ProductHistoryItem & { totalDelivery?: number }>) => {
     if (presets.length === 0) return;
 
     // 現在のアクティブな商品が空かどうかをチェック
@@ -202,6 +202,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       setValue(`products.${activeTabIndex}.specification`, firstPreset.specification);
       setValue(`products.${activeTabIndex}.quantityPerPackage`, firstPreset.quantityPerPackage);
       setValue(`products.${activeTabIndex}.unit`, firstPreset.unit);
+      // 数量が入力されている場合はtotalDeliveryに反映
+      setValue(`products.${activeTabIndex}.totalDelivery`, firstPreset.totalDelivery || 0);
       startIndex = 1; // 2番目のプリセットから追加開始
     }
 
@@ -217,7 +219,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         specification: preset.specification,
         quantityPerPackage: preset.quantityPerPackage,
         unit: preset.unit,
-        totalDelivery: 0,
+        // 数量が入力されている場合はtotalDeliveryに反映
+        totalDelivery: preset.totalDelivery || 0,
         storeAllocations: new Array(STORE_COUNT).fill(0),
       });
     }

@@ -19,6 +19,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Badge,
+  TextField,
 } from '@mui/material';
 import { Close, Inventory2, Delete, PushPin, PushPinOutlined, ExpandMore } from '@mui/icons-material';
 import {
@@ -65,6 +66,8 @@ interface SortablePresetItemProps {
   multiSelect?: boolean;
   isSelected?: boolean;
   isDuplicate?: boolean;
+  quantity?: number;
+  onQuantityChange?: (presetId: string, quantity: number) => void;
 }
 
 /**
@@ -80,6 +83,8 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   multiSelect = false,
   isSelected = false,
   isDuplicate = false,
+  quantity = 0,
+  onQuantityChange,
 }) => {
   const {
     attributes,
@@ -179,15 +184,41 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
           touchAction: multiSelect ? 'auto' : 'none',
         }}
       >
-        {/* 複数選択モードのチェックボックス */}
+        {/* 複数選択モードのチェックボックスと数量入力 */}
         {multiSelect && (
-          <Checkbox
-            edge="start"
-            checked={isSelected}
-            tabIndex={-1}
-            disableRipple
-            sx={{ mr: 1 }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+            <Checkbox
+              edge="start"
+              checked={isSelected}
+              tabIndex={-1}
+              disableRipple
+            />
+            {/* 選択時に数量入力欄を表示 */}
+            {isSelected && onQuantityChange && (
+              <TextField
+                type="number"
+                size="small"
+                value={quantity || ''}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  const val = parseInt(e.target.value) || 0;
+                  onQuantityChange(preset.id, val);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="数量"
+                inputProps={{
+                  min: 0,
+                  style: { textAlign: 'center', width: '60px' }
+                }}
+                sx={{
+                  width: '80px',
+                  '& .MuiOutlinedInput-root': {
+                    height: '32px',
+                  },
+                }}
+              />
+            )}
+          </Box>
         )}
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* ピン留めアイコン */}
@@ -265,8 +296,8 @@ interface ProductPresetModalProps {
   suppliers?: string[];
   /** 複数選択モード */
   multiSelect?: boolean;
-  /** 複数選択時のハンドラー */
-  onSelectMultiple?: (presets: ProductHistoryItem[]) => void;
+  /** 複数選択時のハンドラー（商品と数量を渡す） */
+  onSelectMultiple?: (presets: Array<ProductHistoryItem & { totalDelivery?: number }>) => void;
   /** 現在の商品データ（重複チェック用） */
   currentProducts?: Array<{
     name: string;
@@ -310,13 +341,17 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   // 複数選択モード用の選択状態
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // 複数選択モード用の数量状態（Map<presetId, quantity>）
+  const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
+
   // モーダルが開いたときに初期帳合先を設定
   useEffect(() => {
     if (open) {
       setSelectedSupplier(supplier || suppliers?.[0] || '');
-      // モーダルを開いたときに選択状態をクリア
+      // モーダルを開いたときに選択状態と数量をクリア
       if (multiSelect) {
         setSelectedIds(new Set());
+        setQuantities(new Map());
       }
     }
   }, [open, supplier, suppliers, multiSelect]);
@@ -568,10 +603,27 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
       newSelected.delete(id);
+      // 選択解除時に数量もクリア
+      const newQuantities = new Map(quantities);
+      newQuantities.delete(id);
+      setQuantities(newQuantities);
     } else {
       newSelected.add(id);
     }
     setSelectedIds(newSelected);
+  };
+
+  /**
+   * 数量変更ハンドラー（複数選択モード用）
+   */
+  const handleQuantityChange = (presetId: string, quantity: number) => {
+    const newQuantities = new Map(quantities);
+    if (quantity > 0) {
+      newQuantities.set(presetId, quantity);
+    } else {
+      newQuantities.delete(presetId);
+    }
+    setQuantities(newQuantities);
   };
 
   /**
@@ -580,6 +632,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   const handleSelectAll = () => {
     if (selectedIds.size === filteredPresets.length) {
       setSelectedIds(new Set());
+      setQuantities(new Map());
     } else {
       setSelectedIds(new Set(filteredPresets.map((p) => p.id)));
     }
@@ -590,6 +643,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    */
   const handleClearSelection = () => {
     setSelectedIds(new Set());
+    setQuantities(new Map());
   };
 
   /**
@@ -597,9 +651,15 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    */
   const handleAddSelected = () => {
     if (onSelectMultiple && selectedIds.size > 0) {
-      const selectedPresets = filteredPresets.filter((p) => selectedIds.has(p.id));
+      const selectedPresets = filteredPresets
+        .filter((p) => selectedIds.has(p.id))
+        .map((preset) => ({
+          ...preset,
+          totalDelivery: quantities.get(preset.id) || 0,
+        }));
       onSelectMultiple(selectedPresets);
       setSelectedIds(new Set());
+      setQuantities(new Map());
       onClose();
     }
   };
@@ -917,6 +977,8 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                           multiSelect={multiSelect}
                           isSelected={selectedIds.has(preset.id)}
                           isDuplicate={isDuplicate(preset)}
+                          quantity={quantities.get(preset.id) || 0}
+                          onQuantityChange={handleQuantityChange}
                         />
                       </SortableContext>
                     </DndContext>
@@ -1015,6 +1077,8 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                   multiSelect={multiSelect}
                                   isSelected={selectedIds.has(preset.id)}
                                   isDuplicate={isDuplicate(preset)}
+                                  quantity={quantities.get(preset.id) || 0}
+                                  onQuantityChange={handleQuantityChange}
                                 />
                               ))}
                           </SortableContext>
@@ -1034,6 +1098,8 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                 multiSelect={multiSelect}
                                 isSelected={selectedIds.has(preset.id)}
                                 isDuplicate={isDuplicate(preset)}
+                                quantity={quantities.get(preset.id) || 0}
+                                onQuantityChange={handleQuantityChange}
                               />
                             ))}
                         </List>
