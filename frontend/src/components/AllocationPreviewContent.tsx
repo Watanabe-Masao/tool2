@@ -232,7 +232,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
             return false;
           }
 
-          // React#185対策: 状態更新を非同期で実行
+          // React#185対策: startTransitionで低優先度の更新として実行
           if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
             const productLockedStores = lockedStores.get(productIndex) || new Set();
@@ -241,11 +241,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               const parsedValue = parseInt(params.newValue, 10);
               const newValue = isNaN(parsedValue) || parsedValue < 0 ? 0 : parsedValue;
 
-              // 状態更新を非同期で実行
-              queueMicrotask(() => {
-                if (isMountedRef.current) {
-                  onAllocationChange(productIndex, storeIndex, newValue);
-                }
+              // startTransitionで低優先度の更新として実行
+              React.startTransition(() => {
+                onAllocationChange(productIndex, storeIndex, newValue);
               });
             }
           }
@@ -302,7 +300,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   }, [onAllocationChange, lockedStores, onGenerate]);
 
   /**
-   * 行クリック時のハンドラー（React#185対策: 非同期化）
+   * 行クリック時のハンドラー（React#185対策: startTransition使用）
    */
   const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
     // コンポーネントがマウントされている場合のみ処理
@@ -310,11 +308,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       return;
     }
 
-    // React#185対策: 状態更新を非同期で実行
-    queueMicrotask(() => {
-      if (isMountedRef.current) {
-        setSelectedRow(event.data || null);
-      }
+    // React#185対策: startTransitionで低優先度の更新として実行
+    React.startTransition(() => {
+      setSelectedRow(event.data || null);
     });
   }, []);
 

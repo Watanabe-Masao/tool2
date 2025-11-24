@@ -113,7 +113,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
   }, []);
 
   /**
-   * ロック状態をトグル（React#185対策: 非同期化）
+   * ロック状態をトグル（React#185対策: startTransition使用）
    */
   const toggleLock = useCallback((storeCode: string) => {
     // コンポーネントがマウントされている場合のみ処理
@@ -121,12 +121,8 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
       return;
     }
 
-    // React#185対策: 状態更新を非同期で実行
-    queueMicrotask(() => {
-      if (!isMountedRef.current) {
-        return;
-      }
-
+    // React#185対策: startTransitionで低優先度の更新として実行
+    React.startTransition(() => {
       setLockedStores((prev) => {
         const next = new Set(prev);
         if (next.has(storeCode)) {
@@ -162,7 +158,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
         /**
-         * 配分数変更ハンドラー（React#185対策: 非同期化）
+         * 配分数変更ハンドラー（React#185対策: startTransition使用）
          */
         const handleChange = (index: number, value: number) => {
           // コンポーネントがマウントされている場合のみ処理
@@ -173,11 +169,9 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
           const newAllocations = [...allocations];
           newAllocations[index] = value < 0 ? 0 : value;
 
-          // React#185対策: field.onChangeを非同期で実行
-          queueMicrotask(() => {
-            if (isMountedRef.current) {
-              field.onChange(newAllocations);
-            }
+          // React#185対策: startTransitionで低優先度の更新として実行
+          React.startTransition(() => {
+            field.onChange(newAllocations);
           });
         };
 

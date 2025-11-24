@@ -83,12 +83,12 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   }, []);
 
   /**
-   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋非同期化）
+   * 商品別のsetLockedStores関数を生成（React#185対策: メモ化＋startTransition）
    */
   const createSetLockedStoresForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      // React#185対策: 状態更新を非同期で実行
-      queueMicrotask(() => {
+      // React#185対策: startTransitionで低優先度の更新として実行
+      React.startTransition(() => {
         setLockedStores((prev) => {
           const newMap = new Map(prev);
           const currentSet = prev.get(productIndex) || new Set();
@@ -101,12 +101,12 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
   }, [setLockedStores]);
 
   /**
-   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋非同期化）
+   * 商品別のsetSelectedCategories関数を生成（React#185対策: メモ化＋startTransition）
    */
   const createSetSelectedCategoriesForProduct = React.useCallback((productIndex: number) => {
     return (updater: React.SetStateAction<Set<string>>) => {
-      // React#185対策: 状態更新を非同期で実行
-      queueMicrotask(() => {
+      // React#185対策: startTransitionで低優先度の更新として実行
+      React.startTransition(() => {
         setSelectedCategories((prev) => {
           const newMap = new Map(prev);
           const currentSet = prev.get(productIndex) || new Set();
