@@ -10,10 +10,11 @@ import {
 import {
   AddCircle,
   CalendarToday,
-  Person,
-  Settings,
+  DarkMode,
+  LightMode,
 } from '@mui/icons-material';
 import { haptic } from '@/utils/hapticFeedback';
+import { useThemeContext } from '@/context/ThemeContext';
 
 /**
  * ナビゲーションアイテムの定義
@@ -32,16 +33,9 @@ const navigationItems = [
     value: 'calendar',
   },
   {
-    label: 'プロフィール',
-    icon: <Person />,
-    path: '/profile',
-    value: 'profile',
-  },
-  {
-    label: '設定',
-    icon: <Settings />,
-    path: '/store-categories',
-    value: 'settings',
+    label: 'テーマ',
+    value: 'theme',
+    // アイコンは動的に変更
   },
 ];
 
@@ -53,12 +47,14 @@ const navigationItems = [
  * - ハプティックフィードバック対応
  * - アクティブ状態の視覚的強調
  * - スマートフォンのみ表示（タブレット・デスクトップでは非表示）
+ * - ダークモード切り替え機能
  */
 export const MobileBottomNav: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { mode: themeMode, toggleTheme } = useThemeContext();
 
   // モバイル以外では表示しない
   if (!isMobile) {
@@ -67,18 +63,25 @@ export const MobileBottomNav: React.FC = () => {
 
   // 現在のパスから値を取得
   const currentValue = navigationItems.find((item) =>
-    location.pathname.startsWith(item.path)
+    item.path && location.pathname.startsWith(item.path)
   )?.value || 'new-order';
 
   /**
    * ナビゲーション変更ハンドラー
    */
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
+    // ハプティックフィードバック
+    haptic('light');
+
+    // テーマ切り替えの場合
+    if (newValue === 'theme') {
+      toggleTheme();
+      return;
+    }
+
+    // ページ遷移
     const item = navigationItems.find((item) => item.value === newValue);
-    if (item) {
-      // ハプティックフィードバック
-      haptic('light');
-      // ページ遷移
+    if (item && item.path) {
       history.push(item.path);
     }
   };
@@ -121,14 +124,36 @@ export const MobileBottomNav: React.FC = () => {
           },
         }}
       >
-        {navigationItems.map((item) => (
-          <BottomNavigationAction
-            key={item.value}
-            label={item.label}
-            value={item.value}
-            icon={item.icon}
-          />
-        ))}
+        {navigationItems.map((item) => {
+          // テーマ切り替えボタンは動的にアイコンを変更
+          if (item.value === 'theme') {
+            return (
+              <BottomNavigationAction
+                key={item.value}
+                label={themeMode === 'dark' ? 'ライト' : 'ダーク'}
+                value={item.value}
+                icon={themeMode === 'dark' ? <LightMode /> : <DarkMode />}
+                sx={{
+                  '& .MuiSvgIcon-root': {
+                    transition: 'transform 0.3s ease',
+                  },
+                  '&:active .MuiSvgIcon-root': {
+                    transform: 'rotate(20deg) scale(1.1)',
+                  },
+                }}
+              />
+            );
+          }
+
+          return (
+            <BottomNavigationAction
+              key={item.value}
+              label={item.label}
+              value={item.value}
+              icon={item.icon}
+            />
+          );
+        })}
       </BottomNavigation>
     </Paper>
   );
