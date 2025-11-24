@@ -29,8 +29,11 @@ import {
   CalendarToday,
   Person,
   Settings,
+  DarkMode,
+  LightMode,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
+import { useThemeContext } from '@/context/ThemeContext';
 import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
@@ -44,6 +47,7 @@ import type { UserSettings } from '@/types/userSettings';
  */
 export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
+  const { mode: themeMode, toggleTheme } = useThemeContext();
   const { isOnline, isSyncing, unsyncedCount } = useDataSync();
   const history = useHistory();
   const location = useLocation();
@@ -399,6 +403,28 @@ export const Header: React.FC = () => {
           {/* ユーザー情報 */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* ダークモード切り替えボタン */}
+              <IconButton
+                size="small"
+                onClick={toggleTheme}
+                color="inherit"
+                aria-label={themeMode === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+                title={themeMode === 'dark' ? 'ライトモード' : 'ダークモード'}
+                sx={{
+                  color: 'white',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'rotate(20deg)',
+                  },
+                }}
+              >
+                {themeMode === 'dark' ? (
+                  <LightMode fontSize="small" />
+                ) : (
+                  <DarkMode fontSize="small" />
+                )}
+              </IconButton>
+
               {/* ビルド情報ボタン */}
               <BuildInfo />
 

@@ -1,54 +1,109 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, PaletteMode } from '@mui/material/styles';
 import { jaJP } from '@mui/material/locale';
 
 /**
- * MUIテーマ設定
- * 日本語対応 + カスタムカラー + 世界基準のUI/UX最適化
+ * カラーパレット定義
+ * ライトモード/ダークモードで最適化されたカラーシステム
  */
-export const theme = createTheme(
+const lightPalette = {
+  primary: {
+    main: '#1976d2',      // 青
+    light: '#42a5f5',
+    dark: '#1565c0',
+    contrastText: '#ffffff',
+  },
+  secondary: {
+    main: '#dc004e',      // ピンク
+    light: '#e33371',
+    dark: '#9a0036',
+    contrastText: '#ffffff',
+  },
+  error: {
+    main: '#d32f2f',
+    light: '#ef5350',
+    dark: '#c62828',
+  },
+  warning: {
+    main: '#ed6c02',
+    light: '#ff9800',
+    dark: '#e65100',
+  },
+  info: {
+    main: '#0288d1',
+    light: '#03a9f4',
+    dark: '#01579b',
+  },
+  success: {
+    main: '#2e7d32',
+    light: '#4caf50',
+    dark: '#1b5e20',
+  },
+  background: {
+    default: '#fafafa',
+    paper: '#ffffff',
+  },
+  text: {
+    primary: 'rgba(0, 0, 0, 0.87)',
+    secondary: 'rgba(0, 0, 0, 0.6)',
+    disabled: 'rgba(0, 0, 0, 0.38)',
+  },
+};
+
+const darkPalette = {
+  primary: {
+    main: '#90caf9',      // ライトブルー（ダークモードで見やすい）
+    light: '#e3f2fd',
+    dark: '#42a5f5',
+    contrastText: '#000000',
+  },
+  secondary: {
+    main: '#f48fb1',      // ライトピンク
+    light: '#ffc1e3',
+    dark: '#bf5f82',
+    contrastText: '#000000',
+  },
+  error: {
+    main: '#f44336',
+    light: '#e57373',
+    dark: '#d32f2f',
+  },
+  warning: {
+    main: '#ffa726',
+    light: '#ffb74d',
+    dark: '#f57c00',
+  },
+  info: {
+    main: '#29b6f6',
+    light: '#4fc3f7',
+    dark: '#0288d1',
+  },
+  success: {
+    main: '#66bb6a',
+    light: '#81c784',
+    dark: '#388e3c',
+  },
+  background: {
+    default: '#121212',   // Material Design Dark推奨
+    paper: '#1e1e1e',     // カード背景
+  },
+  text: {
+    primary: 'rgba(255, 255, 255, 0.87)',
+    secondary: 'rgba(255, 255, 255, 0.6)',
+    disabled: 'rgba(255, 255, 255, 0.38)',
+  },
+};
+
+/**
+ * アプリケーションテーマ作成関数
+ *
+ * @param mode - 'light' または 'dark'
+ * @returns MUIテーマオブジェクト
+ */
+export const createAppTheme = (mode: PaletteMode = 'light') => createTheme(
   {
     palette: {
-      primary: {
-        main: '#1976d2', // 青
-        light: '#42a5f5',
-        dark: '#1565c0',
-        contrastText: '#ffffff',
-      },
-      secondary: {
-        main: '#dc004e', // ピンク
-        light: '#e33371',
-        dark: '#9a0036',
-        contrastText: '#ffffff',
-      },
-      error: {
-        main: '#d32f2f',
-        light: '#ef5350',
-        dark: '#c62828',
-      },
-      warning: {
-        main: '#ed6c02',
-        light: '#ff9800',
-        dark: '#e65100',
-      },
-      info: {
-        main: '#0288d1',
-        light: '#03a9f4',
-        dark: '#01579b',
-      },
-      success: {
-        main: '#2e7d32',
-        light: '#4caf50',
-        dark: '#1b5e20',
-      },
-      background: {
-        default: '#fafafa',
-        paper: '#ffffff',
-      },
-      text: {
-        primary: 'rgba(0, 0, 0, 0.87)',
-        secondary: 'rgba(0, 0, 0, 0.6)',
-        disabled: 'rgba(0, 0, 0, 0.38)',
-      },
+      mode,
+      ...(mode === 'light' ? lightPalette : darkPalette),
     },
     typography: {
       fontFamily: [
@@ -203,14 +258,18 @@ export const theme = createTheme(
       },
       MuiCard: {
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             borderRadius: 12, // 8px → 12px (より現代的)
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
+            boxShadow: theme.palette.mode === 'dark'
+              ? '0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)'
+              : '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
             transition: 'box-shadow 0.2s, transform 0.2s',
             '&:hover': {
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06)',
+              boxShadow: theme.palette.mode === 'dark'
+                ? '0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3)'
+                : '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06)',
             },
-          },
+          }),
         },
       },
       MuiAppBar: {
@@ -249,3 +308,9 @@ export const theme = createTheme(
   },
   jaJP // 日本語ロケール
 );
+
+/**
+ * デフォルトテーマ（ライトモード）
+ * 後方互換性のために維持
+ */
+export const theme = createAppTheme('light');
