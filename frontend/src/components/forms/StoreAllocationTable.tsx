@@ -262,51 +262,46 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
         }, [allocations, lockedStores]);
 
         /**
-         * カラム定義（React#185対策: cellRendererをHTML要素のみに変更）
+         * セルクリックハンドラー（React#185対策: イベントリスナーを使わない）
+         */
+        const handleCellClicked = useCallback((event: any) => {
+          if (!isMountedRef.current || !event.data) return;
+
+          // ロック列がクリックされた場合のみ処理
+          if (event.column.getColId() === 'locked') {
+            toggleLock(event.data.storeCode);
+          }
+        }, [toggleLock]);
+
+        /**
+         * カラム定義（React#185対策: イベントリスナーを完全に排除）
          */
         const columnDefs = useMemo<ColDef<StoreRowData>[]>(
           () => [
             {
               headerName: 'ロック',
               field: 'locked',
+              colId: 'locked',
               width: 80,
               cellRenderer: (params: any) => {
                 if (!params.data) return '';
                 const locked = params.data.locked;
-                const storeCode = params.data.storeCode;
 
-                // シンプルなHTML要素を返す（Reactコンポーネントを使わない）
-                const icon = document.createElement('div');
-                icon.style.cssText = `
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100%;
-                  cursor: pointer;
-                  font-size: 20px;
-                  color: ${locked ? '#f57c00' : '#9e9e9e'};
-                  transition: color 0.2s;
+                // イベントリスナーを一切使わない純粋な表示のみ
+                return `
+                  <div style="
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100%;
+                    cursor: pointer;
+                    font-size: 20px;
+                    color: ${locked ? '#f57c00' : '#9e9e9e'};
+                    user-select: none;
+                  " title="${locked ? 'ロック解除' : 'ロック'}">
+                    ${locked ? '🔒' : '🔓'}
+                  </div>
                 `;
-                icon.innerHTML = locked ? '🔒' : '🔓';
-                icon.title = locked ? 'ロック解除' : 'ロック';
-
-                // イベントリスナーを追加（React外で管理）
-                icon.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  if (isMountedRef.current) {
-                    toggleLock(storeCode);
-                  }
-                });
-
-                icon.addEventListener('mouseenter', () => {
-                  icon.style.color = locked ? '#e65100' : '#757575';
-                });
-
-                icon.addEventListener('mouseleave', () => {
-                  icon.style.color = locked ? '#f57c00' : '#9e9e9e';
-                });
-
-                return icon;
               },
               cellStyle: { textAlign: 'center', padding: '0' } as any,
             },
@@ -373,7 +368,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
               },
             },
           ],
-          [lockedStores, toggleLock, handleChange]
+          [lockedStores, handleChange]
         );
 
         /**
@@ -403,8 +398,9 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
             stopEditingWhenCellsLoseFocus: true,
             suppressReactUi: true, // React#185対策: ReactUIを抑制してDOM操作に統一
             onGridReady: handleGridReady,
+            onCellClicked: handleCellClicked, // React#185対策: セルクリックで処理
           }),
-          [handleGridReady]
+          [handleGridReady, handleCellClicked]
         );
 
         return (
