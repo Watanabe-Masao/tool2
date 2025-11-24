@@ -5,6 +5,7 @@ import {
   Button,
   Paper,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
 import { AgGridReact } from 'ag-grid-react';
@@ -101,6 +102,16 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const [showPDFModal, setShowPDFModal] = useState(false);
   // 店舗別統計モーダルの開閉状態
   const [showStatsModal, setShowStatsModal] = useState(false);
+  // グリッド初期化完了フラグ
+  const [gridReady, setGridReady] = useState(false);
+
+  // 非同期処理のキャンセル用
+  const rafIdRef = React.useRef<number | null>(null);
+  const timerIdRef = React.useRef<number | null>(null);
+  const isMountedRef = React.useRef<boolean>(true);
+
+  // AG Grid APIリファレンス
+  const gridApiRef = React.useRef<any>(null);
 
   // PDF URL（pdfDownloadUrlが優先、なければ従来のpdfFilenameから生成）
   const pdfUrl = pdfDownloadUrl || (pdfFilename ? TemplateService.getPdfPreviewUrl(pdfFilename) : '');
@@ -216,6 +227,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           return isNaN(num) || num < 0 ? 0 : num;
         },
         valueSetter: (params) => {
+          // コンポーネントがマウントされている場合のみ処理
+          if (!isMountedRef.current) {
+            return false;
+          }
+
           // セルの値を更新する代わりに、親コンポーネントに通知
           if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
@@ -282,9 +298,70 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   /**
    * 行クリック時のハンドラー
    */
-  const handleRowClicked = (event: RowClickedEvent<GridRowData>) => {
+  const handleRowClicked = React.useCallback((event: RowClickedEvent<GridRowData>) => {
     setSelectedRow(event.data || null);
-  };
+  }, []);
+
+  /**
+   * グリッド初期化完了ハンドラ
+   */
+  const handleGridReady = React.useCallback((params: any) => {
+    // AG Grid APIを保存
+    gridApiRef.current = params.api;
+
+    // 少し遅延させてローディングを非表示に
+    rafIdRef.current = requestAnimationFrame(() => {
+      timerIdRef.current = window.setTimeout(() => {
+        // コンポーネントがまだマウントされている場合のみ状態を更新
+        if (isMountedRef.current) {
+          setGridReady(true);
+        }
+      }, 200);
+    });
+  }, []);
+
+  /**
+   * クリーンアップ処理
+   */
+  React.useEffect(() => {
+    // マウント時にフラグをtrueに設定
+    isMountedRef.current = true;
+
+    return () => {
+      // アンマウント時にフラグをfalseに設定
+      isMountedRef.current = false;
+
+      // コンポーネントがアンマウントされたら非同期処理をキャンセル
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      if (timerIdRef.current !== null) {
+        clearTimeout(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+
+      // AG Gridのインスタンスを完全に破棄
+      if (gridApiRef.current) {
+        try {
+          // 編集状態を強制終了
+          gridApiRef.current.stopEditing(true);
+
+          // セル選択を解除
+          gridApiRef.current.deselectAll();
+
+          // グリッドを破棄
+          gridApiRef.current.destroy();
+        } catch (e) {
+          // destroy中のエラーは無視（既に破棄されている可能性）
+          console.warn('AG Grid cleanup error:', e);
+        } finally {
+          // 参照をクリア
+          gridApiRef.current = null;
+        }
+      }
+    };
+  }, []);
 
   /**
    * グリッドオプション
@@ -302,20 +379,32 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       suppressMovableColumns: true,
       suppressCellFocus: false,
       enableCellTextSelection: true,
-      animateRows: true,
+      animateRows: false, // パフォーマンス向上のためアニメーションを無効化
       onRowClicked: handleRowClicked,
-      rowSelection: 'single',
+      rowSelection: { mode: 'singleRow' }, // AG Grid 32.2.1以降の新しい形式
       singleClickEdit: true, // シングルクリックで編集開始
       stopEditingWhenCellsLoseFocus: true, // フォーカスを失ったら編集終了
+      onGridReady: handleGridReady,
+      // パフォーマンス最適化
+      rowBuffer: 10,
+      suppressColumnVirtualisation: false,
     }),
-    []
+    [handleGridReady, handleRowClicked]
   );
 
   return (
     <>
       <Paper elevation={3} sx={{ width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         {/* ヘッダー */}
-        <Box sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{
+          p: 2.5,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <Box>
             <Typography variant="h5" fontWeight="700" color="primary.main">
               {bookName}
@@ -350,19 +439,24 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Box sx={{ flexGrow: 1, overflow: 'auto', position: 'relative', minHeight: 400, maxHeight: 'calc(85vh - 150px)' }}>
         {/* 選択行の詳細情報エリア */}
         {selectedRow && (
-              <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+              <Box sx={{
+                p: 2,
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.100',
+                borderBottom: 1,
+                borderColor: 'divider'
+              }}>
                 {/* 1行目: 店着日と集計情報 */}
                 <Box sx={{ display: 'flex', gap: 3, mb: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     店着日: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.deliveryDate}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     納品数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.totalDelivery}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     配分数: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.total}</Box>
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? '#d32f2f' : '#388e3c' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: selectedRow.difference !== 0 ? 'error.main' : 'success.main' }}>
                     差異: <Box component="span" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedRow.difference}</Box>
                   </Typography>
                 </Box>
@@ -423,19 +517,40 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                   padding: '0 8px',
                 },
                 '& .ag-row:hover': {
-                  backgroundColor: '#f8f9fa !important',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05) !important' : '#f8f9fa !important',
                 },
                 '& .ag-row-even': {
-                  backgroundColor: '#ffffff',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
                 },
                 '& .ag-row-odd': {
-                  backgroundColor: '#fafafa',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.default : '#fafafa',
                 },
                 '& .ag-row-selected': {
-                  backgroundColor: '#e3f2fd !important',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.16) !important' : '#e3f2fd !important',
                 },
               }}
             >
+              {/* グリッド初期化中のローディングインジケーター */}
+              {!gridReady && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <CircularProgress size={60} />
+                  <Typography variant="body2" color="text.secondary">
+                    配分表を読み込んでいます...
+                  </Typography>
+                </Box>
+              )}
               <AgGridReact<GridRowData>
                 rowData={rowData}
                 columnDefs={columnDefs}
@@ -447,7 +562,15 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Divider />
 
       {/* アクションボタン */}
-      <Box sx={{ p: 3, bgcolor: 'grey.50', display: 'flex', gap: 2, justifyContent: onGenerate ? 'center' : 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box sx={{
+        p: 3,
+        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : 'grey.50',
+        display: 'flex',
+        gap: 2,
+        justifyContent: onGenerate ? 'center' : 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
         {onGenerate ? (
           /* 生成前：生成ボタンのみ */
           <Button
@@ -510,7 +633,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                     fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 600,
                     borderWidth: 2,
-                    '&:hover': { borderWidth: 2, bgcolor: 'primary.50' }
+                    '&:hover': {
+                      borderWidth: 2,
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'primary.50'
+                    }
                   }}
                 >
                   PDFプレビュー

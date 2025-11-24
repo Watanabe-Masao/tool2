@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField } from '@mui/material';
+import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
 import { orderFormSchema } from '@/schemas/orderSchema';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
@@ -20,6 +20,7 @@ import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
+import { useNavigationContext } from '@/context/NavigationContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -44,6 +45,10 @@ const TOTAL_STEPS = 5;
  * 5. 配分プレビュー・生成
  */
 export const NewOrderPage: React.FC = () => {
+  // テーマとメディアクエリ
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [activeStep, setActiveStep] = useState(0);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -101,6 +106,7 @@ export const NewOrderPage: React.FC = () => {
 
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+  const { setStepNavigation, showProgressSummary } = useNavigationContext();
 
   // オフライン同期
   const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
@@ -364,6 +370,53 @@ export const NewOrderPage: React.FC = () => {
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveStep(newValue);
   };
+
+  /**
+   * 前のステップへ移動
+   */
+  const handlePrevStep = () => {
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+    }
+  };
+
+  /**
+   * 次のステップへ移動
+   */
+  const handleNextStep = () => {
+    if (activeStep < TOTAL_STEPS - 1) {
+      setActiveStep(activeStep + 1);
+    }
+  };
+
+  /**
+   * NavigationContextを更新（ステップナビゲーション表示状態）
+   */
+  useEffect(() => {
+    // 生成後のプレビュー表示中はステップナビゲーションを非アクティブに
+    if (showGeneratedPreview) {
+      setStepNavigation(false);
+    } else {
+      // フォーム入力中はステップナビゲーションをアクティブに
+      // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
+      const isProductMode = activeStep >= 1 && activeStep <= 3;
+      setStepNavigation(
+        true,
+        activeStep,
+        TOTAL_STEPS,
+        formData,
+        isProductMode ? activeProductIndex : undefined,
+        activeStep > 0 ? handlePrevStep : undefined,
+        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
+        isProductMode ? setActiveProductIndex : undefined
+      );
+    }
+
+    // コンポーネントがアンマウントされる時にステップナビゲーションを非アクティブに
+    return () => {
+      setStepNavigation(false);
+    };
+  }, [activeStep, activeProductIndex, showGeneratedPreview, formData, setStepNavigation]);
 
   /**
    * ExcelファイルをBlobとして取得
@@ -752,7 +805,8 @@ export const NewOrderPage: React.FC = () => {
 
               {/* コンテンツエリア（スクロール可能） */}
               <Box sx={{
-                height: `calc(100vh - 144px - ${progressSummaryHeight}px)`,
+                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary (desktop only)
+                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${isMobile ? 0 : progressSummaryHeight}px)`,
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
@@ -951,8 +1005,8 @@ export const NewOrderPage: React.FC = () => {
           />
         )}
 
-        {/* フローティング進捗サマリー（フォーム入力時のみ表示） */}
-        {!showGeneratedPreview && (
+        {/* フローティング進捗サマリー */}
+        {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
             formData={formData}
             activeStep={activeStep}
@@ -962,6 +1016,8 @@ export const NewOrderPage: React.FC = () => {
             onHeightChange={setProgressSummaryHeight}
             onRemoveProduct={handleRemoveProduct}
             onClearProduct={handleClearProduct}
+            onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
+            onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
           />
         )}
 

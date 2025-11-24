@@ -83,6 +83,8 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
   const [fitMode, setFitMode] = useState<FitMode>('width');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [pageInputValue, setPageInputValue] = useState<string>('1');
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isIPhone = isIPhoneSafari();
@@ -186,6 +188,61 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
   };
 
   /**
+   * PDFファイルをfetchしてArrayBufferとして読み込み
+   */
+  useEffect(() => {
+    if (!open || !pdfUrl || isIPhone) {
+      return;
+    }
+
+    const fetchPdfData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setPdfData(null);
+
+        console.log('📄 Fetching PDF from URL:', pdfUrl);
+
+        // 相対URLを絶対URLに変換
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '')
+          : window.location.origin;
+        const absoluteUrl = new URL(pdfUrl, baseUrl).href;
+
+        console.log('📄 Absolute PDF URL:', absoluteUrl);
+
+        const response = await fetch(absoluteUrl);
+
+        console.log('📄 PDF Response status:', response.status);
+        console.log('📄 PDF Response Content-Type:', response.headers.get('Content-Type'));
+
+        if (!response.ok) {
+          throw new Error(`PDFの取得に失敗しました: ${response.status} ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('Content-Type');
+        if (contentType && !contentType.includes('application/pdf')) {
+          console.error('📄 Unexpected Content-Type:', contentType);
+          throw new Error(`PDFファイルではありません: ${contentType}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        console.log('📄 PDF ArrayBuffer size:', arrayBuffer.byteLength, 'bytes');
+
+        setPdfData(arrayBuffer);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('📄 PDF fetch error:', err);
+        setError(err instanceof Error ? err.message : 'PDFの読み込みに失敗しました');
+        setIsLoading(false);
+      }
+    };
+
+    fetchPdfData();
+  }, [open, pdfUrl, isIPhone]);
+
+  /**
    * モーダルを閉じる時の処理
    */
   const handleClose = () => {
@@ -195,6 +252,8 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
     setRotation(0);
     setFitMode('width');
     setError(null);
+    setPdfData(null);
+    setIsLoading(false);
     if (document.fullscreenElement) {
       document.exitFullscreen();
     }
@@ -516,8 +575,16 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
               </Box>
             )}
 
+            {/* ローディング表示 */}
+            {isLoading && !error && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4 }}>
+                <CircularProgress />
+                <Typography sx={{ mt: 2 }}>PDFを読み込んでいます...</Typography>
+              </Box>
+            )}
+
             {/* PDFプレビュー */}
-            {!error && (
+            {!error && !isLoading && pdfData && (
               <Box
                 sx={{
                   display: 'flex',
@@ -528,13 +595,13 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
                 }}
               >
                 <Document
-                  file={pdfUrl}
+                  file={{ data: pdfData }}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
                   loading={
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4 }}>
                       <CircularProgress />
-                      <Typography sx={{ mt: 2 }}>PDFを読み込んでいます...</Typography>
+                      <Typography sx={{ mt: 2 }}>PDFを処理しています...</Typography>
                     </Box>
                   }
                   error={

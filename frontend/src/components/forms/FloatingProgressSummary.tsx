@@ -14,10 +14,10 @@ import {
   ListItemIcon,
   ListItemText,
   Grow,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
-  ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as UncheckedIcon,
   Warning as WarningIcon,
@@ -32,6 +32,7 @@ import './FloatingProgressSummary.css';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { useNavigationContext } from '@/context/NavigationContext';
 
 /**
  * FloatingProgressSummaryのProps
@@ -53,6 +54,10 @@ interface FloatingProgressSummaryProps {
   onRemoveProduct?: (index: number) => void;
   /** 商品フィールドクリアハンドラー */
   onClearProduct?: (index: number) => void;
+  /** 前のステップへ移動するハンドラー */
+  onPrevStep?: () => void;
+  /** 次のステップへ移動するハンドラー */
+  onNextStep?: () => void;
 }
 
 /**
@@ -72,9 +77,27 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   onHeightChange,
   onRemoveProduct,
   onClearProduct,
+  onPrevStep,
+  onNextStep,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { showProgressSummary } = useNavigationContext();
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  /**
+   * 進捗サマリーが非表示になる際にフォーカスを外す（aria-hidden警告を防ぐ）
+   */
+  React.useEffect(() => {
+    if (!showProgressSummary && containerRef.current) {
+      // コンテナ内のフォーカスされている要素を確認
+      const focusedElement = document.activeElement as HTMLElement;
+      if (containerRef.current.contains(focusedElement)) {
+        // フォーカスを外す
+        focusedElement.blur();
+      }
+    }
+  }, [showProgressSummary]);
 
   // カードコンテキストメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
@@ -133,7 +156,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     return () => {
       resizeObserver.disconnect();
     };
-  }, [onHeightChange, expanded, isProductMode, formData.products.length]);
+  }, [onHeightChange, showProgressSummary, isProductMode, formData.products.length]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -508,7 +531,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       elevation={8}
       sx={{
         position: 'fixed',
-        bottom: 0,
+        bottom: isMobile ? '64px' : 0,
         left: 0,
         right: 0,
         zIndex: 1000,
@@ -523,33 +546,61 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          p: 2,
-          cursor: 'pointer',
+          p: isMobile ? 1 : 2,
           bgcolor: 'primary.main',
           color: 'primary.contrastText',
-          borderRadius: expanded ? '16px 16px 0 0' : '16px 16px 0 0',
+          borderRadius: showProgressSummary ? '16px 16px 0 0' : '16px 16px 0 0',
         }}
-        onClick={() => setExpanded(!expanded)}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body1" fontWeight="bold">
-            進捗: {progress}%
-          </Typography>
-          <Typography variant="body2">
+        {/* 前へボタン */}
+        <IconButton
+          size="small"
+          onClick={onPrevStep}
+          disabled={!onPrevStep}
+          sx={{
+            color: 'inherit',
+            p: isMobile ? 0.5 : 1,
+            '&.Mui-disabled': {
+              color: 'rgba(255, 255, 255, 0.3)',
+            },
+          }}
+        >
+          <ChevronLeftIcon fontSize={isMobile ? 'small' : 'medium'} />
+        </IconButton>
+
+        {/* 中央：ステップ表示 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
+          <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
             ステップ {activeStep + 1} / {totalSteps}
+          </Typography>
+          <Typography variant={isMobile ? 'caption' : 'body2'}>
+            • {progress}%
           </Typography>
         </Box>
 
+        {/* 次へボタン */}
         <IconButton
           size="small"
-          sx={{ color: 'inherit' }}
+          onClick={onNextStep}
+          disabled={!onNextStep}
+          sx={{
+            color: 'inherit',
+            p: isMobile ? 0.5 : 1,
+            '&.Mui-disabled': {
+              color: 'rgba(255, 255, 255, 0.3)',
+            },
+          }}
         >
-          {expanded ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          <ChevronRightIcon fontSize={isMobile ? 'small' : 'medium'} />
         </IconButton>
       </Box>
 
       {/* 詳細（折りたたみ可能） */}
-      <Collapse in={expanded}>
+      <Collapse
+        in={showProgressSummary}
+        timeout="auto"
+        unmountOnExit
+      >
         {isProductMode ? (
           /* 商品モード: 商品カードを表示 */
           <Box sx={{ bgcolor: 'background.paper' }}>

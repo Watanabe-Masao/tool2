@@ -49,8 +49,11 @@ export const UserProfilePage: React.FC = () => {
   const [emailSettingsDialogOpen, setEmailSettingsDialogOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [emailSenderName, setEmailSenderName] = useState('');
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerNameDialogOpen, setBuyerNameDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [buyerNameSaveSuccess, setBuyerNameSaveSuccess] = useState(false);
   const [addressBookModalOpen, setAddressBookModalOpen] = useState(false);
 
   /**
@@ -79,6 +82,7 @@ export const UserProfilePage: React.FC = () => {
         const settings = await UserSettingsService.getOrCreate(user.uid);
         setUserSettings(settings);
         setEmailSenderName(settings.emailSenderName || user.displayName || user.email || '');
+        setBuyerName(settings.buyerName || '');
       } catch (error) {
         console.error('Error loading user settings:', error);
       }
@@ -120,6 +124,44 @@ export const UserProfilePage: React.FC = () => {
       }, 1500);
     } catch (error) {
       console.error('Error saving email settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 担当バイヤー名設定を開く
+   */
+  const handleOpenBuyerNameSettings = () => {
+    setBuyerName(userSettings?.buyerName || '');
+    setBuyerNameSaveSuccess(false);
+    setBuyerNameDialogOpen(true);
+  };
+
+  /**
+   * 担当バイヤー名設定を保存
+   */
+  const handleSaveBuyerNameSettings = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      if (userSettings) {
+        await UserSettingsService.update(user.uid, { buyerName });
+      } else {
+        await UserSettingsService.create({ userId: user.uid, buyerName });
+      }
+
+      const updatedSettings = await UserSettingsService.get(user.uid);
+      setUserSettings(updatedSettings);
+      setBuyerNameSaveSuccess(true);
+
+      setTimeout(() => {
+        setBuyerNameDialogOpen(false);
+        setBuyerNameSaveSuccess(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving buyer name settings:', error);
     } finally {
       setLoading(false);
     }
@@ -221,6 +263,43 @@ export const UserProfilePage: React.FC = () => {
                     />
                   </ListItem>
                 </List>
+              </CardContent>
+            </Card>
+
+            {/* 担当バイヤー名カード */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    担当バイヤー名
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<Edit />}
+                    onClick={handleOpenBuyerNameSettings}
+                  >
+                    編集
+                  </Button>
+                </Box>
+                <List disablePadding>
+                  <ListItem>
+                    <ListItemIcon>
+                      <AccountCircle color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="担当バイヤー名"
+                      secondary={userSettings?.buyerName || '未設定'}
+                      secondaryTypographyProps={{
+                        sx: {
+                          wordBreak: 'break-all',
+                        },
+                      }}
+                    />
+                  </ListItem>
+                </List>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, px: 2 }}>
+                  配分表に表示される担当バイヤー名を設定できます
+                </Typography>
               </CardContent>
             </Card>
 
@@ -366,6 +445,49 @@ export const UserProfilePage: React.FC = () => {
             </Button>
             <Button
               onClick={handleSaveEmailSettings}
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 担当バイヤー名編集ダイアログ */}
+        <Dialog
+          open={buyerNameDialogOpen}
+          onClose={() => !loading && setBuyerNameDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>担当バイヤー名設定</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              配分表に表示される担当バイヤー名を設定できます。
+            </DialogContentText>
+            {buyerNameSaveSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                保存しました
+              </Alert>
+            )}
+            <TextField
+              autoFocus
+              fullWidth
+              label="担当バイヤー名"
+              value={buyerName}
+              onChange={(e) => setBuyerName(e.target.value)}
+              placeholder="例: 山田 太郎"
+              helperText="配分表の担当バイヤー欄に表示されます"
+              disabled={loading}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBuyerNameDialogOpen(false)} color="inherit" disabled={loading}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleSaveBuyerNameSettings}
               variant="contained"
               disabled={loading}
             >

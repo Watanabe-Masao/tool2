@@ -1,13 +1,12 @@
 import React from 'react';
 import { Route, Switch, Redirect } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { IonApp } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { CircularProgress, Box } from '@mui/material';
-import { theme } from './theme';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { NavigationProvider } from './context/NavigationContext';
 import { NetworkStatus } from './components/common/NetworkStatus';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -87,11 +86,12 @@ const AppContent: React.FC = () => {
  */
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <AppContent />
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>

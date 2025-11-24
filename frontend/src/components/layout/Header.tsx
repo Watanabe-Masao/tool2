@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -21,7 +21,6 @@ import {
   LinearProgress,
   Snackbar,
   Alert,
-  TextField,
 } from '@mui/material';
 import {
   Logout,
@@ -29,13 +28,13 @@ import {
   CalendarToday,
   Person,
   Settings,
+  Keyboard,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
-import { UserSettingsService } from '@/services/firebase/userSettingsService';
-import type { UserSettings } from '@/types/userSettings';
+import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
 
 /**
  * ヘッダーコンポーネント
@@ -55,69 +54,10 @@ export const Header: React.FC = () => {
   const [longPressProgress, setLongPressProgress] = useState(0);
   const [showClearMessage, setShowClearMessage] = useState(false);
   const [clearMessage, setClearMessage] = useState('');
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [buyerName, setBuyerName] = useState('');
-  const [isSavingBuyerName, setIsSavingBuyerName] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
 
   const longPressTimer = useRef<number | null>(null);
   const longPressInterval = useRef<number | null>(null);
-  const buyerNameSaveTimer = useRef<number | null>(null);
-
-  /**
-   * ユーザー設定を読み込み
-   */
-  useEffect(() => {
-    const loadUserSettings = async () => {
-      if (!user) return;
-      try {
-        const settings = await UserSettingsService.get(user.uid);
-        setUserSettings(settings);
-        if (settings) {
-          setBuyerName(settings.buyerName || '');
-        }
-      } catch (error) {
-        console.error('ユーザー設定の読み込みエラー:', error);
-      }
-    };
-    loadUserSettings();
-  }, [user]);
-
-  /**
-   * バイヤー名の変更ハンドラ（デバウンス付き自動保存）
-   */
-  const handleBuyerNameChange = async (newValue: string) => {
-    setBuyerName(newValue);
-
-    // 既存のタイマーをクリア
-    if (buyerNameSaveTimer.current) {
-      clearTimeout(buyerNameSaveTimer.current);
-    }
-
-    // 1秒後に保存
-    buyerNameSaveTimer.current = window.setTimeout(async () => {
-      if (!user) return;
-      setIsSavingBuyerName(true);
-      try {
-        if (userSettings) {
-          await UserSettingsService.update(user.uid, {
-            buyerName: newValue,
-          });
-        } else {
-          await UserSettingsService.create({
-            userId: user.uid,
-            buyerName: newValue,
-          });
-        }
-        // 設定を再読み込み
-        const updatedSettings = await UserSettingsService.get(user.uid);
-        setUserSettings(updatedSettings);
-      } catch (error) {
-        console.error('バイヤー名の保存エラー:', error);
-      } finally {
-        setIsSavingBuyerName(false);
-      }
-    }, 1000);
-  };
 
   /**
    * ユーザーメニューを開く
@@ -354,9 +294,9 @@ export const Header: React.FC = () => {
             </Box>
           )}
 
-          {/* ナビゲーションメニュー（モバイルではコンパクト表示） */}
-          {user && (
-            <Box sx={{ flexGrow: 1, display: 'flex', gap: isMobile ? 0.5 : 1 }}>
+          {/* ナビゲーションメニュー（モバイルでは非表示、ボトムナビゲーションを使用） */}
+          {user && !isMobile && (
+            <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
               {navigationItems.map((item) => (
                 <IconButton
                   key={item.path}
@@ -365,7 +305,7 @@ export const Header: React.FC = () => {
                   size="small"
                   sx={{
                     borderRadius: 1,
-                    px: isMobile ? 0.5 : 1.5,
+                    px: 1.5,
                     py: 0.5,
                     color: location.pathname === item.path ? 'primary.main' : 'white',
                     bgcolor: location.pathname === item.path ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
@@ -379,54 +319,78 @@ export const Header: React.FC = () => {
                     fontSize: 'small',
                     sx: { color: location.pathname === item.path ? 'primary.main' : 'white' }
                   })}
-                  {!isMobile && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        ml: 0.5,
-                        fontWeight: location.pathname === item.path ? 600 : 400,
-                        color: location.pathname === item.path ? 'primary.main' : 'white',
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                  )}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      ml: 0.5,
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                      color: location.pathname === item.path ? 'primary.main' : 'white',
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
                 </IconButton>
               ))}
             </Box>
           )}
 
-          {/* ユーザー情報 */}
+          {/* モバイル時のスペーサー */}
+          {user && isMobile && <Box sx={{ flexGrow: 1 }} />}
+
+          {/* 右側アクション */}
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* キーボードショートカットヘルプボタン */}
+              {!isMobile && (
+                <IconButton
+                  size="small"
+                  onClick={() => setShortcutsDialogOpen(true)}
+                  color="inherit"
+                  aria-label="キーボードショートカット"
+                  title="キーボードショートカット (Ctrl+/)"
+                  sx={{
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  <Keyboard fontSize="small" />
+                </IconButton>
+              )}
+
               {/* ビルド情報ボタン */}
               <BuildInfo />
 
-              {/* ユーザーメニューボタン */}
+              {/* 設定メニューボタン */}
               <IconButton
                 size="small"
                 onClick={handleMenuOpen}
                 color="inherit"
-                aria-label="ユーザーメニュー"
+                aria-label="設定メニューを開く"
+                aria-haspopup="true"
+                aria-expanded={Boolean(anchorEl)}
+                aria-controls={anchorEl ? 'settings-menu' : undefined}
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
               >
-                <Person fontSize="small" sx={{ color: 'white' }} />
-                {!isMobile && user.displayName && (
-                  <Typography variant="caption" sx={{ color: 'white' }}>
-                    {user.displayName}
-                  </Typography>
-                )}
+                <Settings fontSize="small" />
               </IconButton>
 
-              {/* ユーザーメニュー */}
+              {/* 設定メニュー */}
               <Menu
+                id="settings-menu"
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
+                MenuListProps={{
+                  'aria-labelledby': 'settings-menu',
+                  role: 'menu',
+                }}
                 anchorOrigin={{
                   vertical: 'bottom',
                   horizontal: 'right',
@@ -437,7 +401,10 @@ export const Header: React.FC = () => {
                 }}
               >
                 {/* ユーザー情報 */}
-                <Box sx={{ px: 2, py: 1 }}>
+                <Box sx={{ px: 2, py: 1.5 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    ログイン中
+                  </Typography>
                   <Typography variant="subtitle1" fontWeight={600}>
                     {user.displayName}
                   </Typography>
@@ -448,28 +415,43 @@ export const Header: React.FC = () => {
 
                 <Divider />
 
-                {/* 担当バイヤー名 */}
-                <Box sx={{ px: 2, py: 1.5 }}>
-                  <TextField
-                    label="担当バイヤー名"
-                    value={buyerName}
-                    onChange={(e) => handleBuyerNameChange(e.target.value)}
-                    size="small"
-                    fullWidth
-                    helperText={isSavingBuyerName ? '保存中...' : '配分表に表示されます'}
-                    disabled={isSavingBuyerName}
-                    sx={{
-                      '& .MuiInputBase-root': {
-                        fontSize: '0.875rem',
-                      },
-                    }}
-                  />
-                </Box>
+                {/* プロフィール */}
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    history.push('/profile');
+                  }}
+                  role="menuitem"
+                  aria-label="プロフィール"
+                >
+                  <Person fontSize="small" sx={{ mr: 1 }} />
+                  プロフィール
+                </MenuItem>
+
+                {/* 店舗カテゴリー管理 */}
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    history.push('/store-categories');
+                  }}
+                  role="menuitem"
+                  aria-label="店舗カテゴリー管理"
+                >
+                  <Settings fontSize="small" sx={{ mr: 1 }} />
+                  店舗カテゴリー管理
+                </MenuItem>
 
                 <Divider />
 
                 {/* ログアウト */}
-                <MenuItem onClick={handleLogout}>
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    setLogoutDialogOpen(true);
+                  }}
+                  role="menuitem"
+                  aria-label="ログアウトする"
+                >
                   <Logout fontSize="small" sx={{ mr: 1 }} />
                   ログアウト
                 </MenuItem>
@@ -522,6 +504,12 @@ export const Header: React.FC = () => {
           {clearMessage}
         </Alert>
       </Snackbar>
+
+      {/* キーボードショートカットヘルプダイアログ */}
+      <ShortcutsHelpDialog
+        open={shortcutsDialogOpen}
+        onClose={() => setShortcutsDialogOpen(false)}
+      />
     </>
   );
 };
