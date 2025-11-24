@@ -227,6 +227,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           return isNaN(num) || num < 0 ? 0 : num;
         },
         valueSetter: (params) => {
+          // コンポーネントがマウントされている場合のみ処理
+          if (!isMountedRef.current) {
+            return false;
+          }
+
           // セルの値を更新する代わりに、親コンポーネントに通知
           if (onAllocationChange && params.data) {
             const productIndex = params.data.productIndex;
@@ -329,16 +334,30 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       // コンポーネントがアンマウントされたら非同期処理をキャンセル
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
       if (timerIdRef.current !== null) {
         clearTimeout(timerIdRef.current);
+        timerIdRef.current = null;
       }
-      // AG Gridのインスタンスを破棄
+
+      // AG Gridのインスタンスを完全に破棄
       if (gridApiRef.current) {
         try {
+          // 編集状態を強制終了
+          gridApiRef.current.stopEditing(true);
+
+          // セル選択を解除
+          gridApiRef.current.deselectAll();
+
+          // グリッドを破棄
           gridApiRef.current.destroy();
         } catch (e) {
           // destroy中のエラーは無視（既に破棄されている可能性）
+          console.warn('AG Grid cleanup error:', e);
+        } finally {
+          // 参照をクリア
+          gridApiRef.current = null;
         }
       }
     };
