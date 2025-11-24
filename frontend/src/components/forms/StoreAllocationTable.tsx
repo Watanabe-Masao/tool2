@@ -42,9 +42,7 @@ interface StoreRowData {
   locked: boolean;
 }
 
-type ProductErrors = FieldErrors<OrderFormData>['products'] extends Array<infer T>
-  ? T
-  : FieldErrors<OrderFormData>;
+type ProductErrors = FieldErrors<OrderFormData['products'][number]>;
 
 interface StoreAllocationGridProps {
   allocations: number[];
