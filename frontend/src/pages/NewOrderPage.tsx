@@ -669,7 +669,7 @@ export const NewOrderPage: React.FC = () => {
 
           {/* タブナビゲーション */}
           <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2, pb: `${progressSummaryHeight + 16}px` }}>
+            <Box sx={{ width: '100%', py: 2 }}>
               <Tabs
                 value={activeStep}
                 onChange={handleTabChange}
