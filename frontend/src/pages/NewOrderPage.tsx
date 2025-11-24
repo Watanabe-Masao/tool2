@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, Box, Alert, Tabs, Tab, useTheme, useMediaQuery } from '@mui/material';
@@ -19,8 +19,8 @@ import { useOrderSubmit } from '@/hooks/useOrderSubmit';
 import { useSupplierManagement } from '@/hooks/useSupplierManagement';
 import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { useOrderModals } from '@/hooks/useOrderModals';
+import { useOrderHandlers } from '@/hooks/useOrderHandlers';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { SessionStorageService } from '@/utils/sessionStorageService';
 
 /**
  * フォームのステップ数
@@ -136,8 +136,6 @@ export const NewOrderPage: React.FC = () => {
   const {
     control,
     handleSubmit,
-    reset,
-    setValue,
     getValues,
     formState: { errors },
   } = methods;
@@ -196,31 +194,41 @@ export const NewOrderPage: React.FC = () => {
     showSuccess,
   });
 
-  /**
-   * 商品削除ハンドラー（FloatingProgressSummary用）
-   */
-  const handleRemoveProduct = (index: number) => {
-    if (productFields.length <= 1) return; // 最後の1つは削除しない
-    removeProduct(index);
-    // アクティブなインデックスを調整
-    if (activeProductIndex >= index && activeProductIndex > 0) {
-      setActiveProductIndex(activeProductIndex - 1);
-    }
-  };
-
-  /**
-   * 商品フィールドクリアハンドラー（FloatingProgressSummary用）
-   */
-  const handleClearProduct = (index: number) => {
-    const defaultSupplier = suppliers && suppliers.length > 0 ? suppliers[0] : '';
-    setValue(`products.${index}.categoryCode`, '');
-    setValue(`products.${index}.supplier`, defaultSupplier);
-    setValue(`products.${index}.name`, '');
-    setValue(`products.${index}.origin`, '');
-    setValue(`products.${index}.specification`, '');
-    setValue(`products.${index}.quantityPerPackage`, null);
-    setValue(`products.${index}.unit`, '');
-  };
+  // ハンドラー関数
+  const {
+    handleRemoveProduct,
+    handleClearProduct,
+    handleTabChange,
+    handlePrevStep,
+    handleNextStep,
+    handleAllocationChange,
+    handleToggleLock,
+    onSubmit,
+    handleBookNameDialogConfirm,
+    handleRestoreDraft,
+    handleDiscardDraft,
+  } = useOrderHandlers({
+    methods,
+    productFields,
+    removeProduct,
+    activeStep,
+    setActiveStep,
+    activeProductIndex,
+    setActiveProductIndex,
+    suppliers,
+    setLockedStores,
+    setBookNameDialog,
+    bookNameDialog,
+    setRestoreDialogOpen,
+    setShowGeneratedPreview,
+    isInitialLoad,
+    submitOrder,
+    handleGenerateTemplate,
+    setHasUnsavedChanges,
+    showSuccess,
+    user,
+    TOTAL_STEPS,
+  });
 
   /**
    * ユーザー設定を読み込み
@@ -239,31 +247,6 @@ export const NewOrderPage: React.FC = () => {
 
     loadUserSettings();
   }, [user]);
-
-  /**
-   * タブ変更時の処理
-   */
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveStep(newValue);
-  };
-
-  /**
-   * 前のステップへ移動
-   */
-  const handlePrevStep = () => {
-    if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
-    }
-  };
-
-  /**
-   * 次のステップへ移動
-   */
-  const handleNextStep = () => {
-    if (activeStep < TOTAL_STEPS - 1) {
-      setActiveStep(activeStep + 1);
-    }
-  };
 
   /**
    * NavigationContextを更新（ステップナビゲーション表示状態）
@@ -294,96 +277,7 @@ export const NewOrderPage: React.FC = () => {
     return () => {
       setStepNavigation(false);
     };
-  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate]);
-
-  /**
-   * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
-   */
-  const handleAllocationChange = useCallback((productIndex: number, storeIndex: number, newValue: number) => {
-    setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  }, [setValue]);
-
-  /**
-   * ロック状態切り替えハンドラ（FloatingProgressSummary用）
-   */
-  const handleToggleLock = useCallback((productIndex: number, storeCode: string) => {
-    setLockedStores(prev => {
-      const newMap = new Map(prev);
-      const productLocks = new Set(newMap.get(productIndex) || []);
-
-      if (productLocks.has(storeCode)) {
-        productLocks.delete(storeCode);
-      } else {
-        productLocks.add(storeCode);
-      }
-
-      newMap.set(productIndex, productLocks);
-      return newMap;
-    });
-  }, []);
-
-  /**
-   * フォーム送信
-   */
-  const onSubmit = async (data: OrderFormData) => {
-    await submitOrder(
-      data,
-      () => setBookNameDialog({ open: true, bookName: '' })
-    );
-  };
-
-  /**
-   * ブック名ダイアログの確認ハンドラー
-   */
-  const handleBookNameDialogConfirm = async () => {
-    const data = getValues();
-
-    // ダイアログを閉じる
-    setBookNameDialog({ open: false, bookName: '' });
-
-    // テンプレート生成
-    const success = await handleGenerateTemplate(data, bookNameDialog.bookName, setHasUnsavedChanges);
-
-    // 成功時にプレビュー画面を表示
-    if (success) {
-      setShowGeneratedPreview(true);
-    }
-  };
-
-  /**
-   * 下書きを復元
-   */
-  const handleRestoreDraft = () => {
-    if (!user) return;
-
-    const draft = SessionStorageService.loadDraft(user.uid);
-    if (draft) {
-      reset(draft);
-      setRestoreDialogOpen(false);
-      showSuccess('下書きを復元しました');
-
-      // 最初のステップに戻す
-      setActiveStep(0);
-
-      isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
-      setTimeout(() => {
-        isInitialLoad.current = false;
-      }, 1000);
-    }
-  };
-
-  /**
-   * 下書きを破棄
-   */
-  const handleDiscardDraft = () => {
-    if (!user) return;
-
-    SessionStorageService.clearDraft(user.uid);
-    setRestoreDialogOpen(false);
-  };
+  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate, getValues, setStepNavigation, handlePrevStep, handleNextStep, setActiveProductIndex]);
 
   return (
     <FormProvider {...methods}>
