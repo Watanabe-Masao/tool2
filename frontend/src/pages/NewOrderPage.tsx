@@ -571,10 +571,14 @@ export const NewOrderPage: React.FC = () => {
     if (generatedFiles) {
       try {
         showLoading();
+
+        // 相対URLを絶対URLに変換（Service Worker問題を回避）
+        const absoluteUrl = new URL(generatedFiles.downloadUrl, window.location.origin).href;
         console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
+        console.log('📥 Absolute URL:', absoluteUrl);
 
         // fetchでファイルを取得してContent-Typeを確認
-        const response = await fetch(generatedFiles.downloadUrl);
+        const response = await fetch(absoluteUrl);
         console.log('Response status:', response.status);
         console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
@@ -622,10 +626,14 @@ export const NewOrderPage: React.FC = () => {
     if (generatedFiles && generatedFiles.pdfDownloadUrl) {
       try {
         showLoading();
+
+        // 相対URLを絶対URLに変換（Service Worker問題を回避）
+        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, window.location.origin).href;
         console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
+        console.log('📥 Absolute URL:', absoluteUrl);
 
         // PDFをfetchしてblobとして取得
-        const response = await fetch(generatedFiles.pdfDownloadUrl);
+        const response = await fetch(absoluteUrl);
         console.log('Response status:', response.status);
         console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
