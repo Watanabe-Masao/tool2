@@ -9,13 +9,14 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  onSnapshot,
   increment,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
-import type { OrderData, FirestoreOrderData, EmailAddressEntry, SupplierPresetEntry } from '@/types';
+import type { OrderData, FirestoreOrderData, EmailAddressEntity, SupplierPresetEntity } from '@/types';
 import { format } from 'date-fns';
+import { EmailAddressRepository } from '../firestore/repositories/EmailAddressRepository';
+import { PresetRepository } from '../firestore/repositories/PresetRepository';
 
 /**
  * Firestoreサービス
@@ -322,39 +323,12 @@ export class FirestoreService {
    * プリセット一覧を取得
    *
    * @param userId - ユーザーID
-   * @returns プリセット配列
+   * @returns プリセットEntity配列
    */
-  static async getSupplierPresets(userId: string): Promise<SupplierPresetEntry[]> {
+  static async getSupplierPresets(userId: string): Promise<SupplierPresetEntity[]> {
     const db = getFirebaseFirestore();
-    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
-
-    const q = query(presetsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
-
-    const snapshot = await getDocs(q);
-
-    const presets = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        supplier: data.supplier,
-        displayOrder: data.displayOrder,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      };
-    });
-
-    // displayOrderでソート（設定されていない場合は最後に）
-    presets.sort((a, b) => {
-      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-        return a.displayOrder - b.displayOrder;
-      }
-      if (a.displayOrder !== undefined) return -1;
-      if (b.displayOrder !== undefined) return 1;
-      return 0;
-    });
-
-    console.log(`[Firestore] Retrieved ${presets.length} supplier presets`);
-    return presets;
+    const repository = new PresetRepository(db);
+    return repository.findByUserId(userId);
   }
 
   /**
@@ -367,45 +341,12 @@ export class FirestoreService {
    */
   static subscribeToSupplierPresets(
     userId: string,
-    onSuccess: (presets: SupplierPresetEntry[]) => void,
+    onSuccess: (presets: SupplierPresetEntity[]) => void,
     onError: (error: Error) => void
   ): () => void {
     const db = getFirebaseFirestore();
-    const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
-    const q = query(presetsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const presets = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            supplier: data.supplier,
-            displayOrder: data.displayOrder,
-            createdAt: data.createdAt.toDate(),
-            updatedAt: data.updatedAt.toDate(),
-          };
-        });
-
-        // displayOrderでソート（設定されていない場合は最後に）
-        presets.sort((a, b) => {
-          if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-            return a.displayOrder - b.displayOrder;
-          }
-          if (a.displayOrder !== undefined) return -1;
-          if (b.displayOrder !== undefined) return 1;
-          return 0;
-        });
-
-        onSuccess(presets);
-      },
-      (error) => {
-        onError(error as Error);
-      }
-    );
-
-    return unsubscribe;
+    const repository = new PresetRepository(db);
+    return repository.subscribeToPresets(userId, onSuccess, onError);
   }
 
   /**
@@ -493,38 +434,10 @@ export class FirestoreService {
    * @param userId - ユーザーID
    * @returns アドレス帳配列
    */
-  static async getEmailAddresses(userId: string): Promise<EmailAddressEntry[]> {
+  static async getEmailAddresses(userId: string): Promise<EmailAddressEntity[]> {
     const db = getFirebaseFirestore();
-    const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
-
-    const q = query(addressesRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
-
-    const snapshot = await getDocs(q);
-
-    const addresses = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        email: data.email,
-        displayOrder: data.displayOrder,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      };
-    });
-
-    // displayOrderでソート（設定されていない場合は最後に）
-    addresses.sort((a, b) => {
-      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-        return a.displayOrder - b.displayOrder;
-      }
-      if (a.displayOrder !== undefined) return -1;
-      if (b.displayOrder !== undefined) return 1;
-      return 0;
-    });
-
-    console.log(`[Firestore] Retrieved ${addresses.length} email addresses`);
-    return addresses;
+    const repository = new EmailAddressRepository(db);
+    return repository.findByUserId(userId);
   }
 
   /**
@@ -537,46 +450,12 @@ export class FirestoreService {
    */
   static subscribeToEmailAddresses(
     userId: string,
-    onSuccess: (addresses: EmailAddressEntry[]) => void,
+    onSuccess: (addresses: EmailAddressEntity[]) => void,
     onError: (error: Error) => void
   ): () => void {
     const db = getFirebaseFirestore();
-    const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
-    const q = query(addressesRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const addresses = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            email: data.email,
-            displayOrder: data.displayOrder,
-            createdAt: data.createdAt.toDate(),
-            updatedAt: data.updatedAt.toDate(),
-          };
-        });
-
-        // displayOrderでソート（設定されていない場合は最後に）
-        addresses.sort((a, b) => {
-          if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-            return a.displayOrder - b.displayOrder;
-          }
-          if (a.displayOrder !== undefined) return -1;
-          if (b.displayOrder !== undefined) return 1;
-          return 0;
-        });
-
-        onSuccess(addresses);
-      },
-      (error) => {
-        onError(error as Error);
-      }
-    );
-
-    return unsubscribe;
+    const repository = new EmailAddressRepository(db);
+    return repository.subscribeToAddresses(userId, onSuccess, onError);
   }
 
   /**

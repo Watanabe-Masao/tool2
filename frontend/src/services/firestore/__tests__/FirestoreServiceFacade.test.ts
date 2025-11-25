@@ -121,7 +121,6 @@ describe('FirestoreServiceFacade', () => {
       findByUserIdSpy.mockResolvedValue([
         {
           id: 'preset-1',
-          userId: 'user-123',
           supplier: '帳合先A',
           displayOrder: 0,
           createdAt: new Date('2025-01-24'),
@@ -180,7 +179,6 @@ describe('FirestoreServiceFacade', () => {
       findByUserIdSpy.mockResolvedValue([
         {
           id: 'address-1',
-          userId: 'user-123',
           name: '田中太郎',
           email: 'tanaka@example.com',
           displayOrder: 0,

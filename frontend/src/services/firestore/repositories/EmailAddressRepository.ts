@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
 import type { EmailAddress } from '@/types/repository';
+import type { EmailAddressEntity } from '@/types/entities';
 
 /**
  * Firestore保存形式
@@ -100,14 +101,32 @@ export class EmailAddressRepository extends FirestoreBaseService<
   }
 
   /**
+   * EmailAddress → EmailAddressEntity に変換（userIdを除外）
+   */
+  private toEntity(address: EmailAddress): EmailAddressEntity {
+    if (!address.id) {
+      throw new Error('Cannot convert EmailAddress to Entity: id is required');
+    }
+
+    return {
+      id: address.id,
+      name: address.name,
+      email: address.email,
+      displayOrder: address.displayOrder,
+      createdAt: address.createdAt || new Date(),
+      updatedAt: address.updatedAt || new Date(),
+    };
+  }
+
+  /**
    * ユーザーのアドレス帳一覧を取得
    *
    * displayOrderでソート（設定されていない場合は作成日時順）
    *
    * @param userId - ユーザーID
-   * @returns アドレス配列
+   * @returns アドレスEntity配列
    */
-  async findByUserId(userId: string): Promise<EmailAddress[]> {
+  async findByUserId(userId: string): Promise<EmailAddressEntity[]> {
     const ref = this.getCollectionRef();
     const q = query(ref, where('userId', '==', userId), orderBy('createdAt', 'desc'));
 
@@ -126,7 +145,9 @@ export class EmailAddressRepository extends FirestoreBaseService<
     console.log(
       `[${this.collectionName}] Retrieved ${addresses.length} addresses for user ${userId}`
     );
-    return addresses;
+
+    // Entity型に変換
+    return addresses.map((addr) => this.toEntity(addr));
   }
 
   /**
@@ -157,7 +178,7 @@ export class EmailAddressRepository extends FirestoreBaseService<
    */
   subscribeToAddresses(
     userId: string,
-    onSuccess: (addresses: EmailAddress[]) => void,
+    onSuccess: (addresses: EmailAddressEntity[]) => void,
     onError: (error: Error) => void
   ): Unsubscribe {
     const ref = this.getCollectionRef();
@@ -190,7 +211,9 @@ export class EmailAddressRepository extends FirestoreBaseService<
           return 0;
         });
 
-        onSuccess(addresses);
+        // Entity型に変換
+        const entities = addresses.map((addr) => this.toEntity(addr));
+        onSuccess(entities);
       },
       (error) => {
         onError(error as Error);

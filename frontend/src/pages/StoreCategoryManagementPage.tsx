@@ -44,7 +44,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
-import { useSupplierPresets, type SupplierPresetEntry } from '@/hooks/useSupplierPresets';
+import { useSupplierPresets, type SupplierPresetEntity } from '@/hooks/useSupplierPresets';
 import { STORE_DATA } from '@/utils/constants';
 import type { StoreCategory } from '@/types/storeCategory';
 import type { StoreSettings } from '@/types/storeSettings';
@@ -97,7 +97,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const [showSupplierAddDialog, setShowSupplierAddDialog] = useState(false);
   const [showSupplierEditDialog, setShowSupplierEditDialog] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
-  const [editingSupplier, setEditingSupplier] = useState<SupplierPresetEntry | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<SupplierPresetEntity | null>(null);
   const [supplierSwipeState, setSupplierSwipeState] = useState<{
     id: string | null;
     startX: number;
@@ -113,7 +113,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     currentY: 0,
     isSwiping: false,
   });
-  const [supplierToDelete, setSupplierToDelete] = useState<SupplierPresetEntry | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<SupplierPresetEntity | null>(null);
   const [showSupplierDeleteDialog, setShowSupplierDeleteDialog] = useState(false);
 
   // 帳合先ドラッグ&ドロップ用の状態
@@ -210,7 +210,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const orderedPresets = React.useMemo(() => {
     if (orderedPresetIds.length === 0) return presets;
 
-    const ordered: SupplierPresetEntry[] = [];
+    const ordered: SupplierPresetEntity[] = [];
     orderedPresetIds.forEach((id) => {
       const preset = presets.find((p) => p.id === id);
       if (preset) ordered.push(preset);
@@ -545,7 +545,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
     }
   };
 
-  const handleSupplierSwipeEnd = (supplier: SupplierPresetEntry) => {
+  const handleSupplierSwipeEnd = (supplier: SupplierPresetEntity) => {
     if (!supplierSwipeState.id || supplierSwipeState.id !== supplier.id) return;
 
     const deltaX = supplierSwipeState.currentX - supplierSwipeState.startX;

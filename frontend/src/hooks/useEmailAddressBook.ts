@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-import type { EmailAddressEntry } from '@/types/userSettings';
+import type { EmailAddressEntity } from '@/types/entities';
 
 /**
  * メールアドレス帳管理フック
  */
 export const useEmailAddressBook = () => {
   const { user } = useAuthContext();
-  const [entries, setEntries] = useState<EmailAddressEntry[]>([]);
+  const [entries, setEntries] = useState<EmailAddressEntity[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
@@ -107,4 +107,4 @@ export const useEmailAddressBook = () => {
 };
 
 // Re-export for backward compatibility
-export type { EmailAddressEntry } from '@/types/userSettings';
+export type { EmailAddressEntity } from '@/types/entities';

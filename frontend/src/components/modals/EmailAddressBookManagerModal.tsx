@@ -35,7 +35,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { useEmailAddressBook, type EmailAddressEntry } from '@/hooks/useEmailAddressBook';
+import { useEmailAddressBook, type EmailAddressEntity } from '@/hooks/useEmailAddressBook';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 
 interface EmailAddressBookManagerModalProps {
@@ -47,10 +47,10 @@ interface EmailAddressBookManagerModalProps {
  * ソート可能なアドレス帳アイテムのProps
  */
 interface SortableAddressItemProps {
-  entry: EmailAddressEntry;
+  entry: EmailAddressEntity;
   onSwipeStart: (e: React.TouchEvent | React.MouseEvent, entryId: string) => void;
   onSwipeMove: (e: React.TouchEvent | React.MouseEvent) => void;
-  onSwipeEnd: (entry: EmailAddressEntry) => void;
+  onSwipeEnd: (entry: EmailAddressEntity) => void;
   swipeState: {
     id: string | null;
     startX: number;
@@ -176,7 +176,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
 
   // 削除確認ダイアログの状態
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<EmailAddressEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<EmailAddressEntity | null>(null);
 
   // ドラッグ中のアイテムID (dnd-kit用)
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -354,7 +354,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
   /**
    * スワイプ終了
    */
-  const handleSwipeEnd = async (entry: EmailAddressEntry) => {
+  const handleSwipeEnd = async (entry: EmailAddressEntity) => {
     if (!swipeState.id || swipeState.id !== entry.id) return;
 
     const deltaX = swipeState.currentX - swipeState.startX;
@@ -459,7 +459,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
   /**
    * 編集メニューからエントリ選択
    */
-  const handleSelectEntryForEdit = (entry: EmailAddressEntry) => {
+  const handleSelectEntryForEdit = (entry: EmailAddressEntity) => {
     setEditingId(entry.id);
     setNameValue(entry.name);
     setEmailValue(entry.email);

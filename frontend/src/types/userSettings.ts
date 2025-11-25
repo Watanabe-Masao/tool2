@@ -2,30 +2,6 @@
  * ユーザー設定の型定義
  */
 
-import type { EmailAddress, SupplierPreset } from './repository';
-
-/**
- * メールアドレス帳エントリ (UI用)
- *
- * Repository型のEmailAddressからuserIdを除外し、
- * idを必須にしたUI層用の型
- */
-export type EmailAddressEntry = Omit<EmailAddress, 'userId' | 'id'> & {
-  /** エントリID (必須) */
-  id: string;
-};
-
-/**
- * 帳合先プリセットエントリ (UI用)
- *
- * Repository型のSupplierPresetからuserIdを除外し、
- * idを必須にしたUI層用の型
- */
-export type SupplierPresetEntry = Omit<SupplierPreset, 'userId' | 'id'> & {
-  /** エントリID (必須) */
-  id: string;
-};
-
 /**
  * ユーザー設定
  */

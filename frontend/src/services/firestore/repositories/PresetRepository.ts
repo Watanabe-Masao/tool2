@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
 import type { SupplierPreset } from '@/types/repository';
+import type { SupplierPresetEntity } from '@/types/entities';
 
 /**
  * Firestore保存形式
@@ -93,14 +94,31 @@ export class PresetRepository extends FirestoreBaseService<
   }
 
   /**
+   * SupplierPreset → SupplierPresetEntity に変換（userIdを除外）
+   */
+  private toEntity(preset: SupplierPreset): SupplierPresetEntity {
+    if (!preset.id) {
+      throw new Error('Cannot convert SupplierPreset to Entity: id is required');
+    }
+
+    return {
+      id: preset.id,
+      supplier: preset.supplier,
+      displayOrder: preset.displayOrder,
+      createdAt: preset.createdAt || new Date(),
+      updatedAt: preset.updatedAt || new Date(),
+    };
+  }
+
+  /**
    * ユーザーのプリセット一覧を取得
    *
    * displayOrderでソート（設定されていない場合は作成日時順）
    *
    * @param userId - ユーザーID
-   * @returns プリセット配列
+   * @returns プリセットEntity配列
    */
-  async findByUserId(userId: string): Promise<SupplierPreset[]> {
+  async findByUserId(userId: string): Promise<SupplierPresetEntity[]> {
     const ref = this.getCollectionRef();
     const q = query(ref, where('userId', '==', userId), orderBy('createdAt', 'desc'));
 
@@ -117,7 +135,9 @@ export class PresetRepository extends FirestoreBaseService<
     });
 
     console.log(`[${this.collectionName}] Retrieved ${presets.length} presets for user ${userId}`);
-    return presets;
+
+    // Entity型に変換
+    return presets.map((preset) => this.toEntity(preset));
   }
 
   /**
@@ -148,7 +168,7 @@ export class PresetRepository extends FirestoreBaseService<
    */
   subscribeToPresets(
     userId: string,
-    onSuccess: (presets: SupplierPreset[]) => void,
+    onSuccess: (presets: SupplierPresetEntity[]) => void,
     onError: (error: Error) => void
   ): Unsubscribe {
     const ref = this.getCollectionRef();
@@ -181,7 +201,9 @@ export class PresetRepository extends FirestoreBaseService<
           return 0;
         });
 
-        onSuccess(presets);
+        // Entity型に変換
+        const entities = presets.map((preset) => this.toEntity(preset));
+        onSuccess(entities);
       },
       (error) => {
         onError(error as Error);
