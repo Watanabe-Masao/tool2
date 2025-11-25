@@ -128,3 +128,6 @@ export const usePricingHistory = () => {
     findMatchingHistory,
   };
 };
+
+// Re-export for backward compatibility
+export type { PricingHistoryItem } from '@/types/hooks';

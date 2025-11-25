@@ -105,3 +105,6 @@ export const useSupplierPresets = () => {
     updatePreset,
   };
 };
+
+// Re-export for backward compatibility
+export type { SupplierPreset } from '@/types/repository';

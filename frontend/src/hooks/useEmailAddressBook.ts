@@ -108,3 +108,6 @@ export const useEmailAddressBook = () => {
     updateEntry,
   };
 };
+
+// Re-export for backward compatibility
+export type { EmailAddressEntry } from '@/types/userSettings';

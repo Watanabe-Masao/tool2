@@ -82,3 +82,6 @@ export const getMainCategoryCode = (code: string): string => {
   }
   return '';
 };
+
+// Re-export for backward compatibility
+export type { MainCategory, Category } from '@/types/utils';
