@@ -3,6 +3,9 @@ import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 
+// 下書き復元ダイアログの表示済みフラグ（セッション中に一度だけ表示）
+const DRAFT_DIALOG_SHOWN_KEY = 'draft-dialog-shown';
+
 /**
  * useOrderDraftManagementのパラメータ
  */
@@ -55,14 +58,23 @@ export const useOrderDraftManagement = ({
   /**
    * 下書き復元確認
    * 初回ロード時に下書きが存在する場合、復元ダイアログを表示
+   * セッション中に一度表示した場合は再表示しない（プロフィール等から戻った時の対策）
    */
   useEffect(() => {
     if (!user || !isInitialLoad.current) return;
 
     isInitialLoad.current = false;
 
+    // 既にダイアログを表示済みかチェック（プロフィール等から戻った場合の対策）
+    const dialogAlreadyShown = sessionStorage.getItem(DRAFT_DIALOG_SHOWN_KEY);
+    if (dialogAlreadyShown) {
+      return;
+    }
+
     const draft = SessionStorageService.loadDraft(user.uid);
     if (draft) {
+      // ダイアログ表示済みフラグを設定
+      sessionStorage.setItem(DRAFT_DIALOG_SHOWN_KEY, 'true');
       setRestoreDialogOpen(true);
     }
   }, [user]);
@@ -114,11 +126,20 @@ export const useOrderDraftManagement = ({
     };
   }, [hasUnsavedChanges]);
 
+  /**
+   * 下書きダイアログ表示フラグをリセット
+   * フォーム送信成功後など、新しいフォーム入力を開始する際に呼び出す
+   */
+  const resetDraftDialogFlag = () => {
+    sessionStorage.removeItem(DRAFT_DIALOG_SHOWN_KEY);
+  };
+
   return {
     restoreDialogOpen,
     setRestoreDialogOpen,
     hasUnsavedChanges,
     setHasUnsavedChanges,
     isInitialLoad,
+    resetDraftDialogFlag,
   };
 };

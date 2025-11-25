@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { Container, Box, Tabs, Tab } from '@mui/material';
+import { Container, Box, Tabs, Tab, Typography, Collapse } from '@mui/material';
+import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import type {
   Control,
   FieldErrors,
@@ -110,8 +111,13 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   const activeStep = useOrderFormStore((state) => state.activeStep);
   const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
   const progressSummaryHeight = useOrderFormStore((state) => state.progressSummaryHeight);
+  const isStepHeaderCollapsed = useOrderFormStore((state) => state.isStepHeaderCollapsed);
+  const toggleStepHeaderCollapsed = useOrderFormStore((state) => state.toggleStepHeaderCollapsed);
   const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
   const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
+
+  // ステップラベル
+  const stepLabels = ['店着日・帳合先', '商品情報', '価格・数量', '店舗配分', 'プレビュー'];
 
   // タブ変更ハンドラー
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -135,28 +141,81 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
     setShowEmailModal(true);
   }, [setShowEmailModal]);
 
+  // コンテンツエリアの高さを計算（折りたたみ状態を考慮）
+  const collapsedHeaderHeight = 32; // 折りたたみ時のヘッダー高さ
+  const expandedTabsHeight = 48; // 展開時のタブ高さ
+
   return (
     <Container maxWidth="lg">
-      <Box sx={{ width: '100%', py: 2 }}>
-        <Tabs
-          value={activeStep}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-        >
-          <Tab label="店着日・帳合先" />
-          <Tab label="商品情報" />
-          <Tab label="価格・数量" />
-          <Tab label="店舗配分" />
-          <Tab label="プレビュー" />
-        </Tabs>
+      <Box sx={{ width: '100%', py: 1 }}>
+        {/* 折りたたみ可能なステップヘッダー */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+          {/* 折りたたみ時のコンパクト表示 */}
+          {isStepHeaderCollapsed ? (
+            <Box
+              onClick={toggleStepHeaderCollapsed}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 0.5,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'action.hover' },
+              }}
+            >
+              <Typography variant="body2" fontWeight="medium" color="primary" sx={{ mr: 0.5 }}>
+                Step {activeStep + 1}/5: {stepLabels[activeStep]}
+              </Typography>
+              <ExpandMore fontSize="small" color="action" />
+            </Box>
+          ) : (
+            <>
+              {/* 展開時のタブ表示（サイズを半分に縮小） */}
+              <Tabs
+                value={activeStep}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  minHeight: 36,
+                  '& .MuiTab-root': {
+                    minHeight: 36,
+                    py: 0.5,
+                    px: 1.5,
+                    fontSize: '0.75rem',
+                    minWidth: 'auto',
+                  },
+                }}
+              >
+                {stepLabels.map((label, index) => (
+                  <Tab key={index} label={label} />
+                ))}
+              </Tabs>
+              {/* 折りたたみトグル */}
+              <Box
+                onClick={toggleStepHeaderCollapsed}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: 0.25,
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <ExpandLess fontSize="small" color="action" />
+              </Box>
+            </>
+          )}
+        </Box>
 
         {/* コンテンツエリア（スクロール可能） */}
         <Box
           sx={{
-            // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary (desktop only)
-            height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${isMobile ? 0 : progressSummaryHeight}px)`,
+            // ヘッダー(64px/56px) + Tabs/CollapsedHeader + Margin + FloatingProgressSummary (desktop only)
+            // 折りたたみ時: ヘッダー + 折りたたみバー(32px) + マージン
+            // 展開時: ヘッダー + タブ(52px) + 折りたたみボタン(20px) + マージン
+            height: `calc(100vh - ${isMobile ? '110px' : '118px'} - ${isStepHeaderCollapsed ? 32 : 72}px - ${isMobile ? 0 : progressSummaryHeight}px)`,
             overflow: 'auto',
             '&::-webkit-scrollbar': {
               width: '8px',
