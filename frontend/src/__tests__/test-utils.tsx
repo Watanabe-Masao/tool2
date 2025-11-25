@@ -1,15 +1,16 @@
-import React, { ReactElement } from 'react';
-import { render, RenderOptions, RenderResult } from '@testing-library/react';
+import type { ReactElement, ReactNode, ComponentType } from 'react';
+import { render } from '@testing-library/react';
+import type { RenderOptions, RenderResult } from '@testing-library/react';
+import { vi } from 'vitest';
 import { ServiceProvider } from '@/context/ServiceContext';
-import type { TemplateService } from '@/services/template/TemplateService';
-import type { SessionStorageService } from '@/services/storage/SessionStorageService';
 
 /**
  * テストで使用するサービスのモック型定義
  */
 export interface MockServices {
-  templateService?: Partial<TemplateService>;
-  sessionStorageService?: Partial<SessionStorageService>;
+  templateService?: any;
+  sessionStorageService?: any;
+  [key: string]: any;
 }
 
 /**
@@ -23,7 +24,7 @@ export interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   /**
    * 追加のラッパーコンポーネント
    */
-  wrapper?: React.ComponentType<{ children: React.ReactNode }>;
+  wrapper?: ComponentType<{ children: ReactNode }>;
 }
 
 /**
@@ -72,7 +73,7 @@ export function renderWithProviders(
   };
 
   // プロバイダーのラッパー
-  function AllProviders({ children }: { children: React.ReactNode }) {
+  function AllProviders({ children }: { children: ReactNode }) {
     const content = (
       <ServiceProvider services={defaultServices as any}>
         {children}
