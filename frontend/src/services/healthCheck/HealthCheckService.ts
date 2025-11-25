@@ -21,7 +21,7 @@
  */
 
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { getFirebaseFirestore } from '@/services/firebase/config';
 import { API_BASE_URL } from '@/utils/constants';
 
 // ===== 型定義 =====
@@ -227,6 +227,7 @@ export class HealthCheckService {
 
     try {
       // 読み取りテスト用のシステムドキュメント
+      const db = getFirebaseFirestore();
       const healthDocRef = doc(db, '__health__', 'status');
 
       // タイムアウト付きの読み取り

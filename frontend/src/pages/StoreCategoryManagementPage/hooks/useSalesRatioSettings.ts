@@ -2,7 +2,7 @@
  * 販売構成比設定ロジックフック
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
 import type { StoreSettings } from '@/types/storeSettings';
