@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -44,7 +44,7 @@ import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
 export const Header: React.FC = () => {
   const { user, signOut } = useAuthContext();
   const { isOnline, isSyncing, unsyncedCount } = useDataSync();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -193,7 +193,7 @@ export const Header: React.FC = () => {
    * ナビゲーション変更
    */
   const handleNavigationChange = (path: string) => {
-    history.push(path);
+    navigate(path);
   };
 
   return (
@@ -419,7 +419,7 @@ export const Header: React.FC = () => {
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    history.push('/profile');
+                    navigate('/profile');
                   }}
                   role="menuitem"
                   aria-label="プロフィール"
@@ -432,7 +432,7 @@ export const Header: React.FC = () => {
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    history.push('/store-categories');
+                    navigate('/store-categories');
                   }}
                   role="menuitem"
                   aria-label="店舗カテゴリー管理"
