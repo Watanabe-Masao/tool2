@@ -46,9 +46,6 @@ interface OrderFormState {
   // ===== レイアウト =====
   progressSummaryHeight: number;
   setProgressSummaryHeight: (height: number) => void;
-  isStepHeaderCollapsed: boolean;
-  setStepHeaderCollapsed: (collapsed: boolean) => void;
-  toggleStepHeaderCollapsed: () => void;
 
   // ===== モーダル状態 =====
   showPDFPreview: boolean;
@@ -82,7 +79,6 @@ const initialState = {
   lockedStores: new Map<number, Set<string>>(),
   selectedCategories: new Map<number, Set<string>>(),
   progressSummaryHeight: 0,
-  isStepHeaderCollapsed: false,
   showPDFPreview: false,
   showDownloadModal: false,
   showPreviewModal: false,
@@ -182,17 +178,6 @@ export const useOrderFormStore = create<OrderFormState>()(
         // 進捗サマリー高さ設定
         setProgressSummaryHeight: (height) =>
           set({ progressSummaryHeight: height }, false, 'setProgressSummaryHeight'),
-
-        // ステップヘッダー折りたたみ設定
-        setStepHeaderCollapsed: (collapsed) =>
-          set({ isStepHeaderCollapsed: collapsed }, false, 'setStepHeaderCollapsed'),
-
-        toggleStepHeaderCollapsed: () =>
-          set(
-            (state) => ({ isStepHeaderCollapsed: !state.isStepHeaderCollapsed }),
-            false,
-            'toggleStepHeaderCollapsed'
-          ),
 
         // モーダル状態設定
         setShowPDFPreview: (show) => set({ showPDFPreview: show }, false, 'setShowPDFPreview'),
