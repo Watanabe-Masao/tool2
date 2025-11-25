@@ -246,7 +246,7 @@ export const HELP_TEXT = {
   emailRecipients: '複数のメールアドレスを登録して、宛先を素早く選択できます',
   categoryFilter: 'カテゴリで店舗を絞り込めます',
   pinHistory: 'ピン留めした商品は履歴の上部に固定されます',
-  keyboard Shortcuts: 'キーボードショートカットで素早く操作できます',
+  keyboardShortcuts: 'キーボードショートカットで素早く操作できます',
 } as const;
 
 /**
