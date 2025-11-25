@@ -1,26 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import React from 'react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../setup';
 import { useTemplateGeneration } from '@/hooks/useTemplateGeneration';
-import { TemplateService } from '@/services/api/templateService';
-import { SessionStorageService } from '@/utils/sessionStorageService';
+import { ServiceProvider } from '@/context/ServiceContext';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
-// Mock dependencies
-vi.mock('@/services/api/templateService', () => ({
-  TemplateService: {
-    generateTemplate: vi.fn(),
-  },
-}));
-
-vi.mock('@/utils/sessionStorageService', () => ({
-  SessionStorageService: {
-    clearDraft: vi.fn(),
-  },
-}));
-
 describe('useTemplateGeneration', () => {
+  // Mock services for ServiceProvider
+  const mockTemplateService = {
+    generateTemplate: vi.fn(),
+  };
+
+  const mockSessionStorageService = {
+    saveDraft: vi.fn(),
+    loadDraft: vi.fn(),
+    clearDraft: vi.fn(),
+  };
+
   const mockShowSuccess = vi.fn();
   const mockShowError = vi.fn();
   const mockShowLoading = vi.fn();
@@ -55,15 +53,28 @@ describe('useTemplateGeneration', () => {
     hideLoading: mockHideLoading,
   };
 
+  // Wrapper with ServiceProvider
+  const wrapper = ({ children }: { children: React.ReactNode }) => {
+    const services = {
+      templateService: mockTemplateService,
+      sessionStorageService: mockSessionStorageService,
+    };
+    return (
+      <ServiceProvider services={services as any}>
+        {children}
+      </ServiceProvider>
+    );
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(TemplateService.generateTemplate).mockResolvedValue(mockTemplateResponse);
+    mockTemplateService.generateTemplate.mockResolvedValue(mockTemplateResponse);
     // MSW handles fetch requests for /downloads/*.xlsx
   });
 
   describe('generateTemplate', () => {
     it('テンプレートを生成できる', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         const success = await result.current.generateTemplate(
@@ -75,7 +86,7 @@ describe('useTemplateGeneration', () => {
       });
 
       expect(mockShowLoading).toHaveBeenCalled();
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         mockFormData,
         'Custom Buyer',
         '配分表_TestBook_20240115'
@@ -85,7 +96,7 @@ describe('useTemplateGeneration', () => {
     });
 
     it('generatedFilesが正しく設定される', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
@@ -100,7 +111,7 @@ describe('useTemplateGeneration', () => {
     });
 
     it('excelBlobが正しく設定される', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
@@ -115,24 +126,24 @@ describe('useTemplateGeneration', () => {
     });
 
     it('下書きがクリアされる', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
       });
 
-      expect(SessionStorageService.clearDraft).toHaveBeenCalledWith('test-user-123');
+      expect(mockSessionStorageService.clearDraft).toHaveBeenCalledWith('test-user-123');
       expect(mockSetHasUnsavedChanges).toHaveBeenCalledWith(false);
     });
 
     it('空のブック名でも動作する', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, '', mockSetHasUnsavedChanges);
       });
 
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         mockFormData,
         'Custom Buyer',
         '配分表_20240115' // ブック名なし
@@ -140,13 +151,13 @@ describe('useTemplateGeneration', () => {
     });
 
     it('バイヤー名の取得: userSettings.buyerName', async () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
       });
 
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         expect.anything(),
         'Custom Buyer',
         expect.anything()
@@ -158,14 +169,15 @@ describe('useTemplateGeneration', () => {
         useTemplateGeneration({
           ...defaultParams,
           userSettings: null,
-        })
+        }),
+        { wrapper }
       );
 
       await act(async () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
       });
 
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         expect.anything(),
         'Test User',
         expect.anything()
@@ -185,7 +197,7 @@ describe('useTemplateGeneration', () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
       });
 
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         expect.anything(),
         'test@example.com',
         expect.anything()
@@ -205,7 +217,7 @@ describe('useTemplateGeneration', () => {
         await result.current.generateTemplate(mockFormData, 'TestBook', mockSetHasUnsavedChanges);
       });
 
-      expect(TemplateService.generateTemplate).toHaveBeenCalledWith(
+      expect(mockTemplateService.generateTemplate).toHaveBeenCalledWith(
         expect.anything(),
         '匿名',
         expect.anything()
@@ -213,9 +225,9 @@ describe('useTemplateGeneration', () => {
     });
 
     it('エラーハンドリング', async () => {
-      vi.mocked(TemplateService.generateTemplate).mockRejectedValue(new Error('API error'));
+      vi.mocked(mockTemplateService.generateTemplate).mockRejectedValue(new Error('API error'));
 
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         const success = await result.current.generateTemplate(
@@ -239,7 +251,7 @@ describe('useTemplateGeneration', () => {
       );
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       await act(async () => {
         const success = await result.current.generateTemplate(
@@ -260,8 +272,9 @@ describe('useTemplateGeneration', () => {
       const { result } = renderHook(() =>
         useTemplateGeneration({
           ...defaultParams,
-          user: null,
-        })
+          userSettings: null,
+        }),
+        { wrapper }
       );
 
       await act(async () => {
@@ -273,14 +286,14 @@ describe('useTemplateGeneration', () => {
         expect(success).toBe(true);
       });
 
-      expect(SessionStorageService.clearDraft).not.toHaveBeenCalled();
+      expect(mockSessionStorageService.clearDraft).not.toHaveBeenCalled();
       expect(mockSetHasUnsavedChanges).not.toHaveBeenCalled();
     });
   });
 
   describe('状態管理', () => {
     it('setGeneratedFilesで状態を更新できる', () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
 
       act(() => {
         result.current.setGeneratedFiles({
@@ -296,7 +309,7 @@ describe('useTemplateGeneration', () => {
     });
 
     it('setExcelBlobで状態を更新できる', () => {
-      const { result } = renderHook(() => useTemplateGeneration(defaultParams));
+      const { result } = renderHook(() => useTemplateGeneration(defaultParams), { wrapper });
       const testBlob = new Blob(['test'], { type: 'application/vnd.ms-excel' });
 
       act(() => {

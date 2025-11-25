@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NavigationProvider } from './context/NavigationContext';
+import { ServiceProvider } from './context/ServiceContext';
 import { NetworkStatus } from './components/common/NetworkStatus';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -89,9 +90,11 @@ const App: React.FC = () => {
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <NavigationProvider>
-            <AppContent />
-          </NavigationProvider>
+          <ServiceProvider>
+            <NavigationProvider>
+              <AppContent />
+            </NavigationProvider>
+          </ServiceProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>

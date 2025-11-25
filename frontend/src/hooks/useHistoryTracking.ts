@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 
 /**
  * useHistoryTrackingのパラメータ
@@ -53,6 +53,9 @@ export const useHistoryTracking = ({
   productNameAutocomplete,
   originAutocomplete,
 }: UseHistoryTrackingParams) => {
+  // Service Context から FirestoreService を取得
+  const firestoreService = useFirestoreService();
+
   /**
    * すべての履歴を保存
    * - オートコンプリート履歴（帳合先、商品名、産地）
@@ -78,7 +81,7 @@ export const useHistoryTracking = ({
           await originAutocomplete.addToHistory(product.origin);
 
           // 商品履歴（各商品の帳合先ごとに）
-          await FirestoreService.saveProductHistory(
+          await firestoreService.saveProductHistory(
             user.uid,
             product.supplier,
             product.name,
@@ -96,7 +99,7 @@ export const useHistoryTracking = ({
             product.priceExcludingTax &&
             product.quantityPerPackage
           ) {
-            await FirestoreService.savePricingHistory(
+            await firestoreService.savePricingHistory(
               user.uid,
               product.name,
               product.specification || '',
@@ -114,7 +117,7 @@ export const useHistoryTracking = ({
         // 履歴保存の失敗は致命的ではないのでエラーログのみ
       }
     },
-    [user, supplierAutocomplete, productNameAutocomplete, originAutocomplete]
+    [user, supplierAutocomplete, productNameAutocomplete, originAutocomplete, firestoreService]
   );
 
   return {

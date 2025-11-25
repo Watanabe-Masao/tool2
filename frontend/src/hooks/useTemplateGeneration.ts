@@ -2,8 +2,7 @@ import { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
-import { TemplateService } from '@/services/api/templateService';
-import { SessionStorageService } from '@/utils/sessionStorageService';
+import { useTemplateService, useSessionStorageService } from '@/context/ServiceContext';
 
 /**
  * 生成されたファイル情報の型
@@ -69,6 +68,10 @@ export const useTemplateGeneration = ({
   showLoading,
   hideLoading,
 }: UseTemplateGenerationParams) => {
+  // Service Context からサービスを取得
+  const templateService = useTemplateService();
+  const sessionStorageService = useSessionStorageService();
+
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFiles | null>(null);
   const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
 
@@ -114,7 +117,7 @@ export const useTemplateGeneration = ({
         console.log('  - dateStr:', dateStr);
         console.log('  - customFilename:', customFilename);
 
-        const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
+        const response = await templateService.generateTemplate(data, buyerName, customFilename);
 
         console.log('Template generated:', response);
 
@@ -143,7 +146,7 @@ export const useTemplateGeneration = ({
 
         // SessionStorageの下書きをクリア（成功時）
         if (user) {
-          SessionStorageService.clearDraft(user.uid);
+          sessionStorageService.clearDraft(user.uid);
           setHasUnsavedChanges(false);
         }
 
@@ -154,7 +157,7 @@ export const useTemplateGeneration = ({
         return false;
       }
     },
-    [showLoading, userSettings, user, showError, hideLoading, showSuccess, fetchExcelAsBlob, setGeneratedFiles, setExcelBlob]
+    [showLoading, userSettings, user, showError, hideLoading, showSuccess, fetchExcelAsBlob, setGeneratedFiles, setExcelBlob, templateService, sessionStorageService]
   );
 
   return {
