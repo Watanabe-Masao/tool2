@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -110,6 +110,12 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const [showStatistics, setShowStatistics] = useState(false);
 
   const isGenerationComplete = Boolean(pdfFilename);
+
+  // React#185対策: lockedStoresをuseRefで参照して、columnsの不要な再計算を防止
+  const lockedStoresRef = useRef(lockedStores);
+  useEffect(() => {
+    lockedStoresRef.current = lockedStores;
+  }, [lockedStores]);
 
   /**
    * 行データを生成
@@ -246,7 +252,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
           if (!params.row) return null;
           const value = params.value as number;
           const productIndex = params.row.productIndex;
-          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const productLockedStores = lockedStoresRef.current.get(productIndex) || new Set();
           const isLocked = productLockedStores.has(store.code);
 
           return (
@@ -269,7 +275,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         renderEditCell: (params: GridRenderEditCellParams<GridRowData>) => {
           const { id, value, field, api } = params;
           const productIndex = params.row.productIndex;
-          const productLockedStores = lockedStores.get(productIndex) || new Set();
+          const productLockedStores = lockedStoresRef.current.get(productIndex) || new Set();
           const isLocked = productLockedStores.has(store.code);
 
           return (
@@ -396,7 +402,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     );
 
     return cols;
-  }, [onGenerate, lockedStores, isMobile]);
+    // React#185対策: lockedStoresは依存配列から除外（useRefで参照）
+  }, [onGenerate, isMobile]);
 
   /**
    * セル更新処理（React#185対策: 非同期更新）
@@ -416,9 +423,9 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     const storeIndex = STORE_DATA.findIndex(store => store.code === storeCode);
     if (storeIndex === -1) return oldRow;
 
-    // ロックチェック
+    // ロックチェック（useRef経由で最新値を参照）
     const productIndex = newRow.productIndex;
-    const productLockedStores = lockedStores.get(productIndex) || new Set();
+    const productLockedStores = lockedStoresRef.current.get(productIndex) || new Set();
     if (productLockedStores.has(storeCode)) {
       return oldRow; // ロックされている場合は更新しない
     }
@@ -432,7 +439,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     });
 
     return { ...newRow, [changedField]: value };
-  }, [onAllocationChange, lockedStores]);
+  }, [onAllocationChange]);
 
   /**
    * セルが編集可能かどうか
@@ -443,10 +450,10 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
 
     const storeCode = params.field.replace('store_', '');
     const productIndex = params.row.productIndex;
-    const productLockedStores = lockedStores.get(productIndex) || new Set();
+    const productLockedStores = lockedStoresRef.current.get(productIndex) || new Set();
 
     return !productLockedStores.has(storeCode);
-  }, [onGenerate, lockedStores]);
+  }, [onGenerate]);
 
   /**
    * PDFプレビューを開く

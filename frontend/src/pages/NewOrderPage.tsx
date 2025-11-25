@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
@@ -235,6 +235,27 @@ export const NewOrderPage: React.FC = () => {
     handleNextStep,
   });
 
+  // React#185対策: FloatingProgressSummary用のformDataをメモ化
+  const progressFormData = useMemo(() => ({
+    deliveryDate: deliveryDate || new Date(),
+    suppliers: suppliers || [],
+    products: products || [],
+  }), [deliveryDate, suppliers, products]);
+
+  // React#185対策: 条件付きハンドラをメモ化
+  const progressPrevStep = useMemo(
+    () => (activeStep > 0 ? handlePrevStep : undefined),
+    [activeStep, handlePrevStep]
+  );
+  const progressNextStep = useMemo(
+    () => (activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined),
+    [activeStep, handleNextStep]
+  );
+  const progressAllocationChange = useMemo(
+    () => (activeStep === 4 ? handleAllocationChange : undefined),
+    [activeStep, handleAllocationChange]
+  );
+
   return (
     <FormProvider {...methods}>
       <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
@@ -302,18 +323,14 @@ export const NewOrderPage: React.FC = () => {
         />
         {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
-            formData={{
-              deliveryDate: deliveryDate || new Date(),
-              suppliers: suppliers || [],
-              products: products || [],
-            }}
+            formData={progressFormData}
             totalSteps={TOTAL_STEPS}
             onHeightChange={setProgressSummaryHeight}
             onRemoveProduct={handleRemoveProduct}
             onClearProduct={handleClearProduct}
-            onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
-            onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
-            onAllocationChange={activeStep === 4 ? handleAllocationChange : undefined}
+            onPrevStep={progressPrevStep}
+            onNextStep={progressNextStep}
+            onAllocationChange={progressAllocationChange}
           />
         )}
 
