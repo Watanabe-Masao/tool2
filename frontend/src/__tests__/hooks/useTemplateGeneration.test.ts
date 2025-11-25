@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../setup';
 import { useTemplateGeneration } from '@/hooks/useTemplateGeneration';
 import { TemplateService } from '@/services/api/templateService';
 import { SessionStorageService } from '@/utils/sessionStorageService';
@@ -17,9 +19,6 @@ vi.mock('@/utils/sessionStorageService', () => ({
     clearDraft: vi.fn(),
   },
 }));
-
-// Mock global fetch
-global.fetch = vi.fn();
 
 describe('useTemplateGeneration', () => {
   const mockShowSuccess = vi.fn();
@@ -59,10 +58,7 @@ describe('useTemplateGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(TemplateService.generateTemplate).mockResolvedValue(mockTemplateResponse);
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      blob: () => Promise.resolve(new Blob(['test'], { type: 'application/vnd.ms-excel' })),
-    } as Response);
+    // MSW handles fetch requests for /downloads/*.xlsx
   });
 
   describe('generateTemplate', () => {
@@ -111,7 +107,10 @@ describe('useTemplateGeneration', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.excelBlob).toBeInstanceOf(Blob);
+        // MSW returns Blob from different realm, check properties instead of instanceof
+        expect(result.current.excelBlob).toBeTruthy();
+        expect(result.current.excelBlob).toHaveProperty('size');
+        expect(result.current.excelBlob).toHaveProperty('type');
       });
     });
 
@@ -232,7 +231,12 @@ describe('useTemplateGeneration', () => {
     });
 
     it('ExcelBlob取得失敗時も処理を続行', async () => {
-      vi.mocked(global.fetch).mockRejectedValue(new Error('Blob fetch error'));
+      // MSW: Blob fetch エラーをモック
+      server.use(
+        http.get(/\/downloads\/.*\.xlsx/, () => {
+          return HttpResponse.error();
+        })
+      );
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const { result } = renderHook(() => useTemplateGeneration(defaultParams));
