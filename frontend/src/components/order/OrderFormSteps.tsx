@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box } from '@mui/material';
 import type {
   Control,
@@ -108,6 +108,13 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
   const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
 
+  // React#185対策: formDataオブジェクトをメモ化して不要な再レンダリングを防止
+  const formData = useMemo(() => ({
+    deliveryDate: deliveryDate || new Date(),
+    suppliers: suppliers || [],
+    products: products || [],
+  }), [deliveryDate, suppliers, products]);
+
   return (
     <>
       {/* Step 0: 店着日・帳合先 */}
@@ -172,11 +179,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
           {!showGeneratedPreview ? (
             /* 生成前のプレビュー */
             <AllocationPreviewContent
-              formData={{
-                deliveryDate: deliveryDate || new Date(),
-                suppliers: suppliers || [],
-                products: products || [],
-              }}
+              formData={formData}
               pdfFilename={undefined}
               onGenerate={onSubmit}
               onAllocationChange={onAllocationChange}
@@ -191,11 +194,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
             /* 生成後のプレビュー */
             generatedFiles && (
               <AllocationPreviewContent
-                formData={{
-                  deliveryDate: deliveryDate || new Date(),
-                  suppliers: suppliers || [],
-                  products: products || [],
-                }}
+                formData={formData}
                 pdfFilename={generatedFiles.pdfFilename}
                 pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
                 onDownloadExcel={onDownloadExcel}

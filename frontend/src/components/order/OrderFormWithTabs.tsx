@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Container, Box, Tabs, Tab } from '@mui/material';
 import type {
   Control,
@@ -118,6 +118,23 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
     setActiveStep(newValue);
   };
 
+  // React#185対策: onSubmitハンドラをメモ化して不要な再レンダリングを防止
+  const memoizedOnSubmit = useCallback(() => {
+    handleSubmit(onSubmit)();
+  }, [handleSubmit, onSubmit]);
+
+  // React#185対策: onBackToEditハンドラをメモ化
+  const memoizedOnBackToEdit = useCallback(() => {
+    setShowGeneratedPreview(false);
+    setGeneratedFiles(null);
+    setExcelBlob(null);
+  }, [setShowGeneratedPreview, setGeneratedFiles, setExcelBlob]);
+
+  // React#185対策: onSendEmailハンドラをメモ化
+  const memoizedOnSendEmail = useCallback(() => {
+    setShowEmailModal(true);
+  }, [setShowEmailModal]);
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ width: '100%', py: 2 }}>
@@ -171,16 +188,12 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
             deliveryDate={deliveryDate}
             products={products}
             generatedFiles={generatedFiles}
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={memoizedOnSubmit}
             onAllocationChange={handleAllocationChange}
             onDownloadExcel={handleDownloadExcel}
             onDownloadPdf={handleDownloadPdf}
-            onSendEmail={() => setShowEmailModal(true)}
-            onBackToEdit={() => {
-              setShowGeneratedPreview(false);
-              setGeneratedFiles(null);
-              setExcelBlob(null);
-            }}
+            onSendEmail={memoizedOnSendEmail}
+            onBackToEdit={memoizedOnBackToEdit}
           />
         </Box>
       </Box>
