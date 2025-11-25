@@ -8,18 +8,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
-
-/**
- * 帳合先プリセットエンティティ
- */
-export interface SupplierPreset {
-  id?: string;
-  userId: string;
-  supplier: string;
-  displayOrder?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import type { SupplierPreset } from '@/types/repository';
 
 /**
  * Firestore保存形式

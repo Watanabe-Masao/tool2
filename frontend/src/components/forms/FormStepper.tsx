@@ -2,14 +2,7 @@ import React from 'react';
 import { Stepper, Step, StepLabel, Box, Button, MobileStepper } from '@mui/material';
 import { KeyboardArrowLeft, KeyboardArrowRight } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
-
-/**
- * ステップの定義
- */
-export interface FormStep {
-  label: string;
-  optional?: boolean;
-}
+import type { FormStep } from '@/types/ui';
 
 /**
  * FormStepperのProps

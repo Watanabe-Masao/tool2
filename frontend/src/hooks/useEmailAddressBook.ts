@@ -1,15 +1,10 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
+import type { EmailAddress } from '@/types/repository';
 
-export interface EmailAddressEntry {
-  id: string;
-  name: string;
-  email: string;
-  displayOrder?: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// EmailAddressEntry は EmailAddress のエイリアスとして使用
+type EmailAddressEntry = EmailAddress;
 
 /**
  * メールアドレス帳管理フック

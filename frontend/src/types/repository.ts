@@ -15,79 +15,84 @@ export type AutocompleteField = 'productName' | 'origin' | 'specification' | 'su
  * オートコンプリート履歴
  */
 export interface AutocompleteHistory {
-  id: string;
+  id?: string;
   userId: string;
   field: AutocompleteField;
-  value: string;
-  count: number;
-  lastUsed: Date;
+  values: string[];
+  lastUpdated?: Date;
 }
 
 /**
  * メールアドレス
  */
 export interface EmailAddress {
-  id: string;
+  id?: string;
   userId: string;
+  name: string;
   email: string;
-  displayName?: string;
-  createdAt: Date;
-  order: number;
+  displayOrder?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
  * 帳合先プリセット
  */
 export interface SupplierPreset {
-  id: string;
+  id?: string;
   userId: string;
   supplier: string;
-  displayName?: string;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
+  displayOrder?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
  * 価格履歴
  */
 export interface PricingHistory {
-  id: string;
+  id?: string;
   userId: string;
   productName: string;
-  supplier: string;
+  specification: string;
+  quantityPerPackage: number;
+  unit: string;
+  centerCost: number;
   storeCost: number;
   priceExcludingTax: number;
   centerFeeRate: number;
-  centerCost: number;
-  recordedAt: Date;
+  usageCount: number;
+  createdAt?: Date;
+  lastUsedAt?: Date;
 }
 
 /**
  * 商品履歴
  */
 export interface ProductHistory {
-  id: string;
+  id?: string;
   userId: string;
   supplier: string;
+  categoryCode?: string;
   name: string;
   origin: string;
   specification: string;
   quantityPerPackage: number | null;
   unit: string;
-  categoryCode?: string;
   usageCount: number;
   pinned: boolean;
   pinOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
  * 商品履歴削除条件
  */
 export interface DeleteProductHistoryConditions {
-  supplier?: string;
+  supplier: string;
   name?: string;
+  origin?: string;
+  specification?: string;
   exceptPinned?: boolean;
 }

@@ -184,28 +184,4 @@ export abstract class FirestoreBaseService<T, F = any> {
   }
 }
 
-/**
- * ページネーション結果
- */
-export interface PaginatedResult<T> {
-  /** アイテムリスト */
-  items: T[];
-  /** 次のページがあるか */
-  hasMore: boolean;
-  /** 最後のドキュメント（次ページ取得用） */
-  lastDoc?: DocumentSnapshot;
-}
-
-/**
- * クエリオプション
- */
-export interface QueryOptions {
-  /** 取得件数制限 */
-  limit?: number;
-  /** 開始位置（前回の最後のドキュメント） */
-  startAfter?: DocumentSnapshot;
-  /** ソートフィールド */
-  orderBy?: string;
-  /** ソート方向 */
-  direction?: 'asc' | 'desc';
-}
+export type { PaginatedResult, QueryOptions } from '@/types/services';

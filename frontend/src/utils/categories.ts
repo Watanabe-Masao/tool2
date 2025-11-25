@@ -2,22 +2,7 @@
  * カテゴリー定数
  */
 
-/**
- * 商品カテゴリー
- */
-export interface Category {
-  code: string;
-  name: string;
-}
-
-/**
- * 大カテゴリー
- */
-export interface MainCategory {
-  code: string;
-  name: string;
-  subCategories: Category[];
-}
+import type { Category, MainCategory } from '@/types/utils';
 
 /**
  * 果実カテゴリー（61）

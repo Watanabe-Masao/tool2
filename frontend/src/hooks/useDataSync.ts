@@ -4,22 +4,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useIndexedDB } from './useIndexedDB';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import type { OrderFormData } from '@/schemas/orderSchema';
-
-/**
- * useDataSync戻り値の型
- */
-export interface UseDataSyncReturn {
-  /** オンライン状態 */
-  isOnline: boolean;
-  /** 同期中かどうか */
-  isSyncing: boolean;
-  /** 未同期データの数 */
-  unsyncedCount: number;
-  /** 注文を保存（オンライン/オフラインを自動判定） */
-  saveOrder: (order: OrderFormData, buyerName: string) => Promise<void>;
-  /** 手動で同期を実行 */
-  syncNow: () => Promise<void>;
-}
+import type { UseDataSyncReturn } from '@/types/hooks';
 
 /**
  * オフライン同期カスタムフック

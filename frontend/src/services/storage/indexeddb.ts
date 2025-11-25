@@ -1,24 +1,6 @@
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { OrderFormData } from '@/schemas/orderSchema';
-
-/**
- * IndexedDBに保存する注文データの型
- */
-export interface IndexedDBOrderData extends OrderFormData {
-  /** IndexedDB自動採番ID */
-  id?: number;
-  /** バイヤー名 */
-  buyerName: string;
-  /** ユーザーID */
-  userId: string;
-  /** 作成日時 */
-  timestamp: Date;
-  /** Firestoreと同期済みかどうか */
-  synced: boolean;
-  /** Firestore上のドキュメントID (同期後に設定) */
-  firestoreId?: string;
-}
+import type { IndexedDBOrderData } from '@/types/services';
 
 /**
  * Haibun配分表アプリのIndexedDBデータベース

@@ -2,39 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { TemplateService } from '@/services/api/templateService';
 import { SessionStorageService } from '@/utils/sessionStorageService';
-
-/**
- * Service インターフェース定義
- *
- * 各 Service の型を定義し、DI（Dependency Injection）を可能にする。
- */
-export interface IFirestoreService {
-  saveProductHistory: typeof FirestoreService.saveProductHistory;
-  savePricingHistory: typeof FirestoreService.savePricingHistory;
-  saveAutocompleteHistory: typeof FirestoreService.saveAutocompleteHistory;
-  getAutocompleteHistory: typeof FirestoreService.getAutocompleteHistory;
-}
-
-export interface ITemplateService {
-  generateTemplate: typeof TemplateService.generateTemplate;
-}
-
-export interface ISessionStorageService {
-  saveDraft: typeof SessionStorageService.saveDraft;
-  loadDraft: typeof SessionStorageService.loadDraft;
-  clearDraft: typeof SessionStorageService.clearDraft;
-}
-
-/**
- * Services の型定義
- *
- * アプリケーション全体で使用する Service の集合。
- */
-export interface Services {
-  firestoreService: IFirestoreService;
-  templateService: ITemplateService;
-  sessionStorageService: ISessionStorageService;
-}
+import type { IFirestoreService, ITemplateService, ISessionStorageService, Services } from '@/types/services';
 
 /**
  * Service Context

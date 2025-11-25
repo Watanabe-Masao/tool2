@@ -5,24 +5,7 @@
  */
 
 import { API_BASE_URL } from '@/utils/constants';
-
-/**
- * メール送信オプション
- */
-export interface EmailSendOptions {
-  /** 宛先メールアドレス */
-  to: string;
-  /** 件名 */
-  subject: string;
-  /** 本文（HTML形式） */
-  body: string;
-  /** 送信元の表示名（オプション） */
-  senderName?: string;
-  /** 添付ファイル（Blob） */
-  attachment?: Blob;
-  /** 添付ファイル名 */
-  filename?: string;
-}
+import type { EmailSendOptions } from '@/types/services';
 
 /**
  * BlobをBase64に変換

@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import {
+  UserIdSchema,
+  OrderIdSchema,
+  StoreIdSchema,
+  StoreCodeSchema,
+  SupplierIdSchema,
+  ProductHistoryIdSchema,
+  PresetIdSchema,
+  EmailAddressIdSchema,
+  FileNameSchema,
+  DownloadUrlSchema,
+} from '@/types/utils';
 
 /**
  * ブランド型ユーティリティ
@@ -21,73 +33,31 @@ import { z } from 'zod';
  * ```
  */
 
-// ============================================================
-// ID ブランド型
-// ============================================================
+export {
+  UserIdSchema,
+  OrderIdSchema,
+  StoreIdSchema,
+  StoreCodeSchema,
+  SupplierIdSchema,
+  ProductHistoryIdSchema,
+  PresetIdSchema,
+  EmailAddressIdSchema,
+  FileNameSchema,
+  DownloadUrlSchema,
+} from '@/types/utils';
 
-/**
- * ユーザーID（Firebase Auth UID）
- */
-export const UserIdSchema = z.string().min(1).brand('UserId');
-export type UserId = z.infer<typeof UserIdSchema>;
-
-/**
- * 注文ID（Firestore Document ID）
- */
-export const OrderIdSchema = z.string().min(1).brand('OrderId');
-export type OrderId = z.infer<typeof OrderIdSchema>;
-
-/**
- * 店舗ID（0-35 の範囲）
- */
-export const StoreIdSchema = z.number().int().min(0).max(35).brand('StoreId');
-export type StoreId = z.infer<typeof StoreIdSchema>;
-
-/**
- * 店舗コード（Firestore で使用される文字列コード）
- */
-export const StoreCodeSchema = z.string().regex(/^\d+$/).brand('StoreCode');
-export type StoreCode = z.infer<typeof StoreCodeSchema>;
-
-/**
- * 帳合先ID
- */
-export const SupplierIdSchema = z.string().min(1).brand('SupplierId');
-export type SupplierId = z.infer<typeof SupplierIdSchema>;
-
-/**
- * 商品履歴ID
- */
-export const ProductHistoryIdSchema = z.string().min(1).brand('ProductHistoryId');
-export type ProductHistoryId = z.infer<typeof ProductHistoryIdSchema>;
-
-/**
- * プリセットID
- */
-export const PresetIdSchema = z.string().min(1).brand('PresetId');
-export type PresetId = z.infer<typeof PresetIdSchema>;
-
-/**
- * メールアドレスID
- */
-export const EmailAddressIdSchema = z.string().min(1).brand('EmailAddressId');
-export type EmailAddressId = z.infer<typeof EmailAddressIdSchema>;
-
-// ============================================================
-// ファイル関連ブランド型
-// ============================================================
-
-/**
- * ファイル名（拡張子を含む）
- */
-export const FileNameSchema = z.string().min(1).brand('FileName');
-export type FileName = z.infer<typeof FileNameSchema>;
-
-/**
- * ダウンロードURL
- */
-export const DownloadUrlSchema = z.string().url().brand('DownloadUrl');
-export type DownloadUrl = z.infer<typeof DownloadUrlSchema>;
+export type {
+  UserId,
+  OrderId,
+  StoreId,
+  StoreCode,
+  SupplierId,
+  ProductHistoryId,
+  PresetId,
+  EmailAddressId,
+  FileName,
+  DownloadUrl,
+} from '@/types/utils';
 
 // ============================================================
 // ヘルパー関数

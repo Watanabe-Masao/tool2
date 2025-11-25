@@ -26,6 +26,7 @@ export const SUCCESS_MESSAGES = {
   // 下書き関連
   draftSaved: '下書きを保存しました',
   draftLoaded: '下書きを読み込みました',
+  draftRestored: '下書きを復元しました',
   draftCleared: '下書きをクリアしました',
 
   // ユーザー設定関連

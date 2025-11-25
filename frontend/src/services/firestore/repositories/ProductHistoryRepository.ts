@@ -11,26 +11,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
-
-/**
- * 商品履歴エンティティ
- */
-export interface ProductHistory {
-  id?: string;
-  userId: string;
-  supplier: string;
-  categoryCode?: string;
-  name: string;
-  origin: string;
-  specification: string;
-  quantityPerPackage: number | null;
-  unit: string;
-  usageCount: number;
-  pinned: boolean;
-  pinOrder: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import type { ProductHistory, DeleteProductHistoryConditions } from '@/types/repository';
 
 /**
  * Firestore保存形式
@@ -49,18 +30,6 @@ interface FirestoreProductHistory {
   pinOrder: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-}
-
-/**
- * 削除条件
- */
-export interface DeleteProductHistoryConditions {
-  supplier: string;
-  name?: string;
-  origin?: string;
-  specification?: string;
-  quantityPerPackage?: number | null;
-  unit?: string;
 }
 
 /**

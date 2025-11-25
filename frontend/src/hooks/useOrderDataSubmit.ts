@@ -89,7 +89,7 @@ export const useOrderDataSubmit = ({
           if (!isOnline) {
             hideLoading();
           }
-          showError(ERROR_MESSAGES.validationError);
+          showError('一部の商品の帳合先がステップ1で選択されていません');
           return false;
         }
 

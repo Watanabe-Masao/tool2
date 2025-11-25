@@ -4,16 +4,7 @@ import { useOrderDataSubmit } from './useOrderDataSubmit';
 import { useHistoryTracking } from './useHistoryTracking';
 import { useTemplateGeneration } from './useTemplateGeneration';
 import { useFileDownloads } from './useFileDownloads';
-
-/**
- * 生成されたファイル情報の型
- */
-export interface GeneratedFiles {
-  filename: string;
-  downloadUrl: string;
-  pdfFilename?: string;
-  pdfDownloadUrl?: string;
-}
+import type { GeneratedFiles } from '@/types/hooks';
 
 /**
  * useOrderSubmitフックのパラメータ

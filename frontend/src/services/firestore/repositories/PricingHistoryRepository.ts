@@ -10,26 +10,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
-
-/**
- * 価格履歴エンティティ
- */
-export interface PricingHistory {
-  id?: string;
-  userId: string;
-  productName: string;
-  specification: string;
-  quantityPerPackage: number;
-  unit: string;
-  centerCost: number;
-  storeCost: number;
-  priceExcludingTax: number;
-  centerFeeRate: number;
-  usageCount: number;
-  createdAt?: Date;
-  lastUsedAt?: Date;
-  updatedAt?: Date;
-}
+import type { PricingHistory } from '@/types/repository';
 
 /**
  * Firestore保存形式

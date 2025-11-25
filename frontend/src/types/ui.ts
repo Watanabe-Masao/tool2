@@ -37,6 +37,38 @@ export interface NotificationData {
 }
 
 /**
+ * ジェスチャーヒントのタイプ
+ */
+export type GestureType =
+  | 'swipe-horizontal'
+  | 'swipe-vertical'
+  | 'swipe-left'
+  | 'swipe-right'
+  | 'swipe-up'
+  | 'swipe-down'
+  | 'long-press'
+  | 'tap';
+
+/**
+ * ハプティックフィードバック（触覚フィードバック）のタイプ
+ */
+export type HapticType =
+  | 'light'      // 軽いタップ（選択、切り替え）
+  | 'medium'     // 中程度の振動（ボタン押下）
+  | 'heavy'      // 強い振動（重要な操作、エラー）
+  | 'success'    // 成功通知
+  | 'warning'    // 警告通知
+  | 'error';     // エラー通知
+
+/**
+ * フォームステップの定義
+ */
+export interface FormStep {
+  label: string;
+  optional?: boolean;
+}
+
+/**
  * ダイアログ・モーダル状態型
  */
 

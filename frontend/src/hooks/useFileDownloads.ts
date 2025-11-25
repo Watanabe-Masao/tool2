@@ -82,7 +82,8 @@ export const useFileDownloads = ({
         console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
         if (!response.ok) {
-          throw new Error(ERROR_MESSAGES.fileDownloadFailed);
+          const statusText = response.statusText || 'Unknown Error';
+          throw new Error(`ダウンロード失敗: ${response.status} ${statusText}`);
         }
 
         const contentType = response.headers.get('Content-Type') || '';
@@ -91,7 +92,7 @@ export const useFileDownloads = ({
         if (contentType.includes('text/html')) {
           const htmlText = await response.text();
           console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error(ERROR_MESSAGES.invalidFileType);
+          throw new Error(`サーバーからHTMLが返されました: ${htmlText.substring(0, 100)}`);
         }
 
         const blob = await response.blob();

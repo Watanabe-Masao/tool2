@@ -8,19 +8,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
-
-/**
- * メールアドレス帳エンティティ
- */
-export interface EmailAddress {
-  id?: string;
-  userId: string;
-  name: string;
-  email: string;
-  displayOrder?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import type { EmailAddress } from '@/types/repository';
 
 /**
  * Firestore保存形式

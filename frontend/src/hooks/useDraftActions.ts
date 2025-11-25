@@ -61,7 +61,7 @@ export const useDraftActions = ({
     if (draft) {
       reset(draft);
       setRestoreDialogOpen(false);
-      showSuccess(SUCCESS_MESSAGES.draftLoaded);
+      showSuccess(SUCCESS_MESSAGES.draftRestored);
 
       // 最初のステップに戻す
       setActiveStep(0);

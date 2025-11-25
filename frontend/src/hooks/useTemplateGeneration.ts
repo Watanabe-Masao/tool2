@@ -3,16 +3,7 @@ import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
 import { useTemplateService, useSessionStorageService } from '@/context/ServiceContext';
-
-/**
- * 生成されたファイル情報の型
- */
-export interface GeneratedFiles {
-  filename: string;
-  downloadUrl: string;
-  pdfFilename?: string;
-  pdfDownloadUrl?: string;
-}
+import type { GeneratedFiles } from '@/types/hooks';
 
 /**
  * useTemplateGenerationのパラメータ

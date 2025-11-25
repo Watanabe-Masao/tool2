@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-
-export interface SupplierPreset {
-  id: string;
-  supplier: string;
-  displayOrder?: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { SupplierPreset } from '@/types/repository';
 
 /**
  * 帳合先プリセット管理フック

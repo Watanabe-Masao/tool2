@@ -28,6 +28,9 @@
  * - `firebase.ts` - Firebase 型
  * - `repository.ts` - Repository 層型
  * - `ui.ts` - UI utility 型
+ * - `hooks.ts` - Hook 戻り値型
+ * - `services.ts` - Service interfaces
+ * - `utils.ts` - Utility 型（カテゴリー、プロファイラー、ブランド型）
  * - `userSettings.ts` - ユーザー設定型
  * - `storeSettings.ts` - 店舗設定型
  * - `storeCategory.ts` - 店舗カテゴリ型
@@ -85,11 +88,74 @@ export type {
   DeviceInfo,
   NotificationData,
   NotificationSeverity,
+  GestureType,
+  HapticType,
+  FormStep,
   DeleteDialogState,
   BookNameDialogState,
   SupplierRemovalDialogState,
   ModalState,
 } from './ui';
+
+// ============================================================
+// Hook Types
+// ============================================================
+export type {
+  UseAuthReturn,
+  UseDataSyncReturn,
+  UseIndexedDBReturn,
+  ProductHistoryItem,
+  PricingHistoryItem,
+  KeyboardShortcut,
+  GeneratedFiles,
+} from './hooks';
+
+// ============================================================
+// Service Types
+// ============================================================
+export type {
+  IFirestoreService,
+  ITemplateService,
+  ISessionStorageService,
+  Services,
+  IndexedDBOrderData,
+  EmailSendOptions,
+  PaginatedResult,
+  QueryOptions,
+} from './services';
+
+// ============================================================
+// Utility Types
+// ============================================================
+export type {
+  Category,
+  MainCategory,
+  ProfilerMeasurement,
+  ProfilerCallback,
+  UserId,
+  OrderId,
+  StoreId,
+  StoreCode,
+  SupplierId,
+  ProductHistoryId,
+  PresetId,
+  EmailAddressId,
+  FileName,
+  DownloadUrl,
+} from './utils';
+
+export {
+  UserIdSchema,
+  OrderIdSchema,
+  StoreIdSchema,
+  StoreCodeSchema,
+  SupplierIdSchema,
+  ProductHistoryIdSchema,
+  PresetIdSchema,
+  EmailAddressIdSchema,
+  FileNameSchema,
+  DownloadUrlSchema,
+} from './utils';
 
 // ============================================================
 // Settings Types

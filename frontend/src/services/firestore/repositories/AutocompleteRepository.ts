@@ -8,22 +8,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { FirestoreBaseService } from '../base/FirestoreBaseService';
-
-/**
- * オートコンプリート履歴のフィールドタイプ
- */
-export type AutocompleteField = 'productName' | 'origin' | 'specification' | 'supplier';
-
-/**
- * オートコンプリート履歴エンティティ
- */
-export interface AutocompleteHistory {
-  id?: string;
-  userId: string;
-  field: AutocompleteField;
-  values: string[];
-  lastUpdated?: Date;
-}
+import type { AutocompleteField, AutocompleteHistory } from '@/types/repository';
 
 /**
  * Firestore保存形式

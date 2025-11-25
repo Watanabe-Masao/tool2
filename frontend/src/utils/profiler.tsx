@@ -1,30 +1,6 @@
 import React, { Profiler } from 'react';
 import type { ProfilerOnRenderCallback } from 'react';
-
-/**
- * プロファイラー測定結果
- */
-export interface ProfilerMeasurement {
-  /** プロファイラーID */
-  id: string;
-  /** フェーズ（mount, update, or nested-update） */
-  phase: 'mount' | 'update' | 'nested-update';
-  /** 実際のレンダリング時間（ミリ秒） */
-  actualDuration: number;
-  /** ベースレンダリング時間（ミリ秒） */
-  baseDuration: number;
-  /** レンダリング開始時刻 */
-  startTime: number;
-  /** コミット時刻 */
-  commitTime: number;
-  /** タイムスタンプ */
-  timestamp: number;
-}
-
-/**
- * プロファイラーコールバック関数の型
- */
-export type ProfilerCallback = (measurement: ProfilerMeasurement) => void;
+import type { ProfilerMeasurement, ProfilerCallback } from '@/types/utils';
 
 /**
  * グローバルプロファイラーコールバック

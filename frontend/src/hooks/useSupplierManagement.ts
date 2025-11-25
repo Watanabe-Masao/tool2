@@ -147,7 +147,7 @@ export const useSupplierManagement = ({
     // メッセージを表示
     const removedSupplierNames = suppliersToRemove.join('、');
     showSuccess(
-      `${createMessage.success('削除', `帳合先「${removedSupplierNames}」`)}、関連する商品カード${affectedProductsCount}件を削除しました`
+      `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
     );
 
     // ダイアログを閉じる

@@ -1,23 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-
-/**
- * 商品履歴アイテム
- */
-export interface ProductHistoryItem {
-  id: string;
-  supplier: string;
-  categoryCode?: string;
-  name: string;
-  origin: string;
-  specification: string;
-  quantityPerPackage: number | null;
-  unit: string;
-  usageCount: number;
-  pinned?: boolean; // ピン留めフラグ
-  pinOrder?: number; // ピン留めの順序（小さい方が上）
-}
+import type { ProductHistoryItem } from '@/types/hooks';
 
 /**
  * 商品履歴フック
