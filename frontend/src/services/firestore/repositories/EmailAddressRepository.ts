@@ -248,3 +248,6 @@ export class EmailAddressRepository extends FirestoreBaseService<
     console.log(`[${this.collectionName}] Updated address ${addressId}: ${name} (${email})`);
   }
 }
+
+// Re-export for backward compatibility
+export type { EmailAddress } from '@/types/repository';

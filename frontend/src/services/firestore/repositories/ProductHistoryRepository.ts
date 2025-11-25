@@ -334,3 +334,6 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     return maxOrder;
   }
 }
+
+// Re-export for backward compatibility
+export type { ProductHistory, DeleteProductHistoryConditions } from '@/types/repository';

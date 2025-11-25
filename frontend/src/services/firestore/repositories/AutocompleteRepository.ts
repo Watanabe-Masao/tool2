@@ -247,3 +247,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
     return this.executeQuery(q);
   }
 }
+
+// Re-export for backward compatibility
+export type { AutocompleteField, AutocompleteHistory } from '@/types/repository';

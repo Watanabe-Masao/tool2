@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { createMessage } from '@/messages';
 
 /**
  * 帳合先削除確認ダイアログの状態

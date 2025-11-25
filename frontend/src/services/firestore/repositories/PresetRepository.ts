@@ -237,3 +237,6 @@ export class PresetRepository extends FirestoreBaseService<
     console.log(`[${this.collectionName}] Updated preset ${presetId}: ${supplier}`);
   }
 }
+
+// Re-export for backward compatibility
+export type { SupplierPreset } from '@/types/repository';

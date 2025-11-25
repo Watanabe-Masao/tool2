@@ -4,7 +4,6 @@ import { useOrderDataSubmit } from './useOrderDataSubmit';
 import { useHistoryTracking } from './useHistoryTracking';
 import { useTemplateGeneration } from './useTemplateGeneration';
 import { useFileDownloads } from './useFileDownloads';
-import type { GeneratedFiles } from '@/types/hooks';
 
 /**
  * useOrderSubmitフックのパラメータ
