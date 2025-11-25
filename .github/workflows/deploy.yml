@@ -48,6 +48,11 @@ jobs:
       run: npm run check-types
       continue-on-error: true
 
+    - name: Check SSOT compliance (warning only)
+      working-directory: ./frontend
+      run: npm run check-ssot
+      continue-on-error: true
+
     - name: Build frontend
       working-directory: ./frontend
       run: npm run build
