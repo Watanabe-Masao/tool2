@@ -51,6 +51,7 @@ describe('useFormUIState', () => {
 
 #### B. Integration Tests（コンポーネント）
 
+{% raw %}
 ```typescript
 // __tests__/components/OrderFormWithTabs.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -113,6 +114,7 @@ describe('OrderFormWithTabs', () => {
   });
 });
 ```
+{% endraw %}
 
 #### C. E2E Tests（Playwright）
 

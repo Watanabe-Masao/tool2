@@ -46,6 +46,9 @@ interface OrderFormState {
   // ===== レイアウト =====
   progressSummaryHeight: number;
   setProgressSummaryHeight: (height: number) => void;
+  isProgressSummaryCollapsed: boolean;
+  setIsProgressSummaryCollapsed: (collapsed: boolean) => void;
+  toggleProgressSummaryCollapse: () => void;
 
   // ===== モーダル状態 =====
   showPDFPreview: boolean;
@@ -79,6 +82,7 @@ const initialState = {
   lockedStores: new Map<number, Set<string>>(),
   selectedCategories: new Map<number, Set<string>>(),
   progressSummaryHeight: 0,
+  isProgressSummaryCollapsed: false,
   showPDFPreview: false,
   showDownloadModal: false,
   showPreviewModal: false,
@@ -178,6 +182,18 @@ export const useOrderFormStore = create<OrderFormState>()(
         // 進捗サマリー高さ設定
         setProgressSummaryHeight: (height) =>
           set({ progressSummaryHeight: height }, false, 'setProgressSummaryHeight'),
+
+        // 進捗サマリー折りたたみ状態設定
+        setIsProgressSummaryCollapsed: (collapsed) =>
+          set({ isProgressSummaryCollapsed: collapsed }, false, 'setIsProgressSummaryCollapsed'),
+
+        // 進捗サマリー折りたたみトグル
+        toggleProgressSummaryCollapse: () =>
+          set(
+            (state) => ({ isProgressSummaryCollapsed: !state.isProgressSummaryCollapsed }),
+            false,
+            'toggleProgressSummaryCollapse'
+          ),
 
         // モーダル状態設定
         setShowPDFPreview: (show) => set({ showPDFPreview: show }, false, 'setShowPDFPreview'),

@@ -23,6 +23,8 @@ import {
   Warning as WarningIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
   DeleteOutline,
   ClearAll,
 } from '@mui/icons-material';
@@ -87,6 +89,8 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
   const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
   const lockedStores = useOrderFormStore((state) => state.lockedStores);
   const toggleStoreLock = useOrderFormStore((state) => state.toggleStoreLock);
+  const isProgressSummaryCollapsed = useOrderFormStore((state) => state.isProgressSummaryCollapsed);
+  const toggleProgressSummaryCollapse = useOrderFormStore((state) => state.toggleProgressSummaryCollapse);
 
   // 配分編集モーダルの状態
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
@@ -210,7 +214,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
     return () => {
       resizeObserver.disconnect();
     };
-  }, [onHeightChange, showProgressSummary, isProductMode, formData.products.length]);
+  }, [onHeightChange, showProgressSummary, isProductMode, formData.products.length, isProgressSummaryCollapsed]);
 
   /**
    * 各商品の総納品数の合計を計算
@@ -601,72 +605,106 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         margin: '0 auto',
       }}
     >
-      {/* ヘッダー（常時表示） */}
+      {/* ヘッダー（常時表示・コンパクト化） */}
       <Box
         sx={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          p: isMobile ? 1 : 2,
           bgcolor: 'primary.main',
           color: 'primary.contrastText',
-          borderRadius: showProgressSummary ? '16px 16px 0 0' : '16px 16px 0 0',
+          borderRadius: '16px 16px 0 0',
         }}
       >
-        {/* 前へボタン */}
-        <IconButton
-          size="small"
-          onClick={onPrevStep}
-          disabled={!onPrevStep}
+        {/* 上段：ナビゲーションとステップ表示 */}
+        <Box
           sx={{
-            color: 'inherit',
-            p: isMobile ? 0.5 : 1,
-            '&.Mui-disabled': {
-              color: 'rgba(255, 255, 255, 0.3)',
-            },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            py: isMobile ? 0.5 : 0.75,
+            px: isMobile ? 0.5 : 1,
           }}
         >
-          <ChevronLeftIcon fontSize={isMobile ? 'small' : 'medium'} />
-        </IconButton>
+          {/* 前へボタン */}
+          <IconButton
+            size="small"
+            onClick={onPrevStep}
+            disabled={!onPrevStep}
+            sx={{
+              color: 'inherit',
+              p: 0.25,
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.3)',
+              },
+            }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
 
-        {/* 中央：ステップ表示 */}
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          flex: 1,
-          justifyContent: 'center',
-          maxWidth: '33%',
-          margin: '0 auto',
-        }}>
-          <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight="bold">
-            ステップ {activeStep + 1} / {totalSteps}
-          </Typography>
-          <Typography variant={isMobile ? 'caption' : 'body2'}>
-            • {progress}%
-          </Typography>
+          {/* 中央：ステップ表示 */}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            flex: 1,
+            justifyContent: 'center',
+          }}>
+            <Typography variant="caption" fontWeight="bold" sx={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
+              ステップ {activeStep + 1} / {totalSteps}
+            </Typography>
+            <Typography variant="caption" sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}>
+              • {progress}%
+            </Typography>
+          </Box>
+
+          {/* 次へボタン */}
+          <IconButton
+            size="small"
+            onClick={onNextStep}
+            disabled={!onNextStep}
+            sx={{
+              color: 'inherit',
+              p: 0.25,
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.3)',
+              },
+            }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
         </Box>
 
-        {/* 次へボタン */}
-        <IconButton
-          size="small"
-          onClick={onNextStep}
-          disabled={!onNextStep}
-          sx={{
-            color: 'inherit',
-            p: isMobile ? 0.5 : 1,
-            '&.Mui-disabled': {
-              color: 'rgba(255, 255, 255, 0.3)',
-            },
-          }}
-        >
-          <ChevronRightIcon fontSize={isMobile ? 'small' : 'medium'} />
-        </IconButton>
+        {/* 下段：折りたたみトグル */}
+        {showProgressSummary && (
+          <Box
+            onClick={toggleProgressSummaryCollapse}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              py: 0.25,
+              cursor: 'pointer',
+              borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            {isProgressSummaryCollapsed ? (
+              <ExpandMoreIcon fontSize="small" sx={{ fontSize: '1rem' }} />
+            ) : (
+              <ExpandLessIcon fontSize="small" sx={{ fontSize: '1rem' }} />
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* 詳細（折りたたみ可能） */}
       <Collapse
-        in={showProgressSummary}
+        in={showProgressSummary && !isProgressSummaryCollapsed}
         timeout="auto"
         unmountOnExit
       >

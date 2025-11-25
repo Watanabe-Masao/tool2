@@ -20,6 +20,7 @@ import {
   DialogActions,
   TextField,
   Alert,
+  IconButton,
 } from '@mui/material';
 import {
   Logout,
@@ -30,6 +31,7 @@ import {
   Edit,
   MailOutline,
   ContactMail,
+  ArrowBack,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 import { useHistory } from 'react-router-dom';
@@ -187,9 +189,18 @@ export const UserProfilePage: React.FC = () => {
   return (
     <Container maxWidth="sm">
           <Box sx={{ py: 3 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-              ユーザー情報
-            </Typography>
+            {/* 戻るボタン */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <IconButton
+                onClick={() => history.push('/new-order')}
+                sx={{ mr: 1 }}
+              >
+                <ArrowBack />
+              </IconButton>
+              <Typography variant="h5" fontWeight="bold">
+                ユーザー情報
+              </Typography>
+            </Box>
 
             {/* プロフィールカード */}
             <Card sx={{ mb: 3 }}>
@@ -363,13 +374,6 @@ export const UserProfilePage: React.FC = () => {
                 fullWidth
               >
                 ログアウト
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => history.push('/')}
-                fullWidth
-              >
-                ホームに戻る
               </Button>
             </Box>
           </Box>

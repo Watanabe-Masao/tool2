@@ -1,0 +1,28 @@
+# Jekyll configuration for GitHub Pages
+# このファイルはGitHub Pagesのビルド設定を制御します
+
+# 除外設定
+# コードブロック内の {{ }} がLiquid構文として解釈されないよう、
+# 開発ドキュメントをJekyllビルドから除外
+exclude:
+  - docs/
+  - docs/_archive/
+  - frontend/
+  - backend/
+  - node_modules/
+  - vendor/
+  - .git/
+  - .github/workflows/
+  - "*.py"
+  - "*.txt"
+  - Gemfile
+  - Gemfile.lock
+
+# テーマ設定
+theme: jekyll-theme-primer
+
+# マークダウン処理設定
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false

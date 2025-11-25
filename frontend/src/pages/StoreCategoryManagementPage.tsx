@@ -39,12 +39,15 @@ import {
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
   FilterList as FilterListIcon,
+  ArrowBack,
 } from '@mui/icons-material';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
 import { useSupplierPresets, type SupplierPresetEntity } from '@/hooks/useSupplierPresets';
+import { FirestoreService } from '@/services/firebase/firestoreService';
 import { STORE_DATA } from '@/utils/constants';
 import type { StoreCategory } from '@/types/storeCategory';
 import type { StoreSettings } from '@/types/storeSettings';
@@ -53,14 +56,12 @@ import type { StoreSettings } from '@/types/storeSettings';
  * 店舗カテゴリー管理ページ
  */
 export const StoreCategoryManagementPage: React.FC = () => {
+  const history = useHistory();
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
 
   const [tabValue, setTabValue] = useState(0);
-
-  // 帳合先の並び順をローカルステートで管理（セッション中のみ有効）
-  const [orderedPresetIds, setOrderedPresetIds] = useState<string[]>([]);
 
   // カテゴリー管理用の状態
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -181,42 +182,6 @@ export const StoreCategoryManagementPage: React.FC = () => {
       loadPresets();
     }
   }, [user, tabValue]);
-
-  // 帳合先が読み込まれたときに並び順を初期化
-  useEffect(() => {
-    if (presets.length > 0) {
-      // sessionStorageから並び順を復元
-      const savedOrder = sessionStorage.getItem('supplier-preset-order');
-      if (savedOrder) {
-        try {
-          const orderIds = JSON.parse(savedOrder) as string[];
-          // 存在するIDのみをフィルタリング
-          const validIds = orderIds.filter((id) => presets.some((p) => p.id === id));
-          // 新しく追加されたプリセットを末尾に追加
-          const newIds = presets.filter((p) => !validIds.includes(p.id)).map((p) => p.id);
-          setOrderedPresetIds([...validIds, ...newIds]);
-        } catch (error) {
-          console.error('Failed to parse supplier order:', error);
-          setOrderedPresetIds(presets.map((p) => p.id));
-        }
-      } else {
-        // 初期状態はFirestoreから取得した順序
-        setOrderedPresetIds(presets.map((p) => p.id));
-      }
-    }
-  }, [presets]);
-
-  // 並び替えた順序でpresetsを取得
-  const orderedPresets = React.useMemo(() => {
-    if (orderedPresetIds.length === 0) return presets;
-
-    const ordered: SupplierPresetEntity[] = [];
-    orderedPresetIds.forEach((id) => {
-      const preset = presets.find((p) => p.id === id);
-      if (preset) ordered.push(preset);
-    });
-    return ordered;
-  }, [presets, orderedPresetIds]);
 
   // 未分類の店舗を取得
   const getUncategorizedStores = () => {
@@ -636,7 +601,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
 
     // 各アイテムの位置を確認してドラッグオーバーを判定
     let newDragOverIndex: number | null = null;
-    orderedPresets.forEach((preset, index) => {
+    presets.forEach((preset, index) => {
       const element = supplierItemRefs.current.get(preset.id);
       if (element) {
         const rect = element.getBoundingClientRect();
@@ -680,22 +645,32 @@ export const StoreCategoryManagementPage: React.FC = () => {
       return;
     }
 
-    // ドロップ処理（ローカルステートで並び順を管理）
-    const dragIndex = orderedPresetIds.findIndex((id) => id === supplierDragState.draggingId);
+    // ドロップ処理（Firestoreに並び順を保存）
+    const dragIndex = presets.findIndex((p) => p.id === supplierDragState.draggingId);
     const dropIndex = supplierDragState.dragOverIndex;
 
     if (dragIndex !== -1 && dropIndex !== null && dragIndex !== dropIndex) {
-      const newOrder = [...orderedPresetIds];
-      const [removed] = newOrder.splice(dragIndex, 1);
-      newOrder.splice(dropIndex, 0, removed);
+      // 並び替え処理
+      const reorderedPresets = [...presets];
+      const [removed] = reorderedPresets.splice(dragIndex, 1);
+      reorderedPresets.splice(dropIndex, 0, removed);
 
-      // ローカルステートを更新
-      setOrderedPresetIds(newOrder);
+      // displayOrderを更新してFirestoreに保存
+      const updates = reorderedPresets.map((item, index) => ({
+        id: item.id,
+        displayOrder: index,
+      }));
 
-      // sessionStorageに保存（セッション中のみ有効）
-      sessionStorage.setItem('supplier-preset-order', JSON.stringify(newOrder));
-
-      showSuccess('並び順を更新しました（セッション中のみ有効）');
+      (async () => {
+        try {
+          await FirestoreService.reorderSupplierPresets(updates);
+          await loadPresets();
+          showSuccess('並び順を更新しました');
+        } catch (error) {
+          console.error('Failed to reorder presets:', error);
+          showError('並び順の更新に失敗しました');
+        }
+      })();
     }
 
     setSupplierDragState({
@@ -748,9 +723,18 @@ export const StoreCategoryManagementPage: React.FC = () => {
   return (
     <Container maxWidth="lg">
           <Box sx={{ py: 3 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-              各種管理
-            </Typography>
+            {/* 戻るボタン */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <IconButton
+                onClick={() => history.push('/new-order')}
+                sx={{ mr: 1 }}
+              >
+                <ArrowBack />
+              </IconButton>
+              <Typography variant="h5" fontWeight="bold">
+                各種管理
+              </Typography>
+            </Box>
 
             <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
               <Tab label="カテゴリー管理" />
@@ -1122,7 +1106,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
             {tabValue === 2 && (
               <>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  帳合先を管理します。長押しで並び替え（セッション中のみ有効）、左にスワイプで編集、右にスワイプで削除できます。
+                  帳合先を管理します。長押しで並び替え、左にスワイプで編集、右にスワイプで削除できます。
                 </Typography>
 
                 <Card>
@@ -1141,11 +1125,11 @@ export const StoreCategoryManagementPage: React.FC = () => {
                       </Button>
                     </Box>
 
-                    {orderedPresets.length === 0 ? (
+                    {presets.length === 0 ? (
                       <Alert severity="info">帳合先がまだ登録されていません</Alert>
                     ) : (
                       <List sx={{ py: 0, position: 'relative' }}>
-                        {orderedPresets.map((preset, index) => {
+                        {presets.map((preset, index) => {
                           const isCurrentSwiping = supplierSwipeState.id === preset.id && !supplierDragState.isDragging;
                           const deltaX = isCurrentSwiping ? supplierSwipeState.currentX - supplierSwipeState.startX : 0;
                           const showEditHint = deltaX < -25;

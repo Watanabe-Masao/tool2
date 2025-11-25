@@ -34,17 +34,37 @@ describe('useOrderDraftManagement', () => {
     deliveryDate: new Date('2024-01-01'),
   };
 
+  // sessionStorageのモック
+  const mockSessionStorage: Record<string, string> = {};
+  const originalGetItem = Storage.prototype.getItem;
+  const originalSetItem = Storage.prototype.setItem;
+  const originalRemoveItem = Storage.prototype.removeItem;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     mockGetValues.mockReturnValue(mockFormData);
     // Mock console.log to suppress "Form auto-saved" messages
     vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    // sessionStorageをモック（draft-dialog-shownフラグ用）
+    Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key]);
+    Storage.prototype.getItem = vi.fn((key: string) => mockSessionStorage[key] || null);
+    Storage.prototype.setItem = vi.fn((key: string, value: string) => {
+      mockSessionStorage[key] = value;
+    });
+    Storage.prototype.removeItem = vi.fn((key: string) => {
+      delete mockSessionStorage[key];
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
+    // sessionStorageを復元
+    Storage.prototype.getItem = originalGetItem;
+    Storage.prototype.setItem = originalSetItem;
+    Storage.prototype.removeItem = originalRemoveItem;
   });
 
   describe('初期状態', () => {
