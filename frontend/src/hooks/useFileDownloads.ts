@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { GeneratedFiles } from './useTemplateGeneration';
 
 /**
@@ -59,73 +60,76 @@ export const useFileDownloads = ({
    * Excel と PDF のダウンロードロジックを統合し、
    * コードの重複を削減しています。
    */
-  const downloadFile = async (config: DownloadConfig) => {
-    try {
-      showLoading();
+  const downloadFile = useCallback(
+    async (config: DownloadConfig) => {
+      try {
+        showLoading();
 
-      // 相対URLを絶対URLに変換
-      // Firebase Hosting版では環境変数のバックエンドURLを使用
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const baseUrl = apiBaseUrl
-        ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-        : window.location.origin; // Render版（同一オリジン）
-      const absoluteUrl = new URL(config.url, baseUrl).href;
+        // 相対URLを絶対URLに変換
+        // Firebase Hosting版では環境変数のバックエンドURLを使用
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const baseUrl = apiBaseUrl
+          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
+          : window.location.origin; // Render版（同一オリジン）
+        const absoluteUrl = new URL(config.url, baseUrl).href;
 
-      console.log(`📥 ${config.fileType} download URL:`, config.url);
-      console.log('📥 Base URL:', baseUrl);
-      console.log('📥 Absolute URL:', absoluteUrl);
+        console.log(`📥 ${config.fileType} download URL:`, config.url);
+        console.log('📥 Base URL:', baseUrl);
+        console.log('📥 Absolute URL:', absoluteUrl);
 
-      // ファイルを取得
-      const response = await fetch(absoluteUrl);
-      console.log('Response status:', response.status);
-      console.log('Response Content-Type:', response.headers.get('Content-Type'));
+        // ファイルを取得
+        const response = await fetch(absoluteUrl);
+        console.log('Response status:', response.status);
+        console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
-      if (!response.ok) {
-        throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+        }
 
-      const contentType = response.headers.get('Content-Type') || '';
+        const contentType = response.headers.get('Content-Type') || '';
 
-      // HTMLが返された場合はエラー
-      if (contentType.includes('text/html')) {
-        const htmlText = await response.text();
-        console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-        throw new Error(
-          `サーバーからHTMLが返されました。${config.fileType}ファイルが生成されていない可能性があります。`
+        // HTMLが返された場合はエラー
+        if (contentType.includes('text/html')) {
+          const htmlText = await response.text();
+          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
+          throw new Error(
+            `サーバーからHTMLが返されました。${config.fileType}ファイルが生成されていない可能性があります。`
+          );
+        }
+
+        const blob = await response.blob();
+        console.log('Downloaded blob size:', blob.size, 'bytes');
+
+        // Blobからダウンロードリンクを作成
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = config.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Blob URLをクリーンアップ
+        window.URL.revokeObjectURL(blobUrl);
+
+        hideLoading();
+      } catch (error) {
+        hideLoading();
+        console.error(`${config.fileType} download error:`, error);
+        showError(
+          error instanceof Error
+            ? error.message
+            : `${config.fileType}ファイルのダウンロードに失敗しました`
         );
       }
-
-      const blob = await response.blob();
-      console.log('Downloaded blob size:', blob.size, 'bytes');
-
-      // Blobからダウンロードリンクを作成
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = config.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Blob URLをクリーンアップ
-      window.URL.revokeObjectURL(blobUrl);
-
-      hideLoading();
-    } catch (error) {
-      hideLoading();
-      console.error(`${config.fileType} download error:`, error);
-      showError(
-        error instanceof Error
-          ? error.message
-          : `${config.fileType}ファイルのダウンロードに失敗しました`
-      );
-    }
-  };
+    },
+    [showLoading, showError, hideLoading]
+  );
 
   /**
    * Excelファイルをダウンロード
    */
-  const downloadExcel = async () => {
+  const downloadExcel = useCallback(async () => {
     if (!generatedFiles) return;
 
     await downloadFile({
@@ -133,12 +137,12 @@ export const useFileDownloads = ({
       filename: generatedFiles.filename,
       fileType: 'Excel',
     });
-  };
+  }, [generatedFiles, downloadFile]);
 
   /**
    * PDFファイルをダウンロード
    */
-  const downloadPdf = async () => {
+  const downloadPdf = useCallback(async () => {
     if (!generatedFiles || !generatedFiles.pdfDownloadUrl) return;
 
     await downloadFile({
@@ -146,7 +150,7 @@ export const useFileDownloads = ({
       filename: generatedFiles.filename.replace('.xlsx', '.pdf'),
       fileType: 'PDF',
     });
-  };
+  }, [generatedFiles, downloadFile]);
 
   return {
     downloadExcel,

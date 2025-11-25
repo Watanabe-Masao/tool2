@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 
@@ -60,58 +61,61 @@ export const useHistoryTracking = ({
    *
    * @param data - フォームデータ
    */
-  const saveAllHistories = async (data: OrderFormData) => {
-    if (!user) return;
+  const saveAllHistories = useCallback(
+    async (data: OrderFormData) => {
+      if (!user) return;
 
-    try {
-      // 帳合先履歴
-      for (const supplier of data.suppliers) {
-        await supplierAutocomplete.addToHistory(supplier);
-      }
-
-      // 商品関連履歴
-      for (const product of data.products) {
-        // オートコンプリート履歴
-        await productNameAutocomplete.addToHistory(product.name);
-        await originAutocomplete.addToHistory(product.origin);
-
-        // 商品履歴（各商品の帳合先ごとに）
-        await FirestoreService.saveProductHistory(
-          user.uid,
-          product.supplier,
-          product.name,
-          product.origin,
-          product.specification || '',
-          product.quantityPerPackage ?? null,
-          product.unit || '',
-          product.categoryCode
-        );
-
-        // 価格履歴
-        if (
-          product.centerCost &&
-          product.storeCost &&
-          product.priceExcludingTax &&
-          product.quantityPerPackage
-        ) {
-          await FirestoreService.savePricingHistory(
-            user.uid,
-            product.name,
-            product.specification || '',
-            product.quantityPerPackage,
-            product.unit || '',
-            product.centerCost,
-            product.storeCost,
-            product.priceExcludingTax,
-            product.centerFeeRate
-          );
+      try {
+        // 帳合先履歴
+        for (const supplier of data.suppliers) {
+          await supplierAutocomplete.addToHistory(supplier);
         }
+
+        // 商品関連履歴
+        for (const product of data.products) {
+          // オートコンプリート履歴
+          await productNameAutocomplete.addToHistory(product.name);
+          await originAutocomplete.addToHistory(product.origin);
+
+          // 商品履歴（各商品の帳合先ごとに）
+          await FirestoreService.saveProductHistory(
+            user.uid,
+            product.supplier,
+            product.name,
+            product.origin,
+            product.specification || '',
+            product.quantityPerPackage ?? null,
+            product.unit || '',
+            product.categoryCode
+          );
+
+          // 価格履歴
+          if (
+            product.centerCost &&
+            product.storeCost &&
+            product.priceExcludingTax &&
+            product.quantityPerPackage
+          ) {
+            await FirestoreService.savePricingHistory(
+              user.uid,
+              product.name,
+              product.specification || '',
+              product.quantityPerPackage,
+              product.unit || '',
+              product.centerCost,
+              product.storeCost,
+              product.priceExcludingTax,
+              product.centerFeeRate
+            );
+          }
+        }
+      } catch (error) {
+        console.error('履歴保存エラー:', error);
+        // 履歴保存の失敗は致命的ではないのでエラーログのみ
       }
-    } catch (error) {
-      console.error('履歴保存エラー:', error);
-      // 履歴保存の失敗は致命的ではないのでエラーログのみ
-    }
-  };
+    },
+    [user, supplierAutocomplete, productNameAutocomplete, originAutocomplete]
+  );
 
   return {
     saveAllHistories,
