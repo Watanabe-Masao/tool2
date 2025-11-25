@@ -1,3 +1,35 @@
+/**
+ * @deprecated このファイルは非推奨です。
+ *
+ * 新規コードでは FirestoreServiceFacade を使用してください。
+ *
+ * 移行例:
+ * ```typescript
+ * // Before (非推奨)
+ * import { FirestoreService } from '@/services/firebase/firestoreService';
+ * const orders = await FirestoreService.getUserOrders(userId);
+ *
+ * // After (推奨)
+ * import { getFirebaseFirestore } from '@/services/firebase/config';
+ * import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
+ *
+ * const db = getFirebaseFirestore();
+ * const facade = new FirestoreServiceFacade(db);
+ * const orders = await facade.getUserOrders(userId);
+ * ```
+ *
+ * または、ServiceContextを使用:
+ * ```typescript
+ * import { useFirestoreService } from '@/context/ServiceContext';
+ *
+ * const firestoreService = useFirestoreService();
+ * const orders = await firestoreService.getUserOrders(userId);
+ * ```
+ *
+ * @see {@link FirestoreServiceFacade} - 推奨される新しいサービス
+ * @see {@link ../firestore/README.md} - 詳細なマイグレーションガイド
+ */
+
 import {
   collection,
   addDoc,
@@ -21,6 +53,7 @@ import { PresetRepository } from '../firestore/repositories/PresetRepository';
 /**
  * Firestoreサービス
  *
+ * @deprecated FirestoreServiceFacade を使用してください
  * 注文データの保存・取得・更新・削除を管理します。
  */
 export class FirestoreService {

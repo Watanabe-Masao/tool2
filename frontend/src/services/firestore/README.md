@@ -125,6 +125,38 @@ if (result.hasMore) {
 }
 ```
 
+## ⚠️ 旧FirestoreServiceの非推奨化
+
+`services/firebase/firestoreService.ts` は **非推奨** です。
+
+### 推奨される移行方法
+
+**ServiceContextを使用（最も推奨）:**
+
+```typescript
+import { useFirestoreService } from '@/context/ServiceContext';
+
+const MyComponent: React.FC = () => {
+  const firestoreService = useFirestoreService();
+
+  const loadOrders = async () => {
+    const orders = await firestoreService.getUserOrders(userId);
+    // ...
+  };
+};
+```
+
+**Facadeを直接インスタンス化:**
+
+```typescript
+import { getFirebaseFirestore } from '@/services/firebase/config';
+import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
+
+const db = getFirebaseFirestore();
+const facade = new FirestoreServiceFacade(db);
+const orders = await facade.getUserOrders(userId);
+```
+
 ## 🔄 段階的移行戦略
 
 ### Phase 1: Facade経由で使用（現在）
@@ -132,7 +164,7 @@ if (result.hasMore) {
 既存のコードを変更せずに、内部的には新しいRepositoryを使用:
 
 ```typescript
-// 既存のFirestoreService.tsはそのまま
+// 既存のFirestoreService.tsはそのまま（非推奨だが動作する）
 // 新しいコードではFirestoreServiceFacadeを使用
 const facade = new FirestoreServiceFacade(db);
 ```
