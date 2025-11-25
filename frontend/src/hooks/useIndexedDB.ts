@@ -1,28 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type IndexedDBOrderData } from '@/services/storage/indexeddb';
+import { db } from '@/services/storage/indexeddb';
 import { useAuthContext } from '@/context/AuthContext';
-
-/**
- * useIndexedDB戻り値の型
- */
-export interface UseIndexedDBReturn {
-  /** すべての注文（ユーザーでフィルタ済み） */
-  orders: IndexedDBOrderData[] | undefined;
-  /** ローディング中かどうか */
-  isLoading: boolean;
-  /** 注文を保存 */
-  saveOrder: (order: Omit<IndexedDBOrderData, 'id' | 'timestamp' | 'userId' | 'synced'>) => Promise<number>;
-  /** 注文を更新 */
-  updateOrder: (id: number, changes: Partial<IndexedDBOrderData>) => Promise<number>;
-  /** 注文を削除 */
-  deleteOrder: (id: number) => Promise<void>;
-  /** 未同期の注文を取得 */
-  getUnsyncedOrders: () => Promise<IndexedDBOrderData[]>;
-  /** 特定の日付の注文を取得 */
-  getOrdersByDate: (date: Date) => Promise<IndexedDBOrderData[]>;
-  /** すべてのデータをクリア */
-  clearAllData: () => Promise<void>;
-}
+import type { UseIndexedDBReturn } from '@/types/hooks';
+import type { IndexedDBOrderData } from '@/types/services';
 
 /**
  * IndexedDBカスタムフック

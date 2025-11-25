@@ -3,24 +3,6 @@
  */
 
 /**
- * メールアドレス帳エントリ
- */
-export interface EmailAddressEntry {
-  /** エントリID */
-  id: string;
-  /** 表示名 */
-  name: string;
-  /** メールアドレス */
-  email: string;
-  /** 表示順序 */
-  displayOrder?: number;
-  /** 作成日時 */
-  createdAt: Date;
-  /** 更新日時 */
-  updatedAt: Date;
-}
-
-/**
  * ユーザー設定
  */
 export interface UserSettings {

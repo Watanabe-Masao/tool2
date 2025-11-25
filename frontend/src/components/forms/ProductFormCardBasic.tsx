@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { Category as CategoryIcon, Inventory2, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import type { DeleteDialogState } from '@/types/ui';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useNotification } from '@/context/NotificationContext';
@@ -66,21 +67,6 @@ interface ProductFormCardBasicProps {
   onAddProductFromPreset?: (preset: ProductHistoryItem) => void;
 }
 
-/**
- * 削除確認ダイアログの状態
- */
-interface DeleteDialogState {
-  open: boolean;
-  type: 'name' | 'origin' | 'specification' | 'quantity' | 'unit';
-  value: string | number;
-  conditions: {
-    name?: string;
-    origin?: string;
-    specification?: string;
-    quantityPerPackage?: number;
-    unit?: string;
-  };
-}
 
 /**
  * 商品基本情報フォームカード

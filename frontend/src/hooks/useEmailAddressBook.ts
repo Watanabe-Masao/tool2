@@ -1,22 +1,14 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-
-export interface EmailAddressEntry {
-  id: string;
-  name: string;
-  email: string;
-  displayOrder?: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { EmailAddressEntity } from '@/types/entities';
 
 /**
  * メールアドレス帳管理フック
  */
 export const useEmailAddressBook = () => {
   const { user } = useAuthContext();
-  const [entries, setEntries] = useState<EmailAddressEntry[]>([]);
+  const [entries, setEntries] = useState<EmailAddressEntity[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
@@ -27,8 +19,8 @@ export const useEmailAddressBook = () => {
 
     setLoading(true);
     try {
-      const data = await FirestoreService.getEmailAddresses(user.uid);
-      setEntries(data);
+      const entries = await FirestoreService.getEmailAddresses(user.uid);
+      setEntries(entries);
     } catch (error) {
       console.error('Failed to load email addresses:', error);
     } finally {
@@ -88,8 +80,8 @@ export const useEmailAddressBook = () => {
     setLoading(true);
     const unsubscribe = FirestoreService.subscribeToEmailAddresses(
       user.uid,
-      (data) => {
-        setEntries(data);
+      (entries) => {
+        setEntries(entries);
         setLoading(false);
       },
       (error) => {
@@ -113,3 +105,6 @@ export const useEmailAddressBook = () => {
     updateEntry,
   };
 };
+
+// Re-export for backward compatibility
+export type { EmailAddressEntity } from '@/types/entities';

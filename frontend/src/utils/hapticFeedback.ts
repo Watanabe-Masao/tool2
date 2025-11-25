@@ -5,16 +5,7 @@
  * Vibration APIをラップし、クロスブラウザ対応と安全な実行を保証します。
  */
 
-/**
- * ハプティックフィードバックのタイプ
- */
-export type HapticType =
-  | 'light'      // 軽いタップ（選択、切り替え）
-  | 'medium'     // 中程度の振動（ボタン押下）
-  | 'heavy'      // 強い振動（重要な操作、エラー）
-  | 'success'    // 成功通知
-  | 'warning'    // 警告通知
-  | 'error';     // エラー通知
+import type { HapticType } from '@/types/ui';
 
 /**
  * 振動パターンの定義（ミリ秒）

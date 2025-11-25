@@ -7,19 +7,7 @@ import {
   SwipeUp,
   SwipeDown,
 } from '@mui/icons-material';
-
-/**
- * ジェスチャーヒントのタイプ
- */
-export type GestureType =
-  | 'swipe-horizontal'
-  | 'swipe-vertical'
-  | 'swipe-left'
-  | 'swipe-right'
-  | 'swipe-up'
-  | 'swipe-down'
-  | 'long-press'
-  | 'tap';
+import type { GestureType } from '@/types/ui';
 
 /**
  * GestureHintのProps

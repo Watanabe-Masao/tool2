@@ -7,22 +7,7 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { getFirebaseAuth } from '@/services/firebase/config';
-
-/**
- * 認証フックの戻り値
- */
-export interface UseAuthReturn {
-  /** 現在のユーザー */
-  user: User | null;
-  /** ローディング中かどうか */
-  loading: boolean;
-  /** エラー */
-  error: Error | null;
-  /** Googleでサインイン */
-  signInWithGoogle: () => Promise<void>;
-  /** サインアウト */
-  signOut: () => Promise<void>;
-}
+import type { UseAuthReturn } from '@/types/hooks';
 
 /**
  * Firebase認証フック
@@ -124,3 +109,6 @@ export const useAuth = (): UseAuthReturn => {
     signOut,
   };
 };
+
+// Re-export for backward compatibility
+export type { UseAuthReturn } from '@/types/hooks';

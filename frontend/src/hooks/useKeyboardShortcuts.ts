@@ -1,18 +1,5 @@
 import { useEffect, useCallback } from 'react';
-
-/**
- * キーボードショートカットの定義
- */
-export interface KeyboardShortcut {
-  /** キーの組み合わせ（例: 'ctrl+s', 'cmd+enter'） */
-  key: string;
-  /** 説明 */
-  description: string;
-  /** 実行する関数 */
-  handler: () => void;
-  /** 有効/無効フラグ */
-  enabled?: boolean;
-}
+import type { KeyboardShortcut } from '@/types/hooks';
 
 /**
  * キーの組み合わせをパースする

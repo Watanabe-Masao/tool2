@@ -12,9 +12,9 @@ describe('constants', () => {
     });
 
     it('should contain valid store names', () => {
-      expect(STORE_NAMES[0]).toBe('阪急1');
-      expect(STORE_NAMES[6]).toBe('阪急百貨店本店');
-      expect(STORE_NAMES[35]).toBe('神戸阪急');
+      expect(STORE_NAMES[0]).toBe('朝倉');
+      expect(STORE_NAMES[5]).toBe('毎日屋土佐道路');
+      expect(STORE_NAMES[35]).toBe('惣菜');
     });
 
     it('should not have duplicate names', () => {
@@ -28,13 +28,13 @@ describe('constants', () => {
       expect(DEFAULT_PRODUCT_FORM_DATA.name).toBe('');
       expect(DEFAULT_PRODUCT_FORM_DATA.origin).toBe('');
       expect(DEFAULT_PRODUCT_FORM_DATA.specification).toBe('');
-      expect(DEFAULT_PRODUCT_FORM_DATA.quantityPerPackage).toBe(1);
+      expect(DEFAULT_PRODUCT_FORM_DATA.quantityPerPackage).toBeNull();
       expect(DEFAULT_PRODUCT_FORM_DATA.storeCost).toBe(0);
       expect(DEFAULT_PRODUCT_FORM_DATA.priceExcludingTax).toBe(0);
     });
 
-    it('should not have storeAllocations by default', () => {
-      expect(DEFAULT_PRODUCT_FORM_DATA.storeAllocations).toBeUndefined();
+    it('should have empty storeAllocations by default', () => {
+      expect(DEFAULT_PRODUCT_FORM_DATA.storeAllocations).toEqual([]);
     });
   });
 

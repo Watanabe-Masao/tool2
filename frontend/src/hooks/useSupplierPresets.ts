@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-
-export interface SupplierPreset {
-  id: string;
-  supplier: string;
-  displayOrder?: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { SupplierPresetEntity } from '@/types/entities';
 
 /**
  * 帳合先プリセット管理フック
  */
 export const useSupplierPresets = () => {
   const { user } = useAuthContext();
-  const [presets, setPresets] = useState<SupplierPreset[]>([]);
+  const [presets, setPresets] = useState<SupplierPresetEntity[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
@@ -26,8 +19,8 @@ export const useSupplierPresets = () => {
 
     setLoading(true);
     try {
-      const data = await FirestoreService.getSupplierPresets(user.uid);
-      setPresets(data);
+      const presets = await FirestoreService.getSupplierPresets(user.uid);
+      setPresets(presets);
     } catch (error) {
       console.error('Failed to load supplier presets:', error);
     } finally {
@@ -87,8 +80,8 @@ export const useSupplierPresets = () => {
     setLoading(true);
     const unsubscribe = FirestoreService.subscribeToSupplierPresets(
       user.uid,
-      (data) => {
-        setPresets(data);
+      (presets) => {
+        setPresets(presets);
         setLoading(false);
       },
       (error) => {
@@ -112,3 +105,6 @@ export const useSupplierPresets = () => {
     updatePreset,
   };
 };
+
+// Re-export for backward compatibility
+export type { SupplierPresetEntity } from '@/types/entities';

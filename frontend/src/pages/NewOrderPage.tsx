@@ -1,31 +1,25 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useForm, FormProvider, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Container, Box, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Tabs, Tab, TextField, useTheme, useMediaQuery } from '@mui/material';
-import { orderFormSchema } from '@/schemas/orderSchema';
-import type { OrderFormData } from '@/schemas/orderSchema';
-import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
-import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
-import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
-import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
+import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
+import { orderFormSchema, type OrderFormData } from '@/schemas/orderSchema';
+import { OrderDialogs } from '@/components/order/OrderDialogs';
+import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
+import { OrderModals } from '@/components/order/OrderModals';
 import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSummary';
-import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
-import { DownloadModal } from '@/components/modals/DownloadModal';
-import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
-import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
-import { EmailSendModal } from '@/components/modals/EmailSendModal';
-import { TemplateService } from '@/services/api/templateService';
-import { FirestoreService } from '@/services/firebase/firestoreService';
-import { UserSettingsService } from '@/services/firebase/userSettingsService';
-import type { UserSettings } from '@/types/userSettings';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNavigationContext } from '@/context/NavigationContext';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
 import { useDataSync } from '@/hooks/useDataSync';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useOrderSubmit } from '@/hooks/useOrderSubmit';
+import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
+import { useSupplierManagement } from '@/hooks/useSupplierManagement';
+import { useOrderHandlers } from '@/hooks/useOrderHandlers';
+import { useStepNavigation } from '@/hooks/useStepNavigation';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
-import { SessionStorageService } from '@/utils/sessionStorageService';
-import { format } from 'date-fns';
 
 /**
  * フォームのステップ数
@@ -49,61 +43,6 @@ export const NewOrderPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [showPDFPreview, setShowPDFPreview] = useState(false);
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
-  const [generatedFiles, setGeneratedFiles] = useState<{
-    filename: string;
-    downloadUrl: string;
-    pdfFilename?: string;
-    pdfDownloadUrl?: string;
-  } | null>(null);
-  const [excelBlob, setExcelBlob] = useState<Blob | null>(null);
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [bookNameDialog, setBookNameDialog] = useState<{
-    open: boolean;
-    bookName: string;
-  }>({ open: false, bookName: '' });
-  const [supplierRemovalDialog, setSupplierRemovalDialog] = useState<{
-    open: boolean;
-    suppliersToRemove: string[];
-    affectedProductsCount: number;
-    newSuppliers: string[];
-  }>({
-    open: false,
-    suppliersToRemove: [],
-    affectedProductsCount: 0,
-    newSuppliers: [],
-  });
-
-  // 店舗のロック状態（商品別、ステップ4とステップ5で共有）
-  // Map<商品インデックス, Set<店舗コード>>
-  const [lockedStores, setLockedStores] = useState<Map<number, Set<string>>>(new Map());
-
-  // カテゴリフィルター（商品別、ステップ4とステップ5で共有）
-  // Map<商品インデックス, Set<カテゴリコード>>
-  const [selectedCategories, setSelectedCategories] = useState<Map<number, Set<string>>>(new Map());
-
-  // 現在編集中の商品インデックス（ステップ2-4で使用）
-  const [activeProductIndex, setActiveProductIndex] = useState(0);
-
-  // FloatingProgressSummaryの高さ
-  const [progressSummaryHeight, setProgressSummaryHeight] = useState(0);
-
-  // 自動保存用のタイマー
-  const autoSaveTimer = useRef<number | null>(null);
-
-  // 初回ロードフラグ
-  const isInitialLoad = useRef(true);
-
-  // 前回の帳合先リスト
-  const previousSuppliers = useRef<string[]>([]);
-
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
   const { setStepNavigation, showProgressSummary } = useNavigationContext();
@@ -115,6 +54,56 @@ export const NewOrderPage: React.FC = () => {
   const supplierAutocomplete = useAutocomplete('supplier');
   const productNameAutocomplete = useAutocomplete('productName');
   const originAutocomplete = useAutocomplete('origin');
+
+  // ユーザー設定
+  const userSettings = useUserSettings(user);
+
+  // UI状態管理（Zustand Store）
+  const activeStep = useOrderFormStore((state) => state.activeStep);
+  const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
+  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
+  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
+  const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
+  const setProgressSummaryHeight = useOrderFormStore((state) => state.setProgressSummaryHeight);
+
+  // モーダル状態管理（Zustand Store）
+  const showPDFPreview = useOrderFormStore((state) => state.showPDFPreview);
+  const setShowPDFPreview = useOrderFormStore((state) => state.setShowPDFPreview);
+  const showDownloadModal = useOrderFormStore((state) => state.showDownloadModal);
+  const setShowDownloadModal = useOrderFormStore((state) => state.setShowDownloadModal);
+  const showPreviewModal = useOrderFormStore((state) => state.showPreviewModal);
+  const setShowPreviewModal = useOrderFormStore((state) => state.setShowPreviewModal);
+  const showEmailModal = useOrderFormStore((state) => state.showEmailModal);
+  const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
+  const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
+  const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
+  const bookNameDialog = useOrderFormStore((state) => state.bookNameDialog);
+  const setBookNameDialog = useOrderFormStore((state) => state.setBookNameDialog);
+
+  // 注文送信ロジック
+  const {
+    generatedFiles,
+    setGeneratedFiles,
+    excelBlob,
+    setExcelBlob,
+    handleSubmit: submitOrder,
+    handleGenerateTemplate,
+    handleDownloadExcel,
+    handleDownloadPdf,
+  } = useOrderSubmit({
+    userId: user?.uid,
+    user,
+    userSettings,
+    isOnline,
+    saveOrderWithSync,
+    supplierAutocomplete,
+    productNameAutocomplete,
+    originAutocomplete,
+    showSuccess,
+    showError,
+    showLoading,
+    hideLoading,
+  });
 
   /**
    * React Hook Form セットアップ
@@ -138,8 +127,6 @@ export const NewOrderPage: React.FC = () => {
   const {
     control,
     handleSubmit,
-    reset,
-    setValue,
     getValues,
     formState: { errors },
   } = methods;
@@ -171,647 +158,86 @@ export const NewOrderPage: React.FC = () => {
     name: 'deliveryDate',
   });
 
-  /**
-   * 商品削除ハンドラー（FloatingProgressSummary用）
-   */
-  const handleRemoveProduct = (index: number) => {
-    if (productFields.length <= 1) return; // 最後の1つは削除しない
-    removeProduct(index);
-    // アクティブなインデックスを調整
-    if (activeProductIndex >= index && activeProductIndex > 0) {
-      setActiveProductIndex(activeProductIndex - 1);
-    }
-  };
-
-  /**
-   * 商品フィールドクリアハンドラー（FloatingProgressSummary用）
-   */
-  const handleClearProduct = (index: number) => {
-    const defaultSupplier = suppliers && suppliers.length > 0 ? suppliers[0] : '';
-    setValue(`products.${index}.categoryCode`, '');
-    setValue(`products.${index}.supplier`, defaultSupplier);
-    setValue(`products.${index}.name`, '');
-    setValue(`products.${index}.origin`, '');
-    setValue(`products.${index}.specification`, '');
-    setValue(`products.${index}.quantityPerPackage`, null);
-    setValue(`products.${index}.unit`, '');
-  };
-
-  /**
-   * ページロード時に下書きを復元
-   */
-  useEffect(() => {
-    if (!user || !isInitialLoad.current) return;
-
-    isInitialLoad.current = false;
-
-    const draft = SessionStorageService.loadDraft(user.uid);
-    if (draft) {
-      setRestoreDialogOpen(true);
-    }
-  }, [user]);
-
-  /**
-   * ユーザー設定を読み込み
-   */
-  useEffect(() => {
-    const loadUserSettings = async () => {
-      if (!user) return;
-
-      try {
-        const settings = await UserSettingsService.getOrCreate(user.uid);
-        setUserSettings(settings);
-      } catch (error) {
-        console.error('Error loading user settings:', error);
-      }
-    };
-
-    loadUserSettings();
-  }, [user]);
-
-  /**
-   * 帳合先変更時のハンドラー
-   */
-  const handleSuppliersChange = (newSuppliers: string[]) => {
-    // 最新の商品データを取得
-    const currentProducts = methods.getValues('products');
-
-    // 初回ロード時や商品がない場合はそのまま適用
-    if (isInitialLoad.current || !currentProducts || currentProducts.length === 0) {
-      previousSuppliers.current = newSuppliers;
-      return newSuppliers;
-    }
-
-    const currentSuppliers = suppliers || [];
-
-    // 削除される帳合先を検出
-    const removedSuppliers = currentSuppliers.filter(
-      (supplier) => !newSuppliers.includes(supplier)
-    );
-
-    if (removedSuppliers.length > 0) {
-      // 削除される帳合先を使用している商品を検出
-      const affectedProducts = currentProducts.filter(
-        (product) => product.supplier && removedSuppliers.includes(product.supplier)
-      );
-
-      if (affectedProducts.length > 0) {
-        // 確認ダイアログを表示
-        setSupplierRemovalDialog({
-          open: true,
-          suppliersToRemove: removedSuppliers,
-          affectedProductsCount: affectedProducts.length,
-          newSuppliers,
-        });
-        // 変更を保留
-        return currentSuppliers;
-      }
-    }
-
-    // 問題ない場合はそのまま適用
-    previousSuppliers.current = newSuppliers;
-    return newSuppliers;
-  };
-
-  /**
-   * 帳合先削除の確認
-   */
-  const handleConfirmSupplierRemoval = () => {
-    const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialog;
-
-    // 最新の商品データを取得
-    const currentProducts = methods.getValues('products');
-
-    // 削除される帳合先を使用していない商品のみを残す
-    const remainingProducts = currentProducts.filter(
-      (product) => !product.supplier || !suppliersToRemove.includes(product.supplier)
-    );
-
-    // 残った商品がない場合は、デフォルトの空の商品を1つ追加
-    const newProducts = remainingProducts.length > 0
-      ? remainingProducts
-      : [{
-          ...DEFAULT_PRODUCT_FORM_DATA,
-          totalDelivery: 0,
-          storeAllocations: new Array(STORE_COUNT).fill(0),
-        }];
-
-    // 商品配列を更新
-    methods.setValue('products', newProducts);
-
-    // 帳合先を更新
-    methods.setValue('suppliers', newSuppliers);
-    previousSuppliers.current = newSuppliers;
-
-    // メッセージを表示
-    const removedSupplierNames = suppliersToRemove.join('、');
-    showSuccess(
-      `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
-    );
-
-    // ダイアログを閉じる
-    setSupplierRemovalDialog({
-      open: false,
-      suppliersToRemove: [],
-      affectedProductsCount: 0,
-      newSuppliers: [],
-    });
-  };
-
-  /**
-   * 帳合先削除のキャンセル
-   */
-  const handleCancelSupplierRemoval = () => {
-    setSupplierRemovalDialog({
-      open: false,
-      suppliersToRemove: [],
-      affectedProductsCount: 0,
-      newSuppliers: [],
-    });
-  };
-
-  /**
-   * フォームデータの自動保存（debounce付き）
-   * React#185対策: watch()を使わず、必要なフィールドのみ監視
-   */
-  useEffect(() => {
-    if (!user || isInitialLoad.current) return;
-
-    // 変更があることをマーク
-    setHasUnsavedChanges(true);
-
-    // 既存のタイマーをクリア
-    if (autoSaveTimer.current) {
-      window.clearTimeout(autoSaveTimer.current);
-    }
-
-    // 2秒後に自動保存
-    autoSaveTimer.current = window.setTimeout(() => {
-      const currentFormData = getValues();
-      SessionStorageService.saveDraft(user.uid, currentFormData);
-      console.log('Form auto-saved');
-    }, 2000);
-
-    return () => {
-      if (autoSaveTimer.current) {
-        window.clearTimeout(autoSaveTimer.current);
-      }
-    };
-  }, [products, suppliers, deliveryDate, user]);
-
-  /**
-   * ページ離脱時の警告
-   */
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
-
-  /**
-   * タブ変更時の処理
-   */
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveStep(newValue);
-  };
-
-  /**
-   * 前のステップへ移動
-   */
-  const handlePrevStep = () => {
-    if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
-    }
-  };
-
-  /**
-   * 次のステップへ移動
-   */
-  const handleNextStep = () => {
-    if (activeStep < TOTAL_STEPS - 1) {
-      setActiveStep(activeStep + 1);
-    }
-  };
-
-  /**
-   * NavigationContextを更新（ステップナビゲーション表示状態）
-   * React#185対策: formDataを直接監視せず、getValues()を使用
-   */
-  useEffect(() => {
-    // 生成後のプレビュー表示中はステップナビゲーションを非アクティブに
-    if (showGeneratedPreview) {
-      setStepNavigation(false);
-    } else {
-      // フォーム入力中はステップナビゲーションをアクティブに
-      // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
-      const isProductMode = activeStep >= 1 && activeStep <= 3;
-      const currentFormData = getValues();
-      setStepNavigation(
-        true,
-        activeStep,
-        TOTAL_STEPS,
-        currentFormData,
-        isProductMode ? activeProductIndex : undefined,
-        activeStep > 0 ? handlePrevStep : undefined,
-        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
-        isProductMode ? setActiveProductIndex : undefined
-      );
-    }
-
-    // コンポーネントがアンマウントされる時にステップナビゲーションを非アクティブに
-    return () => {
-      setStepNavigation(false);
-    };
-  }, [activeStep, activeProductIndex, showGeneratedPreview, products, suppliers, deliveryDate]);
-
-  /**
-   * ExcelファイルをBlobとして取得
-   */
-  const fetchExcelAsBlob = async (url: string): Promise<Blob> => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Excelファイルの取得に失敗しました');
-    }
-    return await response.blob();
-  };
-
-  /**
-   * プレビュー画面での配分数量変更ハンドラ（React#185対策: メモ化）
-   */
-  const handleAllocationChange = useCallback((productIndex: number, storeIndex: number, newValue: number) => {
-    setValue(`products.${productIndex}.storeAllocations.${storeIndex}`, newValue, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  }, [setValue]);
-
-  /**
-   * ロック状態切り替えハンドラ（FloatingProgressSummary用）
-   */
-  const handleToggleLock = useCallback((productIndex: number, storeCode: string) => {
-    setLockedStores(prev => {
-      const newMap = new Map(prev);
-      const productLocks = new Set(newMap.get(productIndex) || []);
-
-      if (productLocks.has(storeCode)) {
-        productLocks.delete(storeCode);
-      } else {
-        productLocks.add(storeCode);
-      }
-
-      newMap.set(productIndex, productLocks);
-      return newMap;
-    });
-  }, []);
-
-  /**
-   * フォーム送信
-   */
-  const onSubmit = async (data: OrderFormData) => {
-    try {
-      // オンライン時はダイアログを表示するため、まだローディングを表示しない
-      if (!isOnline) {
-        showLoading();
-      }
-
-      console.log('Form data:', data);
-
-      // バリデーション: すべての商品の帳合先がステップ1で選択された帳合先リストに含まれているかチェック
-      const invalidProducts = data.products.filter(
-        (product) => !data.suppliers.includes(product.supplier)
-      );
-
-      if (invalidProducts.length > 0) {
-        if (!isOnline) {
-          hideLoading();
-        }
-        showError(
-          `一部の商品の帳合先がステップ1で選択されていません。` +
-          `該当する商品の帳合先を修正してください。`
-        );
-        return;
-      }
-
-      // オンライン時: 先にローディングを表示してデータ保存
-      if (isOnline) {
-        showLoading();
-      }
-
-      // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
-      const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
-
-      // オフライン同期を使用してデータを保存
-      // オンライン時: Firestore + API呼び出し
-      // オフライン時: IndexedDBのみ
-      await saveOrderWithSync(data, buyerName);
-
-      // オートコンプリート履歴に追加
-      if (user) {
-        // 複数の帳合先を履歴に追加
-        for (const supplier of data.suppliers) {
-          await supplierAutocomplete.addToHistory(supplier);
-        }
-
-        for (const product of data.products) {
-          await productNameAutocomplete.addToHistory(product.name);
-          await originAutocomplete.addToHistory(product.origin);
-
-          // 商品履歴を保存（各商品の帳合先ごとに）
-          await FirestoreService.saveProductHistory(
-            user.uid,
-            product.supplier,
-            product.name,
-            product.origin,
-            product.specification || '',
-            product.quantityPerPackage ?? null,
-            product.unit || '',
-            product.categoryCode
-          );
-
-          // 価格履歴を保存（商品名・規格・入数をキーとして）
-          if (
-            product.centerCost &&
-            product.storeCost &&
-            product.priceExcludingTax &&
-            product.quantityPerPackage
-          ) {
-            await FirestoreService.savePricingHistory(
-              user.uid,
-              product.name,
-              product.specification || '',
-              product.quantityPerPackage,
-              product.unit || '',
-              product.centerCost,
-              product.storeCost,
-              product.priceExcludingTax,
-              product.centerFeeRate
-            );
-          }
-        }
-      }
-
-      // オンライン時: データ保存後にローディングを隠してブック名ダイアログを表示
-      if (isOnline) {
-        hideLoading();
-        // ブック名入力ダイアログを表示
-        setBookNameDialog({ open: true, bookName: '' });
-        return; // ダイアログ確認後にgenerateTemplateWithBookNameを呼び出す
-      }
-
-      // オフライン時: テンプレート生成をスキップ
-      showSuccess('オフラインのため配分表を保存しました');
-      hideLoading();
-    } catch (error) {
-      hideLoading();
-      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
-    }
-  };
-
-  /**
-   * ブック名確認後のテンプレート生成
-   */
-  const generateTemplateWithBookName = async (data: OrderFormData, buyerName: string, bookName: string) => {
-    try {
-      showLoading();
-
-      // カスタムファイル名を生成（配分表_{customName}_{YYYYMMDD}）
-      const dateStr = format(data.deliveryDate, 'yyyyMMdd');
-      const customName = bookName.trim() || '';
-      const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
-
-      // デバッグログ
-      console.log('📝 Custom filename generation:');
-      console.log('  - bookName:', bookName);
-      console.log('  - customName (trimmed):', customName);
-      console.log('  - dateStr:', dateStr);
-      console.log('  - customFilename:', customFilename);
-
-      const response = await TemplateService.generateTemplate(data, buyerName, customFilename);
-
-      console.log('Template generated:', response);
-
-      // 生成されたファイル情報を保存
-      setGeneratedFiles({
-        filename: response.filename,
-        downloadUrl: response.download_url,
-        pdfFilename: response.pdf_filename,
-        pdfDownloadUrl: response.pdf_download_url,
-      });
-
-      // ExcelファイルをBlobとして取得（メール送信用）
-      try {
-        const blob = await fetchExcelAsBlob(response.download_url);
-        setExcelBlob(blob);
-        console.log('Excel blob fetched successfully');
-      } catch (err) {
-        console.error('Failed to fetch Excel blob:', err);
-        // Blobの取得に失敗してもテンプレート生成は成功しているので続行
-      }
-
-      hideLoading();
-
-      // 成功メッセージ
-      showSuccess('テンプレートを生成しました');
-
-      // SessionStorageの下書きをクリア（成功時）
-      if (user) {
-        SessionStorageService.clearDraft(user.uid);
-        setHasUnsavedChanges(false);
-      }
-
-      // プレビュー画面を表示
-      setShowGeneratedPreview(true);
-    } catch (error) {
-      hideLoading();
-      showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
-    }
-  };
-
-  /**
-   * ブック名ダイアログの確認ハンドラー
-   */
-  const handleBookNameDialogConfirm = async () => {
-    const data = getValues();
-    // バイヤー名を取得
-    const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
-
-    // ダイアログを閉じる
-    setBookNameDialog({ open: false, bookName: '' });
-
-    // テンプレート生成
-    await generateTemplateWithBookName(data, buyerName, bookNameDialog.bookName);
-  };
-
-  /**
-   * Excelファイルをダウンロード
-   */
-  const handleDownloadExcel = async () => {
-    if (generatedFiles) {
-      try {
-        showLoading();
-
-        // 相対URLを絶対URLに変換
-        // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-          : window.location.origin; // Render版（同一オリジン）
-        const absoluteUrl = new URL(generatedFiles.downloadUrl, baseUrl).href;
-        console.log('📥 Excel download URL:', generatedFiles.downloadUrl);
-        console.log('📥 Base URL:', baseUrl);
-        console.log('📥 Absolute URL:', absoluteUrl);
-
-        // fetchでファイルを取得してContent-Typeを確認
-        const response = await fetch(absoluteUrl);
-        console.log('Response status:', response.status);
-        console.log('Response Content-Type:', response.headers.get('Content-Type'));
-
-        if (!response.ok) {
-          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('Content-Type') || '';
-
-        // HTMLが返された場合はエラー
-        if (contentType.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error('サーバーからHTMLが返されました。ファイルが生成されていない可能性があります。');
-        }
-
-        const blob = await response.blob();
-        console.log('Downloaded blob size:', blob.size, 'bytes');
-
-        // Blobからダウンロードリンクを作成
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = generatedFiles.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Blob URLをクリーンアップ
-        window.URL.revokeObjectURL(blobUrl);
-
-        hideLoading();
-      } catch (error) {
-        hideLoading();
-        console.error('Excel download error:', error);
-        showError(error instanceof Error ? error.message : 'Excelファイルのダウンロードに失敗しました');
-      }
-    }
-  };
-
-  /**
-   * PDFファイルをダウンロード
-   */
-  const handleDownloadPdf = async () => {
-    if (generatedFiles && generatedFiles.pdfDownloadUrl) {
-      try {
-        showLoading();
-
-        // 相対URLを絶対URLに変換
-        // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-          : window.location.origin; // Render版（同一オリジン）
-        const absoluteUrl = new URL(generatedFiles.pdfDownloadUrl, baseUrl).href;
-        console.log('📥 PDF download URL:', generatedFiles.pdfDownloadUrl);
-        console.log('📥 Base URL:', baseUrl);
-        console.log('📥 Absolute URL:', absoluteUrl);
-
-        // PDFをfetchしてblobとして取得
-        const response = await fetch(absoluteUrl);
-        console.log('Response status:', response.status);
-        console.log('Response Content-Type:', response.headers.get('Content-Type'));
-
-        if (!response.ok) {
-          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('Content-Type') || '';
-
-        // HTMLが返された場合はエラー
-        if (contentType.includes('text/html')) {
-          const htmlText = await response.text();
-          console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error('サーバーからHTMLが返されました。PDFファイルが生成されていない可能性があります。');
-        }
-
-        const blob = await response.blob();
-        console.log('Downloaded blob size:', blob.size, 'bytes');
-
-        // Blobからダウンロードリンクを作成
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        // PDFファイル名を生成（Excelファイル名の.xlsxを.pdfに置き換え）
-        const pdfFilename = generatedFiles.filename.replace('.xlsx', '.pdf');
-        link.download = pdfFilename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Blob URLをクリーンアップ
-        window.URL.revokeObjectURL(blobUrl);
-
-        hideLoading();
-      } catch (error) {
-        hideLoading();
-        console.error('PDF download error:', error);
-        showError(error instanceof Error ? error.message : 'PDFのダウンロードに失敗しました');
-      }
-    }
-  };
-
-  /**
-   * 下書きを復元
-   */
-  const handleRestoreDraft = () => {
-    if (!user) return;
-
-    const draft = SessionStorageService.loadDraft(user.uid);
-    if (draft) {
-      reset(draft);
-      setRestoreDialogOpen(false);
-      showSuccess('下書きを復元しました');
-
-      // 最初のステップに戻す
-      setActiveStep(0);
-
-      isInitialLoad.current = true; // 復元後は自動保存を一時的に無効化
-      setTimeout(() => {
-        isInitialLoad.current = false;
-      }, 1000);
-    }
-  };
-
-  /**
-   * 下書きを破棄
-   */
-  const handleDiscardDraft = () => {
-    if (!user) return;
-
-    SessionStorageService.clearDraft(user.uid);
-    setRestoreDialogOpen(false);
-  };
+  // 下書き管理ロジック
+  const {
+    restoreDialogOpen,
+    setRestoreDialogOpen,
+    setHasUnsavedChanges,
+    isInitialLoad,
+  } = useOrderDraftManagement({
+    user,
+    methods,
+    products,
+    suppliers,
+    deliveryDate,
+  });
+
+  // 帳合先管理ロジック
+  const {
+    supplierRemovalDialog,
+    handleSuppliersChange,
+    handleConfirmSupplierRemoval,
+    handleCancelSupplierRemoval,
+  } = useSupplierManagement({
+    methods,
+    suppliers,
+    isInitialLoad,
+    showSuccess,
+  });
+
+  // ハンドラー関数
+  const {
+    handleRemoveProduct,
+    handleClearProduct,
+    handlePrevStep,
+    handleNextStep,
+    handleAllocationChange,
+    onSubmit,
+    handleBookNameDialogConfirm,
+    handleRestoreDraft,
+    handleDiscardDraft,
+  } = useOrderHandlers({
+    methods,
+    productFields,
+    removeProduct,
+    activeStep,
+    setActiveStep,
+    activeProductIndex,
+    setActiveProductIndex,
+    suppliers,
+    setLockedStores,
+    setBookNameDialog,
+    bookNameDialog,
+    setRestoreDialogOpen,
+    setShowGeneratedPreview,
+    isInitialLoad,
+    submitOrder,
+    handleGenerateTemplate,
+    setHasUnsavedChanges,
+    showSuccess,
+    user,
+    TOTAL_STEPS,
+  });
+
+  // ステップナビゲーション管理
+  useStepNavigation({
+    activeStep,
+    activeProductIndex,
+    showGeneratedPreview,
+    TOTAL_STEPS,
+    products,
+    suppliers,
+    deliveryDate,
+    getValues,
+    setStepNavigation,
+    setActiveProductIndex,
+    handlePrevStep,
+    handleNextStep,
+  });
 
   return (
     <FormProvider {...methods}>
-      {/* フォーム入力画面（Step 5がプレビューを含む） */}
       <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
-          {/* オフライン時の警告 */}
           {!isOnline && (
             <Box sx={{ px: 2, pt: 2 }}>
               <Alert severity="warning">
@@ -819,243 +245,61 @@ export const NewOrderPage: React.FC = () => {
               </Alert>
             </Box>
           )}
-
-          {/* タブナビゲーション */}
-          <Container maxWidth="lg">
-            <Box sx={{ width: '100%', py: 2 }}>
-              <Tabs
-                value={activeStep}
-                onChange={handleTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-              >
-                <Tab label="店着日・帳合先" />
-                <Tab label="商品情報" />
-                <Tab label="価格・数量" />
-                <Tab label="店舗配分" />
-                <Tab label="プレビュー" />
-              </Tabs>
-
-              {/* コンテンツエリア（スクロール可能） */}
-              <Box sx={{
-                // ヘッダー(64px/56px) + Tabs(48px) + Margin(16px) + FloatingProgressSummary (desktop only)
-                height: `calc(100vh - ${isMobile ? '120px' : '128px'} - ${isMobile ? 0 : progressSummaryHeight}px)`,
-                overflow: 'auto',
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: '#f1f1f1',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: '#888',
-                  borderRadius: '4px',
-                },
-                '&::-webkit-scrollbar-thumb:hover': {
-                  background: '#555',
-                },
-              }}>
-                {/* Step 1: 店着日・帳合先 */}
-                {activeStep === 0 && (
-                  <Box sx={{ py: 2 }}>
-                    <DeliveryDateForm
-                      control={control}
-                      errors={errors}
-                      supplierOptions={supplierAutocomplete.options}
-                      onSuppliersChange={handleSuppliersChange}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 2: 商品情報（基本） */}
-                {activeStep === 1 && (
-                  <Box sx={{ py: 2 }}>
-                    <ProductBasicInfoForm
-                      control={control}
-                      errors={errors}
-                      productNameOptions={productNameAutocomplete.options}
-                      originOptions={originAutocomplete.options}
-                      suppliers={suppliers || []}
-                      fields={productFields}
-                      append={appendProduct}
-                      remove={removeProduct}
-                      move={moveProduct}
-                      onNavigateToStep={setActiveStep}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 3: 商品情報2（価格・総納品数） */}
-                {activeStep === 2 && (
-                  <Box sx={{ py: 2 }}>
-                    <ProductPricingForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 4: 店舗配分 */}
-                {activeStep === 3 && (
-                  <Box sx={{ py: 2 }}>
-                    <StoreAllocationForm
-                      control={control}
-                      errors={errors}
-                      fields={productFields}
-                      lockedStores={lockedStores}
-                      setLockedStores={setLockedStores}
-                      selectedCategories={selectedCategories}
-                      setSelectedCategories={setSelectedCategories}
-                      activeProductIndex={activeProductIndex}
-                      onProductIndexChange={setActiveProductIndex}
-                    />
-                  </Box>
-                )}
-
-                {/* Step 5: プレビュー・生成 */}
-                {activeStep === 4 && (
-                  <Box sx={{ py: 2 }}>
-                    {!showGeneratedPreview ? (
-                      /* 生成前のプレビュー */
-                      <AllocationPreviewContent
-                        formData={{
-                          deliveryDate: deliveryDate || new Date(),
-                          suppliers: suppliers || [],
-                          products: products || [],
-                        }}
-                        pdfFilename={undefined}
-                        onGenerate={handleSubmit(onSubmit)}
-                        onAllocationChange={handleAllocationChange}
-                        lockedStores={lockedStores}
-                        setLockedStores={setLockedStores}
-                        selectedCategories={selectedCategories}
-                        setSelectedCategories={setSelectedCategories}
-                        activeProductIndex={activeProductIndex}
-                        onProductChange={setActiveProductIndex}
-                      />
-                    ) : (
-                      /* 生成後のプレビュー */
-                      generatedFiles && (
-                        <AllocationPreviewContent
-                          formData={{
-                            deliveryDate: deliveryDate || new Date(),
-                            suppliers: suppliers || [],
-                            products: products || [],
-                          }}
-                          pdfFilename={generatedFiles.pdfFilename}
-                          pdfDownloadUrl={generatedFiles.pdfDownloadUrl}
-                          onDownloadExcel={handleDownloadExcel}
-                          onDownloadPdf={handleDownloadPdf}
-                          onSendEmail={() => setShowEmailModal(true)}
-                          onBack={() => {
-                            setShowGeneratedPreview(false);
-                            setGeneratedFiles(null);
-                            setExcelBlob(null);
-                          }}
-                          onAllocationChange={handleAllocationChange}
-                          lockedStores={lockedStores}
-                          setLockedStores={setLockedStores}
-                          selectedCategories={selectedCategories}
-                          setSelectedCategories={setSelectedCategories}
-                          activeProductIndex={activeProductIndex}
-                          onProductChange={setActiveProductIndex}
-                        />
-                      )
-                    )}
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          </Container>
+          <OrderFormWithTabs
+            isMobile={isMobile}
+            control={control}
+            errors={errors}
+            productFields={productFields}
+            appendProduct={appendProduct}
+            removeProduct={removeProduct}
+            moveProduct={moveProduct}
+            handleSubmit={handleSubmit}
+            supplierOptions={supplierAutocomplete.options}
+            productNameOptions={productNameAutocomplete.options}
+            originOptions={originAutocomplete.options}
+            suppliers={suppliers || []}
+            products={products || []}
+            deliveryDate={deliveryDate}
+            generatedFiles={generatedFiles}
+            setGeneratedFiles={setGeneratedFiles}
+            setExcelBlob={setExcelBlob}
+            handleSuppliersChange={handleSuppliersChange}
+            onSubmit={onSubmit}
+            handleAllocationChange={handleAllocationChange}
+            handleDownloadExcel={handleDownloadExcel}
+            handleDownloadPdf={handleDownloadPdf}
+          />
         </Box>
-
-      {/* PDFプレビューモーダル */}
-        {generatedFiles && generatedFiles.pdfDownloadUrl && (
-          <PDFPreviewModal
-            open={showPDFPreview}
-            onClose={() => setShowPDFPreview(false)}
-            pdfUrl={generatedFiles.pdfDownloadUrl}
-            onDownloadExcel={handleDownloadExcel}
-            onSendEmail={() => setShowEmailModal(true)}
-          />
-        )}
-
-        {/* ブック名入力ダイアログ */}
-        <Dialog open={bookNameDialog.open} onClose={() => setBookNameDialog({ open: false, bookName: '' })}>
-          <DialogTitle>ブック名を入力</DialogTitle>
-          <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>
-              生成するExcelファイルのブック名を指定できます（オプション）
-            </DialogContentText>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="ブック名"
-              placeholder="例: テスト"
-              fullWidth
-              value={bookNameDialog.bookName}
-              onChange={(e) => setBookNameDialog({ ...bookNameDialog, bookName: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleBookNameDialogConfirm();
-                }
-              }}
-              helperText="未入力の場合は日付のみのファイル名になります"
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setBookNameDialog({ open: false, bookName: '' })} color="inherit">
-              キャンセル
-            </Button>
-            <Button onClick={handleBookNameDialogConfirm} variant="contained" color="primary">
-              生成
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* ダウンロードモーダル（iPhone Safari用） */}
-        {generatedFiles && (
-          <DownloadModal
-            open={showDownloadModal}
-            onClose={() => setShowDownloadModal(false)}
-            downloadUrl={generatedFiles.downloadUrl}
-            filename={generatedFiles.filename}
-            onSendEmail={() => setShowEmailModal(true)}
-          />
-        )}
-
-        {/* 配分表プレビューモーダル */}
-        <AllocationPreviewModal
-          open={showPreviewModal}
-          onClose={() => setShowPreviewModal(false)}
-          formData={{
-            deliveryDate: deliveryDate || new Date(),
-            suppliers: suppliers || [],
-            products: products || [],
-          }}
-          pdfFilename={generatedFiles?.pdfFilename}
-          onDownloadExcel={handleDownloadExcel}
+        <OrderDialogs
+          bookNameDialog={bookNameDialog}
+          onBookNameDialogChange={setBookNameDialog}
+          onBookNameDialogConfirm={handleBookNameDialogConfirm}
+          restoreDialogOpen={restoreDialogOpen}
+          onRestoreDraft={handleRestoreDraft}
+          onDiscardDraft={handleDiscardDraft}
+          supplierRemovalDialog={supplierRemovalDialog}
+          onConfirmSupplierRemoval={handleConfirmSupplierRemoval}
+          onCancelSupplierRemoval={handleCancelSupplierRemoval}
         />
-
-        {/* メール送信モーダル */}
-        {generatedFiles && (
-          <EmailSendModal
-            open={showEmailModal}
-            onClose={() => setShowEmailModal(false)}
-            userName={userSettings?.emailSenderName || user?.displayName || user?.email || undefined}
-            attachment={excelBlob || undefined}
-            filename={generatedFiles.filename}
-          />
-        )}
-
-        {/* フローティング進捗サマリー */}
+        <OrderModals
+          generatedFiles={generatedFiles}
+          excelBlob={excelBlob}
+          userSettings={userSettings}
+          user={user}
+          deliveryDate={deliveryDate}
+          suppliers={suppliers || []}
+          products={products || []}
+          showPDFPreview={showPDFPreview}
+          onClosePDFPreview={() => setShowPDFPreview(false)}
+          showDownloadModal={showDownloadModal}
+          onCloseDownloadModal={() => setShowDownloadModal(false)}
+          showPreviewModal={showPreviewModal}
+          onClosePreviewModal={() => setShowPreviewModal(false)}
+          showEmailModal={showEmailModal}
+          onCloseEmailModal={() => setShowEmailModal(false)}
+          onDownloadExcel={handleDownloadExcel}
+          onSendEmail={() => setShowEmailModal(true)}
+        />
         {!showGeneratedPreview && (isMobile ? showProgressSummary : true) && (
           <FloatingProgressSummary
             formData={{
@@ -1063,63 +307,16 @@ export const NewOrderPage: React.FC = () => {
               suppliers: suppliers || [],
               products: products || [],
             }}
-            activeStep={activeStep}
             totalSteps={TOTAL_STEPS}
-            activeProductIndex={activeStep >= 1 && activeStep <= 4 ? activeProductIndex : undefined}
-            onProductChange={activeStep >= 1 && activeStep <= 4 ? setActiveProductIndex : undefined}
             onHeightChange={setProgressSummaryHeight}
             onRemoveProduct={handleRemoveProduct}
             onClearProduct={handleClearProduct}
             onPrevStep={activeStep > 0 ? handlePrevStep : undefined}
             onNextStep={activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined}
             onAllocationChange={activeStep === 4 ? handleAllocationChange : undefined}
-            lockedStores={lockedStores}
-            onToggleLock={activeStep === 4 ? handleToggleLock : undefined}
           />
         )}
 
-        {/* 下書き復元確認ダイアログ */}
-        <Dialog open={restoreDialogOpen} onClose={handleDiscardDraft}>
-          <DialogTitle>下書きを復元しますか？</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              前回の入力内容が見つかりました。続きから入力を再開できます。
-            </DialogContentText>
-            <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-              下書きは24時間保存されます。復元しない場合、新規に入力を開始します。
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDiscardDraft} color="inherit">
-              新規入力
-            </Button>
-            <Button onClick={handleRestoreDraft} color="primary" variant="contained">
-              復元する
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* 帳合先削除確認ダイアログ */}
-        <Dialog open={supplierRemovalDialog.open} onClose={handleCancelSupplierRemoval}>
-          <DialogTitle>帳合先の削除確認</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              削除しようとしている帳合先「{supplierRemovalDialog.suppliersToRemove.join('、')}」は
-              {supplierRemovalDialog.affectedProductsCount}件の商品カードで使用されています。
-            </DialogContentText>
-            <DialogContentText sx={{ mt: 1.5 }}>
-              帳合先を削除すると、これらの商品カードも削除されます。続行しますか？
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancelSupplierRemoval} color="inherit">
-              キャンセル
-            </Button>
-            <Button onClick={handleConfirmSupplierRemoval} color="error" variant="contained">
-              削除する
-            </Button>
-          </DialogActions>
-        </Dialog>
     </FormProvider>
   );
 };

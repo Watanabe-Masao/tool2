@@ -1,29 +1,27 @@
-import '@testing-library/jest-dom';
-import { expect, afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll } from 'vitest';
+import { setupServer } from 'msw/node';
+import { handlers } from './mocks/handlers';
 
-// Cleanup after each test case
+/**
+ * MSW Server Setup
+ *
+ * テスト環境用のMSWサーバー設定
+ * すべてのテストで共有される
+ */
+
+export const server = setupServer(...handlers);
+
+// テスト開始前にMSWサーバーを起動
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'warn' });
+});
+
+// 各テスト後にハンドラーをリセット
 afterEach(() => {
-  cleanup();
+  server.resetHandlers();
 });
 
-// Mock environment variables for tests
-vi.mock('import.meta.env', () => ({
-  VITE_FIREBASE_API_KEY: 'test-api-key',
-  VITE_FIREBASE_AUTH_DOMAIN: 'test.firebaseapp.com',
-  VITE_FIREBASE_PROJECT_ID: 'test-project',
-  VITE_FIREBASE_STORAGE_BUCKET: 'test.appspot.com',
-  VITE_FIREBASE_MESSAGING_SENDER_ID: '123456789',
-  VITE_FIREBASE_APP_ID: 'test-app-id',
-}));
-
-// Mock navigator.onLine for offline sync tests
-Object.defineProperty(window.navigator, 'onLine', {
-  writable: true,
-  value: true,
-});
-
-// Extend expect with custom matchers
-expect.extend({
-  // Add custom matchers if needed
+// すべてのテスト完了後にMSWサーバーを停止
+afterAll(() => {
+  server.close();
 });

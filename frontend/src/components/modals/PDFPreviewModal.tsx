@@ -33,6 +33,7 @@ import {
   CropOriginal,
 } from '@mui/icons-material';
 import { isIPhoneSafari } from '@/utils/deviceDetection';
+import { env } from '@/config/env';
 
 // PDF.js worker設定 - Viteで自動バンドル（推奨方法）
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -204,10 +205,7 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
         console.log('📄 Fetching PDF from URL:', pdfUrl);
 
         // 相対URLを絶対URLに変換
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '')
-          : window.location.origin;
+        const baseUrl = env.getBackendBaseUrl();
         const absoluteUrl = new URL(pdfUrl, baseUrl).href;
 
         console.log('📄 Absolute PDF URL:', absoluteUrl);

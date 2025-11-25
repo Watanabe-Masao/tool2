@@ -1,35 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-
-/**
- * 価格履歴アイテム
- */
-export interface PricingHistoryItem {
-  id: string;
-  /** 商品名 */
-  productName: string;
-  /** 規格 */
-  specification: string;
-  /** 入数 */
-  quantityPerPackage: number;
-  /** 単位 */
-  unit: string;
-  /** センター着原価 */
-  centerCost: number;
-  /** 店着原価 */
-  storeCost: number;
-  /** 本体価格（税抜売価） */
-  priceExcludingTax: number;
-  /** センターフィー率（デフォルト13%） */
-  centerFeeRate?: number;
-  /** 使用回数 */
-  usageCount: number;
-  /** 最終使用日 */
-  lastUsedAt: Date;
-  /** 作成日 */
-  createdAt: Date;
-}
+import type { PricingHistoryItem } from '@/types/hooks';
 
 /**
  * 価格履歴フック
@@ -156,3 +128,6 @@ export const usePricingHistory = () => {
     findMatchingHistory,
   };
 };
+
+// Re-export for backward compatibility
+export type { PricingHistoryItem } from '@/types/hooks';
