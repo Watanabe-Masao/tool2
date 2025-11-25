@@ -43,6 +43,11 @@ jobs:
       working-directory: ./frontend
       run: npm test -- --run
 
+    - name: Check type definitions (warning only)
+      working-directory: ./frontend
+      run: npm run check-types
+      continue-on-error: true
+
     - name: Build frontend
       working-directory: ./frontend
       run: npm run build
