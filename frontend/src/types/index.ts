@@ -160,6 +160,6 @@ export {
 // ============================================================
 // Settings Types
 // ============================================================
-export type { UserSettings } from './userSettings';
+export type { UserSettings, EmailAddressEntry, SupplierPresetEntry } from './userSettings';
 export type { StoreSettings } from './storeSettings';
 export type { StoreCategory } from './storeCategory';

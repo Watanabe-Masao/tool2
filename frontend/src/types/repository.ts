@@ -63,6 +63,7 @@ export interface PricingHistory {
   centerFeeRate: number;
   usageCount: number;
   createdAt?: Date;
+  updatedAt?: Date;
   lastUsedAt?: Date;
 }
 
@@ -94,5 +95,7 @@ export interface DeleteProductHistoryConditions {
   name?: string;
   origin?: string;
   specification?: string;
+  quantityPerPackage?: number | null;
+  unit?: string;
   exceptPinned?: boolean;
 }
