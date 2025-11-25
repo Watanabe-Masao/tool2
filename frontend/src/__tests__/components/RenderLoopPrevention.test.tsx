@@ -113,7 +113,7 @@ describe('React#185 無限ループ防止テスト', () => {
     it('useRef経由でlockedStoresを参照するとcolumnsが再計算されない', () => {
       let columnsCalculationCount = 0;
 
-      const { result, rerender } = renderHook(
+      const { rerender } = renderHook(
         ({ lockedStores, isMobile }) => {
           // useRefでlockedStoresを参照
           const lockedStoresRef = useRef(lockedStores);
