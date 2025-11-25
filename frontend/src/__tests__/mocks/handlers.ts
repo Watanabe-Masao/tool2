@@ -9,12 +9,13 @@ import { http, HttpResponse } from 'msw';
 
 export const handlers = [
   // Excel ダウンロード（正常系）
-  // パスパターン: /downloads/ で始まる .xlsx ファイル
-  http.get(/\/downloads\/.*\.xlsx$/, async () => {
+  // パスパターン: /downloads/ を含む .xlsx ファイル（絶対URL/相対URL両対応）
+  http.get(/\/downloads\/.*\.xlsx/, () => {
     const mockBlob = new Blob(['Excel mock data'], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    return HttpResponse.arrayBuffer(await mockBlob.arrayBuffer(), {
+    return new HttpResponse(mockBlob, {
+      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
@@ -22,12 +23,13 @@ export const handlers = [
   }),
 
   // PDF ダウンロード（正常系）
-  // パスパターン: /downloads/ で始まる .pdf ファイル
-  http.get(/\/downloads\/.*\.pdf$/, async () => {
+  // パスパターン: /downloads/ を含む .pdf ファイル（絶対URL/相対URL両対応）
+  http.get(/\/downloads\/.*\.pdf/, () => {
     const mockBlob = new Blob(['PDF mock data'], {
       type: 'application/pdf',
     });
-    return HttpResponse.arrayBuffer(await mockBlob.arrayBuffer(), {
+    return new HttpResponse(mockBlob, {
+      status: 200,
       headers: {
         'Content-Type': 'application/pdf',
       },

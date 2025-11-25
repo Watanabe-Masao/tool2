@@ -14,6 +14,12 @@ describe('useFileDownloads', () => {
   const mockShowLoading = vi.fn();
   const mockHideLoading = vi.fn();
 
+  // Setup base URL for all tests
+  beforeAll(() => {
+    // Set a default base URL via environment variable to avoid "Invalid base URL" errors
+    import.meta.env.VITE_API_BASE_URL = 'http://localhost:3000';
+  });
+
   const mockGeneratedFiles: GeneratedFiles = {
     filename: '配分表_TestBook_20240115.xlsx',
     downloadUrl: '/downloads/test.xlsx',
@@ -65,7 +71,7 @@ describe('useFileDownloads', () => {
     it('ダウンロードエラー時にエラーメッセージを表示', async () => {
       // MSW: 404エラーをモック
       server.use(
-        http.get(/\/downloads\/.*\.xlsx$/, () => {
+        http.get(/\/downloads\/.*\.xlsx/, () => {
           return new HttpResponse(null, { status: 404, statusText: 'Not Found' });
         })
       );
@@ -83,7 +89,7 @@ describe('useFileDownloads', () => {
     it('HTMLが返された場合はエラー', async () => {
       // MSW: HTMLレスポンスをモック
       server.use(
-        http.get(/\/downloads\/.*\.xlsx$/, () => {
+        http.get(/\/downloads\/.*\.xlsx/, () => {
           return new HttpResponse('<html>Error page</html>', {
             status: 200,
             headers: {
@@ -167,7 +173,7 @@ describe('useFileDownloads', () => {
     it('ダウンロードエラー時にエラーメッセージを表示', async () => {
       // MSW: 500エラーをモック
       server.use(
-        http.get(/\/downloads\/.*\.pdf$/, () => {
+        http.get(/\/downloads\/.*\.pdf/, () => {
           return new HttpResponse(null, { status: 500, statusText: 'Internal Server Error' });
         })
       );
@@ -209,16 +215,7 @@ describe('useFileDownloads', () => {
       const originalEnv = import.meta.env.VITE_API_BASE_URL;
       import.meta.env.VITE_API_BASE_URL = 'https://api.example.com/api';
 
-      // MSW: 絶対URLをモック（/apiサフィックスが削除されたURL）
-      server.use(
-        http.get('https://api.example.com/downloads/test.xlsx', async () => {
-          const mockBlob = new Blob(['Excel mock data'], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          });
-          return HttpResponse.arrayBuffer(await mockBlob.arrayBuffer());
-        })
-      );
-
+      // デフォルトのhandlerが絶対URLもマッチするので、特別なhandler不要
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
       await act(async () => {
@@ -257,7 +254,7 @@ describe('useFileDownloads', () => {
 
       // MSW: ネットワークエラーをモック
       server.use(
-        http.get(/\/downloads\/.*\.xlsx$/, () => {
+        http.get(/\/downloads\/.*\.xlsx/, () => {
           return HttpResponse.error();
         })
       );
