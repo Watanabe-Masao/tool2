@@ -6,35 +6,14 @@
  * メモ化が正しく実装されているかをテストします。
  * CI/CDパイプラインで実行することで、無限ループを事前に検出できます。
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react';
+import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
 import {
   createRenderCounter,
   assertNoInfiniteLoop,
   EXPECTED_RENDER_COUNTS,
 } from '../utils/renderLoopDetector';
-
-/**
- * propsの参照安定性をテストするユーティリティ
- */
-function useReferenceStability<T>(value: T, name: string): {
-  changeCount: number;
-  value: T;
-} {
-  const prevRef = useRef<T>(value);
-  const changeCountRef = useRef(0);
-
-  if (prevRef.current !== value) {
-    changeCountRef.current++;
-    prevRef.current = value;
-  }
-
-  return {
-    changeCount: changeCountRef.current,
-    value,
-  };
-}
 
 describe('React#185 無限ループ防止テスト', () => {
   describe('useMemo による formData メモ化', () => {
@@ -263,8 +242,8 @@ describe('React#185 無限ループ防止テスト', () => {
       const { result } = renderHook(() => {
         counter.increment();
 
-        const [count, setCount] = useState(0);
-        const [data, setData] = useState({ value: 0 });
+        const [, setCount] = useState(0);
+        const [data] = useState({ value: 0 });
 
         // メモ化されたオブジェクト
         const memoizedData = useMemo(() => ({ value: data.value }), [data.value]);
@@ -274,7 +253,7 @@ describe('React#185 無限ループ防止テスト', () => {
           setCount((c) => c + 1);
         }, []);
 
-        return { count, memoizedData, increment };
+        return { memoizedData, increment };
       });
 
       // 初期レンダリング後の回数を記録
