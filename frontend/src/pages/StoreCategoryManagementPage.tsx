@@ -41,7 +41,7 @@ import {
   FilterList as FilterListIcon,
   ArrowBack,
 } from '@mui/icons-material';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
@@ -56,7 +56,7 @@ import type { StoreSettings } from '@/types/storeSettings';
  * 店舗カテゴリー管理ページ
  */
 export const StoreCategoryManagementPage: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
@@ -726,7 +726,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
             {/* 戻るボタン */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <IconButton
-                onClick={() => history.push('/new-order')}
+                onClick={() => navigate('/new-order')}
                 sx={{ mr: 1 }}
               >
                 <ArrowBack />

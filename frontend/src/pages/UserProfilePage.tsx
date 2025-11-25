@@ -34,7 +34,7 @@ import {
   ArrowBack,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { EmailAddressBookManagerModal } from '@/components/modals/EmailAddressBookManagerModal';
@@ -46,7 +46,7 @@ import { EmailAddressBookManagerModal } from '@/components/modals/EmailAddressBo
  */
 export const UserProfilePage: React.FC = () => {
   const { user, signOut } = useAuthContext();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [emailSettingsDialogOpen, setEmailSettingsDialogOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
@@ -176,7 +176,7 @@ export const UserProfilePage: React.FC = () => {
     try {
       await signOut();
       setLogoutDialogOpen(false);
-      history.push('/login');
+      navigate('/login');
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
@@ -192,7 +192,7 @@ export const UserProfilePage: React.FC = () => {
             {/* 戻るボタン */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <IconButton
-                onClick={() => history.push('/new-order')}
+                onClick={() => navigate('/new-order')}
                 sx={{ mr: 1 }}
               >
                 <ArrowBack />

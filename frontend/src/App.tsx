@@ -1,8 +1,6 @@
 import React from 'react';
-import { Route, Switch, Redirect } from 'react-router-dom';
-import { IonApp } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import { CircularProgress, Box } from '@mui/material';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { CircularProgress, Box, CssBaseline } from '@mui/material';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -47,7 +45,8 @@ const AppContent: React.FC = () => {
   // 認証状態確認中
   if (loading) {
     return (
-      <IonApp>
+      <>
+        <CssBaseline />
         <Box
           display="flex"
           justifyContent="center"
@@ -56,29 +55,32 @@ const AppContent: React.FC = () => {
         >
           <CircularProgress />
         </Box>
-      </IonApp>
+      </>
     );
   }
 
   return (
-    <IonApp>
-      <IonReactRouter>
-        <Switch>
+    <>
+      <CssBaseline />
+      <BrowserRouter>
+        <Routes>
           {/* ログインページ（未認証のみ） */}
-          <Route exact path="/login">
-            {user ? <Redirect to="/new-order" /> : <LoginPage />}
-          </Route>
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/new-order" replace /> : <LoginPage />}
+          />
 
           {/* メインレイアウト（認証済みのみ） */}
-          <Route path="/">
-            {user ? <MainLayout /> : <Redirect to="/login" />}
-          </Route>
-        </Switch>
-      </IonReactRouter>
+          <Route
+            path="/*"
+            element={user ? <MainLayout /> : <Navigate to="/login" replace />}
+          />
+        </Routes>
+      </BrowserRouter>
 
       {/* ネットワークステータス表示（認証後のみ） */}
       {user && <NetworkStatus />}
-    </IonApp>
+    </>
   );
 };
 

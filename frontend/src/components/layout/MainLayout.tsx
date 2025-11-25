@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Redirect, Switch } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -33,24 +33,22 @@ export const MainLayout: React.FC = () => {
           paddingBottom: isMobile ? '64px' : 0,
         }}
       >
-        <Switch>
+        <Routes>
           {/* 新規作成 */}
-          <Route exact path="/new-order" component={NewOrderPage} />
+          <Route path="/new-order" element={<NewOrderPage />} />
 
           {/* カレンダー */}
-          <Route exact path="/calendar" component={CalendarPage} />
+          <Route path="/calendar" element={<CalendarPage />} />
 
           {/* ユーザープロフィール */}
-          <Route exact path="/profile" component={UserProfilePage} />
+          <Route path="/profile" element={<UserProfilePage />} />
 
           {/* 店舗カテゴリー管理 */}
-          <Route exact path="/store-categories" component={StoreCategoryManagementPage} />
+          <Route path="/store-categories" element={<StoreCategoryManagementPage />} />
 
           {/* デフォルトリダイレクト */}
-          <Route exact path="/">
-            <Redirect to="/new-order" />
-          </Route>
-        </Switch>
+          <Route path="/" element={<Navigate to="/new-order" replace />} />
+        </Routes>
       </Box>
 
       {/* モバイル用ボトムナビゲーション */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   BottomNavigation,
   BottomNavigationAction,
@@ -58,7 +58,7 @@ const navigationItems = [
  * - FloatingProgressSummary表示切り替え
  */
 export const MobileBottomNav: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -97,7 +97,7 @@ export const MobileBottomNav: React.FC = () => {
     // ページ遷移
     const item = navigationItems.find((item) => item.value === newValue);
     if (item && item.path) {
-      history.push(item.path);
+      navigate(item.path);
     }
   };
 
