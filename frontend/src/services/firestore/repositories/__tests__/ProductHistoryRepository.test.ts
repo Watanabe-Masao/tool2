@@ -2,17 +2,30 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProductHistoryRepository, type ProductHistory } from '../ProductHistoryRepository';
 import { Timestamp } from 'firebase/firestore';
 
-// Firestoreのモック
-const mockCollection = vi.fn();
-const mockQuery = vi.fn();
-const mockWhere = vi.fn();
-const mockOrderBy = vi.fn();
-const mockGetDocs = vi.fn();
-const mockAddDoc = vi.fn();
-const mockUpdateDoc = vi.fn();
-const mockDeleteDoc = vi.fn();
-const mockDoc = vi.fn();
-const mockIncrement = vi.fn((value: number) => ({ _increment: value }));
+// Firestoreのモック（vi.hoisted()で適切にホイスト）
+const {
+  mockCollection,
+  mockQuery,
+  mockWhere,
+  mockOrderBy,
+  mockGetDocs,
+  mockAddDoc,
+  mockUpdateDoc,
+  mockDeleteDoc,
+  mockDoc,
+  mockIncrement,
+} = vi.hoisted(() => ({
+  mockCollection: vi.fn(),
+  mockQuery: vi.fn(),
+  mockWhere: vi.fn(),
+  mockOrderBy: vi.fn(),
+  mockGetDocs: vi.fn(),
+  mockAddDoc: vi.fn(),
+  mockUpdateDoc: vi.fn(),
+  mockDeleteDoc: vi.fn(),
+  mockDoc: vi.fn(),
+  mockIncrement: vi.fn((value: number) => ({ _increment: value })),
+}));
 
 vi.mock('firebase/firestore', () => ({
   collection: mockCollection,

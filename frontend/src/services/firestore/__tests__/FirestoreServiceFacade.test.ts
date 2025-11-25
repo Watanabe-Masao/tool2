@@ -222,6 +222,9 @@ describe('FirestoreServiceFacade', () => {
         quantityPerPackage: 10,
         unit: '個',
         categoryCode: undefined,
+        pinned: false,
+        pinOrder: 9999,
+        usageCount: 1,
       });
     });
 

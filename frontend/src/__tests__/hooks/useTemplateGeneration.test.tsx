@@ -190,7 +190,8 @@ describe('useTemplateGeneration', () => {
           ...defaultParams,
           user: { uid: 'test', displayName: null, email: 'test@example.com' },
           userSettings: null,
-        })
+        }),
+        { wrapper }
       );
 
       await act(async () => {
@@ -210,7 +211,8 @@ describe('useTemplateGeneration', () => {
           ...defaultParams,
           user: { uid: 'test', displayName: null, email: null },
           userSettings: null,
-        })
+        }),
+        { wrapper }
       );
 
       await act(async () => {
@@ -272,6 +274,7 @@ describe('useTemplateGeneration', () => {
       const { result } = renderHook(() =>
         useTemplateGeneration({
           ...defaultParams,
+          user: null,
           userSettings: null,
         }),
         { wrapper }

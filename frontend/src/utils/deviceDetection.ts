@@ -11,8 +11,8 @@ export const getDeviceInfo = (): DeviceInfo => {
   // iOS判定
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
 
-  // Safari判定（Chrome/Androidを除外）
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  // Safari判定（Chrome/Android/CriOSを除外）
+  const isSafari = /^((?!chrome|android|crios).)*safari/i.test(ua);
 
   // モバイル判定
   const isMobile =
