@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useIndexedDB } from './useIndexedDB';
-import { FirestoreService } from '@/services/firebase/firestoreService';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UseDataSyncReturn } from '@/types/hooks';
 
@@ -33,6 +33,7 @@ import type { UseDataSyncReturn } from '@/types/hooks';
 export const useDataSync = (): UseDataSyncReturn => {
   const { user } = useAuthContext();
   const { showSuccess, showError, showWarning } = useNotification();
+  const firestoreService = useFirestoreService();
   const { saveOrder: saveToIndexedDB, getUnsyncedOrders, updateOrder } = useIndexedDB();
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -113,7 +114,7 @@ export const useDataSync = (): UseDataSyncReturn => {
           const { id, synced, firestoreId, ...orderData } = order;
 
           // Firestoreに保存
-          const docId = await FirestoreService.saveOrder(
+          const docId = await firestoreService.saveOrder(
             {
               ...orderData,
               // deliveryDateをDateオブジェクトに変換（IndexedDBではDateが文字列化されている可能性があるため）
@@ -148,7 +149,7 @@ export const useDataSync = (): UseDataSyncReturn => {
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount, showSuccess, showError]);
+  }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount, showSuccess, showError, firestoreService]);
 
   /**
    * オンライン復帰時に自動同期（デバウンス付き）
@@ -183,7 +184,7 @@ export const useDataSync = (): UseDataSyncReturn => {
         userId: user.uid,
         timestamp: new Date(),
       };
-      await FirestoreService.saveOrder(orderData, user.uid);
+      await firestoreService.saveOrder(orderData, user.uid);
     } else {
       // オフライン時: IndexedDBに保存
       console.log('📴 オフライン: IndexedDBに保存');

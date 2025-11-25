@@ -10,7 +10,7 @@ import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useAuthContext } from '@/context/AuthContext';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 
 /**
  * ProductBasicInfoFormのProps
@@ -65,6 +65,8 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   activeProductIndex,
   onProductIndexChange,
 }) => {
+  const firestoreService = useFirestoreService();
+
   // アクティブなタブのインデックス（外部制御または内部状態）
   const [internalTabIndex, setInternalTabIndex] = useState(0);
   const activeTabIndex = activeProductIndex !== undefined ? activeProductIndex : internalTabIndex;
@@ -264,7 +266,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
    */
   const handleDeletePreset = async (presetId: string) => {
     try {
-      await FirestoreService.deleteProductHistoryById(presetId);
+      await firestoreService.deleteProductHistoryById(presetId);
       // 履歴を再読み込み
       await reloadPresetHistory();
     } catch (error) {

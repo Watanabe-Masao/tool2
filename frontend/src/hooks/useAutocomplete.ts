@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { QUERY_CACHE_TIME } from '@/utils/constants';
 
@@ -42,6 +42,7 @@ export const useAutocomplete = (
   field: 'productName' | 'origin' | 'specification' | 'supplier'
 ): UseAutocompleteReturn => {
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
   const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -66,7 +67,7 @@ export const useAutocomplete = (
       setLoading(true);
       setError(null);
 
-      const history = await FirestoreService.getAutocompleteHistory(user.uid, field);
+      const history = await firestoreService.getAutocompleteHistory(user.uid, field);
       setOptions(history);
       setLastFetch(now);
     } catch (err) {
@@ -75,7 +76,7 @@ export const useAutocomplete = (
     } finally {
       setLoading(false);
     }
-  }, [user, field, lastFetch]);
+  }, [user, field, lastFetch, firestoreService]);
 
   /**
    * 初回マウント時に履歴を取得
@@ -94,7 +95,7 @@ export const useAutocomplete = (
       }
 
       try {
-        await FirestoreService.saveAutocompleteHistory(user.uid, field, value);
+        await firestoreService.saveAutocompleteHistory(user.uid, field, value);
 
         // ローカルの候補リストを更新
         setOptions((prev) => {
@@ -110,7 +111,7 @@ export const useAutocomplete = (
         console.error(`[useAutocomplete] Error adding to history for ${field}:`, err);
       }
     },
-    [user, field]
+    [user, field, firestoreService]
   );
 
   /**

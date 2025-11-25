@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
+import { getFirebaseFirestore } from '@/services/firebase/config';
 import { TemplateService } from '@/services/api/templateService';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 import type { IFirestoreService, ITemplateService, ISessionStorageService, Services } from '@/types/services';
@@ -23,6 +24,21 @@ export interface ServiceProviderProps {
    */
   services?: Partial<Services>;
 }
+
+/**
+ * デフォルトの FirestoreServiceFacade インスタンス
+ *
+ * シングルトンパターンで、アプリケーション全体で同一インスタンスを使用。
+ */
+let defaultFirestoreService: FirestoreServiceFacade | null = null;
+
+const getDefaultFirestoreService = (): IFirestoreService => {
+  if (!defaultFirestoreService) {
+    const db = getFirebaseFirestore();
+    defaultFirestoreService = new FirestoreServiceFacade(db);
+  }
+  return defaultFirestoreService;
+};
 
 /**
  * ServiceProvider
@@ -49,7 +65,7 @@ export const ServiceProvider: React.FC<ServiceProviderProps> = ({
 }) => {
   const services = useMemo<Services>(
     () => ({
-      firestoreService: overrideServices?.firestoreService ?? FirestoreService,
+      firestoreService: overrideServices?.firestoreService ?? getDefaultFirestoreService(),
       templateService: overrideServices?.templateService ?? TemplateService,
       sessionStorageService: overrideServices?.sessionStorageService ?? SessionStorageService,
     }),

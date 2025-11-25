@@ -45,7 +45,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { getCategoryName, MAIN_CATEGORIES } from '@/utils/categories';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 
 /**
  * ソート可能なプリセットアイテムのProps
@@ -330,6 +330,8 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   currentProducts = [],
   loading = false,
 }) => {
+  const firestoreService = useFirestoreService();
+
   // 選択された帳合先（複数帳合先対応）
   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
 
@@ -763,7 +765,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
    */
   const handleTogglePin = async (preset: ProductHistoryItem, pinned: boolean) => {
     try {
-      await FirestoreService.toggleProductHistoryPinned(
+      await firestoreService.toggleProductHistoryPinned(
         preset.id,
         pinned,
         userId,
@@ -827,7 +829,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
     }));
 
     try {
-      await FirestoreService.reorderPinnedPresets(updates);
+      await firestoreService.reorderPinnedPresets(updates);
       if (onReload) {
         await onReload();
       }

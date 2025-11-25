@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { ProductHistoryItem } from '@/types/hooks';
 
@@ -11,13 +11,14 @@ import type { ProductHistoryItem } from '@/types/hooks';
  */
 export const useProductHistory = (suppliers?: string | string[], categoryCode?: string) => {
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
   const [history, setHistory] = useState<ProductHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
    * 履歴を読み込み
    */
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -26,7 +27,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
       // suppliers が文字列の場合、その帳合先のみ取得
       // suppliers が undefined の場合、すべての帳合先の履歴を取得
       const supplierFilter = Array.isArray(suppliers) ? undefined : suppliers;
-      const data = await FirestoreService.getProductHistory(user.uid, supplierFilter);
+      const data = await firestoreService.getProductHistory(user.uid, supplierFilter);
 
       // suppliers が配列の場合、配列内の帳合先でフィルタリング
       if (Array.isArray(suppliers) && suppliers.length > 0) {
@@ -40,12 +41,11 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, suppliers, firestoreService]);
 
   useEffect(() => {
     loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, JSON.stringify(suppliers)]);
+  }, [loadHistory]);
 
   /**
    * 品名の一意のリストを取得（カテゴリーフィルタリング適用）
@@ -139,7 +139,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
   /**
    * 履歴を削除
    */
-  const deleteHistory = async (
+  const deleteHistory = useCallback(async (
     conditions: {
       name?: string;
       origin?: string;
@@ -162,7 +162,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     }
 
     try {
-      const count = await FirestoreService.deleteProductHistoryByCondition(user.uid, {
+      const count = await firestoreService.deleteProductHistoryByCondition(user.uid, {
         supplier,
         ...conditions,
       });
@@ -176,7 +176,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
       console.error('[useProductHistory] Failed to delete history:', error);
       throw error;
     }
-  };
+  }, [user, suppliers, firestoreService, loadHistory]);
 
   /**
    * 品名からカテゴリーコードを取得

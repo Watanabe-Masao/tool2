@@ -33,7 +33,7 @@ import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import { ProductNameHistoryModal } from '@/components/modals/ProductNameHistoryModal';
@@ -91,6 +91,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const { showSuccess, showError } = useNotification();
   const { setValue } = useFormContext<OrderFormData>();
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
@@ -220,7 +221,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     }
 
     try {
-      await FirestoreService.saveProductHistory(
+      await firestoreService.saveProductHistory(
         user.uid,
         currentSupplier,
         currentName,
@@ -380,7 +381,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    */
   const handleDeletePreset = async (presetId: string) => {
     try {
-      await FirestoreService.deleteProductHistoryById(presetId);
+      await firestoreService.deleteProductHistoryById(presetId);
       showSuccess('プリセットを削除しました');
       // 履歴を再読み込み
       await reloadPresetHistory();
