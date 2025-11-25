@@ -2,6 +2,8 @@
  * アプリケーション定数
  */
 
+import { API_BASE_URL as ENV_API_BASE_URL } from '@/config/env';
+
 // ============================================================
 // API関連
 // ============================================================
@@ -11,7 +13,7 @@
  * 開発環境ではViteプロキシを使用するため'/api'
  * 本番環境では環境変数から取得
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export const API_BASE_URL = ENV_API_BASE_URL;
 
 export const API_ENDPOINTS = {
   /** ヘルスチェック */

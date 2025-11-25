@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { GeneratedFiles } from './useTemplateGeneration';
 import { ERROR_MESSAGES } from '@/messages';
+import { env } from '@/config/env';
 
 /**
  * useFileDownloadsのパラメータ
@@ -68,10 +69,7 @@ export const useFileDownloads = ({
 
         // 相対URLを絶対URLに変換
         // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const baseUrl = apiBaseUrl
-          ? apiBaseUrl.replace(/\/api$/, '') // /apiサフィックスを削除
-          : window.location.origin; // Render版（同一オリジン）
+        const baseUrl = env.getBackendBaseUrl();
         const absoluteUrl = new URL(config.url, baseUrl).href;
 
         console.log(`📥 ${config.fileType} download URL:`, config.url);
