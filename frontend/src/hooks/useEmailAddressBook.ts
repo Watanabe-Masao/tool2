@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useState, useEffect, useCallback } from 'react';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { EmailAddressEntity } from '@/types/entities';
 
@@ -8,69 +8,70 @@ import type { EmailAddressEntity } from '@/types/entities';
  */
 export const useEmailAddressBook = () => {
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
   const [entries, setEntries] = useState<EmailAddressEntity[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
    * アドレス帳一覧を読み込み
    */
-  const loadEntries = async () => {
+  const loadEntries = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const entries = await FirestoreService.getEmailAddresses(user.uid);
-      setEntries(entries);
+      const data = await firestoreService.getEmailAddresses(user.uid);
+      setEntries(data);
     } catch (error) {
       console.error('Failed to load email addresses:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, firestoreService]);
 
   /**
    * アドレス帳を追加
    */
-  const addEntry = async (name: string, email: string): Promise<boolean> => {
+  const addEntry = useCallback(async (name: string, email: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      await FirestoreService.saveEmailAddress(user.uid, name, email);
+      await firestoreService.saveEmailAddress(user.uid, name, email);
       await loadEntries(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to add email address:', error);
       return false;
     }
-  };
+  }, [user, firestoreService, loadEntries]);
 
   /**
    * アドレス帳を削除
    */
-  const deleteEntry = async (entryId: string): Promise<boolean> => {
+  const deleteEntry = useCallback(async (entryId: string): Promise<boolean> => {
     try {
-      await FirestoreService.deleteEmailAddress(entryId);
+      await firestoreService.deleteEmailAddress(entryId);
       await loadEntries(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to delete email address:', error);
       return false;
     }
-  };
+  }, [firestoreService, loadEntries]);
 
   /**
    * アドレス帳を更新
    */
-  const updateEntry = async (entryId: string, name: string, email: string): Promise<boolean> => {
+  const updateEntry = useCallback(async (entryId: string, name: string, email: string): Promise<boolean> => {
     try {
-      await FirestoreService.updateEmailAddress(entryId, name, email);
+      await firestoreService.updateEmailAddress(entryId, name, email);
       await loadEntries(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to update email address:', error);
       return false;
     }
-  };
+  }, [firestoreService, loadEntries]);
 
   // 初回読み込みとリアルタイム同期
   useEffect(() => {
@@ -78,10 +79,10 @@ export const useEmailAddressBook = () => {
 
     // リアルタイムリスナーを設定
     setLoading(true);
-    const unsubscribe = FirestoreService.subscribeToEmailAddresses(
+    const unsubscribe = firestoreService.subscribeToEmailAddresses(
       user.uid,
-      (entries) => {
-        setEntries(entries);
+      (data) => {
+        setEntries(data);
         setLoading(false);
       },
       (error) => {
@@ -94,7 +95,7 @@ export const useEmailAddressBook = () => {
     return () => {
       unsubscribe();
     };
-  }, [user]);
+  }, [user, firestoreService]);
 
   return {
     entries,

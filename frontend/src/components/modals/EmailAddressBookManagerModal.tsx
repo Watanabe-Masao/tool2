@@ -36,7 +36,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useEmailAddressBook, type EmailAddressEntity } from '@/hooks/useEmailAddressBook';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 
 interface EmailAddressBookManagerModalProps {
   open: boolean;
@@ -168,6 +168,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
   open,
   onClose,
 }) => {
+  const firestoreService = useFirestoreService();
   const { entries, addEntry, deleteEntry, updateEntry, loadEntries } = useEmailAddressBook();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameValue, setNameValue] = useState('');
@@ -413,7 +414,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
     }));
 
     try {
-      await FirestoreService.reorderEmailAddresses(updates);
+      await firestoreService.reorderEmailAddresses(updates);
       await loadEntries();
     } catch (error) {
       console.error('[EmailAddressBookManagerModal] Failed to reorder:', error);

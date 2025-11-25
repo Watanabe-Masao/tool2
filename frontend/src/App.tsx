@@ -6,6 +6,7 @@ import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NavigationProvider } from './context/NavigationContext';
 import { ServiceProvider } from './context/ServiceContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { NetworkStatus } from './components/common/NetworkStatus';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -85,21 +86,38 @@ const AppContent: React.FC = () => {
 };
 
 /**
+ * エラーハンドリングコールバック
+ * 本番環境ではエラーログサービスに送信することを想定
+ */
+const handleGlobalError = (error: Error, errorInfo: React.ErrorInfo) => {
+  // 本番環境でのエラーログ送信（将来的にSentry等と連携可能）
+  if (import.meta.env.PROD) {
+    console.error('[App] Global error caught:', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+};
+
+/**
  * メインアプリケーション
  */
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <NotificationProvider>
-        <AuthProvider>
-          <ServiceProvider>
-            <NavigationProvider>
-              <AppContent />
-            </NavigationProvider>
-          </ServiceProvider>
-        </AuthProvider>
-      </NotificationProvider>
-    </ThemeProvider>
+    <ErrorBoundary onError={handleGlobalError}>
+      <ThemeProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <ServiceProvider>
+              <NavigationProvider>
+                <AppContent />
+              </NavigationProvider>
+            </ServiceProvider>
+          </AuthProvider>
+        </NotificationProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

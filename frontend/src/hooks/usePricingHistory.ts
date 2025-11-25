@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useState, useEffect, useCallback } from 'react';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { PricingHistoryItem } from '@/types/hooks';
 
@@ -14,11 +14,12 @@ export const usePricingHistory = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
 
   /**
    * 価格履歴をロード
    */
-  const loadPricingHistory = async () => {
+  const loadPricingHistory = useCallback(async () => {
     if (!user) {
       setPricingHistory([]);
       return;
@@ -27,7 +28,7 @@ export const usePricingHistory = () => {
     try {
       setLoading(true);
       setError(null);
-      const history = await FirestoreService.getPricingHistory(user.uid);
+      const history = await firestoreService.getPricingHistory(user.uid);
       setPricingHistory(history);
     } catch (err) {
       console.error('[usePricingHistory] Failed to load pricing history:', err);
@@ -35,7 +36,7 @@ export const usePricingHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, firestoreService]);
 
   /**
    * 価格履歴を保存または更新
@@ -43,7 +44,7 @@ export const usePricingHistory = () => {
    * 同じキー（商品名・規格・入数）の履歴が存在する場合は使用回数をインクリメント、
    * 存在しない場合は新規作成します。
    */
-  const savePricingHistory = async (
+  const savePricingHistory = useCallback(async (
     productName: string,
     specification: string,
     quantityPerPackage: number,
@@ -58,7 +59,7 @@ export const usePricingHistory = () => {
     }
 
     try {
-      await FirestoreService.savePricingHistory(
+      await firestoreService.savePricingHistory(
         user.uid,
         productName,
         specification,
@@ -75,25 +76,25 @@ export const usePricingHistory = () => {
       console.error('[usePricingHistory] Failed to save pricing history:', err);
       throw err;
     }
-  };
+  }, [user, firestoreService, loadPricingHistory]);
 
   /**
    * 価格履歴を削除
    */
-  const deletePricingHistory = async (historyId: string): Promise<void> => {
+  const deletePricingHistory = useCallback(async (historyId: string): Promise<void> => {
     if (!user) {
       throw new Error('User not authenticated');
     }
 
     try {
-      await FirestoreService.deletePricingHistory(historyId);
+      await firestoreService.deletePricingHistory(historyId);
       // 履歴をリロード
       await loadPricingHistory();
     } catch (err) {
       console.error('[usePricingHistory] Failed to delete pricing history:', err);
       throw err;
     }
-  };
+  }, [user, firestoreService, loadPricingHistory]);
 
   /**
    * 特定のキーに一致する価格履歴を検索
@@ -116,7 +117,7 @@ export const usePricingHistory = () => {
    */
   useEffect(() => {
     loadPricingHistory();
-  }, [user]);
+  }, [loadPricingHistory]);
 
   return {
     pricingHistory,

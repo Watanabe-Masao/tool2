@@ -44,10 +44,10 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { StoreSettingsService } from '@/services/firebase/storeSettingsService';
 import { useSupplierPresets, type SupplierPresetEntity } from '@/hooks/useSupplierPresets';
-import { FirestoreService } from '@/services/firebase/firestoreService';
 import { STORE_DATA } from '@/utils/constants';
 import type { StoreCategory } from '@/types/storeCategory';
 import type { StoreSettings } from '@/types/storeSettings';
@@ -59,6 +59,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+  const firestoreService = useFirestoreService();
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
 
   const [tabValue, setTabValue] = useState(0);
@@ -663,7 +664,7 @@ export const StoreCategoryManagementPage: React.FC = () => {
 
       (async () => {
         try {
-          await FirestoreService.reorderSupplierPresets(updates);
+          await firestoreService.reorderSupplierPresets(updates);
           await loadPresets();
           showSuccess('並び順を更新しました');
         } catch (error) {

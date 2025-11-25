@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useState, useEffect, useCallback } from 'react';
+import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { SupplierPresetEntity } from '@/types/entities';
 
@@ -8,69 +8,70 @@ import type { SupplierPresetEntity } from '@/types/entities';
  */
 export const useSupplierPresets = () => {
   const { user } = useAuthContext();
+  const firestoreService = useFirestoreService();
   const [presets, setPresets] = useState<SupplierPresetEntity[]>([]);
   const [loading, setLoading] = useState(false);
 
   /**
    * プリセット一覧を読み込み
    */
-  const loadPresets = async () => {
+  const loadPresets = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const presets = await FirestoreService.getSupplierPresets(user.uid);
-      setPresets(presets);
+      const data = await firestoreService.getSupplierPresets(user.uid);
+      setPresets(data);
     } catch (error) {
       console.error('Failed to load supplier presets:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, firestoreService]);
 
   /**
    * プリセットを追加
    */
-  const addPreset = async (supplier: string): Promise<boolean> => {
+  const addPreset = useCallback(async (supplier: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      await FirestoreService.saveSupplierPreset(user.uid, supplier);
+      await firestoreService.saveSupplierPreset(user.uid, supplier);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to add supplier preset:', error);
       return false;
     }
-  };
+  }, [user, firestoreService, loadPresets]);
 
   /**
    * プリセットを削除
    */
-  const deletePreset = async (presetId: string): Promise<boolean> => {
+  const deletePreset = useCallback(async (presetId: string): Promise<boolean> => {
     try {
-      await FirestoreService.deleteSupplierPreset(presetId);
+      await firestoreService.deleteSupplierPreset(presetId);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to delete supplier preset:', error);
       return false;
     }
-  };
+  }, [firestoreService, loadPresets]);
 
   /**
    * プリセットを更新
    */
-  const updatePreset = async (presetId: string, supplier: string): Promise<boolean> => {
+  const updatePreset = useCallback(async (presetId: string, supplier: string): Promise<boolean> => {
     try {
-      await FirestoreService.updateSupplierPreset(presetId, supplier);
+      await firestoreService.updateSupplierPreset(presetId, supplier);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
       console.error('Failed to update supplier preset:', error);
       return false;
     }
-  };
+  }, [firestoreService, loadPresets]);
 
   // 初回読み込みとリアルタイム同期
   useEffect(() => {
@@ -78,10 +79,10 @@ export const useSupplierPresets = () => {
 
     // リアルタイムリスナーを設定
     setLoading(true);
-    const unsubscribe = FirestoreService.subscribeToSupplierPresets(
+    const unsubscribe = firestoreService.subscribeToSupplierPresets(
       user.uid,
-      (presets) => {
-        setPresets(presets);
+      (data) => {
+        setPresets(data);
         setLoading(false);
       },
       (error) => {
@@ -94,7 +95,7 @@ export const useSupplierPresets = () => {
     return () => {
       unsubscribe();
     };
-  }, [user]);
+  }, [user, firestoreService]);
 
   return {
     presets,

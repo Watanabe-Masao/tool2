@@ -36,7 +36,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useSupplierPresets, type SupplierPresetEntity } from '@/hooks/useSupplierPresets';
-import { FirestoreService } from '@/services/firebase/firestoreService';
+import { useFirestoreService } from '@/context/ServiceContext';
 
 interface SupplierPresetManagerModalProps {
   open: boolean;
@@ -160,6 +160,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   open,
   onClose,
 }) => {
+  const firestoreService = useFirestoreService();
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [presetValue, setPresetValue] = useState('');
@@ -385,7 +386,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     }));
 
     try {
-      await FirestoreService.reorderSupplierPresets(updates);
+      await firestoreService.reorderSupplierPresets(updates);
       await loadPresets();
     } catch (error) {
       console.error('[SupplierPresetManagerModal] Failed to reorder:', error);
