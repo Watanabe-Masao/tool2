@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Container, Box, Tabs, Tab, Typography, Collapse } from '@mui/material';
+import { Container, Box, Tabs, Tab, Typography } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import type {
   Control,
@@ -140,10 +140,6 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   const memoizedOnSendEmail = useCallback(() => {
     setShowEmailModal(true);
   }, [setShowEmailModal]);
-
-  // コンテンツエリアの高さを計算（折りたたみ状態を考慮）
-  const collapsedHeaderHeight = 32; // 折りたたみ時のヘッダー高さ
-  const expandedTabsHeight = 48; // 展開時のタブ高さ
 
   return (
     <Container maxWidth="lg">
