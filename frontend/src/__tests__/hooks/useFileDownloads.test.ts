@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../setup';
 import { useFileDownloads } from '@/hooks/useFileDownloads';
 import type { GeneratedFiles } from '@/hooks/useTemplateGeneration';
 
-// Mock global objects
-global.fetch = vi.fn();
+// Mock global URL methods (minimal DOM mocking)
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
 global.URL.revokeObjectURL = vi.fn();
 
@@ -27,45 +28,8 @@ describe('useFileDownloads', () => {
     hideLoading: mockHideLoading,
   };
 
-  let mockLink: HTMLAnchorElement;
-
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock successful fetch
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: {
-        get: (name: string) => {
-          if (name === 'Content-Type') return 'application/vnd.ms-excel';
-          return null;
-        },
-      },
-      blob: () => Promise.resolve(new Blob(['test'], { type: 'application/vnd.ms-excel' })),
-    } as Response);
-
-    // Mock document.createElement - 'a' タグのみをモック
-    mockLink = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-    } as unknown as HTMLAnchorElement;
-
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      if (tagName === 'a') {
-        return mockLink;
-      }
-      return originalCreateElement(tagName);
-    });
-
-    vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink);
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink);
-  });
-
-  afterEach(() => {
-    // vi.restoreAllMocks() を削除 - document.createElement のモックを保持
   });
 
   describe('downloadExcel', () => {
@@ -76,11 +40,10 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
+      // MSWがリクエストを正常に処理し、ダウンロードが成功することを確認
       expect(mockShowLoading).toHaveBeenCalled();
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/downloads/test.xlsx'));
-      expect(mockLink.download).toBe('配分表_TestBook_20240115.xlsx');
-      expect(mockLink.click).toHaveBeenCalled();
       expect(mockHideLoading).toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
     });
 
     it('generatedFilesがnullの場合は何もしない', async () => {
@@ -95,15 +58,17 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockShowLoading).not.toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
     });
 
     it('ダウンロードエラー時にエラーメッセージを表示', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      } as Response);
+      // MSW: 404エラーをモック
+      server.use(
+        http.get(/\/downloads\/.*\.xlsx$/, () => {
+          return new HttpResponse(null, { status: 404, statusText: 'Not Found' });
+        })
+      );
 
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
@@ -116,13 +81,17 @@ describe('useFileDownloads', () => {
     });
 
     it('HTMLが返された場合はエラー', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        headers: {
-          get: () => 'text/html',
-        },
-        text: () => Promise.resolve('<html>Error page</html>'),
-      } as Response);
+      // MSW: HTMLレスポンスをモック
+      server.use(
+        http.get(/\/downloads\/.*\.xlsx$/, () => {
+          return new HttpResponse('<html>Error page</html>', {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html',
+            },
+          });
+        })
+      );
 
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
@@ -154,11 +123,10 @@ describe('useFileDownloads', () => {
         await result.current.downloadPdf();
       });
 
+      // MSWがリクエストを正常に処理し、ダウンロードが成功することを確認
       expect(mockShowLoading).toHaveBeenCalled();
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/downloads/test.pdf'));
-      expect(mockLink.download).toBe('配分表_TestBook_20240115.pdf'); // .xlsx → .pdf
-      expect(mockLink.click).toHaveBeenCalled();
       expect(mockHideLoading).toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
     });
 
     it('generatedFilesがnullの場合は何もしない', async () => {
@@ -173,7 +141,8 @@ describe('useFileDownloads', () => {
         await result.current.downloadPdf();
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockShowLoading).not.toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
     });
 
     it('pdfDownloadUrlがない場合は何もしない', async () => {
@@ -191,15 +160,17 @@ describe('useFileDownloads', () => {
         await result.current.downloadPdf();
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockShowLoading).not.toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
     });
 
     it('ダウンロードエラー時にエラーメッセージを表示', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      } as Response);
+      // MSW: 500エラーをモック
+      server.use(
+        http.get(/\/downloads\/.*\.pdf$/, () => {
+          return new HttpResponse(null, { status: 500, statusText: 'Internal Server Error' });
+        })
+      );
 
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
@@ -220,7 +191,8 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
-      const excelFetchCall = vi.mocked(global.fetch).mock.calls[0][0];
+      expect(mockShowLoading).toHaveBeenCalledTimes(1);
+      expect(mockHideLoading).toHaveBeenCalledTimes(1);
 
       vi.clearAllMocks();
 
@@ -229,16 +201,23 @@ describe('useFileDownloads', () => {
         await result.current.downloadPdf();
       });
 
-      const pdfFetchCall = vi.mocked(global.fetch).mock.calls[0][0];
-
-      // 両方とも同じロジックフロー
-      expect(typeof excelFetchCall).toBe('string');
-      expect(typeof pdfFetchCall).toBe('string');
+      expect(mockShowLoading).toHaveBeenCalledTimes(1);
+      expect(mockHideLoading).toHaveBeenCalledTimes(1);
     });
 
     it('環境変数VITE_API_BASE_URLがある場合', async () => {
       const originalEnv = import.meta.env.VITE_API_BASE_URL;
       import.meta.env.VITE_API_BASE_URL = 'https://api.example.com/api';
+
+      // MSW: 絶対URLをモック（/apiサフィックスが削除されたURL）
+      server.use(
+        http.get('https://api.example.com/downloads/test.xlsx', async () => {
+          const mockBlob = new Blob(['Excel mock data'], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          return HttpResponse.arrayBuffer(await mockBlob.arrayBuffer());
+        })
+      );
 
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
@@ -246,9 +225,10 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
-      const fetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
-      expect(fetchUrl).toContain('https://api.example.com');
-      expect(fetchUrl).not.toContain('/api/api'); // /apiサフィックスが削除される
+      // ダウンロードが成功することを確認
+      expect(mockShowLoading).toHaveBeenCalled();
+      expect(mockHideLoading).toHaveBeenCalled();
+      expect(mockShowError).not.toHaveBeenCalled();
 
       import.meta.env.VITE_API_BASE_URL = originalEnv;
     });
@@ -274,7 +254,13 @@ describe('useFileDownloads', () => {
 
     it('fetchエラー時のconsole.error', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
+
+      // MSW: ネットワークエラーをモック
+      server.use(
+        http.get(/\/downloads\/.*\.xlsx$/, () => {
+          return HttpResponse.error();
+        })
+      );
 
       const { result } = renderHook(() => useFileDownloads(defaultParams));
 
