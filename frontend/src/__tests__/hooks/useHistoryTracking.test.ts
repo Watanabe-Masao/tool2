@@ -66,8 +66,15 @@ describe('useHistoryTracking', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Firestore mocks
     vi.mocked(FirestoreService.saveProductHistory).mockResolvedValue('history-id');
     vi.mocked(FirestoreService.savePricingHistory).mockResolvedValue('pricing-id');
+
+    // Autocomplete mocks - resolved状態に復元
+    mockSupplierAutocomplete.addToHistory.mockResolvedValue(undefined);
+    mockProductNameAutocomplete.addToHistory.mockResolvedValue(undefined);
+    mockOriginAutocomplete.addToHistory.mockResolvedValue(undefined);
   });
 
   describe('saveAllHistories', () => {
@@ -175,6 +182,9 @@ describe('useHistoryTracking', () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith('履歴保存エラー:', expect.any(Error));
+
+      // モックを元の状態に復元
+      mockSupplierAutocomplete.addToHistory.mockResolvedValue(undefined);
       consoleSpy.mockRestore();
     });
 
