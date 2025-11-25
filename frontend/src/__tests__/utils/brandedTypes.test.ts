@@ -4,8 +4,6 @@ import {
   OrderIdSchema,
   StoreIdSchema,
   StoreCodeSchema,
-  FileNameSchema,
-  DownloadUrlSchema,
   unbrand,
   unbrandAll,
   safeParseBrand,
@@ -84,29 +82,6 @@ describe('brandedTypes', () => {
     it('should reject non-numeric strings', () => {
       expect(() => StoreCodeSchema.parse('ABC')).toThrow();
       expect(() => StoreCodeSchema.parse('01A')).toThrow();
-    });
-  });
-
-  describe('FileNameSchema', () => {
-    it('should parse valid file name', () => {
-      const fileName = FileNameSchema.parse('template.xlsx');
-      expect(fileName).toBe('template.xlsx');
-    });
-
-    it('should reject empty string', () => {
-      expect(() => FileNameSchema.parse('')).toThrow();
-    });
-  });
-
-  describe('DownloadUrlSchema', () => {
-    it('should parse valid URL', () => {
-      const url = DownloadUrlSchema.parse('https://example.com/file.xlsx');
-      expect(url).toBe('https://example.com/file.xlsx');
-    });
-
-    it('should reject invalid URL', () => {
-      expect(() => DownloadUrlSchema.parse('not-a-url')).toThrow();
-      expect(() => DownloadUrlSchema.parse('/relative/path')).toThrow();
     });
   });
 

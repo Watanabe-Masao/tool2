@@ -35,7 +35,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { useSupplierPresets, type SupplierPreset } from '@/hooks/useSupplierPresets';
+import { useSupplierPresets, type SupplierPresetEntry } from '@/hooks/useSupplierPresets';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 
 interface SupplierPresetManagerModalProps {
@@ -47,10 +47,10 @@ interface SupplierPresetManagerModalProps {
  * ソート可能なプリセットアイテムのProps
  */
 interface SortablePresetItemProps {
-  preset: SupplierPreset;
+  preset: SupplierPresetEntry;
   onSwipeStart: (e: React.TouchEvent | React.MouseEvent, presetId: string) => void;
   onSwipeMove: (e: React.TouchEvent | React.MouseEvent) => void;
-  onSwipeEnd: (preset: SupplierPreset) => void;
+  onSwipeEnd: (preset: SupplierPresetEntry) => void;
   swipeState: {
     id: string | null;
     startX: number;
@@ -167,7 +167,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
 
   // 削除確認ダイアログの状態
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [presetToDelete, setPresetToDelete] = useState<SupplierPreset | null>(null);
+  const [presetToDelete, setPresetToDelete] = useState<SupplierPresetEntry | null>(null);
 
   // ドラッグ中のアイテムID (dnd-kit用)
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -326,7 +326,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   /**
    * スワイプ終了
    */
-  const handleSwipeEnd = async (preset: SupplierPreset) => {
+  const handleSwipeEnd = async (preset: SupplierPresetEntry) => {
     if (!swipeState.id || swipeState.id !== preset.id) return;
 
     const deltaX = swipeState.currentX - swipeState.startX;
@@ -429,7 +429,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   /**
    * 編集メニューからプリセット選択
    */
-  const handleSelectPresetForEdit = (preset: SupplierPreset) => {
+  const handleSelectPresetForEdit = (preset: SupplierPresetEntry) => {
     setEditingId(preset.id);
     setPresetValue(preset.supplier);
     setEditMenuAnchor(null);

@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 import { FIRESTORE_COLLECTIONS } from '@/utils/constants';
-import type { OrderData, FirestoreOrderData } from '@/types';
+import type { OrderData, FirestoreOrderData, EmailAddressEntry, SupplierPresetEntry } from '@/types';
 import { format } from 'date-fns';
 
 /**
@@ -324,15 +324,7 @@ export class FirestoreService {
    * @param userId - ユーザーID
    * @returns プリセット配列
    */
-  static async getSupplierPresets(userId: string): Promise<
-    Array<{
-      id: string;
-      supplier: string;
-      displayOrder?: number;
-      createdAt: Date;
-      updatedAt: Date;
-    }>
-  > {
+  static async getSupplierPresets(userId: string): Promise<SupplierPresetEntry[]> {
     const db = getFirebaseFirestore();
     const presetsRef = collection(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS);
 
@@ -375,13 +367,7 @@ export class FirestoreService {
    */
   static subscribeToSupplierPresets(
     userId: string,
-    onSuccess: (presets: Array<{
-      id: string;
-      supplier: string;
-      displayOrder?: number;
-      createdAt: Date;
-      updatedAt: Date;
-    }>) => void,
+    onSuccess: (presets: SupplierPresetEntry[]) => void,
     onError: (error: Error) => void
   ): () => void {
     const db = getFirebaseFirestore();
@@ -507,16 +493,7 @@ export class FirestoreService {
    * @param userId - ユーザーID
    * @returns アドレス帳配列
    */
-  static async getEmailAddresses(userId: string): Promise<
-    Array<{
-      id: string;
-      name: string;
-      email: string;
-      displayOrder?: number;
-      createdAt: Date;
-      updatedAt: Date;
-    }>
-  > {
+  static async getEmailAddresses(userId: string): Promise<EmailAddressEntry[]> {
     const db = getFirebaseFirestore();
     const addressesRef = collection(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES);
 
@@ -560,14 +537,7 @@ export class FirestoreService {
    */
   static subscribeToEmailAddresses(
     userId: string,
-    onSuccess: (addresses: Array<{
-      id: string;
-      name: string;
-      email: string;
-      displayOrder?: number;
-      createdAt: Date;
-      updatedAt: Date;
-    }>) => void,
+    onSuccess: (addresses: EmailAddressEntry[]) => void,
     onError: (error: Error) => void
   ): () => void {
     const db = getFirebaseFirestore();

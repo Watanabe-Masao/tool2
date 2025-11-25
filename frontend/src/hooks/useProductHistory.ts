@@ -144,7 +144,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
       name?: string;
       origin?: string;
       specification?: string;
-      quantityPerPackage?: number;
+      quantityPerPackage?: number | null;
       unit?: string;
     },
     targetSupplier?: string

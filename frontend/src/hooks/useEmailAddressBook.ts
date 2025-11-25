@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-import type { EmailAddress } from '@/types/repository';
 import type { EmailAddressEntry } from '@/types/userSettings';
-
-/**
- * Repository型(EmailAddress)をUI型(EmailAddressEntry)に変換
- */
-function toEmailAddressEntry(address: EmailAddress): EmailAddressEntry | null {
-  if (!address.id) return null;
-  const { userId, ...rest } = address;
-  return { ...rest, id: address.id };
-}
 
 /**
  * メールアドレス帳管理フック
@@ -29,9 +19,7 @@ export const useEmailAddressBook = () => {
 
     setLoading(true);
     try {
-      const data = await FirestoreService.getEmailAddresses(user.uid);
-      // Repository型からUI型に変換
-      const entries = data.map(toEmailAddressEntry).filter((e): e is EmailAddressEntry => e !== null);
+      const entries = await FirestoreService.getEmailAddresses(user.uid);
       setEntries(entries);
     } catch (error) {
       console.error('Failed to load email addresses:', error);
@@ -92,9 +80,7 @@ export const useEmailAddressBook = () => {
     setLoading(true);
     const unsubscribe = FirestoreService.subscribeToEmailAddresses(
       user.uid,
-      (data) => {
-        // Repository型からUI型に変換
-        const entries = data.map(toEmailAddressEntry).filter((e): e is EmailAddressEntry => e !== null);
+      (entries) => {
         setEntries(entries);
         setLoading(false);
       },

@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FirestoreService } from '@/services/firebase/firestoreService';
 import { useAuthContext } from '@/context/AuthContext';
-import type { SupplierPreset } from '@/types/repository';
 import type { SupplierPresetEntry } from '@/types/userSettings';
-
-/**
- * Repository型(SupplierPreset)をUI型(SupplierPresetEntry)に変換
- */
-function toSupplierPresetEntry(preset: SupplierPreset): SupplierPresetEntry | null {
-  if (!preset.id) return null;
-  const { userId, ...rest } = preset;
-  return { ...rest, id: preset.id };
-}
 
 /**
  * 帳合先プリセット管理フック
@@ -29,9 +19,7 @@ export const useSupplierPresets = () => {
 
     setLoading(true);
     try {
-      const data = await FirestoreService.getSupplierPresets(user.uid);
-      // Repository型からUI型に変換
-      const presets = data.map(toSupplierPresetEntry).filter((p): p is SupplierPresetEntry => p !== null);
+      const presets = await FirestoreService.getSupplierPresets(user.uid);
       setPresets(presets);
     } catch (error) {
       console.error('Failed to load supplier presets:', error);
@@ -92,9 +80,7 @@ export const useSupplierPresets = () => {
     setLoading(true);
     const unsubscribe = FirestoreService.subscribeToSupplierPresets(
       user.uid,
-      (data) => {
-        // Repository型からUI型に変換
-        const presets = data.map(toSupplierPresetEntry).filter((p): p is SupplierPresetEntry => p !== null);
+      (presets) => {
         setPresets(presets);
         setLoading(false);
       },
@@ -121,4 +107,4 @@ export const useSupplierPresets = () => {
 };
 
 // Re-export for backward compatibility
-export type { SupplierPreset } from '@/types/repository';
+export type { SupplierPresetEntry } from '@/types/userSettings';
