@@ -13,17 +13,15 @@ export interface IFirestoreService {
   savePricingHistory: typeof FirestoreService.savePricingHistory;
   saveAutocompleteHistory: typeof FirestoreService.saveAutocompleteHistory;
   getAutocompleteHistory: typeof FirestoreService.getAutocompleteHistory;
-  getUserSettings: typeof FirestoreService.getUserSettings;
 }
 
 export interface ITemplateService {
   generateTemplate: typeof TemplateService.generateTemplate;
-  getDownloadUrl: typeof TemplateService.getDownloadUrl;
 }
 
 export interface ISessionStorageService {
   saveDraft: typeof SessionStorageService.saveDraft;
-  getDraft: typeof SessionStorageService.getDraft;
+  loadDraft: typeof SessionStorageService.loadDraft;
   clearDraft: typeof SessionStorageService.clearDraft;
 }
 

@@ -80,8 +80,8 @@ describe('useHistoryTracking', () => {
     vi.clearAllMocks();
 
     // Firestore mocks
-    mockmockFirestoreService.saveProductHistory.mockResolvedValue(undefined as any);
-    mockmockFirestoreService.savePricingHistory.mockResolvedValue(undefined as any);
+    mockFirestoreService.saveProductHistory.mockResolvedValue(undefined as any);
+    mockFirestoreService.savePricingHistory.mockResolvedValue(undefined as any);
 
     // Autocomplete mocks - resolved状態に復元
     mockSupplierAutocomplete.addToHistory.mockResolvedValue(undefined);
