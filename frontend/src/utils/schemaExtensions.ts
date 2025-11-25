@@ -212,14 +212,15 @@ export function createDate(options?: {
     schema = schema.max(maxDate, `${label}は${maxDate.toLocaleDateString()}以前で選択してください`);
   }
 
+  // refine() を使用すると ZodEffects になるため、最後に適用
   if (futureOnly) {
-    schema = schema.refine((date) => date > new Date(), {
+    return schema.refine((date) => date > new Date(), {
       message: `${label}は未来の日付を選択してください`,
     });
   }
 
   if (pastOnly) {
-    schema = schema.refine((date) => date < new Date(), {
+    return schema.refine((date) => date < new Date(), {
       message: `${label}は過去の日付を選択してください`,
     });
   }

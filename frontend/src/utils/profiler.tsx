@@ -1,4 +1,5 @@
-import React, { Profiler, ProfilerOnRenderCallback } from 'react';
+import React, { Profiler } from 'react';
+import type { ProfilerOnRenderCallback } from 'react';
 
 /**
  * プロファイラー測定結果
@@ -6,8 +7,8 @@ import React, { Profiler, ProfilerOnRenderCallback } from 'react';
 export interface ProfilerMeasurement {
   /** プロファイラーID */
   id: string;
-  /** フェーズ（mount or update） */
-  phase: 'mount' | 'update';
+  /** フェーズ（mount, update, or nested-update） */
+  phase: 'mount' | 'update' | 'nested-update';
   /** 実際のレンダリング時間（ミリ秒） */
   actualDuration: number;
   /** ベースレンダリング時間（ミリ秒） */
