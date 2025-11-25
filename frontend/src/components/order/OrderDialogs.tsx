@@ -8,6 +8,7 @@ import {
   Button,
   TextField,
 } from '@mui/material';
+import type { BookNameDialogState, SupplierRemovalDialogState } from '@/types/ui';
 
 /**
  * OrderDialogs
@@ -32,18 +33,6 @@ import {
  * />
  * ```
  */
-
-interface BookNameDialogState {
-  open: boolean;
-  bookName: string;
-}
-
-interface SupplierRemovalDialogState {
-  open: boolean;
-  suppliersToRemove: string[];
-  affectedProductsCount: number;
-  newSuppliers: string[];
-}
 
 interface OrderDialogsProps {
   // BookNameDialog

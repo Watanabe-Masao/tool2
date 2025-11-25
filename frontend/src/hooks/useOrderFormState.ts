@@ -6,16 +6,7 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import { SessionStorageService } from '@/utils/sessionStorageService';
 import { useNotification } from '@/context/NotificationContext';
-
-/**
- * 帳合先削除確認ダイアログの状態
- */
-export interface SupplierRemovalDialogState {
-  open: boolean;
-  suppliersToRemove: string[];
-  affectedProductsCount: number;
-  newSuppliers: string[];
-}
+import type { SupplierRemovalDialogState } from '@/types/ui';
 
 /**
  * 注文フォームの状態管理フック

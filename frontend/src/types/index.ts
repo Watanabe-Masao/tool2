@@ -81,7 +81,15 @@ export type {
 // ============================================================
 // UI Types
 // ============================================================
-export type { DeviceInfo, NotificationData, NotificationSeverity } from './ui';
+export type {
+  DeviceInfo,
+  NotificationData,
+  NotificationSeverity,
+  DeleteDialogState,
+  BookNameDialogState,
+  SupplierRemovalDialogState,
+  ModalState,
+} from './ui';
 
 // ============================================================
 // Settings Types

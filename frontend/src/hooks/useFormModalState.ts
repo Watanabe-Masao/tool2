@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react';
-
-/**
- * モーダル状態の型定義
- */
-export interface ModalState {
-  open: boolean;
-  bookName: string;
-}
+import type { ModalState } from '@/types/ui';
 
 /**
  * useFormModalState
