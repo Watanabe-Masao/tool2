@@ -206,7 +206,7 @@ describe('useSupplierManagement', () => {
 
       // 成功メッセージが表示される
       expect(mockShowSuccess).toHaveBeenCalledWith(
-        '帳合先「supplier2」を削除しました、関連する商品カード2件を削除しました'
+        '帳合先「supplier2」を削除し、関連する商品カード2件を削除しました'
       );
 
       // ダイアログが閉じる
@@ -266,7 +266,7 @@ describe('useSupplierManagement', () => {
       });
 
       expect(mockShowSuccess).toHaveBeenCalledWith(
-        '帳合先「supplier1、supplier2」を削除しました、関連する商品カード2件を削除しました'
+        '帳合先「supplier1、supplier2」を削除し、関連する商品カード2件を削除しました'
       );
     });
 

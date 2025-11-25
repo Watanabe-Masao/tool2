@@ -95,7 +95,7 @@ describe('useOrderDataSubmit', () => {
         expect(success).toBe(false);
       });
 
-      expect(mockShowError).toHaveBeenCalledWith('入力内容に誤りがあります');
+      expect(mockShowError).toHaveBeenCalledWith('一部の商品の帳合先がステップ1で選択されていません');
       expect(mockSaveOrderWithSync).not.toHaveBeenCalled();
     });
 

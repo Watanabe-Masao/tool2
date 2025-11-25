@@ -60,7 +60,7 @@ describe('useDraftActions', () => {
       expect(SessionStorageService.loadDraft).toHaveBeenCalledWith('test-user-123');
       expect(mockReset).toHaveBeenCalledWith(mockDraft);
       expect(mockSetRestoreDialogOpen).toHaveBeenCalledWith(false);
-      expect(mockShowSuccess).toHaveBeenCalledWith('下書きを読み込みました');
+      expect(mockShowSuccess).toHaveBeenCalledWith('下書きを復元しました');
       expect(mockSetActiveStep).toHaveBeenCalledWith(0);
     });
 
@@ -161,7 +161,7 @@ describe('useDraftActions', () => {
         result.current.handleRestoreDraft();
       });
 
-      expect(mockShowSuccess).toHaveBeenCalledWith('下書きを読み込みました');
+      expect(mockShowSuccess).toHaveBeenCalledWith('下書きを復元しました');
     });
   });
 

@@ -82,7 +82,7 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
-      expect(mockShowError).toHaveBeenCalledWith('ファイルのダウンロードに失敗しました');
+      expect(mockShowError).toHaveBeenCalledWith('ダウンロード失敗: 404 Not Found');
       expect(mockHideLoading).toHaveBeenCalled();
     });
 
@@ -105,7 +105,7 @@ describe('useFileDownloads', () => {
         await result.current.downloadExcel();
       });
 
-      expect(mockShowError).toHaveBeenCalledWith('ファイルの形式が正しくありません');
+      expect(mockShowError).toHaveBeenCalledWith('サーバーからHTMLが返されました: <html>Error page</html>');
     });
 
     it('Blob URLがクリーンアップされる', async () => {
@@ -182,7 +182,7 @@ describe('useFileDownloads', () => {
         await result.current.downloadPdf();
       });
 
-      expect(mockShowError).toHaveBeenCalledWith('ファイルのダウンロードに失敗しました');
+      expect(mockShowError).toHaveBeenCalledWith('ダウンロード失敗: 500 Internal Server Error');
     });
   });
 
