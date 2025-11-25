@@ -5,7 +5,7 @@ import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 describe('useSupplierManagement', () => {
-  const mockGetValues = vi.fn<[], OrderFormData>();
+  const mockGetValues = vi.fn<() => OrderFormData>();
   const mockSetValue = vi.fn();
   const mockMethods = {
     getValues: mockGetValues,

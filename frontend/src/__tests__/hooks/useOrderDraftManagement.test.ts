@@ -13,7 +13,7 @@ vi.mock('@/utils/sessionStorageService', () => ({
 }));
 
 describe('useOrderDraftManagement', () => {
-  const mockGetValues = vi.fn<[], OrderFormData>();
+  const mockGetValues = vi.fn<() => OrderFormData>();
   const mockMethods = {
     getValues: mockGetValues,
   } as any;

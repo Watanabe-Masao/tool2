@@ -4,7 +4,7 @@ import { useFormSubmitHandler } from '@/hooks/useFormSubmitHandler';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 describe('useFormSubmitHandler', () => {
-  const mockGetValues = vi.fn<[], OrderFormData>();
+  const mockGetValues = vi.fn<() => OrderFormData>();
   const mockSubmitOrder = vi.fn();
   const mockSetBookNameDialog = vi.fn();
   const mockHandleGenerateTemplate = vi.fn();

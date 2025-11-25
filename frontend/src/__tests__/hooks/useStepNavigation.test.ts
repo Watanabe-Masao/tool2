@@ -4,7 +4,7 @@ import { useStepNavigation } from '@/hooks/useStepNavigation';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 describe('useStepNavigation', () => {
-  const mockGetValues = vi.fn<[], OrderFormData>();
+  const mockGetValues = vi.fn<() => OrderFormData>();
   const mockSetStepNavigation = vi.fn();
   const mockSetActiveProductIndex = vi.fn();
   const mockHandlePrevStep = vi.fn();
