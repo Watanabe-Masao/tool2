@@ -10,6 +10,7 @@
     "check-types": "node scripts/check-types.mjs",
     "check-ssot": "node scripts/check-ssot.mjs",
     "lint": "eslint .",
+    "check-circular-deps": "node scripts/check-circular-deps.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -69,6 +70,7 @@
     "vite": "^7.2.2",
     "vite-plugin-pwa": "^1.1.0",
     "vitest": "^3.2.4",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.0",
+    "madge": "^8.0.0"
   }
 }
