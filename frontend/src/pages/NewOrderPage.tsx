@@ -10,7 +10,7 @@ import { FloatingProgressSummary } from '@/components/forms/FloatingProgressSumm
 import { useNotification } from '@/context/NotificationContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNavigationContext } from '@/context/NavigationContext';
-import { useAutocomplete } from '@/hooks/useAutocomplete';
+import { useAutocompleteFields } from '@/hooks/useAutocompleteFields';
 import { useDataSync } from '@/hooks/useDataSync';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useOrderSubmit } from '@/hooks/useOrderSubmit';
@@ -18,7 +18,13 @@ import { useOrderDraftManagement } from '@/hooks/useOrderDraftManagement';
 import { useSupplierManagement } from '@/hooks/useSupplierManagement';
 import { useOrderHandlers } from '@/hooks/useOrderHandlers';
 import { useStepNavigation } from '@/hooks/useStepNavigation';
-import { useOrderFormStore } from '@/stores/orderFormStore';
+import {
+  useOrderFormStore,
+  useActiveStep,
+  useActiveProductIndex,
+  useModalStates,
+  useStoreLocks,
+} from '@/stores/orderFormStore';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
 
 /**
@@ -50,35 +56,33 @@ export const NewOrderPage: React.FC = () => {
   // オフライン同期
   const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
 
-  // オートコンプリート
-  const supplierAutocomplete = useAutocomplete('supplier');
-  const productNameAutocomplete = useAutocomplete('productName');
-  const originAutocomplete = useAutocomplete('origin');
+  // オートコンプリート（統合フック）
+  const autocomplete = useAutocompleteFields();
 
   // ユーザー設定
   const userSettings = useUserSettings(user);
 
-  // UI状態管理（Zustand Store）
-  const activeStep = useOrderFormStore((state) => state.activeStep);
-  const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
-  const activeProductIndex = useOrderFormStore((state) => state.activeProductIndex);
-  const setActiveProductIndex = useOrderFormStore((state) => state.setActiveProductIndex);
-  const setLockedStores = useOrderFormStore((state) => state.setLockedStores);
+  // UI状態管理（Zustand Selector Hooks）
+  const { activeStep, setActiveStep } = useActiveStep();
+  const { activeProductIndex, setActiveProductIndex } = useActiveProductIndex();
+  const { setLockedStores } = useStoreLocks();
   const setProgressSummaryHeight = useOrderFormStore((state) => state.setProgressSummaryHeight);
 
-  // モーダル状態管理（Zustand Store）
-  const showPDFPreview = useOrderFormStore((state) => state.showPDFPreview);
-  const setShowPDFPreview = useOrderFormStore((state) => state.setShowPDFPreview);
-  const showDownloadModal = useOrderFormStore((state) => state.showDownloadModal);
-  const setShowDownloadModal = useOrderFormStore((state) => state.setShowDownloadModal);
-  const showPreviewModal = useOrderFormStore((state) => state.showPreviewModal);
-  const setShowPreviewModal = useOrderFormStore((state) => state.setShowPreviewModal);
-  const showEmailModal = useOrderFormStore((state) => state.showEmailModal);
-  const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
-  const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
-  const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
-  const bookNameDialog = useOrderFormStore((state) => state.bookNameDialog);
-  const setBookNameDialog = useOrderFormStore((state) => state.setBookNameDialog);
+  // モーダル状態管理（Zustand Selector Hook）
+  const {
+    showPDFPreview,
+    setShowPDFPreview,
+    showDownloadModal,
+    setShowDownloadModal,
+    showPreviewModal,
+    setShowPreviewModal,
+    showEmailModal,
+    setShowEmailModal,
+    showGeneratedPreview,
+    setShowGeneratedPreview,
+    bookNameDialog,
+    setBookNameDialog,
+  } = useModalStates();
 
   // 注文送信ロジック
   const {
@@ -96,9 +100,9 @@ export const NewOrderPage: React.FC = () => {
     userSettings,
     isOnline,
     saveOrderWithSync,
-    supplierAutocomplete,
-    productNameAutocomplete,
-    originAutocomplete,
+    supplierAutocomplete: autocomplete.supplier,
+    productNameAutocomplete: autocomplete.productName,
+    originAutocomplete: autocomplete.origin,
     showSuccess,
     showError,
     showLoading,
@@ -275,9 +279,9 @@ export const NewOrderPage: React.FC = () => {
             removeProduct={removeProduct}
             moveProduct={moveProduct}
             handleSubmit={handleSubmit}
-            supplierOptions={supplierAutocomplete.options}
-            productNameOptions={productNameAutocomplete.options}
-            originOptions={originAutocomplete.options}
+            supplierOptions={autocomplete.supplierOptions}
+            productNameOptions={autocomplete.productNameOptions}
+            originOptions={autocomplete.originOptions}
             suppliers={suppliers || []}
             products={products || []}
             deliveryDate={deliveryDate}
