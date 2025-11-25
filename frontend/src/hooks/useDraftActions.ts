@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { SessionStorageService } from '@/utils/sessionStorageService';
+import { SUCCESS_MESSAGES } from '@/messages';
 
 /**
  * useDraftActionsのパラメータ
@@ -60,7 +61,7 @@ export const useDraftActions = ({
     if (draft) {
       reset(draft);
       setRestoreDialogOpen(false);
-      showSuccess('下書きを復元しました');
+      showSuccess(SUCCESS_MESSAGES.draftLoaded);
 
       // 最初のステップに戻す
       setActiveStep(0);

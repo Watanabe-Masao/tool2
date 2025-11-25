@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { GeneratedFiles } from './useTemplateGeneration';
+import { ERROR_MESSAGES } from '@/messages';
 
 /**
  * useFileDownloadsのパラメータ
@@ -83,7 +84,7 @@ export const useFileDownloads = ({
         console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
         if (!response.ok) {
-          throw new Error(`ダウンロード失敗: ${response.status} ${response.statusText}`);
+          throw new Error(ERROR_MESSAGES.fileDownloadFailed);
         }
 
         const contentType = response.headers.get('Content-Type') || '';
@@ -92,9 +93,7 @@ export const useFileDownloads = ({
         if (contentType.includes('text/html')) {
           const htmlText = await response.text();
           console.error('❌ HTMLファイルが返されました:', htmlText.substring(0, 500));
-          throw new Error(
-            `サーバーからHTMLが返されました。${config.fileType}ファイルが生成されていない可能性があります。`
-          );
+          throw new Error(ERROR_MESSAGES.invalidFileType);
         }
 
         const blob = await response.blob();
@@ -119,7 +118,7 @@ export const useFileDownloads = ({
         showError(
           error instanceof Error
             ? error.message
-            : `${config.fileType}ファイルのダウンロードに失敗しました`
+            : ERROR_MESSAGES.fileDownloadFailed
         );
       }
     },

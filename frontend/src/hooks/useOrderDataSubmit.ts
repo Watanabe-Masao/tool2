@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
+import { ERROR_MESSAGES } from '@/messages';
 
 /**
  * useOrderDataSubmitのパラメータ
@@ -88,10 +89,7 @@ export const useOrderDataSubmit = ({
           if (!isOnline) {
             hideLoading();
           }
-          showError(
-            `一部の商品の帳合先がステップ1で選択されていません。` +
-            `該当する商品の帳合先を修正してください。`
-          );
+          showError(ERROR_MESSAGES.validationError);
           return false;
         }
 

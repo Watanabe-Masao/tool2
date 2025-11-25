@@ -62,7 +62,7 @@ export const SUCCESS_MESSAGES = {
   copiedToClipboard: 'クリップボードにコピーしました',
 
   // その他
-  dataSync ed: 'データを同期しました',
+  dataSynced: 'データを同期しました',
   operationCompleted: '操作が完了しました',
 } as const;
 

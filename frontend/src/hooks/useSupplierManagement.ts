@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
+import { createMessage } from '@/messages';
 
 /**
  * 帳合先削除確認ダイアログの状態
@@ -146,7 +147,7 @@ export const useSupplierManagement = ({
     // メッセージを表示
     const removedSupplierNames = suppliersToRemove.join('、');
     showSuccess(
-      `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
+      `${createMessage.success('削除', `帳合先「${removedSupplierNames}」`)}、関連する商品カード${affectedProductsCount}件を削除しました`
     );
 
     // ダイアログを閉じる
