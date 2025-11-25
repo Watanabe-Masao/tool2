@@ -43,7 +43,7 @@ describe('useSupplierManagement', () => {
   describe('handleSuppliersChange', () => {
     it('初回ロード時はそのまま新しい帳合先を返す', () => {
       mockIsInitialLoad.current = true;
-      mockGetValues.mockReturnValue([]);
+      mockGetValues.mockReturnValue([] as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -56,7 +56,7 @@ describe('useSupplierManagement', () => {
 
     it('商品がない場合はそのまま新しい帳合先を返す', () => {
       // getValues('products')は商品配列を直接返す
-      mockGetValues.mockReturnValue([]);
+      mockGetValues.mockReturnValue([] as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -72,7 +72,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier1', name: 'Product A' },
         { supplier: 'supplier2', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -91,7 +91,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier2', name: 'Product B' },
         { supplier: 'supplier2', name: 'Product C' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -120,7 +120,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier1', name: 'Product A' },
         { supplier: 'supplier2', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() =>
         useSupplierManagement({
@@ -152,7 +152,7 @@ describe('useSupplierManagement', () => {
         { supplier: undefined, name: 'Product A' },
         { supplier: 'supplier1', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -182,7 +182,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier2', name: 'Product B' },
         { supplier: 'supplier2', name: 'Product C' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -218,7 +218,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier1', name: 'Product A' },
         { supplier: 'supplier1', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -247,7 +247,7 @@ describe('useSupplierManagement', () => {
         { supplier: 'supplier1', name: 'Product A' },
         { supplier: 'supplier2', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() =>
         useSupplierManagement({
@@ -275,7 +275,7 @@ describe('useSupplierManagement', () => {
         { supplier: undefined, name: 'Product A' },
         { supplier: 'supplier1', name: 'Product B' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 
@@ -300,7 +300,7 @@ describe('useSupplierManagement', () => {
       const products = [
         { supplier: 'supplier1', name: 'Product A' },
       ];
-      mockGetValues.mockReturnValue(products);
+      mockGetValues.mockReturnValue(products as any);
 
       const { result } = renderHook(() => useSupplierManagement(defaultParams));
 

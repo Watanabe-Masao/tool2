@@ -154,7 +154,7 @@ describe('useOrderDraftManagement', () => {
       rerender({ products: [] });
 
       // productsを変更
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
 
       // 1秒後: まだ保存されない
       vi.advanceTimersByTime(1000);
@@ -181,11 +181,11 @@ describe('useOrderDraftManagement', () => {
       rerender({ products: [] });
 
       // 1回目の変更
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
       vi.advanceTimersByTime(1000);
 
       // 2回目の変更（タイマーリセット）
-      rerender({ products: [{ name: 'product1' }, { name: 'product2' }] });
+      rerender({ products: [{ name: 'product1' }, { name: 'product2' }] as any });
       vi.advanceTimersByTime(1000);
 
       // まだ保存されない
@@ -209,7 +209,7 @@ describe('useOrderDraftManagement', () => {
       expect(result.current.hasUnsavedChanges).toBe(true);
 
       // productsを変更
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
 
       // hasUnsavedChangesはtrueのまま
       expect(result.current.hasUnsavedChanges).toBe(true);
@@ -224,7 +224,7 @@ describe('useOrderDraftManagement', () => {
         { initialProps: { products: [] } }
       );
 
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
 
       vi.advanceTimersByTime(2000);
 
@@ -245,7 +245,7 @@ describe('useOrderDraftManagement', () => {
       rerender({ products: [] });
 
       // productsを変更（タイマー開始）
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
 
       // アンマウント
       unmount();

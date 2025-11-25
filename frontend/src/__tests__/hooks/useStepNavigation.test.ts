@@ -18,11 +18,11 @@ describe('useStepNavigation', () => {
     products: [],
     suppliers: ['supplier1'],
     deliveryDate: new Date('2024-01-01'),
-    getValues: mockGetValues,
-    setStepNavigation: mockSetStepNavigation,
-    setActiveProductIndex: mockSetActiveProductIndex,
-    handlePrevStep: mockHandlePrevStep,
-    handleNextStep: mockHandleNextStep,
+    getValues: mockGetValues as any,
+    setStepNavigation: mockSetStepNavigation as any,
+    setActiveProductIndex: mockSetActiveProductIndex as any,
+    handlePrevStep: mockHandlePrevStep as any,
+    handleNextStep: mockHandleNextStep as any,
   };
 
   const mockFormData: OrderFormData = {
@@ -274,7 +274,7 @@ describe('useStepNavigation', () => {
 
       expect(mockSetStepNavigation).toHaveBeenCalledTimes(1);
 
-      rerender({ products: [{ name: 'product1' }] });
+      rerender({ products: [{ name: 'product1' }] as any });
 
       // rerender時: cleanup(false) + 新しいeffect(true, ...) = 2回追加 = 計3回
       expect(mockSetStepNavigation).toHaveBeenCalledTimes(3);

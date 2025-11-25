@@ -45,7 +45,7 @@ describe('useTemplateGeneration', () => {
     download_url: '/downloads/test.xlsx',
     pdf_filename: '配分表_TestBook_20240115.pdf',
     pdf_download_url: '/downloads/test.pdf',
-  };
+  } as any;
 
   const defaultParams = {
     user: mockUser,

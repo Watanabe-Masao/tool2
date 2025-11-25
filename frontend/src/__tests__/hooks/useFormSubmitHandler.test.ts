@@ -18,13 +18,13 @@ describe('useFormSubmitHandler', () => {
   };
 
   const defaultParams = {
-    getValues: mockGetValues,
-    submitOrder: mockSubmitOrder,
-    setBookNameDialog: mockSetBookNameDialog,
+    getValues: mockGetValues as any,
+    submitOrder: mockSubmitOrder as any,
+    setBookNameDialog: mockSetBookNameDialog as any,
     bookNameDialog: { open: true, bookName: 'テストブック' },
-    handleGenerateTemplate: mockHandleGenerateTemplate,
-    setHasUnsavedChanges: mockSetHasUnsavedChanges,
-    setShowGeneratedPreview: mockSetShowGeneratedPreview,
+    handleGenerateTemplate: mockHandleGenerateTemplate as any,
+    setHasUnsavedChanges: mockSetHasUnsavedChanges as any,
+    setShowGeneratedPreview: mockSetShowGeneratedPreview as any,
   };
 
   beforeEach(() => {

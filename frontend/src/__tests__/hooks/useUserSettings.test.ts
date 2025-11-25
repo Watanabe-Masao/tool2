@@ -12,7 +12,7 @@ vi.mock('@/services/firebase/userSettingsService', () => ({
 }));
 
 describe('useUserSettings', () => {
-  const mockUserSettings: UserSettings = {
+  const mockUserSettings = {
     userId: 'test-user-123',
     defaultSuppliers: ['supplier1', 'supplier2'],
     recentProducts: ['product1', 'product2'],
@@ -20,7 +20,7 @@ describe('useUserSettings', () => {
     centerFeeRate: 0.03,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
-  };
+  } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,10 +77,10 @@ describe('useUserSettings', () => {
       });
 
       expect(result.current?.userId).toBe('test-user-123');
-      expect(result.current?.defaultSuppliers).toEqual(['supplier1', 'supplier2']);
-      expect(result.current?.recentProducts).toEqual(['product1', 'product2']);
-      expect(result.current?.preferredOrigins).toEqual(['origin1']);
-      expect(result.current?.centerFeeRate).toBe(0.03);
+      expect((result.current as any)?.defaultSuppliers).toEqual(['supplier1', 'supplier2']);
+      expect((result.current as any)?.recentProducts).toEqual(['product1', 'product2']);
+      expect((result.current as any)?.preferredOrigins).toEqual(['origin1']);
+      expect((result.current as any)?.centerFeeRate).toBe(0.03);
     });
   });
 
@@ -147,7 +147,7 @@ describe('useUserSettings', () => {
       // 最初のユーザーの設定を取得
       await waitFor(() => {
         expect(result.current?.userId).toBe('user-1');
-        expect(result.current?.defaultSuppliers).toEqual(['supplier-A']);
+        expect((result.current as any)?.defaultSuppliers).toEqual(['supplier-A']);
       });
 
       // ユーザーを変更
@@ -156,7 +156,7 @@ describe('useUserSettings', () => {
       // 2番目のユーザーの設定を取得
       await waitFor(() => {
         expect(result.current?.userId).toBe('user-2');
-        expect(result.current?.defaultSuppliers).toEqual(['supplier-B']);
+        expect((result.current as any)?.defaultSuppliers).toEqual(['supplier-B']);
       });
 
       // getOrCreateが2回呼ばれることを確認
@@ -179,7 +179,7 @@ describe('useUserSettings', () => {
       });
 
       // ユーザーをnullに変更
-      rerender({ user: null });
+      rerender({ user: null as any });
 
       // 設定は前回の値が残る（useEffectは実行されるが、早期リターンで何もしない）
       // これは現在の実装の挙動
