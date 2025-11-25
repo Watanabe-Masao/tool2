@@ -109,3 +109,6 @@ export const useAuth = (): UseAuthReturn => {
     signOut,
   };
 };
+
+// Re-export for backward compatibility
+export type { UseAuthReturn } from '@/types/hooks';

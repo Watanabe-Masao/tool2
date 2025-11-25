@@ -199,3 +199,6 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     loadHistory, // 履歴を再読み込み
   };
 };
+
+// Re-export for backward compatibility
+export type { ProductHistoryItem } from '@/types/hooks';

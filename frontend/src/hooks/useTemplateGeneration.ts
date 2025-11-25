@@ -159,3 +159,6 @@ export const useTemplateGeneration = ({
     generateTemplate,
   };
 };
+
+// Re-export for backward compatibility
+export type { GeneratedFiles } from '@/types/hooks';

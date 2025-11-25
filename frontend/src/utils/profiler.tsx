@@ -246,3 +246,6 @@ export function withPerformanceMonitor<P extends object>(
     );
   };
 }
+
+// Re-export for backward compatibility
+export type { ProfilerMeasurement, ProfilerCallback } from '@/types/utils';

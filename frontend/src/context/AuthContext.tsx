@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import type { UseAuthReturn } from '@/hooks/useAuth';
+import type { UseAuthReturn } from '@/types/hooks';
 import { initializeFirebase } from '@/services/firebase/config';
 import { CircularProgress, Box } from '@mui/material';
 
 /**
  * 認証コンテキストの型
  */
-interface AuthContextType extends UseAuthReturn {
+export interface AuthContextType extends UseAuthReturn {
   /** Firebase初期化完了フラグ */
   firebaseInitialized: boolean;
 }
