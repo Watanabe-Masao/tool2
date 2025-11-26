@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { SupplierPresetEntity } from '@/types/entities';
@@ -21,9 +21,12 @@ export const useSupplierPresets = () => {
     userRef.current = user;
   }, [user]);
 
+  // user.uidを安定した値として保持（オブジェクト参照ではなく値で比較）
+  const userId = user?.uid;
+
   /**
    * プリセット一覧を読み込み
-   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
+   * NOTE: 依存配列を空にして安定化
    */
   const loadPresets = useCallback(async () => {
     if (!userRef.current) return;
@@ -37,7 +40,9 @@ export const useSupplierPresets = () => {
     } finally {
       setLoading(false);
     }
-  }, [firestoreServiceRef]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * プリセットを追加
@@ -53,7 +58,8 @@ export const useSupplierPresets = () => {
       console.error('Failed to add supplier preset:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadPresets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPresets]);
 
   /**
    * プリセットを削除
@@ -67,7 +73,8 @@ export const useSupplierPresets = () => {
       console.error('Failed to delete supplier preset:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadPresets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPresets]);
 
   /**
    * プリセットを更新
@@ -81,18 +88,18 @@ export const useSupplierPresets = () => {
       console.error('Failed to update supplier preset:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadPresets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPresets]);
 
   // 初回読み込みとリアルタイム同期
-  // NOTE: firestoreServiceRefは安定した参照なので依存配列に含めても問題ない
-  // userが変更された場合のみリスナーを再設定
+  // NOTE: user.uidを依存配列に使用し、オブジェクト参照ではなく値で比較
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     // リアルタイムリスナーを設定
     setLoading(true);
     const unsubscribe = firestoreServiceRef.current.subscribeToSupplierPresets(
-      user.uid,
+      userId,
       (data) => {
         setPresets(data);
         setLoading(false);
@@ -107,18 +114,22 @@ export const useSupplierPresets = () => {
     return () => {
       unsubscribe();
     };
-    // NOTE: firestoreServiceRefは安定した参照なので依存配列から除外
+    // NOTE: userIdは文字列なので安定、firestoreServiceRefはrefなので安定
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [userId]);
 
-  return {
-    presets,
-    loading,
-    loadPresets,
-    addPreset,
-    deletePreset,
-    updatePreset,
-  };
+  // 戻り値をメモ化して安定した参照を維持
+  return useMemo(
+    () => ({
+      presets,
+      loading,
+      loadPresets,
+      addPreset,
+      deletePreset,
+      updatePreset,
+    }),
+    [presets, loading, loadPresets, addPreset, deletePreset, updatePreset]
+  );
 };
 
 // Re-export for backward compatibility

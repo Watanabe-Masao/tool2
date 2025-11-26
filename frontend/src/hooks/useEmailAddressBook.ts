@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { EmailAddressEntity } from '@/types/entities';
@@ -21,9 +21,12 @@ export const useEmailAddressBook = () => {
     userRef.current = user;
   }, [user]);
 
+  // user.uidを安定した値として保持（オブジェクト参照ではなく値で比較）
+  const userId = user?.uid;
+
   /**
    * アドレス帳一覧を読み込み
-   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
+   * NOTE: 依存配列を空にして安定化
    */
   const loadEntries = useCallback(async () => {
     if (!userRef.current) return;
@@ -37,7 +40,9 @@ export const useEmailAddressBook = () => {
     } finally {
       setLoading(false);
     }
-  }, [firestoreServiceRef]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * アドレス帳を追加
@@ -53,7 +58,8 @@ export const useEmailAddressBook = () => {
       console.error('Failed to add email address:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadEntries]);
 
   /**
    * アドレス帳を削除
@@ -67,7 +73,8 @@ export const useEmailAddressBook = () => {
       console.error('Failed to delete email address:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadEntries]);
 
   /**
    * アドレス帳を更新
@@ -81,18 +88,18 @@ export const useEmailAddressBook = () => {
       console.error('Failed to update email address:', error);
       return false;
     }
-  }, [firestoreServiceRef, loadEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadEntries]);
 
   // 初回読み込みとリアルタイム同期
-  // NOTE: firestoreServiceRefは安定した参照なので依存配列に含めても問題ない
-  // userが変更された場合のみリスナーを再設定
+  // NOTE: user.uidを依存配列に使用し、オブジェクト参照ではなく値で比較
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     // リアルタイムリスナーを設定
     setLoading(true);
     const unsubscribe = firestoreServiceRef.current.subscribeToEmailAddresses(
-      user.uid,
+      userId,
       (data) => {
         setEntries(data);
         setLoading(false);
@@ -107,18 +114,22 @@ export const useEmailAddressBook = () => {
     return () => {
       unsubscribe();
     };
-    // NOTE: firestoreServiceRefは安定した参照なので依存配列から除外
+    // NOTE: userIdは文字列なので安定、firestoreServiceRefはrefなので安定
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [userId]);
 
-  return {
-    entries,
-    loading,
-    loadEntries,
-    addEntry,
-    deleteEntry,
-    updateEntry,
-  };
+  // 戻り値をメモ化して安定した参照を維持
+  return useMemo(
+    () => ({
+      entries,
+      loading,
+      loadEntries,
+      addEntry,
+      deleteEntry,
+      updateEntry,
+    }),
+    [entries, loading, loadEntries, addEntry, deleteEntry, updateEntry]
+  );
 };
 
 // Re-export for backward compatibility
