@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFirestoreService } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { QUERY_CACHE_TIME } from '@/utils/constants';
@@ -46,7 +46,9 @@ export const useAutocomplete = (
   const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [lastFetch, setLastFetch] = useState<number>(0);
+  // NOTE: lastFetchをuseRefに変更して無限ループ(React #185)を防止
+  // 状態ではなくrefなので、更新しても再レンダリングを引き起こさない
+  const lastFetchRef = useRef<number>(0);
 
   /**
    * 履歴を取得
@@ -59,7 +61,7 @@ export const useAutocomplete = (
 
     // キャッシュ確認（5分以内なら再取得しない）
     const now = Date.now();
-    if (now - lastFetch < QUERY_CACHE_TIME.SHORT) {
+    if (now - lastFetchRef.current < QUERY_CACHE_TIME.SHORT) {
       return;
     }
 
@@ -69,14 +71,16 @@ export const useAutocomplete = (
 
       const history = await firestoreService.getAutocompleteHistory(user.uid, field);
       setOptions(history);
-      setLastFetch(now);
+      lastFetchRef.current = now;
     } catch (err) {
       console.error(`[useAutocomplete] Error fetching history for ${field}:`, err);
       setError(err as Error);
     } finally {
       setLoading(false);
     }
-  }, [user, field, lastFetch, firestoreService]);
+    // NOTE: lastFetchRefは依存配列に含めない（refは安定している）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, field, firestoreService]);
 
   /**
    * 初回マウント時に履歴を取得
@@ -118,7 +122,7 @@ export const useAutocomplete = (
    * 履歴を再取得
    */
   const refetch = useCallback(async () => {
-    setLastFetch(0); // キャッシュをクリア
+    lastFetchRef.current = 0; // キャッシュをクリア
     await fetchHistory();
   }, [fetchHistory]);
 
