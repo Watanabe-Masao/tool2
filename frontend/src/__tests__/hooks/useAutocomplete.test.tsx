@@ -1,15 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAutocomplete } from '@/hooks/useAutocomplete';
-import { FirestoreService } from '@/services/firebase/firestoreService';
 import type { User } from 'firebase/auth';
+import type { IFirestoreService } from '@/types/services';
 
 // Mock FirestoreService
-vi.mock('@/services/firebase/firestoreService', () => ({
-  FirestoreService: {
-    getAutocompleteHistory: vi.fn(),
-    saveAutocompleteHistory: vi.fn(),
-  },
+const mockFirestoreService: Partial<IFirestoreService> = {
+  getAutocompleteHistory: vi.fn(),
+  saveAutocompleteHistory: vi.fn(),
+};
+
+// Mock useFirestoreServiceRef
+vi.mock('@/context/ServiceContext', () => ({
+  useFirestoreServiceRef: vi.fn(() => ({
+    current: mockFirestoreService,
+  })),
 }));
 
 // Mock useAuthContext
@@ -36,7 +41,7 @@ describe('useAutocomplete', () => {
 
   it('should fetch autocomplete options on mount', async () => {
     const mockOptions = ['りんご', 'バナナ', 'オレンジ'];
-    vi.mocked(FirestoreService.getAutocompleteHistory).mockResolvedValue(mockOptions);
+    vi.mocked(mockFirestoreService.getAutocompleteHistory!).mockResolvedValue(mockOptions);
 
     const { result } = renderHook(() => useAutocomplete('productName'));
 
@@ -44,12 +49,12 @@ describe('useAutocomplete', () => {
       expect(result.current.options).toEqual(mockOptions);
     });
 
-    expect(FirestoreService.getAutocompleteHistory).toHaveBeenCalledWith('test-user-id', 'productName');
+    expect(mockFirestoreService.getAutocompleteHistory).toHaveBeenCalledWith('test-user-id', 'productName');
   });
 
   it('should add new value to history', async () => {
-    vi.mocked(FirestoreService.getAutocompleteHistory).mockResolvedValue(['りんご']);
-    vi.mocked(FirestoreService.saveAutocompleteHistory).mockResolvedValue();
+    vi.mocked(mockFirestoreService.getAutocompleteHistory!).mockResolvedValue(['りんご']);
+    vi.mocked(mockFirestoreService.saveAutocompleteHistory!).mockResolvedValue();
 
     const { result } = renderHook(() => useAutocomplete('productName'));
 
@@ -59,7 +64,7 @@ describe('useAutocomplete', () => {
 
     await result.current.addToHistory('バナナ');
 
-    expect(FirestoreService.saveAutocompleteHistory).toHaveBeenCalledWith(
+    expect(mockFirestoreService.saveAutocompleteHistory).toHaveBeenCalledWith(
       'test-user-id',
       'productName',
       'バナナ'
@@ -68,7 +73,7 @@ describe('useAutocomplete', () => {
 
   it('should not refetch within cache time', async () => {
     const mockOptions = ['青森県', '長野県'];
-    vi.mocked(FirestoreService.getAutocompleteHistory).mockResolvedValue(mockOptions);
+    vi.mocked(mockFirestoreService.getAutocompleteHistory!).mockResolvedValue(mockOptions);
 
     // Render hook
     const { result, rerender } = renderHook(() => useAutocomplete('origin'));
@@ -77,13 +82,13 @@ describe('useAutocomplete', () => {
       expect(result.current.options).toEqual(mockOptions);
     });
 
-    expect(FirestoreService.getAutocompleteHistory).toHaveBeenCalledTimes(1);
+    expect(mockFirestoreService.getAutocompleteHistory).toHaveBeenCalledTimes(1);
 
     // Rerender the hook (simulating a component rerender)
     rerender();
 
     // Should not fetch again due to cache
-    expect(FirestoreService.getAutocompleteHistory).toHaveBeenCalledTimes(1);
+    expect(mockFirestoreService.getAutocompleteHistory).toHaveBeenCalledTimes(1);
 
     // Options should still be available
     expect(result.current.options).toEqual(mockOptions);

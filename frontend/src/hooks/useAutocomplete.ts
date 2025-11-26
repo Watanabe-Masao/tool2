@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useFirestoreService } from '@/context/ServiceContext';
+import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { QUERY_CACHE_TIME } from '@/utils/constants';
 
@@ -25,6 +25,9 @@ interface UseAutocompleteReturn {
  * Firestoreから過去の入力履歴を取得し、オートコンプリート候補として提供します。
  * 新しい値を追加すると、Firestoreに自動的に保存されます。
  *
+ * NOTE: firestoreServiceはuseFirestoreServiceRefで取得し、
+ * 依存配列に含めないことで無限ループ(React #185)を防止
+ *
  * 使用例:
  * ```tsx
  * const { options, loading, addToHistory } = useAutocomplete('supplier');
@@ -42,7 +45,7 @@ export const useAutocomplete = (
   field: 'productName' | 'origin' | 'specification' | 'supplier'
 ): UseAutocompleteReturn => {
   const { user } = useAuthContext();
-  const firestoreService = useFirestoreService();
+  const firestoreServiceRef = useFirestoreServiceRef();
   const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -50,11 +53,18 @@ export const useAutocomplete = (
   // 状態ではなくrefなので、更新しても再レンダリングを引き起こさない
   const lastFetchRef = useRef<number>(0);
 
+  // userをrefで保持して安定した参照を維持
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   /**
    * 履歴を取得
+   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
    */
   const fetchHistory = useCallback(async () => {
-    if (!user) {
+    if (!userRef.current) {
       setOptions([]);
       return;
     }
@@ -69,7 +79,7 @@ export const useAutocomplete = (
       setLoading(true);
       setError(null);
 
-      const history = await firestoreService.getAutocompleteHistory(user.uid, field);
+      const history = await firestoreServiceRef.current.getAutocompleteHistory(userRef.current.uid, field);
       setOptions(history);
       lastFetchRef.current = now;
     } catch (err) {
@@ -78,9 +88,9 @@ export const useAutocomplete = (
     } finally {
       setLoading(false);
     }
-    // NOTE: lastFetchRefは依存配列に含めない（refは安定している）
+    // NOTE: refは安定しているため依存配列に含めない
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, field, firestoreService]);
+  }, [field]);
 
   /**
    * 初回マウント時に履歴を取得
@@ -91,15 +101,16 @@ export const useAutocomplete = (
 
   /**
    * 履歴に追加
+   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
    */
   const addToHistory = useCallback(
     async (value: string) => {
-      if (!user || !value || value.trim() === '') {
+      if (!userRef.current || !value || value.trim() === '') {
         return;
       }
 
       try {
-        await firestoreService.saveAutocompleteHistory(user.uid, field, value);
+        await firestoreServiceRef.current.saveAutocompleteHistory(userRef.current.uid, field, value);
 
         // ローカルの候補リストを更新
         setOptions((prev) => {
@@ -115,7 +126,9 @@ export const useAutocomplete = (
         console.error(`[useAutocomplete] Error adding to history for ${field}:`, err);
       }
     },
-    [user, field, firestoreService]
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [field]
   );
 
   /**
