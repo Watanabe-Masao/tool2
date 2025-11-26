@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { QUERY_CACHE_TIME } from '@/utils/constants';
@@ -139,11 +139,15 @@ export const useAutocomplete = (
     await fetchHistory();
   }, [fetchHistory]);
 
-  return {
-    options,
-    loading,
-    error,
-    addToHistory,
-    refetch,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      options,
+      loading,
+      error,
+      addToHistory,
+      refetch,
+    }),
+    [options, loading, error, addToHistory, refetch]
+  );
 };
