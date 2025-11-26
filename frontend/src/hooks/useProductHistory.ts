@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useFirestoreService } from '@/context/ServiceContext';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { ProductHistoryItem } from '@/types/hooks';
 
@@ -8,30 +8,50 @@ import type { ProductHistoryItem } from '@/types/hooks';
  *
  * 帳合先に基づいた商品履歴を管理し、
  * 品名、産地、規格、入数の階層的なフィルタリングを提供します。
+ *
+ * NOTE: firestoreServiceはuseFirestoreServiceRefで取得し、
+ * suppliersはJSON.stringifyで安定化することで無限ループ(React #185)を防止
  */
 export const useProductHistory = (suppliers?: string | string[], categoryCode?: string) => {
   const { user } = useAuthContext();
-  const firestoreService = useFirestoreService();
+  const firestoreServiceRef = useFirestoreServiceRef();
   const [history, setHistory] = useState<ProductHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // suppliersをJSON文字列化して安定した比較を可能にする
+  // NOTE: 配列の場合、毎回新しい参照になるため、内容で比較する必要がある
+  const suppliersJson = useMemo(
+    () => JSON.stringify(suppliers),
+    [suppliers]
+  );
+
+  // userをrefで保持して安定した参照を維持
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   /**
    * 履歴を読み込み
+   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
    */
   const loadHistory = useCallback(async () => {
-    if (!user) return;
+    if (!userRef.current) return;
+
+    // suppliersJsonをパースして現在の値を取得
+    const currentSuppliers = JSON.parse(suppliersJson) as string | string[] | undefined;
 
     setLoading(true);
     try {
       // suppliers が配列の場合、supplier条件なしで取得してから複数の帳合先でフィルタリング
       // suppliers が文字列の場合、その帳合先のみ取得
       // suppliers が undefined の場合、すべての帳合先の履歴を取得
-      const supplierFilter = Array.isArray(suppliers) ? undefined : suppliers;
-      const data = await firestoreService.getProductHistory(user.uid, supplierFilter);
+      const supplierFilter = Array.isArray(currentSuppliers) ? undefined : currentSuppliers;
+      const data = await firestoreServiceRef.current.getProductHistory(userRef.current.uid, supplierFilter);
 
       // suppliers が配列の場合、配列内の帳合先でフィルタリング
-      if (Array.isArray(suppliers) && suppliers.length > 0) {
-        const filtered = data.filter(item => suppliers.includes(item.supplier));
+      if (Array.isArray(currentSuppliers) && currentSuppliers.length > 0) {
+        const filtered = data.filter(item => currentSuppliers.includes(item.supplier));
         setHistory(filtered);
       } else {
         setHistory(data);
@@ -41,7 +61,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     } finally {
       setLoading(false);
     }
-  }, [user, suppliers, firestoreService]);
+  }, [suppliersJson, firestoreServiceRef]);
 
   useEffect(() => {
     loadHistory();
@@ -149,20 +169,21 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     },
     targetSupplier?: string
   ) => {
-    if (!user) return;
+    if (!userRef.current) return;
 
     // 削除対象の帳合先を決定
     // targetSupplier が指定されていればそれを使用
     // suppliers が文字列の場合はそれを使用
     // それ以外の場合はエラー
-    const supplier = targetSupplier || (typeof suppliers === 'string' ? suppliers : undefined);
+    const currentSuppliers = JSON.parse(suppliersJson) as string | string[] | undefined;
+    const supplier = targetSupplier || (typeof currentSuppliers === 'string' ? currentSuppliers : undefined);
 
     if (!supplier) {
       throw new Error('削除する履歴の帳合先を指定してください');
     }
 
     try {
-      const count = await firestoreService.deleteProductHistoryByCondition(user.uid, {
+      const count = await firestoreServiceRef.current.deleteProductHistoryByCondition(userRef.current.uid, {
         supplier,
         ...conditions,
       });
@@ -176,7 +197,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
       console.error('[useProductHistory] Failed to delete history:', error);
       throw error;
     }
-  }, [user, suppliers, firestoreService, loadHistory]);
+  }, [suppliersJson, firestoreServiceRef, loadHistory]);
 
   /**
    * 品名からカテゴリーコードを取得

@@ -26,12 +26,11 @@ describe('useOrderDraftManagement', () => {
     products: [],
   };
 
+  // NOTE: products, suppliers, deliveryDateは依存配列から除外済み
+  // 自動保存はtriggerAutoSave()を呼び出してトリガーする
   const defaultParams = {
     user: mockUser,
     methods: mockMethods,
-    products: [],
-    suppliers: ['supplier1'],
-    deliveryDate: new Date('2024-01-01'),
   };
 
   // sessionStorageのモック
@@ -138,43 +137,18 @@ describe('useOrderDraftManagement', () => {
   });
 
   describe('自動保存機能', () => {
-    it('初回マウント時（userが最初から存在）は自動保存effectが実行されない', () => {
+    it('triggerAutoSave呼び出し後2秒で自動保存される', () => {
       vi.mocked(SessionStorageService.loadDraft).mockReturnValue(null);
 
-      // userが最初から存在する状態でマウント
-      renderHook(() => useOrderDraftManagement(defaultParams));
-
-      // 初回マウントではisInitialLoad.currentがtrueなので、
-      // 2秒待っても自動保存effectは実行されない
-      // （実際にはeffectのcheck if (!user || isInitialLoad.current) returnでスキップ）
-      // ただし、最初のeffectでisInitialLoad.currentがfalseに設定された後、
-      // 2番目のeffectも同じレンダーサイクルで実行されるため、実際には保存される
-
-      // このテストは実装の動作を正確に反映するために削除するか、
-      // 実装の意図を確認する必要があります
-
-      // 実装確認: 初回マウント時に両方のeffectが実行され、
-      // 2番目のeffectはisInitialLoad=falseを見るため、実際には保存される
-
-      vi.advanceTimersByTime(2000);
-
-      // 実装の実際の動作: 保存される
-      expect(SessionStorageService.saveDraft).toHaveBeenCalled();
-    });
-
-    it('フォームデータ変更後2秒で自動保存される', () => {
-      vi.mocked(SessionStorageService.loadDraft).mockReturnValue(null);
-
-      const { rerender } = renderHook(
-        ({ products }) => useOrderDraftManagement({ ...defaultParams, products }),
-        { initialProps: { products: [] } }
-      );
+      const { result, rerender } = renderHook(() => useOrderDraftManagement(defaultParams));
 
       // 初回ロードフラグをクリアするためのrerender
-      rerender({ products: [] });
+      rerender();
 
-      // productsを変更
-      rerender({ products: [{ name: 'product1' }] as any });
+      // triggerAutoSaveを呼び出し
+      act(() => {
+        result.current.triggerAutoSave();
+      });
 
       // 1秒後: まだ保存されない
       vi.advanceTimersByTime(1000);
@@ -189,62 +163,66 @@ describe('useOrderDraftManagement', () => {
       expect(console.log).toHaveBeenCalledWith('Form auto-saved');
     });
 
-    it('複数回の変更でdebounceが効く（最後の変更から2秒後に1回だけ保存）', () => {
+    it('複数回のtriggerAutoSave呼び出しでdebounceが効く（最後の呼び出しから2秒後に1回だけ保存）', () => {
       vi.mocked(SessionStorageService.loadDraft).mockReturnValue(null);
 
-      const { rerender } = renderHook(
-        ({ products }) => useOrderDraftManagement({ ...defaultParams, products }),
-        { initialProps: { products: [] } }
-      );
+      const { result, rerender } = renderHook(() => useOrderDraftManagement(defaultParams));
 
       // 初回ロードフラグをクリア
-      rerender({ products: [] });
+      rerender();
 
-      // 1回目の変更
-      rerender({ products: [{ name: 'product1' }] as any });
+      // 1回目の呼び出し
+      act(() => {
+        result.current.triggerAutoSave();
+      });
       vi.advanceTimersByTime(1000);
 
-      // 2回目の変更（タイマーリセット）
-      rerender({ products: [{ name: 'product1' }, { name: 'product2' }] as any });
+      // 2回目の呼び出し（タイマーリセット）
+      act(() => {
+        result.current.triggerAutoSave();
+      });
       vi.advanceTimersByTime(1000);
 
       // まだ保存されない
       expect(SessionStorageService.saveDraft).not.toHaveBeenCalled();
 
-      // さらに1秒後（最後の変更から2秒）: 保存される
+      // さらに1秒後（最後の呼び出しから2秒）: 保存される
       vi.advanceTimersByTime(1000);
       expect(SessionStorageService.saveDraft).toHaveBeenCalledTimes(1);
     });
 
-    it('フォームデータが変更されるとhasUnsavedChangesがtrueになる', () => {
+    it('triggerAutoSave呼び出しでhasUnsavedChangesがtrueになる', () => {
       vi.mocked(SessionStorageService.loadDraft).mockReturnValue(null);
 
-      const { result, rerender } = renderHook(
-        ({ products }) => useOrderDraftManagement({ ...defaultParams, products }),
-        { initialProps: { products: [] } }
-      );
+      const { result, rerender } = renderHook(() => useOrderDraftManagement(defaultParams));
 
-      // 初回マウント後、hasUnsavedChangesはtrueになる（実装の動作）
-      // （isInitialLoadフラグがfalseに設定された後、auto-save effectが実行されるため）
-      expect(result.current.hasUnsavedChanges).toBe(true);
+      // 初回マウント後、hasUnsavedChangesはfalse
+      expect(result.current.hasUnsavedChanges).toBe(false);
 
-      // productsを変更
-      rerender({ products: [{ name: 'product1' }] as any });
+      // 初回ロードフラグをクリア
+      rerender();
 
-      // hasUnsavedChangesはtrueのまま
+      // triggerAutoSaveを呼び出し
+      act(() => {
+        result.current.triggerAutoSave();
+      });
+
+      // hasUnsavedChangesがtrueになる
       expect(result.current.hasUnsavedChanges).toBe(true);
     });
 
-    it('userがnullの場合、自動保存されない', () => {
+    it('userがnullの場合、triggerAutoSaveは何もしない', () => {
       vi.mocked(SessionStorageService.loadDraft).mockReturnValue(null);
 
-      const { rerender } = renderHook(
-        ({ products }) =>
-          useOrderDraftManagement({ ...defaultParams, user: null, products }),
-        { initialProps: { products: [] } }
+      const { result, rerender } = renderHook(() =>
+        useOrderDraftManagement({ ...defaultParams, user: null })
       );
 
-      rerender({ products: [{ name: 'product1' }] as any });
+      rerender();
+
+      act(() => {
+        result.current.triggerAutoSave();
+      });
 
       vi.advanceTimersByTime(2000);
 
@@ -256,16 +234,15 @@ describe('useOrderDraftManagement', () => {
 
       const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
 
-      const { rerender, unmount } = renderHook(
-        ({ products }) => useOrderDraftManagement({ ...defaultParams, products }),
-        { initialProps: { products: [] } }
-      );
+      const { result, rerender, unmount } = renderHook(() => useOrderDraftManagement(defaultParams));
 
       // 初回ロードフラグをクリア
-      rerender({ products: [] });
+      rerender();
 
-      // productsを変更（タイマー開始）
-      rerender({ products: [{ name: 'product1' }] as any });
+      // triggerAutoSaveを呼び出し（タイマー開始）
+      act(() => {
+        result.current.triggerAutoSave();
+      });
 
       // アンマウント
       unmount();
