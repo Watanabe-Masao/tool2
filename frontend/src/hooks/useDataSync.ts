@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { useFirestoreService } from '@/context/ServiceContext';
@@ -40,20 +40,33 @@ export const useDataSync = (): UseDataSyncReturn => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
 
+  // NOTE: 通知関数をrefで保持して無限ループ(React #185)を防止
+  const showSuccessRef = useRef(showSuccess);
+  const showWarningRef = useRef(showWarning);
+  const showErrorRef = useRef(showError);
+
+  // refを最新の値に更新
+  useEffect(() => {
+    showSuccessRef.current = showSuccess;
+    showWarningRef.current = showWarning;
+    showErrorRef.current = showError;
+  }, [showSuccess, showWarning, showError]);
+
   /**
    * オンライン/オフライン状態のイベントリスナー
+   * NOTE: 依存配列を空にして無限ループを防止
    */
   useEffect(() => {
     const handleOnline = () => {
       console.log('🌐 オンラインに復帰しました');
       setIsOnline(true);
-      showSuccess('オンラインに復帰しました');
+      showSuccessRef.current('オンラインに復帰しました');
     };
 
     const handleOffline = () => {
       console.log('📴 オフラインモードです');
       setIsOnline(false);
-      showWarning('オフラインモードです。データはローカルに保存されます。');
+      showWarningRef.current('オフラインモードです。データはローカルに保存されます。');
     };
 
     window.addEventListener('online', handleOnline);
@@ -63,7 +76,7 @@ export const useDataSync = (): UseDataSyncReturn => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [showSuccess, showWarning]);
+  }, []);
 
   /**
    * 未同期データの数を更新
@@ -81,8 +94,15 @@ export const useDataSync = (): UseDataSyncReturn => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // NOTE: firestoreServiceをrefで保持して無限ループを防止
+  const firestoreServiceRef = useRef(firestoreService);
+  useEffect(() => {
+    firestoreServiceRef.current = firestoreService;
+  }, [firestoreService]);
+
   /**
    * IndexedDBからFirestoreに同期
+   * NOTE: 依存配列を最小限にして無限ループ(React #185)を防止
    */
   const syncIndexedDBToFirestore = useCallback(async () => {
     if (!user) {
@@ -114,7 +134,7 @@ export const useDataSync = (): UseDataSyncReturn => {
           const { id, synced, firestoreId, ...orderData } = order;
 
           // Firestoreに保存
-          const docId = await firestoreService.saveOrder(
+          const docId = await firestoreServiceRef.current.saveOrder(
             {
               ...orderData,
               // deliveryDateをDateオブジェクトに変換（IndexedDBではDateが文字列化されている可能性があるため）
@@ -137,19 +157,21 @@ export const useDataSync = (): UseDataSyncReturn => {
           console.log(`✅ 同期完了: ${docId}`);
         } catch (error) {
           console.error('同期エラー:', error);
-          showError(`データの同期に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+          showErrorRef.current(`データの同期に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
         }
       }
 
       await updateUnsyncedCount();
-      showSuccess(`${unsyncedOrders.length}件のデータを同期しました`);
+      showSuccessRef.current(`${unsyncedOrders.length}件のデータを同期しました`);
     } catch (error) {
       console.error('同期処理エラー:', error);
-      showError('同期処理に失敗しました');
+      showErrorRef.current('同期処理に失敗しました');
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount, showSuccess, showError, firestoreService]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount]);
 
   /**
    * オンライン復帰時に自動同期（デバウンス付き）
@@ -184,7 +206,7 @@ export const useDataSync = (): UseDataSyncReturn => {
         userId: user.uid,
         timestamp: new Date(),
       };
-      await firestoreService.saveOrder(orderData, user.uid);
+      await firestoreServiceRef.current.saveOrder(orderData, user.uid);
     } else {
       // オフライン時: IndexedDBに保存
       console.log('📴 オフライン: IndexedDBに保存');
@@ -201,7 +223,7 @@ export const useDataSync = (): UseDataSyncReturn => {
    */
   const syncNow = async (): Promise<void> => {
     if (!isOnline) {
-      showWarning('オフラインのため同期できません');
+      showWarningRef.current('オフラインのため同期できません');
       return;
     }
 
