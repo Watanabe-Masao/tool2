@@ -12,10 +12,10 @@ interface UseStepNavigationParams {
   showGeneratedPreview: boolean;
   TOTAL_STEPS: number;
 
-  // Form data
-  products: any[] | undefined;
-  suppliers: string[] | undefined;
-  deliveryDate: Date | null | undefined;
+  // NOTE: products, suppliers, deliveryDateは依存配列から除外済み
+  // これらはuseWatchから取得され、毎回新しい参照が作成されるため
+  // 無限ループ(React #185)を引き起こす
+  // フォームデータはgetValues()経由で取得するため問題なし
 
   // Methods
   getValues: UseFormReturn<OrderFormData>['getValues'];
@@ -69,9 +69,6 @@ export const useStepNavigation = ({
   activeProductIndex,
   showGeneratedPreview,
   TOTAL_STEPS,
-  products,
-  suppliers,
-  deliveryDate,
   getValues,
   setStepNavigation,
   setActiveProductIndex,
@@ -107,13 +104,15 @@ export const useStepNavigation = ({
     return () => {
       setStepNavigation(false);
     };
+    // NOTE: products, suppliers, deliveryDateは依存配列から除外
+    // これらはuseWatchから取得され、毎回新しい参照が作成されるため
+    // 無限ループ(React #185)を引き起こす
+    // フォームデータはgetValues()経由で取得するため問題なし
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeStep,
     activeProductIndex,
     showGeneratedPreview,
-    products,
-    suppliers,
-    deliveryDate,
     getValues,
     setStepNavigation,
     handlePrevStep,

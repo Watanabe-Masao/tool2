@@ -15,9 +15,6 @@ describe('useStepNavigation', () => {
     activeProductIndex: 0,
     showGeneratedPreview: false,
     TOTAL_STEPS: 5,
-    products: [],
-    suppliers: ['supplier1'],
-    deliveryDate: new Date('2024-01-01'),
     getValues: mockGetValues as any,
     setStepNavigation: mockSetStepNavigation as any,
     setActiveProductIndex: mockSetActiveProductIndex as any,
@@ -266,19 +263,9 @@ describe('useStepNavigation', () => {
       expect(mockSetStepNavigation).toHaveBeenLastCalledWith(false);
     });
 
-    it('productsが変更されたら再実行される', () => {
-      const { rerender } = renderHook(
-        ({ products }) => useStepNavigation({ ...defaultParams, products }),
-        { initialProps: { products: [] } }
-      );
-
-      expect(mockSetStepNavigation).toHaveBeenCalledTimes(1);
-
-      rerender({ products: [{ name: 'product1' }] as any });
-
-      // rerender時: cleanup(false) + 新しいeffect(true, ...) = 2回追加 = 計3回
-      expect(mockSetStepNavigation).toHaveBeenCalledTimes(3);
-    });
+    // NOTE: products, suppliers, deliveryDateは依存配列から除外済み
+    // これらはuseWatchから取得され、毎回新しい参照が作成されるため
+    // 無限ループ(React #185)を引き起こすため、意図的に監視しない
   });
 
   describe('クリーンアップ', () => {
