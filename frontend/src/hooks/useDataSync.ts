@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
-import { useFirestoreService } from '@/context/ServiceContext';
+import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useIndexedDB } from './useIndexedDB';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UseDataSyncReturn } from '@/types/hooks';
@@ -33,24 +33,26 @@ import type { UseDataSyncReturn } from '@/types/hooks';
 export const useDataSync = (): UseDataSyncReturn => {
   const { user } = useAuthContext();
   const { showSuccess, showError, showWarning } = useNotification();
-  const firestoreService = useFirestoreService();
+  const firestoreServiceRef = useFirestoreServiceRef();
   const { saveOrder: saveToIndexedDB, getUnsyncedOrders, updateOrder } = useIndexedDB();
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
 
-  // NOTE: 通知関数をrefで保持して無限ループ(React #185)を防止
+  // NOTE: 通知関数とuserをrefで保持して無限ループ(React #185)を防止
   const showSuccessRef = useRef(showSuccess);
   const showWarningRef = useRef(showWarning);
   const showErrorRef = useRef(showError);
+  const userRef = useRef(user);
 
   // refを最新の値に更新
   useEffect(() => {
     showSuccessRef.current = showSuccess;
     showWarningRef.current = showWarning;
     showErrorRef.current = showError;
-  }, [showSuccess, showWarning, showError]);
+    userRef.current = user;
+  }, [showSuccess, showWarning, showError, user]);
 
   /**
    * オンライン/オフライン状態のイベントリスナー
@@ -94,18 +96,12 @@ export const useDataSync = (): UseDataSyncReturn => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // NOTE: firestoreServiceをrefで保持して無限ループを防止
-  const firestoreServiceRef = useRef(firestoreService);
-  useEffect(() => {
-    firestoreServiceRef.current = firestoreService;
-  }, [firestoreService]);
-
   /**
    * IndexedDBからFirestoreに同期
    * NOTE: 依存配列を最小限にして無限ループ(React #185)を防止
    */
   const syncIndexedDBToFirestore = useCallback(async () => {
-    if (!user) {
+    if (!userRef.current) {
       console.log('ユーザーがログインしていないため、同期をスキップします');
       return;
     }
@@ -143,7 +139,7 @@ export const useDataSync = (): UseDataSyncReturn => {
                   ? orderData.deliveryDate
                   : new Date(orderData.deliveryDate),
             },
-            user.uid
+            userRef.current!.uid
           );
 
           // IndexedDBの同期フラグを更新
@@ -171,7 +167,7 @@ export const useDataSync = (): UseDataSyncReturn => {
     }
     // NOTE: refは安定しているため依存配列に含めない
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount]);
+  }, [isOnline, getUnsyncedOrders, updateOrder, updateUnsyncedCount]);
 
   /**
    * オンライン復帰時に自動同期（デバウンス付き）
@@ -193,7 +189,7 @@ export const useDataSync = (): UseDataSyncReturn => {
    * 注文を保存（オンライン/オフライン自動判定）
    */
   const saveOrder = async (order: OrderFormData, buyerName: string): Promise<void> => {
-    if (!user) {
+    if (!userRef.current) {
       throw new Error('ユーザーがログインしていません');
     }
 
@@ -203,10 +199,10 @@ export const useDataSync = (): UseDataSyncReturn => {
       const orderData = {
         ...order,
         buyerName,
-        userId: user.uid,
+        userId: userRef.current.uid,
         timestamp: new Date(),
       };
-      await firestoreServiceRef.current.saveOrder(orderData, user.uid);
+      await firestoreServiceRef.current.saveOrder(orderData, userRef.current.uid);
     } else {
       // オフライン時: IndexedDBに保存
       console.log('📴 オフライン: IndexedDBに保存');

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useFirestoreService } from '@/context/ServiceContext';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { PricingHistoryItem } from '@/types/hooks';
 
@@ -8,19 +8,29 @@ import type { PricingHistoryItem } from '@/types/hooks';
  *
  * 商品の価格履歴を管理します。
  * 商品名・規格・入数をキーとして、過去に使用した原価と売価を保存・呼び出しできます。
+ *
+ * NOTE: firestoreServiceはuseFirestoreServiceRefで取得し、
+ * 依存配列に含めないことで無限ループ(React #185)を防止
  */
 export const usePricingHistory = () => {
   const [pricingHistory, setPricingHistory] = useState<PricingHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuthContext();
-  const firestoreService = useFirestoreService();
+  const firestoreServiceRef = useFirestoreServiceRef();
+
+  // userをrefで保持して安定した参照を維持
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   /**
    * 価格履歴をロード
+   * NOTE: 依存配列にfirestoreServiceを含めないことで無限ループを防止
    */
   const loadPricingHistory = useCallback(async () => {
-    if (!user) {
+    if (!userRef.current) {
       setPricingHistory([]);
       return;
     }
@@ -28,7 +38,7 @@ export const usePricingHistory = () => {
     try {
       setLoading(true);
       setError(null);
-      const history = await firestoreService.getPricingHistory(user.uid);
+      const history = await firestoreServiceRef.current.getPricingHistory(userRef.current.uid);
       setPricingHistory(history);
     } catch (err) {
       console.error('[usePricingHistory] Failed to load pricing history:', err);
@@ -36,7 +46,9 @@ export const usePricingHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, firestoreService]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * 価格履歴を保存または更新
@@ -54,13 +66,13 @@ export const usePricingHistory = () => {
     priceExcludingTax: number,
     centerFeeRate?: number
   ): Promise<void> => {
-    if (!user) {
+    if (!userRef.current) {
       throw new Error('User not authenticated');
     }
 
     try {
-      await firestoreService.savePricingHistory(
-        user.uid,
+      await firestoreServiceRef.current.savePricingHistory(
+        userRef.current.uid,
         productName,
         specification,
         quantityPerPackage,
@@ -76,25 +88,29 @@ export const usePricingHistory = () => {
       console.error('[usePricingHistory] Failed to save pricing history:', err);
       throw err;
     }
-  }, [user, firestoreService, loadPricingHistory]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPricingHistory]);
 
   /**
    * 価格履歴を削除
    */
   const deletePricingHistory = useCallback(async (historyId: string): Promise<void> => {
-    if (!user) {
+    if (!userRef.current) {
       throw new Error('User not authenticated');
     }
 
     try {
-      await firestoreService.deletePricingHistory(historyId);
+      await firestoreServiceRef.current.deletePricingHistory(historyId);
       // 履歴をリロード
       await loadPricingHistory();
     } catch (err) {
       console.error('[usePricingHistory] Failed to delete pricing history:', err);
       throw err;
     }
-  }, [user, firestoreService, loadPricingHistory]);
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPricingHistory]);
 
   /**
    * 特定のキーに一致する価格履歴を検索
