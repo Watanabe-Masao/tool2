@@ -34,34 +34,49 @@ import { TOTAL_STEPS } from './types';
 /**
  * OrderFormProvider で使用するフックを統合するカスタムフック
  */
+// デバッグ用カウンター
+let renderCount = 0;
+
 export const useOrderFormProvider = (): {
   contextValue: OrderFormContextValue;
   methods: ReturnType<typeof useForm<OrderFormData>>;
 } => {
+  renderCount++;
+  console.log(`[DEBUG] useOrderFormProvider render #${renderCount}`);
+
   // ===== 認証・通知・ナビゲーション =====
+  console.log('[DEBUG] 1. useAuthContext...');
   const { user } = useAuthContext();
+  console.log('[DEBUG] 2. useNotification...');
   const { showSuccess, showError, showLoading, hideLoading } = useNotification();
+  console.log('[DEBUG] 3. useNavigationContext...');
   const { setStepNavigation, showProgressSummary } = useNavigationContext();
 
   // ===== オフライン同期 =====
+  console.log('[DEBUG] 4. useDataSync...');
   const { isOnline, saveOrder: saveOrderWithSync } = useDataSync();
 
   // ===== オートコンプリート =====
+  console.log('[DEBUG] 5. useAutocompleteFields...');
   const autocomplete = useAutocompleteFields();
 
   // ===== ユーザー設定 =====
+  console.log('[DEBUG] 6. useUserSettings...');
   const userSettings = useUserSettings(user);
 
   // ===== UI状態管理 (Zustand) =====
+  console.log('[DEBUG] 7. Zustand hooks...');
   const { activeStep, setActiveStep } = useActiveStep();
   const { activeProductIndex, setActiveProductIndex } = useActiveProductIndex();
   const { setLockedStores } = useStoreLocks();
   const setProgressSummaryHeight = useOrderFormStore((state) => state.setProgressSummaryHeight);
 
   // ===== モーダル状態管理 (Zustand) =====
+  console.log('[DEBUG] 8. useModalStates...');
   const modalStates = useModalStates();
 
   // ===== React Hook Form =====
+  console.log('[DEBUG] 9. useForm...');
   const methods = useForm<OrderFormData>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -81,6 +96,7 @@ export const useOrderFormProvider = (): {
   const { control, getValues } = methods;
 
   // ===== 商品フィールド配列 =====
+  console.log('[DEBUG] 10. useFieldArray...');
   const {
     fields: productFields,
     append: appendProduct,
@@ -92,11 +108,13 @@ export const useOrderFormProvider = (): {
   });
 
   // ===== 監視データ =====
+  console.log('[DEBUG] 11. useWatch...');
   const suppliers = useWatch({ control, name: 'suppliers' });
   const products = useWatch({ control, name: 'products' });
   const deliveryDate = useWatch({ control, name: 'deliveryDate' });
 
   // ===== 注文送信ロジック =====
+  console.log('[DEBUG] 12. useOrderSubmit...');
   const {
     generatedFiles,
     setGeneratedFiles,
@@ -122,6 +140,7 @@ export const useOrderFormProvider = (): {
   });
 
   // ===== 下書き管理 =====
+  console.log('[DEBUG] 13. useOrderDraftManagement...');
   const {
     restoreDialogOpen,
     setRestoreDialogOpen,
@@ -147,6 +166,7 @@ export const useOrderFormProvider = (): {
   }, [formDataJson, triggerAutoSave]);
 
   // ===== 帳合先管理 =====
+  console.log('[DEBUG] 14. useSupplierManagement...');
   const {
     supplierRemovalDialog,
     handleSuppliersChange,
@@ -160,6 +180,7 @@ export const useOrderFormProvider = (): {
   });
 
   // ===== ハンドラー =====
+  console.log('[DEBUG] 15. useOrderHandlers...');
   const {
     handleRemoveProduct,
     handleClearProduct,
@@ -194,6 +215,7 @@ export const useOrderFormProvider = (): {
   });
 
   // ===== ステップナビゲーション =====
+  console.log('[DEBUG] 16. useStepNavigation...');
   useStepNavigation({
     activeStep,
     activeProductIndex,
@@ -207,6 +229,7 @@ export const useOrderFormProvider = (): {
   });
 
   // ===== Context値をメモ化 =====
+  console.log('[DEBUG] 17. Creating contextValue...');
   const contextValue = useMemo<OrderFormContextValue>(
     () => ({
       // 認証・ユーザー
@@ -323,5 +346,6 @@ export const useOrderFormProvider = (): {
     ]
   );
 
+  console.log('[DEBUG] 18. useOrderFormProvider complete');
   return { contextValue, methods };
 };

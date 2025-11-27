@@ -55,7 +55,9 @@ interface OrderFormProviderProps {
  * ```
  */
 export const OrderFormProvider: React.FC<OrderFormProviderProps> = ({ children }) => {
+  console.log('[DEBUG] OrderFormProvider rendering...');
   const { contextValue, methods } = useOrderFormProvider();
+  console.log('[DEBUG] OrderFormProvider - useOrderFormProvider completed');
 
   return (
     <OrderFormContext.Provider value={contextValue}>
