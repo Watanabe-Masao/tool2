@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { UseFormReturn, FieldArrayWithId, UseFieldArrayRemove } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { BookNameDialog } from '@/stores/orderFormStore';
@@ -159,18 +160,33 @@ export const useOrderHandlers = ({
     setShowGeneratedPreview,
   });
 
-  // 既存のインターフェースを維持（後方互換性）
-  return {
-    handleRemoveProduct,
-    handleClearProduct,
-    handleTabChange,
-    handlePrevStep,
-    handleNextStep,
-    handleAllocationChange,
-    handleToggleLock,
-    onSubmit,
-    handleBookNameDialogConfirm,
-    handleRestoreDraft,
-    handleDiscardDraft,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      handleRemoveProduct,
+      handleClearProduct,
+      handleTabChange,
+      handlePrevStep,
+      handleNextStep,
+      handleAllocationChange,
+      handleToggleLock,
+      onSubmit,
+      handleBookNameDialogConfirm,
+      handleRestoreDraft,
+      handleDiscardDraft,
+    }),
+    [
+      handleRemoveProduct,
+      handleClearProduct,
+      handleTabChange,
+      handlePrevStep,
+      handleNextStep,
+      handleAllocationChange,
+      handleToggleLock,
+      onSubmit,
+      handleBookNameDialogConfirm,
+      handleRestoreDraft,
+      handleDiscardDraft,
+    ]
+  );
 };

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { BookNameDialog } from '@/stores/orderFormStore';
@@ -87,8 +87,12 @@ export const useFormSubmitHandler = ({
     }
   }, [getValues, setBookNameDialog, bookNameDialog.bookName, handleGenerateTemplate, setHasUnsavedChanges, setShowGeneratedPreview]);
 
-  return {
-    onSubmit,
-    handleBookNameDialogConfirm,
-  };
+  // 戻り値をメモ化（無限ループ防止）
+  return useMemo(
+    () => ({
+      onSubmit,
+      handleBookNameDialogConfirm,
+    }),
+    [onSubmit, handleBookNameDialogConfirm]
+  );
 };

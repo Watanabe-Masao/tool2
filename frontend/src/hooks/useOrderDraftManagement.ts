@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { SessionStorageService } from '@/utils/sessionStorageService';
@@ -146,17 +146,26 @@ export const useOrderDraftManagement = ({
    * 下書きダイアログ表示フラグをリセット
    * フォーム送信成功後など、新しいフォーム入力を開始する際に呼び出す
    */
-  const resetDraftDialogFlag = () => {
+  const resetDraftDialogFlag = useCallback(() => {
     sessionStorage.removeItem(DRAFT_DIALOG_SHOWN_KEY);
-  };
+  }, []);
 
-  return {
-    restoreDialogOpen,
-    setRestoreDialogOpen,
-    hasUnsavedChanges,
-    setHasUnsavedChanges,
-    isInitialLoad,
-    resetDraftDialogFlag,
-    triggerAutoSave,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      restoreDialogOpen,
+      setRestoreDialogOpen,
+      hasUnsavedChanges,
+      setHasUnsavedChanges,
+      isInitialLoad,
+      resetDraftDialogFlag,
+      triggerAutoSave,
+    }),
+    [
+      restoreDialogOpen,
+      hasUnsavedChanges,
+      resetDraftDialogFlag,
+      triggerAutoSave,
+    ]
+  );
 };

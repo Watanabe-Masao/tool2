@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
@@ -151,13 +151,17 @@ export const useTemplateGeneration = ({
     [showLoading, userSettings, user, showError, hideLoading, showSuccess, fetchExcelAsBlob, setGeneratedFiles, setExcelBlob, templateService, sessionStorageService]
   );
 
-  return {
-    generatedFiles,
-    setGeneratedFiles,
-    excelBlob,
-    setExcelBlob,
-    generateTemplate,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      generatedFiles,
+      setGeneratedFiles,
+      excelBlob,
+      setExcelBlob,
+      generateTemplate,
+    }),
+    [generatedFiles, excelBlob, generateTemplate]
+  );
 };
 
 // Re-export for backward compatibility

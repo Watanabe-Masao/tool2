@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { DEFAULT_PRODUCT_FORM_DATA, STORE_COUNT } from '@/utils/constants';
@@ -63,52 +63,68 @@ export const useSupplierManagement = ({
 
   const previousSuppliers = useRef<string[]>([]);
 
+  // NOTE: methods, suppliers, showSuccessをrefで保持して安定した参照を維持（無限ループ防止）
+  const methodsRef = useRef(methods);
+  const suppliersRef = useRef(suppliers);
+  const showSuccessRef = useRef(showSuccess);
+  const supplierRemovalDialogRef = useRef(supplierRemovalDialog);
+
+  useEffect(() => {
+    methodsRef.current = methods;
+    suppliersRef.current = suppliers;
+    showSuccessRef.current = showSuccess;
+    supplierRemovalDialogRef.current = supplierRemovalDialog;
+  }, [methods, suppliers, showSuccess, supplierRemovalDialog]);
+
   /**
    * 帳合先変更ハンドラー
    *
    * 削除される帳合先が商品カードで使用されている場合、
    * 確認ダイアログを表示します。
    */
-  const handleSuppliersChange = (newSuppliers: string[]) => {
-    // 最新の商品データを取得
-    const currentProducts = methods.getValues('products');
+  const handleSuppliersChange = useCallback(
+    (newSuppliers: string[]) => {
+      // 最新の商品データを取得
+      const currentProducts = methodsRef.current.getValues('products');
 
-    // 初回ロード時や商品がない場合はそのまま適用
-    if (isInitialLoad.current || !currentProducts || currentProducts.length === 0) {
-      previousSuppliers.current = newSuppliers;
-      return newSuppliers;
-    }
+      // 初回ロード時や商品がない場合はそのまま適用
+      if (isInitialLoad.current || !currentProducts || currentProducts.length === 0) {
+        previousSuppliers.current = newSuppliers;
+        return newSuppliers;
+      }
 
-    const currentSuppliers = suppliers || [];
+      const currentSuppliers = suppliersRef.current || [];
 
-    // 削除される帳合先を検出
-    const removedSuppliers = currentSuppliers.filter(
-      (supplier) => !newSuppliers.includes(supplier)
-    );
-
-    if (removedSuppliers.length > 0) {
-      // 削除される帳合先を使用している商品を検出
-      const affectedProducts = currentProducts.filter(
-        (product) => product.supplier && removedSuppliers.includes(product.supplier)
+      // 削除される帳合先を検出
+      const removedSuppliers = currentSuppliers.filter(
+        (supplier) => !newSuppliers.includes(supplier)
       );
 
-      if (affectedProducts.length > 0) {
-        // 確認ダイアログを表示
-        setSupplierRemovalDialog({
-          open: true,
-          suppliersToRemove: removedSuppliers,
-          affectedProductsCount: affectedProducts.length,
-          newSuppliers,
-        });
-        // 変更を保留
-        return currentSuppliers;
-      }
-    }
+      if (removedSuppliers.length > 0) {
+        // 削除される帳合先を使用している商品を検出
+        const affectedProducts = currentProducts.filter(
+          (product) => product.supplier && removedSuppliers.includes(product.supplier)
+        );
 
-    // 問題ない場合はそのまま適用
-    previousSuppliers.current = newSuppliers;
-    return newSuppliers;
-  };
+        if (affectedProducts.length > 0) {
+          // 確認ダイアログを表示
+          setSupplierRemovalDialog({
+            open: true,
+            suppliersToRemove: removedSuppliers,
+            affectedProductsCount: affectedProducts.length,
+            newSuppliers,
+          });
+          // 変更を保留
+          return currentSuppliers;
+        }
+      }
+
+      // 問題ない場合はそのまま適用
+      previousSuppliers.current = newSuppliers;
+      return newSuppliers;
+    },
+    [isInitialLoad]
+  );
 
   /**
    * 帳合先削除の確認
@@ -116,11 +132,11 @@ export const useSupplierManagement = ({
    * ユーザーが削除を確認した場合、削除される帳合先を使用している
    * 商品カードを削除します。
    */
-  const handleConfirmSupplierRemoval = () => {
-    const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialog;
+  const handleConfirmSupplierRemoval = useCallback(() => {
+    const { suppliersToRemove, newSuppliers, affectedProductsCount } = supplierRemovalDialogRef.current;
 
     // 最新の商品データを取得
-    const currentProducts = methods.getValues('products');
+    const currentProducts = methodsRef.current.getValues('products');
 
     // 削除される帳合先を使用していない商品のみを残す
     const remainingProducts = currentProducts.filter(
@@ -137,15 +153,15 @@ export const useSupplierManagement = ({
         }];
 
     // 商品配列を更新
-    methods.setValue('products', newProducts);
+    methodsRef.current.setValue('products', newProducts);
 
     // 帳合先を更新
-    methods.setValue('suppliers', newSuppliers);
+    methodsRef.current.setValue('suppliers', newSuppliers);
     previousSuppliers.current = newSuppliers;
 
     // メッセージを表示
     const removedSupplierNames = suppliersToRemove.join('、');
-    showSuccess(
+    showSuccessRef.current(
       `帳合先「${removedSupplierNames}」を削除し、関連する商品カード${affectedProductsCount}件を削除しました`
     );
 
@@ -156,26 +172,35 @@ export const useSupplierManagement = ({
       affectedProductsCount: 0,
       newSuppliers: [],
     });
-  };
+  }, []);
 
   /**
    * 帳合先削除のキャンセル
    *
    * ユーザーが削除をキャンセルした場合、ダイアログを閉じます。
    */
-  const handleCancelSupplierRemoval = () => {
+  const handleCancelSupplierRemoval = useCallback(() => {
     setSupplierRemovalDialog({
       open: false,
       suppliersToRemove: [],
       affectedProductsCount: 0,
       newSuppliers: [],
     });
-  };
+  }, []);
 
-  return {
-    supplierRemovalDialog,
-    handleSuppliersChange,
-    handleConfirmSupplierRemoval,
-    handleCancelSupplierRemoval,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      supplierRemovalDialog,
+      handleSuppliersChange,
+      handleConfirmSupplierRemoval,
+      handleCancelSupplierRemoval,
+    }),
+    [
+      supplierRemovalDialog,
+      handleSuppliersChange,
+      handleConfirmSupplierRemoval,
+      handleCancelSupplierRemoval,
+    ]
+  );
 };

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { GeneratedFiles } from './useTemplateGeneration';
 import { ERROR_MESSAGES } from '@/messages';
 import { env } from '@/config/env';
@@ -150,8 +150,12 @@ export const useFileDownloads = ({
     });
   }, [generatedFiles, downloadFile]);
 
-  return {
-    downloadExcel,
-    downloadPdf,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      downloadExcel,
+      downloadPdf,
+    }),
+    [downloadExcel, downloadPdf]
+  );
 };

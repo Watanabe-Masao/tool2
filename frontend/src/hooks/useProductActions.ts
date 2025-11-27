@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { UseFormReturn, FieldArrayWithId, UseFieldArrayRemove } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -87,8 +87,12 @@ export const useProductActions = ({
     [suppliers, setValue]
   );
 
-  return {
-    handleRemoveProduct,
-    handleClearProduct,
-  };
+  // 戻り値をメモ化（無限ループ防止）
+  return useMemo(
+    () => ({
+      handleRemoveProduct,
+      handleClearProduct,
+    }),
+    [handleRemoveProduct, handleClearProduct]
+  );
 };

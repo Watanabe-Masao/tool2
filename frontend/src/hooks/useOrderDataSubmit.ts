@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
 
@@ -125,7 +125,11 @@ export const useOrderDataSubmit = ({
     [isOnline, showLoading, showError, hideLoading, userSettings, user, saveOrderWithSync, showSuccess]
   );
 
-  return {
-    submitOrderData,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      submitOrderData,
+    }),
+    [submitOrderData]
+  );
 };

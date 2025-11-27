@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { ThemeProvider as MuiThemeProvider, type PaletteMode } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { createAppTheme } from '@/theme';
@@ -75,21 +75,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   /**
    * テーマモードを切り替える
    */
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setMode((prevMode) => {
       const newMode = prevMode === 'light' ? 'dark' : 'light';
       localStorage.setItem(THEME_STORAGE_KEY, newMode);
       return newMode;
     });
-  };
+  }, []);
 
   /**
    * テーマモードを直接設定する
    */
-  const setThemeMode = (newMode: PaletteMode) => {
+  const setThemeMode = useCallback((newMode: PaletteMode) => {
     setMode(newMode);
     localStorage.setItem(THEME_STORAGE_KEY, newMode);
-  };
+  }, []);
 
   /**
    * システムのテーマ設定変更を監視
@@ -110,11 +110,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const contextValue: ThemeContextType = {
-    mode,
-    toggleTheme,
-    setThemeMode,
-  };
+  // Context valueをメモ化して安定した参照を維持（無限ループ防止）
+  const contextValue = useMemo<ThemeContextType>(
+    () => ({
+      mode,
+      toggleTheme,
+      setThemeMode,
+    }),
+    [mode, toggleTheme, setThemeMode]
+  );
 
   return (
     <ThemeContext.Provider value={contextValue}>

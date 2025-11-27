@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 /**
  * useStepActionsのパラメータ
@@ -78,9 +78,13 @@ export const useStepActions = ({
     }
   }, [activeStep, setActiveStep, TOTAL_STEPS]);
 
-  return {
-    handleTabChange,
-    handlePrevStep,
-    handleNextStep,
-  };
+  // 戻り値をメモ化（無限ループ防止）
+  return useMemo(
+    () => ({
+      handleTabChange,
+      handlePrevStep,
+      handleNextStep,
+    }),
+    [handleTabChange, handlePrevStep, handleNextStep]
+  );
 };
