@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Snackbar, Alert, Backdrop, CircularProgress } from '@mui/material';
 import type { AlertColor } from '@mui/material';
@@ -154,14 +154,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setNotification((prev) => ({ ...prev, open: false }));
   }, []);
 
-  const value: NotificationContextType = {
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-    showLoading,
-    hideLoading,
-  };
+  // Context valueをメモ化して安定した参照を維持（無限ループ防止）
+  const value = useMemo<NotificationContextType>(
+    () => ({
+      showSuccess,
+      showError,
+      showWarning,
+      showInfo,
+      showLoading,
+      hideLoading,
+    }),
+    [showSuccess, showError, showWarning, showInfo, showLoading, hideLoading]
+  );
 
   return (
     <NotificationContext.Provider value={value}>

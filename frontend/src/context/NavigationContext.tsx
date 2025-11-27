@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -101,22 +101,38 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
     onProductChangeRef.current?.(index);
   }, []);
 
+  // Context valueをメモ化して安定した参照を維持（無限ループ防止）
+  const value = useMemo<NavigationContextType>(
+    () => ({
+      isStepNavigationActive,
+      activeStep,
+      totalSteps,
+      formData,
+      activeProductIndex,
+      onPrevStep,
+      onNextStep,
+      onProductChange,
+      showProgressSummary,
+      toggleProgressSummary,
+      setStepNavigation,
+    }),
+    [
+      isStepNavigationActive,
+      activeStep,
+      totalSteps,
+      formData,
+      activeProductIndex,
+      onPrevStep,
+      onNextStep,
+      onProductChange,
+      showProgressSummary,
+      toggleProgressSummary,
+      setStepNavigation,
+    ]
+  );
+
   return (
-    <NavigationContext.Provider
-      value={{
-        isStepNavigationActive,
-        activeStep,
-        totalSteps,
-        formData,
-        activeProductIndex,
-        onPrevStep,
-        onNextStep,
-        onProductChange,
-        showProgressSummary,
-        toggleProgressSummary,
-        setStepNavigation,
-      }}
-    >
+    <NavigationContext.Provider value={value}>
       {children}
     </NavigationContext.Provider>
   );
