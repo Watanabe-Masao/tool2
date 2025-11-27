@@ -337,35 +337,6 @@ export const AllocationHistoryPage: React.FC = () => {
   // 日付範囲選択時のカラム定義
   const dateRangeColumns: GridColDef<DetailGridRow>[] = [
     {
-      field: 'productName',
-      headerName: '品名',
-      width: isMobile ? 120 : 180,
-      sortable: true,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'origin',
-      headerName: '産地',
-      width: isMobile ? 100 : 120,
-      sortable: true,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'specification',
-      headerName: '規格',
-      width: isMobile ? 100 : 120,
-      sortable: true,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'totalDelivery',
-      headerName: '数量',
-      width: isMobile ? 80 : 100,
-      sortable: true,
-      disableColumnMenu: true,
-      type: 'number',
-    },
-    {
       field: 'deliveryDate',
       headerName: '日付',
       width: isMobile ? 100 : 120,
@@ -377,6 +348,63 @@ export const AllocationHistoryPage: React.FC = () => {
         return format(parseISO(dateStr), 'M月d日(E)', { locale: ja });
       },
     },
+    {
+      field: 'productName',
+      headerName: '品名',
+      width: isMobile ? 100 : 150,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'origin',
+      headerName: '産地',
+      width: isMobile ? 80 : 100,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'specification',
+      headerName: '規格',
+      width: isMobile ? 80 : 100,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'totalDelivery',
+      headerName: '合計',
+      width: isMobile ? 60 : 80,
+      sortable: true,
+      disableColumnMenu: true,
+      type: 'number',
+    },
+    // 店舗カラムを追加
+    ...STORE_DATA.map((store) => ({
+      field: `store_${store.code}`,
+      headerName: `${store.code}\n${store.name}`,
+      width: isMobile ? 45 : 55,
+      sortable: false as const,
+      disableColumnMenu: true,
+      type: 'number' as const,
+      renderCell: (params: { value?: number }) => {
+        const value = params.value || 0;
+        return (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: value > 0 ? '600' : 'normal',
+              color: value > 0 ? '#1565c0' : '#bdbdbd',
+              backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
+            }}
+          >
+            {value > 0 ? value : '-'}
+          </Box>
+        );
+      },
+    })),
   ];
 
   // 単一バッチ選択時のカラム定義（店舗別）
@@ -475,14 +503,23 @@ export const AllocationHistoryPage: React.FC = () => {
       } else {
         // その日付の各商品を行として追加
         detailsForDate.forEach((detail, idx) => {
-          rows.push({
+          const row: DetailGridRow = {
             id: `${dateStr}-${detail.id || idx}`,
             productName: detail.productName,
             origin: detail.origin,
             specification: detail.specification,
             totalDelivery: detail.totalDelivery,
             deliveryDate: dateStr,
+          };
+
+          // 各店舗の配分数量を追加
+          detail.storeAllocations.forEach((qty, storeIdx) => {
+            if (storeIdx < STORE_DATA.length) {
+              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+            }
           });
+
+          rows.push(row);
         });
       }
     });
