@@ -21,7 +21,6 @@ import {
   Stack,
   ToggleButtonGroup,
   ToggleButton,
-  Grid,
   Card,
   CardContent,
 } from '@mui/material';
@@ -778,15 +777,30 @@ export const AllocationHistoryPage: React.FC = () => {
             )}
 
             {/* 曜日ヘッダー */}
-            <Grid container spacing={{ xs: 0.5, sm: 1 }} sx={{ mb: 1 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: { xs: 0.5, sm: 1 },
+                mb: 1,
+                backgroundColor: 'grey.100',
+                borderRadius: 1,
+                p: 1,
+              }}
+            >
               {WEEKDAY_LABELS.map((label, index) => (
-                <Grid item xs key={index}>
+                <Box
+                  key={index}
+                  sx={{
+                    textAlign: 'center',
+                    py: 0.5,
+                  }}
+                >
                   <Typography
                     variant="body2"
-                    align="center"
                     sx={{
-                      fontWeight: 600,
-                      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                      fontWeight: 700,
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
                       color:
                         index === 0
                           ? 'error.main'
@@ -797,9 +811,9 @@ export const AllocationHistoryPage: React.FC = () => {
                   >
                     {label}
                   </Typography>
-                </Grid>
+                </Box>
               ))}
-            </Grid>
+            </Box>
 
             {/* カレンダーグリッド */}
             {loading ? (
@@ -807,7 +821,18 @@ export const AllocationHistoryPage: React.FC = () => {
                 <CircularProgress />
               </Box>
             ) : (
-              <Grid container spacing={{ xs: 0.5, sm: 1 }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: { xs: 0.5, sm: 1 },
+                  border: '2px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  p: { xs: 0.5, sm: 1 },
+                  backgroundColor: 'background.paper',
+                }}
+              >
                 {calendarDays.map((date, index) => {
                   const dateStr = format(date, 'yyyy-MM-dd');
                   const isCurrentMonth = format(date, 'yyyy-MM') === currentMonth;
@@ -815,19 +840,18 @@ export const AllocationHistoryPage: React.FC = () => {
                   const isSelected = selectedDates.some((d) => format(d, 'yyyy-MM-dd') === dateStr);
 
                   return (
-                    <Grid item xs key={index} sx={{ minWidth: 0 }}>
-                      <CalendarDayCell
-                        date={date}
-                        isCurrentMonth={isCurrentMonth}
-                        isSelected={isSelected}
-                        suppliers={summary?.suppliers}
-                        batchCount={summary?.batchCount}
-                        onClick={handleDateClick}
-                      />
-                    </Grid>
+                    <CalendarDayCell
+                      key={index}
+                      date={date}
+                      isCurrentMonth={isCurrentMonth}
+                      isSelected={isSelected}
+                      suppliers={summary?.suppliers}
+                      batchCount={summary?.batchCount}
+                      onClick={handleDateClick}
+                    />
                   );
                 })}
-              </Grid>
+              </Box>
             )}
           </CardContent>
         </Card>
