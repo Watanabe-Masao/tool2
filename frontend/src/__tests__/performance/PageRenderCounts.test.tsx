@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import React, { useEffect, useRef } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -131,7 +131,7 @@ vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(),
   signInWithPopup: vi.fn(),
   GoogleAuthProvider: vi.fn(),
-  onAuthStateChanged: vi.fn((auth, callback) => {
+  onAuthStateChanged: vi.fn((_auth, callback) => {
     callback({ uid: 'test-user', email: 'test@example.com' });
     return vi.fn();
   }),
@@ -258,7 +258,7 @@ describe('主要ページのレンダリング回数監視', () => {
         },
       }));
 
-      const { default: StoreCategoryManagementPage } = await import(
+      const { StoreCategoryManagementPage } = await import(
         '@/pages/StoreCategoryManagementPage'
       );
 
