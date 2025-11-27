@@ -39,6 +39,7 @@ import {
   startOfWeek,
   endOfWeek,
   addMonths,
+  eachDayOfInterval,
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DataGrid } from '@mui/x-data-grid';
@@ -46,7 +47,7 @@ import type { GridColDef } from '@mui/x-data-grid';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg, EventInput } from '@fullcalendar/core';
+import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -62,7 +63,8 @@ interface DetailGridRow {
   origin: string;
   specification: string;
   totalDelivery: number;
-  [key: string]: string | number;
+  deliveryDate?: string; // 日付範囲選択時に使用
+  [key: string]: string | number | undefined;
 }
 
 
@@ -83,6 +85,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
   // 詳細モーダル
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
+  const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null);
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -191,6 +194,7 @@ export const AllocationHistoryPage: React.FC = () => {
    */
   const handleCloseDetails = () => {
     setSelectedBatch(null);
+    setSelectedDateRange(null);
     setDetails([]);
   };
 
@@ -202,7 +206,59 @@ export const AllocationHistoryPage: React.FC = () => {
     if (batch) {
       fetchBatchDetails(batch);
     }
-  }, []);
+  }, [fetchBatchDetails]);
+
+  /**
+   * FullCalendarの日付範囲選択ハンドラー
+   */
+  const handleDateSelect = useCallback(async (selectInfo: DateSelectArg) => {
+    if (!user?.uid) return;
+
+    // FullCalendar の end は排他的なので1日引く
+    const startDate = format(selectInfo.start, 'yyyy-MM-dd');
+    const endDate = format(subDays(selectInfo.end, 1), 'yyyy-MM-dd');
+
+    console.log('📅 Date range selected:', { startDate, endDate });
+
+    setSelectedDateRange({ start: startDate, end: endDate });
+    setSelectedBatch(null); // 単一バッチ選択をクリア
+    setDetailsLoading(true);
+
+    try {
+      const db = getFirebaseFirestore();
+      const firestoreService = new FirestoreServiceFacade(db);
+
+      // 選択範囲のバッチを取得
+      const rangeBatches = await firestoreService.getAllocationBatchesByDateRange(
+        user.uid,
+        startDate,
+        endDate
+      );
+
+      console.log('📦 Found batches in range:', rangeBatches.length);
+
+      // 各バッチの詳細を取得
+      const allDetails: AllocationDetail[] = [];
+      for (const batch of rangeBatches) {
+        if (batch.id) {
+          const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
+          // 各詳細に日付情報を追加
+          batchDetails.forEach(detail => {
+            (detail as any).deliveryDate = batch.deliveryDate;
+          });
+          allDetails.push(...batchDetails);
+        }
+      }
+
+      console.log('📋 Total details fetched:', allDetails.length);
+      setDetails(allDetails);
+    } catch (err) {
+      console.error('Failed to fetch date range details:', err);
+      setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [user?.uid]);
 
   /**
    * 削除確認ダイアログを開く
@@ -277,7 +333,54 @@ export const AllocationHistoryPage: React.FC = () => {
    * 詳細モーダル用のDataGridカラム定義
    */
   const isMobile = window.innerWidth < 600;
-  const detailColumns: GridColDef<DetailGridRow>[] = [
+
+  // 日付範囲選択時のカラム定義
+  const dateRangeColumns: GridColDef<DetailGridRow>[] = [
+    {
+      field: 'productName',
+      headerName: '品名',
+      width: isMobile ? 120 : 180,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'origin',
+      headerName: '産地',
+      width: isMobile ? 100 : 120,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'specification',
+      headerName: '規格',
+      width: isMobile ? 100 : 120,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'totalDelivery',
+      headerName: '数量',
+      width: isMobile ? 80 : 100,
+      sortable: true,
+      disableColumnMenu: true,
+      type: 'number',
+    },
+    {
+      field: 'deliveryDate',
+      headerName: '日付',
+      width: isMobile ? 100 : 120,
+      sortable: true,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const dateStr = params.value as string;
+        if (!dateStr) return '-';
+        return format(parseISO(dateStr), 'M月d日(E)', { locale: ja });
+      },
+    },
+  ];
+
+  // 単一バッチ選択時のカラム定義（店舗別）
+  const singleBatchColumns: GridColDef<DetailGridRow>[] = [
     {
       field: 'productName',
       headerName: '品名',
@@ -340,24 +443,81 @@ export const AllocationHistoryPage: React.FC = () => {
   /**
    * 詳細モーダル用のDataGrid行データ作成
    */
-  const detailRows: DetailGridRow[] = details.map((detail, idx) => {
-    const row: DetailGridRow = {
-      id: detail.id || `row-${idx}`,
-      productName: detail.productName,
-      origin: detail.origin,
-      specification: detail.specification,
-      totalDelivery: detail.totalDelivery,
-    };
+  // 日付範囲選択時の行データ
+  const dateRangeRows: DetailGridRow[] = useMemo(() => {
+    if (!selectedDateRange) return [];
 
-    // 各店舗の配分数量を追加
-    detail.storeAllocations.forEach((qty, storeIdx) => {
-      if (storeIdx < STORE_DATA.length) {
-        row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+    const rows: DetailGridRow[] = [];
+
+    // 選択範囲の全ての日付を生成
+    const allDates = eachDayOfInterval({
+      start: parseISO(selectedDateRange.start),
+      end: parseISO(selectedDateRange.end),
+    }).map(date => format(date, 'yyyy-MM-dd'));
+
+    console.log('📅 All dates in range:', allDates);
+
+    // 各日付ごとに行を生成
+    allDates.forEach(dateStr => {
+      // その日付のdetailsを取得
+      const detailsForDate = details.filter(d => (d as any).deliveryDate === dateStr);
+
+      if (detailsForDate.length === 0) {
+        // データがない日付も表示
+        rows.push({
+          id: `empty-${dateStr}`,
+          productName: '-',
+          origin: '-',
+          specification: '-',
+          totalDelivery: 0,
+          deliveryDate: dateStr,
+        });
+      } else {
+        // その日付の各商品を行として追加
+        detailsForDate.forEach((detail, idx) => {
+          rows.push({
+            id: `${dateStr}-${detail.id || idx}`,
+            productName: detail.productName,
+            origin: detail.origin,
+            specification: detail.specification,
+            totalDelivery: detail.totalDelivery,
+            deliveryDate: dateStr,
+          });
+        });
       }
     });
 
-    return row;
-  });
+    console.log('📋 Generated rows:', rows.length);
+    return rows;
+  }, [selectedDateRange, details]);
+
+  // 単一バッチ選択時の行データ
+  const singleBatchRows: DetailGridRow[] = useMemo(() => {
+    if (selectedDateRange) return [];
+
+    return details.map((detail, idx) => {
+      const row: DetailGridRow = {
+        id: detail.id || `row-${idx}`,
+        productName: detail.productName,
+        origin: detail.origin,
+        specification: detail.specification,
+        totalDelivery: detail.totalDelivery,
+      };
+
+      // 各店舗の配分数量を追加
+      detail.storeAllocations.forEach((qty, storeIdx) => {
+        if (storeIdx < STORE_DATA.length) {
+          row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+        }
+      });
+
+      return row;
+    });
+  }, [selectedDateRange, details]);
+
+  // 使用するカラムと行を選択
+  const detailColumns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
+  const detailRows = selectedDateRange ? dateRangeRows : singleBatchRows;
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -483,6 +643,10 @@ export const AllocationHistoryPage: React.FC = () => {
                   locale="ja"
                   events={calendarEvents}
                   eventClick={handleEventClick}
+                  selectable={true}
+                  select={handleDateSelect}
+                  selectMirror={true}
+                  unselectAuto={true}
                   headerToolbar={{
                     left: 'prev,next today',
                     center: 'title',
@@ -629,17 +793,23 @@ export const AllocationHistoryPage: React.FC = () => {
 
       {/* 詳細モーダル */}
       <Dialog
-        open={Boolean(selectedBatch)}
+        open={Boolean(selectedBatch) || Boolean(selectedDateRange)}
         onClose={handleCloseDetails}
         maxWidth="xl"
         fullWidth
         fullScreen={window.innerWidth < 600}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>
-          配分履歴詳細
+          {selectedDateRange ? '複数日付の配分履歴' : '配分履歴詳細'}
           {selectedBatch && (
             <Typography variant="subtitle2" color="text.secondary">
               納品日: {format(new Date(selectedBatch.deliveryDate), 'yyyy年M月d日(E)', { locale: ja })}
+            </Typography>
+          )}
+          {selectedDateRange && (
+            <Typography variant="subtitle2" color="text.secondary">
+              期間: {format(parseISO(selectedDateRange.start), 'yyyy年M月d日(E)', { locale: ja })} 〜{' '}
+              {format(parseISO(selectedDateRange.end), 'yyyy年M月d日(E)', { locale: ja })}
             </Typography>
           )}
         </DialogTitle>
