@@ -301,32 +301,33 @@ export const AllocationHistoryPage: React.FC = () => {
   /**
    * 詳細モーダル用のDataGridカラム定義
    */
+  const isMobile = window.innerWidth < 600;
   const detailColumns: GridColDef<DetailGridRow>[] = [
     {
       field: 'productName',
       headerName: '品名',
-      width: 150,
+      width: isMobile ? 100 : 150,
       sortable: false,
       disableColumnMenu: true,
     },
     {
       field: 'origin',
       headerName: '産地',
-      width: 100,
+      width: isMobile ? 80 : 100,
       sortable: false,
       disableColumnMenu: true,
     },
     {
       field: 'specification',
       headerName: '規格',
-      width: 100,
+      width: isMobile ? 80 : 100,
       sortable: false,
       disableColumnMenu: true,
     },
     {
       field: 'totalDelivery',
       headerName: '合計',
-      width: 80,
+      width: isMobile ? 60 : 80,
       sortable: false,
       disableColumnMenu: true,
       type: 'number',
@@ -335,7 +336,7 @@ export const AllocationHistoryPage: React.FC = () => {
     ...STORE_DATA.map((store) => ({
       field: `store_${store.code}`,
       headerName: `${store.code}\n${store.name}`,
-      width: 55,
+      width: isMobile ? 45 : 55,
       sortable: false as const,
       disableColumnMenu: true,
       type: 'number' as const,
@@ -384,9 +385,16 @@ export const AllocationHistoryPage: React.FC = () => {
   });
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       {/* ヘッダー */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{
+        mb: 3,
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: 2
+      }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
             配分履歴
@@ -448,17 +456,18 @@ export const AllocationHistoryPage: React.FC = () => {
         </Paper>
       ) : viewMode === 'calendar' ? (
         /* カレンダー表示 */
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <Box
             sx={{
               '.rdp': {
-                '--rdp-cell-size': '80px',
+                '--rdp-cell-size': { xs: '40px', sm: '60px', md: '80px' },
                 '--rdp-accent-color': '#1976d2',
                 '--rdp-background-color': '#e3f2fd',
                 margin: '0 auto',
+                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
               },
               '.rdp-day': {
-                height: '80px',
+                height: { xs: '40px', sm: '60px', md: '80px' },
                 border: '1px solid #e0e0e0',
                 borderRadius: '4px',
                 position: 'relative',
@@ -627,10 +636,11 @@ export const AllocationHistoryPage: React.FC = () => {
 
       {/* 詳細モーダル */}
       <Dialog
-        open={Boolean(selectedBatch)}
+        open={Boolean(selectedBatch) || selectedDates.length > 0}
         onClose={handleCloseDetails}
         maxWidth="xl"
         fullWidth
+        fullScreen={window.innerWidth < 600}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>
           配分履歴詳細
@@ -655,7 +665,7 @@ export const AllocationHistoryPage: React.FC = () => {
               <Typography color="text.secondary">詳細データがありません</Typography>
             </Box>
           ) : (
-            <Box sx={{ height: 600, width: '100%' }}>
+            <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
               <DataGrid
                 rows={detailRows}
                 columns={detailColumns}
@@ -668,6 +678,8 @@ export const AllocationHistoryPage: React.FC = () => {
                   border: 'none',
                   '& .MuiDataGrid-cell': {
                     borderColor: '#e0e0e0',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    padding: { xs: '4px', sm: '8px' },
                   },
                   '& .MuiDataGrid-columnHeaders': {
                     backgroundColor: '#f5f5f5',
@@ -677,6 +689,7 @@ export const AllocationHistoryPage: React.FC = () => {
                     fontWeight: 600,
                     whiteSpace: 'pre-wrap',
                     lineHeight: 1.2,
+                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
                   },
                 }}
               />
