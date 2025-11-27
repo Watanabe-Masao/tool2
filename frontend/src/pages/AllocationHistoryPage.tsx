@@ -29,11 +29,25 @@ import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay
 import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
+
+/**
+ * グリッド行データの型（詳細モーダル用）
+ */
+interface DetailGridRow {
+  id: string;
+  productName: string;
+  origin: string;
+  specification: string;
+  totalDelivery: number;
+  [key: string]: string | number;
+}
 
 /**
  * 配分履歴一覧ページ
@@ -226,6 +240,91 @@ export const AllocationHistoryPage: React.FC = () => {
   const sortedWeeks = Object.values(batchesByWeek).sort((a, b) =>
     b.weekStart.getTime() - a.weekStart.getTime()
   );
+
+  /**
+   * 詳細モーダル用のDataGridカラム定義
+   */
+  const detailColumns: GridColDef<DetailGridRow>[] = [
+    {
+      field: 'productName',
+      headerName: '品名',
+      width: 150,
+      sortable: false,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'origin',
+      headerName: '産地',
+      width: 100,
+      sortable: false,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'specification',
+      headerName: '規格',
+      width: 100,
+      sortable: false,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'totalDelivery',
+      headerName: '合計',
+      width: 80,
+      sortable: false,
+      disableColumnMenu: true,
+      type: 'number',
+    },
+    // 店舗カラムを追加
+    ...STORE_DATA.map((store) => ({
+      field: `store_${store.code}`,
+      headerName: `${store.code}\n${store.name}`,
+      width: 55,
+      sortable: false as const,
+      disableColumnMenu: true,
+      type: 'number' as const,
+      renderCell: (params: { value?: number }) => {
+        const value = params.value || 0;
+        return (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: value > 0 ? '600' : 'normal',
+              color: value > 0 ? '#1565c0' : '#bdbdbd',
+              backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
+            }}
+          >
+            {value > 0 ? value : '-'}
+          </Box>
+        );
+      },
+    })),
+  ];
+
+  /**
+   * 詳細モーダル用のDataGrid行データ作成
+   */
+  const detailRows: DetailGridRow[] = details.map((detail, idx) => {
+    const row: DetailGridRow = {
+      id: detail.id || `row-${idx}`,
+      productName: detail.productName,
+      origin: detail.origin,
+      specification: detail.specification,
+      totalDelivery: detail.totalDelivery,
+    };
+
+    // 各店舗の配分数量を追加
+    detail.storeAllocations.forEach((qty, storeIdx) => {
+      if (storeIdx < STORE_DATA.length) {
+        row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+      }
+    });
+
+    return row;
+  });
 
   return (
     <Box sx={{ p: 3 }}>
@@ -509,7 +608,7 @@ export const AllocationHistoryPage: React.FC = () => {
       <Dialog
         open={Boolean(selectedBatch)}
         onClose={handleCloseDetails}
-        maxWidth="lg"
+        maxWidth="xl"
         fullWidth
       >
         <DialogTitle sx={{ fontWeight: 600 }}>
@@ -521,64 +620,42 @@ export const AllocationHistoryPage: React.FC = () => {
           )}
         </DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ p: 0 }}>
           {detailsLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
           ) : details.length === 0 ? (
-            <Typography color="text.secondary">詳細データがありません</Typography>
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography color="text.secondary">詳細データがありません</Typography>
+            </Box>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                    <TableCell sx={{ fontWeight: 600 }}>商品名</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>産地</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>規格</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="right">
-                      合計
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>配分先</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {details.map((detail, idx) => {
-                    const allocatedStores = detail.storeAllocations
-                      .map((qty, storeIdx) => ({
-                        store: STORE_DATA[storeIdx],
-                        qty,
-                      }))
-                      .filter((item) => item.qty > 0);
-
-                    return (
-                      <TableRow key={idx} hover>
-                        <TableCell>{detail.productName}</TableCell>
-                        <TableCell>{detail.origin}</TableCell>
-                        <TableCell>{detail.specification}</TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" fontWeight={600}>
-                            {detail.totalDelivery}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                            {allocatedStores.map(({ store, qty }) => (
-                              <Chip
-                                key={store.code}
-                                label={`${store.code}: ${qty}`}
-                                size="small"
-                                variant="outlined"
-                              />
-                            ))}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box sx={{ height: 600, width: '100%' }}>
+              <DataGrid
+                rows={detailRows}
+                columns={detailColumns}
+                disableRowSelectionOnClick
+                disableColumnFilter
+                disableColumnSelector
+                disableDensitySelector
+                hideFooter
+                sx={{
+                  border: 'none',
+                  '& .MuiDataGrid-cell': {
+                    borderColor: '#e0e0e0',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f5f5f5',
+                    fontWeight: 600,
+                  },
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 600,
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.2,
+                  },
+                }}
+              />
+            </Box>
           )}
         </DialogContent>
 
