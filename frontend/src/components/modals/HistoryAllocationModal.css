@@ -1,0 +1,44 @@
+/* React Day Picker カスタムスタイル */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #1976d2;
+  --rdp-background-color: #e3f2fd;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+.rdp-day_selected {
+  background-color: var(--rdp-accent-color) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.rdp-day_range_middle {
+  background-color: var(--rdp-background-color) !important;
+  color: var(--rdp-accent-color) !important;
+}
+
+.rdp-day_today {
+  font-weight: bold;
+  color: var(--rdp-accent-color);
+}
+
+.rdp-caption {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.rdp-head_cell {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: #f5f5f5;
+}
+
+.rdp-button:focus-visible {
+  outline: 2px solid var(--rdp-accent-color);
+  outline-offset: 2px;
+}
