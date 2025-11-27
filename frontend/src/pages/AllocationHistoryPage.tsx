@@ -81,90 +81,126 @@ interface CalendarDayCellProps {
   date: Date;
   isCurrentMonth: boolean;
   isSelected: boolean;
+  suppliers?: string[];
   batchCount?: number;
-  totalProducts?: number;
   onClick: (date: Date) => void;
 }
 
 /**
- * カレンダー日付セル
+ * カレンダー日付セル（日めくりカレンダー風）
  */
 const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
   date,
   isCurrentMonth,
   isSelected,
+  suppliers = [],
   batchCount = 0,
-  totalProducts = 0,
   onClick,
 }) => {
   const day = date.getDate();
   const dayOfWeek = getDay(date);
   const isSunday = dayOfWeek === 0;
   const isSaturday = dayOfWeek === 6;
-  const hasData = batchCount > 0;
+  const hasData = suppliers.length > 0;
 
   return (
     <Paper
       elevation={isSelected ? 4 : hasData ? 2 : 0}
       sx={{
         p: { xs: 0.5, sm: 1 },
-        minHeight: { xs: 60, sm: 80 },
-        cursor: 'pointer',
+        minHeight: { xs: 70, sm: 90, md: 100 },
+        cursor: hasData ? 'pointer' : 'default',
         backgroundColor: isSelected
           ? 'primary.light'
           : hasData
-          ? 'action.hover'
-          : 'background.paper',
-        opacity: isCurrentMonth ? 1 : 0.4,
+          ? 'background.paper'
+          : 'grey.50',
+        opacity: isCurrentMonth ? 1 : 0.3,
         border: isSelected ? '2px solid' : '1px solid',
-        borderColor: isSelected ? 'primary.main' : 'divider',
+        borderColor: isSelected ? 'primary.main' : hasData ? 'primary.light' : 'divider',
         transition: 'all 0.2s',
-        '&:hover': {
-          backgroundColor: isSelected ? 'primary.light' : 'action.selected',
-          elevation: 2,
-        },
+        display: 'flex',
+        flexDirection: 'column',
+        '&:hover': hasData ? {
+          backgroundColor: isSelected ? 'primary.light' : 'grey.100',
+          elevation: 3,
+          borderColor: 'primary.main',
+        } : {},
       }}
-      onClick={() => onClick(date)}
+      onClick={() => hasData && onClick(date)}
     >
-      <Typography
-        variant="body2"
+      {/* 日付ヘッダー（日めくりカレンダー風） */}
+      <Box
         sx={{
-          fontWeight: isSelected ? 700 : 400,
-          fontSize: { xs: '0.75rem', sm: '0.875rem' },
-          color: isSelected
-            ? 'primary.contrastText'
-            : isSunday
-            ? 'error.main'
-            : isSaturday
-            ? 'info.main'
-            : 'text.primary',
+          backgroundColor: hasData
+            ? isSelected
+              ? 'primary.main'
+              : isSunday
+              ? 'error.main'
+              : isSaturday
+              ? 'info.main'
+              : 'primary.main'
+            : 'grey.300',
+          color: 'white',
+          px: 1,
+          py: 0.25,
+          borderRadius: '4px 4px 0 0',
+          textAlign: 'center',
+          mb: 0.5,
         }}
       >
-        {day}
-      </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+          }}
+        >
+          {day}
+        </Typography>
+      </Box>
 
+      {/* 帳合先名表示 */}
       {hasData && (
-        <Box sx={{ mt: 0.5 }}>
-          <Chip
-            label={`${batchCount}件`}
-            size="small"
-            color={isSelected ? 'primary' : 'default'}
-            sx={{
-              fontSize: { xs: '0.55rem', sm: '0.65rem' },
-              height: { xs: 16, sm: 18 },
-            }}
-          />
-          {totalProducts > 0 && (
+        <Box
+          sx={{
+            flex: 1,
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+          }}
+        >
+          {suppliers.map((supplier, idx) => (
+            <Chip
+              key={idx}
+              label={supplier}
+              size="small"
+              sx={{
+                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                height: { xs: 18, sm: 20 },
+                backgroundColor: isSelected ? 'primary.light' : 'grey.200',
+                fontWeight: 500,
+                '& .MuiChip-label': {
+                  px: 0.5,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
+            />
+          ))}
+          {batchCount > suppliers.length && (
             <Typography
               variant="caption"
-              display="block"
-              color={isSelected ? 'primary.contrastText' : 'text.secondary'}
               sx={{
-                fontSize: { xs: '0.5rem', sm: '0.6rem' },
+                fontSize: { xs: '0.55rem', sm: '0.6rem' },
+                color: 'text.secondary',
+                textAlign: 'center',
                 mt: 0.25,
               }}
             >
-              {totalProducts}商品
+              他{batchCount - suppliers.length}件
             </Typography>
           )}
         </Box>
@@ -257,15 +293,21 @@ export const AllocationHistoryPage: React.FC = () => {
   }, [currentMonth]);
 
   /**
-   * 日付別サマリーをMapに変換
+   * 日付別サマリーをMapに変換（帳合先名を含む）
    */
   const summaryMap = useMemo(() => {
-    const map = new Map<string, { batchCount: number; totalProducts: number }>();
+    const map = new Map<string, { batchCount: number; suppliers: string[] }>();
     Object.entries(batchesByDate).forEach(([dateKey, dayBatches]) => {
-      const totalProducts = dayBatches.reduce((sum, batch) => sum + (batch.productCount || 0), 0);
+      // 各バッチから帳合先名を収集（重複を除外し、最大3件まで表示）
+      const supplierSet = new Set<string>();
+      dayBatches.forEach((batch) => {
+        batch.suppliers.forEach((supplier) => supplierSet.add(supplier));
+      });
+      const suppliers = Array.from(supplierSet).slice(0, 3);
+
       map.set(dateKey, {
         batchCount: dayBatches.length,
-        totalProducts,
+        suppliers,
       });
     });
     return map;
@@ -778,8 +820,8 @@ export const AllocationHistoryPage: React.FC = () => {
                         date={date}
                         isCurrentMonth={isCurrentMonth}
                         isSelected={isSelected}
+                        suppliers={summary?.suppliers}
                         batchCount={summary?.batchCount}
-                        totalProducts={summary?.totalProducts}
                         onClick={handleDateClick}
                       />
                     </Grid>
