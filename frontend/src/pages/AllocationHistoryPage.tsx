@@ -94,7 +94,6 @@ export const AllocationHistoryPage: React.FC = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<'productName' | 'totalDesc' | 'totalAsc'>('totalDesc');
   const [detailViewTab, setDetailViewTab] = useState<'grid' | 'pivot'>('grid');
-  const [pivotState, setPivotState] = useState<any>({});
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1018,13 +1017,15 @@ export const AllocationHistoryPage: React.FC = () => {
               ) : (
                 <PivotTableUI
                   data={pivotData}
-                  onChange={(s: any) => setPivotState(s)}
+                  onChange={() => {
+                    // ✅ 無限レンダリングを防ぐため、React state は更新しない
+                    // ピボットテーブルの状態は内部で管理される
+                  }}
                   rows={['商品名', '産地', '規格']}
                   cols={['店舗']}
                   vals={['数量']}
                   aggregatorName="Sum"
                   rendererName="Table"
-                  {...pivotState}
                 />
               )}
             </Box>
