@@ -19,10 +19,16 @@ import {
   DialogContent,
   DialogActions,
   Stack,
+  ToggleButtonGroup,
+  ToggleButton,
+  Badge,
+  Tooltip,
 } from '@mui/material';
-import { Visibility, Refresh, CalendarMonth, Delete } from '@mui/icons-material';
-import { format, subDays } from 'date-fns';
+import { Visibility, Refresh, CalendarMonth, Delete, ViewList, CalendarToday } from '@mui/icons-material';
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -40,6 +46,9 @@ export const AllocationHistoryPage: React.FC = () => {
   const [batches, setBatches] = useState<AllocationBatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 表示モード
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('calendar');
 
   // 詳細モーダル
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
@@ -165,6 +174,59 @@ export const AllocationHistoryPage: React.FC = () => {
     }
   };
 
+  /**
+   * 日付ごとにバッチをグループ化
+   */
+  const batchesByDate = batches.reduce((acc, batch) => {
+    const dateKey = batch.deliveryDate;
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(batch);
+    return acc;
+  }, {} as Record<string, AllocationBatch[]>);
+
+  /**
+   * 特定の日付のバッチ数を取得
+   */
+  const getBatchCountForDate = (date: Date): number => {
+    const dateKey = format(date, 'yyyy-MM-dd');
+    return batchesByDate[dateKey]?.length || 0;
+  };
+
+  /**
+   * 特定の日付の合計商品数を取得
+   */
+  const getTotalProductsForDate = (date: Date): number => {
+    const dateKey = format(date, 'yyyy-MM-dd');
+    const dayBatches = batchesByDate[dateKey] || [];
+    return dayBatches.reduce((sum, b) => sum + b.productCount, 0);
+  };
+
+  /**
+   * バッチを週ごとにグループ化
+   */
+  const batchesByWeek = batches.reduce((acc, batch) => {
+    const batchDate = parseISO(batch.deliveryDate);
+    const weekStart = startOfWeek(batchDate, { locale: ja, weekStartsOn: 0 }); // 日曜始まり
+    const weekKey = format(weekStart, 'yyyy-MM-dd');
+
+    if (!acc[weekKey]) {
+      acc[weekKey] = {
+        weekStart,
+        weekEnd: endOfWeek(batchDate, { locale: ja, weekStartsOn: 0 }),
+        batches: [],
+      };
+    }
+    acc[weekKey].batches.push(batch);
+    return acc;
+  }, {} as Record<string, { weekStart: Date; weekEnd: Date; batches: AllocationBatch[] }>);
+
+  // 週を新しい順にソート
+  const sortedWeeks = Object.values(batchesByWeek).sort((a, b) =>
+    b.weekStart.getTime() - a.weekStart.getTime()
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       {/* ヘッダー */}
@@ -178,14 +240,32 @@ export const AllocationHistoryPage: React.FC = () => {
           </Typography>
         </Box>
 
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={fetchHistory}
-          disabled={loading}
-        >
-          更新
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="calendar">
+              <CalendarToday fontSize="small" sx={{ mr: 0.5 }} />
+              カレンダー
+            </ToggleButton>
+            <ToggleButton value="table">
+              <ViewList fontSize="small" sx={{ mr: 0.5 }} />
+              リスト
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={fetchHistory}
+            disabled={loading}
+          >
+            更新
+          </Button>
+        </Stack>
       </Box>
 
       {/* エラー表示 */}
@@ -210,8 +290,103 @@ export const AllocationHistoryPage: React.FC = () => {
             配分表を生成して「履歴を保存」すると、ここに表示されます
           </Typography>
         </Paper>
+      ) : viewMode === 'calendar' ? (
+        /* カレンダー表示 */
+        <Paper sx={{ p: 3 }}>
+          <Box
+            sx={{
+              '.rdp': {
+                '--rdp-cell-size': '80px',
+                '--rdp-accent-color': '#1976d2',
+                '--rdp-background-color': '#e3f2fd',
+                margin: '0 auto',
+              },
+              '.rdp-day': {
+                height: '80px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '4px',
+                position: 'relative',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                },
+              },
+              '.rdp-day_selected': {
+                backgroundColor: '#e3f2fd !important',
+                border: '2px solid #1976d2',
+              },
+            }}
+          >
+            <DayPicker
+              mode="single"
+              locale={ja}
+              month={new Date()}
+              modifiers={{
+                hasAllocations: (date) => getBatchCountForDate(date) > 0,
+              }}
+              modifiersStyles={{
+                hasAllocations: {
+                  backgroundColor: '#e3f2fd',
+                  fontWeight: 'bold',
+                },
+              }}
+              components={{
+                DayContent: ({ date }) => {
+                  const batchCount = getBatchCountForDate(date);
+                  const productCount = getTotalProductsForDate(date);
+                  const dateKey = format(date, 'yyyy-MM-dd');
+                  const dayBatches = batchesByDate[dateKey] || [];
+
+                  return (
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        p: 0.5,
+                        cursor: batchCount > 0 ? 'pointer' : 'default',
+                      }}
+                      onClick={() => {
+                        if (dayBatches.length > 0) {
+                          // 最初のバッチの詳細を表示
+                          fetchBatchDetails(dayBatches[0]);
+                        }
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        {format(date, 'd')}
+                      </Typography>
+                      {batchCount > 0 && (
+                        <Box sx={{ textAlign: 'center', width: '100%' }}>
+                          <Chip
+                            label={`${batchCount}件`}
+                            size="small"
+                            color="primary"
+                            sx={{ mb: 0.5, fontSize: '0.7rem', height: '18px' }}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '0.65rem',
+                              color: 'text.secondary',
+                              display: 'block',
+                            }}
+                          >
+                            {productCount}品
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                },
+              }}
+            />
+          </Box>
+        </Paper>
       ) : (
-        /* 履歴一覧テーブル */
+        /* テーブル表示（週単位） */
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -231,68 +406,99 @@ export const AllocationHistoryPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {batches.map((batch) => (
-                <TableRow
-                  key={batch.id}
-                  hover
-                  sx={{
-                    '&:hover': {
-                      backgroundColor: 'action.hover',
-                    },
-                  }}
-                >
-                  <TableCell>
-                    <Chip
-                      icon={<CalendarMonth />}
-                      label={format(new Date(batch.deliveryDate), 'M月d日(E)', { locale: ja })}
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                      {batch.suppliers.map((supplier, idx) => (
-                        <Chip key={idx} label={supplier} size="small" />
-                      ))}
-                    </Stack>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" fontWeight={600}>
-                      {batch.productCount}品
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" fontWeight={600} color="primary">
-                      {batch.totalQuantity.toLocaleString()}個
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="caption" color="text.secondary">
-                      {batch.createdAt
-                        ? format(batch.createdAt, 'yyyy/MM/dd HH:mm')
-                        : '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={() => fetchBatchDetails(batch)}
-                      title="詳細を表示"
+              {sortedWeeks.map((week, weekIdx) => (
+                <React.Fragment key={weekIdx}>
+                  {/* 週ヘッダー */}
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      sx={{
+                        backgroundColor: 'grey.100',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        py: 1.5,
+                      }}
                     >
-                      <Visibility />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleOpenDeleteDialog(batch)}
-                      title="削除"
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <CalendarToday fontSize="small" color="primary" />
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          {format(week.weekStart, 'M月d日', { locale: ja })} 〜{' '}
+                          {format(week.weekEnd, 'M月d日(E)', { locale: ja })}
+                        </Typography>
+                        <Chip
+                          label={`${week.batches.length}件`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                  {/* 週内のバッチ */}
+                  {week.batches.map((batch) => (
+                    <TableRow
+                      key={batch.id}
+                      hover
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        },
+                      }}
                     >
-                      <Delete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                      <TableCell>
+                        <Chip
+                          icon={<CalendarMonth />}
+                          label={format(new Date(batch.deliveryDate), 'M月d日(E)', { locale: ja })}
+                          color="primary"
+                          variant="outlined"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                          {batch.suppliers.map((supplier, idx) => (
+                            <Chip key={idx} label={supplier} size="small" />
+                          ))}
+                        </Stack>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={600}>
+                          {batch.productCount}品
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={600} color="primary">
+                          {batch.totalQuantity.toLocaleString()}個
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {batch.createdAt
+                            ? format(batch.createdAt, 'yyyy/MM/dd HH:mm')
+                            : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          color="primary"
+                          size="small"
+                          onClick={() => fetchBatchDetails(batch)}
+                          title="詳細を表示"
+                        >
+                          <Visibility />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          onClick={() => handleOpenDeleteDialog(batch)}
+                          title="削除"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
