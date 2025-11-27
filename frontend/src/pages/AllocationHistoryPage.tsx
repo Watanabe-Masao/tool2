@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -23,8 +23,6 @@ import {
   ToggleButton,
   Card,
   CardContent,
-  Tabs,
-  Tab,
 } from '@mui/material';
 import {
   Visibility,
@@ -33,6 +31,9 @@ import {
   Delete,
   ViewList,
   CalendarToday,
+  Fullscreen,
+  FullscreenExit,
+  VisibilityOff,
 } from '@mui/icons-material';
 import {
   format,
@@ -50,8 +51,6 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
-import * as WebDataRocksReact from '@webdatarocks/react-webdatarocks';
-import '@webdatarocks/webdatarocks/webdatarocks.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -68,6 +67,8 @@ interface DetailGridRow {
   specification: string;
   totalDelivery: number;
   deliveryDate?: string; // 日付範囲選択時に使用
+  rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
+  groupKey?: string; // グループキー
   [key: string]: string | number | undefined;
 }
 
@@ -92,17 +93,22 @@ export const AllocationHistoryPage: React.FC = () => {
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null);
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [sortOrder, setSortOrder] = useState<'productName' | 'totalDesc' | 'totalAsc'>('totalDesc');
-  const [detailViewTab, setDetailViewTab] = useState<'grid' | 'pivot'>('grid');
+
+  // グループ化モード
+  type GroupMode = 'date' | 'product' | 'composite';
+  const [groupMode, setGroupMode] = useState<GroupMode>('product');
+  const [sortOrder, setSortOrder] = useState<'totalDesc' | 'totalAsc'>('totalDesc');
+
+  // 行の表示/非表示
+  const [hiddenRowIds, setHiddenRowIds] = useState<Set<string>>(new Set());
+
+  // フルスクリーンモード
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // WebDataRocks用のref（原則に従い1回だけ生成）
-  const pivotContainerRef = useRef<HTMLDivElement | null>(null);
-  const pivotInstanceRef = useRef<any>(null);
 
 
   /**
@@ -347,6 +353,32 @@ export const AllocationHistoryPage: React.FC = () => {
   // 日付範囲選択時のカラム定義
   const dateRangeColumns: GridColDef<DetailGridRow>[] = [
     {
+      field: 'actions',
+      headerName: '',
+      width: 40,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        // 合計行は非表示ボタンを表示しない
+        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return null;
+
+        return (
+          <IconButton
+            size="small"
+            onClick={() => {
+              const newHidden = new Set(hiddenRowIds);
+              newHidden.add(row.id);
+              setHiddenRowIds(newHidden);
+            }}
+            sx={{ p: 0.5 }}
+          >
+            <VisibilityOff fontSize="small" />
+          </IconButton>
+        );
+      },
+    },
+    {
       field: 'deliveryDate',
       headerName: '日付',
       width: isMobile ? 100 : 120,
@@ -355,9 +387,9 @@ export const AllocationHistoryPage: React.FC = () => {
       renderCell: (params) => {
         const dateStr = params.value as string;
         if (!dateStr) return '-';
-        if (dateStr === '合計') {
+        if (dateStr === '小計' || dateStr === '総合計') {
           return (
-            <Box sx={{ fontWeight: 700, color: 'primary.main' }}>
+            <Box sx={{ fontWeight: 700 }}>
               {dateStr}
             </Box>
           );
@@ -427,6 +459,29 @@ export const AllocationHistoryPage: React.FC = () => {
   // 単一バッチ選択時のカラム定義（店舗別）
   const singleBatchColumns: GridColDef<DetailGridRow>[] = [
     {
+      field: 'actions',
+      headerName: '',
+      width: 40,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        return (
+          <IconButton
+            size="small"
+            onClick={() => {
+              const newHidden = new Set(hiddenRowIds);
+              newHidden.add(row.id);
+              setHiddenRowIds(newHidden);
+            }}
+            sx={{ p: 0.5 }}
+          >
+            <VisibilityOff fontSize="small" />
+          </IconButton>
+        );
+      },
+    },
+    {
       field: 'productName',
       headerName: '品名',
       width: isMobile ? 100 : 150,
@@ -486,126 +541,274 @@ export const AllocationHistoryPage: React.FC = () => {
   ];
 
   /**
-   * 詳細モーダル用のDataGrid行データ作成
+   * 詳細モーダル用のDataGrid行データ作成（動的グループ化対応）
    */
-  // 日付範囲選択時の行データ（商品ごとにグループ化）
   const dateRangeRows: DetailGridRow[] = useMemo(() => {
     if (!selectedDateRange) return [];
 
     const rows: DetailGridRow[] = [];
-
-    // 商品ごとにグループ化（productName + origin + specification）
-    const productGroups = new Map<string, AllocationDetail[]>();
-
-    details.forEach(detail => {
-      const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
-      if (!productGroups.has(key)) {
-        productGroups.set(key, []);
-      }
-      productGroups.get(key)!.push(detail);
-    });
-
-    console.log('📦 Product groups:', productGroups.size);
-
-    // 選択範囲の全ての日付を生成
     const allDates = eachDayOfInterval({
       start: parseISO(selectedDateRange.start),
       end: parseISO(selectedDateRange.end),
     }).map(date => format(date, 'yyyy-MM-dd'));
 
-    // 商品グループと合計値のペアを作成
-    const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
-      const grandTotal = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
-      return { key, groupDetails, grandTotal };
-    });
+    // グランドトータル用の集計
+    const grandTotalsByStore: number[] = Array(STORE_DATA.length).fill(0);
+    let grandTotalQuantity = 0;
 
-    // ソート順に応じて商品グループをソート
-    if (sortOrder === 'productName') {
-      groupsWithTotals.sort((a, b) => {
-        const [nameA] = a.key.split('|');
-        const [nameB] = b.key.split('|');
-        return nameA.localeCompare(nameB, 'ja');
+    if (groupMode === 'date') {
+      // ========================================
+      // 日付ごとにグループ化
+      // ========================================
+      const dateGroups = new Map<string, AllocationDetail[]>();
+      details.forEach(detail => {
+        const dateKey = (detail as any).deliveryDate || '';
+        if (!dateGroups.has(dateKey)) {
+          dateGroups.set(dateKey, []);
+        }
+        dateGroups.get(dateKey)!.push(detail);
       });
-    } else if (sortOrder === 'totalDesc') {
-      groupsWithTotals.sort((a, b) => b.grandTotal - a.grandTotal);
-    } else if (sortOrder === 'totalAsc') {
-      groupsWithTotals.sort((a, b) => a.grandTotal - b.grandTotal);
-    }
 
-    // 各商品グループごとに行を生成
-    groupsWithTotals.forEach(({ key, groupDetails }) => {
-      const [productName, origin, specification] = key.split('|');
+      // 日付順にソート
+      const sortedDates = Array.from(dateGroups.keys()).sort();
 
-      // 合計用の配列を初期化
-      const totalsByStore: number[] = Array(STORE_DATA.length).fill(0);
-      let grandTotal = 0;
+      sortedDates.forEach(dateStr => {
+        const dateDetails = dateGroups.get(dateStr)!;
+        const subtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
+        let subtotalQuantity = 0;
 
-      // 各日付の行を生成
-      allDates.forEach(dateStr => {
-        const detailForDate = groupDetails.find(d => (d as any).deliveryDate === dateStr);
+        // 各商品の行を追加
+        dateDetails.forEach((detail, idx) => {
+          const row: DetailGridRow = {
+            id: `${dateStr}-${idx}`,
+            productName: detail.productName,
+            origin: detail.origin,
+            specification: detail.specification,
+            totalDelivery: detail.totalDelivery,
+            deliveryDate: dateStr,
+            rowType: 'data',
+          };
 
-        if (detailForDate) {
-          // データがある日付
+          detail.storeAllocations.forEach((qty, storeIdx) => {
+            if (storeIdx < STORE_DATA.length) {
+              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+              subtotalByStore[storeIdx] += qty;
+              grandTotalsByStore[storeIdx] += qty;
+            }
+          });
+
+          subtotalQuantity += detail.totalDelivery;
+          grandTotalQuantity += detail.totalDelivery;
+          rows.push(row);
+        });
+
+        // 日付ごとの小計行
+        const subtotalRow: DetailGridRow = {
+          id: `subtotal-${dateStr}`,
+          productName: `${format(parseISO(dateStr), 'M月d日(E)', { locale: ja })} 小計`,
+          origin: '',
+          specification: '',
+          totalDelivery: subtotalQuantity,
+          deliveryDate: dateStr,
+          rowType: 'subtotal',
+          groupKey: dateStr,
+        };
+
+        subtotalByStore.forEach((total, storeIdx) => {
+          if (storeIdx < STORE_DATA.length) {
+            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
+          }
+        });
+
+        rows.push(subtotalRow);
+      });
+
+    } else if (groupMode === 'product') {
+      // ========================================
+      // 商品ごとにグループ化
+      // ========================================
+      const productGroups = new Map<string, AllocationDetail[]>();
+      details.forEach(detail => {
+        const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
+        if (!productGroups.has(key)) {
+          productGroups.set(key, []);
+        }
+        productGroups.get(key)!.push(detail);
+      });
+
+      // 商品グループをソート
+      const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
+        const total = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
+        return { key, groupDetails, total };
+      });
+
+      if (sortOrder === 'totalDesc') {
+        groupsWithTotals.sort((a, b) => b.total - a.total);
+      } else if (sortOrder === 'totalAsc') {
+        groupsWithTotals.sort((a, b) => a.total - b.total);
+      }
+
+      groupsWithTotals.forEach(({ key, groupDetails }) => {
+        const [productName, origin, specification] = key.split('|');
+        const subtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
+        let subtotalQuantity = 0;
+
+        // 各日付の行を追加
+        allDates.forEach(dateStr => {
+          const detailForDate = groupDetails.find(d => (d as any).deliveryDate === dateStr);
+          if (detailForDate) {
+            const row: DetailGridRow = {
+              id: `${key}-${dateStr}`,
+              productName,
+              origin,
+              specification,
+              totalDelivery: detailForDate.totalDelivery,
+              deliveryDate: dateStr,
+              rowType: 'data',
+            };
+
+            detailForDate.storeAllocations.forEach((qty, storeIdx) => {
+              if (storeIdx < STORE_DATA.length) {
+                row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+                subtotalByStore[storeIdx] += qty;
+                grandTotalsByStore[storeIdx] += qty;
+              }
+            });
+
+            subtotalQuantity += detailForDate.totalDelivery;
+            grandTotalQuantity += detailForDate.totalDelivery;
+            rows.push(row);
+          }
+        });
+
+        // 商品ごとの小計行
+        const subtotalRow: DetailGridRow = {
+          id: `subtotal-${key}`,
+          productName: `${productName} 小計`,
+          origin,
+          specification,
+          totalDelivery: subtotalQuantity,
+          deliveryDate: '小計',
+          rowType: 'subtotal',
+          groupKey: key,
+        };
+
+        subtotalByStore.forEach((total, storeIdx) => {
+          if (storeIdx < STORE_DATA.length) {
+            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
+          }
+        });
+
+        rows.push(subtotalRow);
+      });
+
+    } else {
+      // ========================================
+      // 複合グループ化（商品 → 日付）
+      // ========================================
+      const productGroups = new Map<string, AllocationDetail[]>();
+      details.forEach(detail => {
+        const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
+        if (!productGroups.has(key)) {
+          productGroups.set(key, []);
+        }
+        productGroups.get(key)!.push(detail);
+      });
+
+      const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
+        const total = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
+        return { key, groupDetails, total };
+      });
+
+      if (sortOrder === 'totalDesc') {
+        groupsWithTotals.sort((a, b) => b.total - a.total);
+      } else {
+        groupsWithTotals.sort((a, b) => a.total - b.total);
+      }
+
+      groupsWithTotals.forEach(({ key, groupDetails }) => {
+        const [productName, origin, specification] = key.split('|');
+        const productSubtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
+        let productSubtotalQuantity = 0;
+
+        // 日付ごとにサブグループ化
+        const dateGroups = new Map<string, AllocationDetail>();
+        groupDetails.forEach(detail => {
+          const dateKey = (detail as any).deliveryDate || '';
+          dateGroups.set(dateKey, detail);
+        });
+
+        const sortedDates = Array.from(dateGroups.keys()).sort();
+
+        sortedDates.forEach(dateStr => {
+          const detail = dateGroups.get(dateStr)!;
           const row: DetailGridRow = {
             id: `${key}-${dateStr}`,
             productName,
             origin,
             specification,
-            totalDelivery: detailForDate.totalDelivery,
+            totalDelivery: detail.totalDelivery,
             deliveryDate: dateStr,
+            rowType: 'data',
           };
 
-          // 各店舗の配分数量を追加
-          detailForDate.storeAllocations.forEach((qty, storeIdx) => {
+          detail.storeAllocations.forEach((qty, storeIdx) => {
             if (storeIdx < STORE_DATA.length) {
               row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-              totalsByStore[storeIdx] += qty;
+              productSubtotalByStore[storeIdx] += qty;
+              grandTotalsByStore[storeIdx] += qty;
             }
           });
 
-          grandTotal += detailForDate.totalDelivery;
+          productSubtotalQuantity += detail.totalDelivery;
+          grandTotalQuantity += detail.totalDelivery;
           rows.push(row);
-        }
-      });
-
-      // 合計行を追加
-      const totalRow: DetailGridRow = {
-        id: `${key}-total`,
-        productName,
-        origin,
-        specification,
-        totalDelivery: grandTotal,
-        deliveryDate: '合計',
-      };
-
-      // 各店舗の合計を追加
-      totalsByStore.forEach((total, storeIdx) => {
-        if (storeIdx < STORE_DATA.length) {
-          totalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
-        }
-      });
-
-      rows.push(totalRow);
-    });
-
-    // データがない日付のみの表示（全商品にデータがない日付）
-    allDates.forEach(dateStr => {
-      const hasData = details.some(d => (d as any).deliveryDate === dateStr);
-      if (!hasData) {
-        rows.push({
-          id: `empty-${dateStr}`,
-          productName: '-',
-          origin: '-',
-          specification: '-',
-          totalDelivery: 0,
-          deliveryDate: dateStr,
         });
+
+        // 商品ごとの小計行
+        const subtotalRow: DetailGridRow = {
+          id: `subtotal-${key}`,
+          productName: `${productName} 小計`,
+          origin,
+          specification,
+          totalDelivery: productSubtotalQuantity,
+          deliveryDate: '小計',
+          rowType: 'subtotal',
+          groupKey: key,
+        };
+
+        productSubtotalByStore.forEach((total, storeIdx) => {
+          if (storeIdx < STORE_DATA.length) {
+            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
+          }
+        });
+
+        rows.push(subtotalRow);
+      });
+    }
+
+    // グランドトータル行を追加
+    const grandTotalRow: DetailGridRow = {
+      id: 'grandtotal',
+      productName: '総合計',
+      origin: '',
+      specification: '',
+      totalDelivery: grandTotalQuantity,
+      deliveryDate: '総合計',
+      rowType: 'grandtotal',
+    };
+
+    grandTotalsByStore.forEach((total, storeIdx) => {
+      if (storeIdx < STORE_DATA.length) {
+        grandTotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
       }
     });
 
-    console.log('📋 Generated rows:', rows.length);
+    rows.push(grandTotalRow);
+
+    console.log('📋 Generated rows:', rows.length, 'Group mode:', groupMode);
     return rows;
-  }, [selectedDateRange, details, sortOrder]);
+  }, [selectedDateRange, details, groupMode, sortOrder]);
 
   // 単一バッチ選択時の行データ
   const singleBatchRows: DetailGridRow[] = useMemo(() => {
@@ -635,123 +838,6 @@ export const AllocationHistoryPage: React.FC = () => {
   const detailColumns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
   const detailRows = selectedDateRange ? dateRangeRows : singleBatchRows;
 
-  /**
-   * WebDataRocks用のピボットデータ（フラット形式）
-   */
-  const pivotData = useMemo(() => {
-    if (!selectedDateRange) return [];
-
-    const flatData: any[] = [];
-
-    details.forEach(detail => {
-      const deliveryDate = (detail as any).deliveryDate || '';
-
-      // 各店舗ごとに行を作成
-      detail.storeAllocations.forEach((quantity, storeIdx) => {
-        if (storeIdx < STORE_DATA.length && quantity > 0) {
-          flatData.push({
-            '日付': deliveryDate ? format(parseISO(deliveryDate), 'yyyy/MM/dd(E)', { locale: ja }) : '-',
-            '商品名': detail.productName,
-            '産地': detail.origin,
-            '規格': detail.specification,
-            '店舗': `${STORE_DATA[storeIdx].code} ${STORE_DATA[storeIdx].name}`,
-            '店舗コード': STORE_DATA[storeIdx].code,
-            '数量': quantity,
-          });
-        }
-      });
-    });
-
-    return flatData;
-  }, [selectedDateRange, details]);
-
-  /**
-   * WebDataRocks用のレポート設定（原則に従いmemoize）
-   */
-  const pivotReport = useMemo(() => {
-    return {
-      dataSource: {
-        data: pivotData,
-      },
-      slice: {
-        rows: [
-          { uniqueName: '日付' },
-          { uniqueName: '商品名' },
-          { uniqueName: '産地' },
-          { uniqueName: '規格' },
-        ],
-        columns: [
-          { uniqueName: '店舗' },
-        ],
-        measures: [
-          {
-            uniqueName: '数量',
-            aggregation: 'sum',
-          },
-        ],
-      },
-      options: {
-        grid: {
-          type: 'flat',
-          showTotals: 'on',
-          showGrandTotals: 'on',
-        },
-      },
-      formats: [
-        {
-          name: '',
-          thousandsSeparator: ',',
-          decimalPlaces: 0,
-        },
-      ],
-    };
-  }, [pivotData]);
-
-  /**
-   * WebDataRocks初期化（原則1: インスタンス生成は1回だけ）
-   * ピボットタブが表示されたときに初期化
-   */
-  useEffect(() => {
-    // ピボットタブが選択されていない、またはコンテナがない場合は何もしない
-    if (detailViewTab !== 'pivot') return;
-    if (!pivotContainerRef.current) return;
-    if (pivotInstanceRef.current) return; // すでに作成済みなら何もしない
-
-    console.log('🔧 WebDataRocks初期化開始');
-
-    // ✅ 初回表示時にだけインスタンス生成
-    pivotInstanceRef.current = new (WebDataRocksReact as any).WebDataRocks({
-      container: pivotContainerRef.current,
-      toolbar: true,
-      report: pivotReport,
-      height: 500,
-      width: '100%',
-    });
-
-    console.log('✅ WebDataRocksインスタンス生成完了');
-  }, [detailViewTab]); // ピボットタブ選択時にのみチェック
-
-  /**
-   * モーダルクローズ時のクリーンアップ
-   */
-  useEffect(() => {
-    // モーダルが閉じられたらインスタンスを破棄
-    if (!selectedBatch && !selectedDateRange && pivotInstanceRef.current) {
-      console.log('🧹 WebDataRocksクリーンアップ（モーダルクローズ）');
-      pivotInstanceRef.current.dispose();
-      pivotInstanceRef.current = null;
-    }
-  }, [selectedBatch, selectedDateRange]);
-
-  /**
-   * WebDataRocksレポート更新（原則2: インスタンスのメソッドで更新）
-   */
-  useEffect(() => {
-    if (pivotInstanceRef.current && pivotReport && detailViewTab === 'pivot') {
-      console.log('🔄 WebDataRocksレポート更新');
-      pivotInstanceRef.current.setReport(pivotReport);
-    }
-  }, [pivotReport, detailViewTab]); // report propが変わったときだけpivotに反映
 
 
   return (
@@ -1032,60 +1118,92 @@ export const AllocationHistoryPage: React.FC = () => {
         onClose={handleCloseDetails}
         maxWidth="xl"
         fullWidth
-        fullScreen={window.innerWidth < 600}
+        fullScreen={isFullScreen || window.innerWidth < 600}
       >
-        <DialogTitle sx={{ fontWeight: 600 }}>
-          {selectedDateRange ? '複数日付の配分履歴' : '配分履歴詳細'}
-          {selectedBatch && (
-            <Typography variant="subtitle2" color="text.secondary">
-              納品日: {format(new Date(selectedBatch.deliveryDate), 'yyyy年M月d日(E)', { locale: ja })}
-            </Typography>
-          )}
-          {selectedDateRange && (
-            <Typography variant="subtitle2" color="text.secondary">
-              期間: {format(parseISO(selectedDateRange.start), 'yyyy年M月d日(E)', { locale: ja })} 〜{' '}
-              {format(parseISO(selectedDateRange.end), 'yyyy年M月d日(E)', { locale: ja })}
-            </Typography>
-          )}
+        <DialogTitle sx={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            {selectedDateRange ? '複数日付の配分履歴' : '配分履歴詳細'}
+            {selectedBatch && (
+              <Typography variant="subtitle2" color="text.secondary">
+                納品日: {format(new Date(selectedBatch.deliveryDate), 'yyyy年M月d日(E)', { locale: ja })}
+              </Typography>
+            )}
+            {selectedDateRange && (
+              <Typography variant="subtitle2" color="text.secondary">
+                期間: {format(parseISO(selectedDateRange.start), 'yyyy年M月d日(E)', { locale: ja })} 〜{' '}
+                {format(parseISO(selectedDateRange.end), 'yyyy年M月d日(E)', { locale: ja })}
+              </Typography>
+            )}
+          </Box>
+
+          {/* フルスクリーンボタン */}
+          <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
+            {isFullScreen ? <FullscreenExit /> : <Fullscreen />}
+          </IconButton>
         </DialogTitle>
 
-        {/* タブ選択（日付範囲選択時のみ） */}
+        {/* グループ化とソート選択（日付範囲選択時のみ） */}
         {selectedDateRange && (
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs
-              value={detailViewTab}
-              onChange={(_, newTab) => setDetailViewTab(newTab)}
-              aria-label="詳細表示タブ"
-            >
-              <Tab label="データグリッド" value="grid" />
-              <Tab label="ピボット分析" value="pivot" />
-            </Tabs>
-          </Box>
-        )}
-
-        {/* ソート選択（データグリッドタブのみ） */}
-        {selectedDateRange && detailViewTab === 'grid' && (
           <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
-                表示順:
-              </Typography>
-              <ToggleButtonGroup
-                value={sortOrder}
-                exclusive
-                onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
-                size="small"
-              >
-                <ToggleButton value="totalDesc">
-                  配分量の多い順
-                </ToggleButton>
-                <ToggleButton value="totalAsc">
-                  配分量の少ない順
-                </ToggleButton>
-                <ToggleButton value="productName">
-                  商品名順
-                </ToggleButton>
-              </ToggleButtonGroup>
+            <Stack spacing={2}>
+              {/* グループ化モード */}
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
+                    グループ化:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={groupMode}
+                    exclusive
+                    onChange={(_, newMode) => newMode && setGroupMode(newMode)}
+                    size="small"
+                  >
+                    <ToggleButton value="date">
+                      日付ごと
+                    </ToggleButton>
+                    <ToggleButton value="product">
+                      商品ごと
+                    </ToggleButton>
+                    <ToggleButton value="composite">
+                      複合
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+
+                {/* 非表示行を再表示 */}
+                {hiddenRowIds.size > 0 && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Visibility />}
+                    onClick={() => setHiddenRowIds(new Set())}
+                  >
+                    すべて表示 ({hiddenRowIds.size}件非表示中)
+                  </Button>
+                )}
+              </Stack>
+
+              {/* ソート順（商品/複合グループのみ） */}
+              {(groupMode === 'product' || groupMode === 'composite') && (
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
+                    並び順:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={sortOrder}
+                    exclusive
+                    onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
+                    size="small"
+                  >
+                    <ToggleButton value="totalDesc">
+                      配分量の多い順
+                    </ToggleButton>
+                    <ToggleButton value="totalAsc">
+                      配分量の少ない順
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+              )}
             </Stack>
           </Box>
         )}
@@ -1099,28 +1217,23 @@ export const AllocationHistoryPage: React.FC = () => {
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">詳細データがありません</Typography>
             </Box>
-          ) : selectedDateRange && detailViewTab === 'pivot' ? (
-            /* ピボットテーブル表示（WebDataRocks） */
-            <Box sx={{ height: 'auto', width: '100%', p: 2, overflow: 'auto' }}>
-              {pivotData.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                  <Typography color="text.secondary">ピボット分析用のデータがありません</Typography>
-                </Box>
-              ) : (
-                <div ref={pivotContainerRef} style={{ width: '100%', height: '500px' }} />
-              )}
-            </Box>
           ) : (
             /* データグリッド表示 */
-            <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
+            <Box sx={{ height: isFullScreen ? 'calc(100vh - 250px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
               <DataGrid
-                rows={detailRows}
+                rows={detailRows.filter(row => !hiddenRowIds.has(row.id))}
                 columns={detailColumns}
                 disableRowSelectionOnClick
                 disableColumnFilter
                 disableColumnSelector
                 disableDensitySelector
                 hideFooter
+                getRowClassName={(params) => {
+                  const row = params.row as DetailGridRow;
+                  if (row.rowType === 'grandtotal') return 'row-grandtotal';
+                  if (row.rowType === 'subtotal') return 'row-subtotal';
+                  return '';
+                }}
                 sx={{
                   border: 'none',
                   '& .MuiDataGrid-cell': {
@@ -1137,6 +1250,27 @@ export const AllocationHistoryPage: React.FC = () => {
                     whiteSpace: 'pre-wrap',
                     lineHeight: 1.2,
                     fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                  },
+                  // 小計行のスタイル
+                  '& .row-subtotal': {
+                    backgroundColor: '#e3f2fd !important',
+                    fontWeight: 600,
+                    '& .MuiDataGrid-cell': {
+                      color: '#1565c0',
+                      borderTop: '2px solid #1976d2',
+                      borderBottom: '1px solid #1976d2',
+                    },
+                  },
+                  // 総合計行のスタイル
+                  '& .row-grandtotal': {
+                    backgroundColor: '#1976d2 !important',
+                    fontWeight: 700,
+                    '& .MuiDataGrid-cell': {
+                      color: '#ffffff',
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                      borderTop: '3px solid #0d47a1',
+                      borderBottom: '3px solid #0d47a1',
+                    },
                   },
                 }}
               />
