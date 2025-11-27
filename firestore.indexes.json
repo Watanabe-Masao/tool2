@@ -153,7 +153,7 @@
       ]
     },
     {
-      "collectionGroup": "allocation_history_batches",
+      "collectionGroup": "allocation_batches",
       "queryScope": "COLLECTION",
       "fields": [
         {
