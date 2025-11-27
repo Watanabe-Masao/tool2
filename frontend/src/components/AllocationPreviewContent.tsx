@@ -22,6 +22,7 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { StoreStatisticsModal } from '@/components/modals/StoreStatisticsModal';
+import { HistoryAllocationModal, type StoreRatio } from '@/components/modals/HistoryAllocationModal';
 import { OrderService } from '@/services/order/OrderService';
 import type { AllocationMethod } from '@/services/order/OrderService';
 import type { StoreSettings } from '@/types/storeSettings';
@@ -131,6 +132,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const isGenerationComplete = Boolean(pdfFilename);
 
@@ -219,6 +221,38 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       });
     });
   }, [formData.products, lockedStores, onAllocationChange, storeSettings, pastAllocations]);
+
+  /**
+   * 履歴ベース自動配分を実行（パターン方式）
+   */
+  const handleHistoryAllocate = useCallback((storeRatios: StoreRatio[]) => {
+    if (!onAllocationChange) return;
+
+    formData.products.forEach((product, productIndex) => {
+      // ロック済み店舗の現在値を取得
+      const productLockedStores = lockedStores.get(productIndex) || new Set();
+      const lockedAllocations = new Map<string, number>();
+
+      productLockedStores.forEach((storeCode) => {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+        if (storeIndex >= 0) {
+          lockedAllocations.set(storeCode, product.storeAllocations[storeIndex] || 0);
+        }
+      });
+
+      // パターン方式で配分
+      const result = OrderService.calculatePatternBasedAllocation(
+        product.totalDelivery,
+        storeRatios.map((sr) => ({ storeCode: sr.storeCode, ratio: sr.ratio })),
+        lockedAllocations
+      );
+
+      // 各店舗の配分を更新
+      result.allocations.forEach((qty, storeIndex) => {
+        onAllocationChange(productIndex, storeIndex, qty);
+      });
+    });
+  }, [formData.products, lockedStores, onAllocationChange]);
 
   /**
    * 行データを生成
@@ -633,19 +667,17 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                       />
                     </MenuItem>
                     <MenuItem
-                      onClick={() => handleAutoAllocate('history')}
-                      disabled={!pastAllocations || pastAllocations.length === 0}
+                      onClick={() => {
+                        setAutoAllocateMenuAnchor(null);
+                        setShowHistoryModal(true);
+                      }}
                     >
                       <ListItemIcon>
                         <History fontSize="small" />
                       </ListItemIcon>
                       <ListItemText
-                        primary="過去履歴で配分"
-                        secondary={
-                          pastAllocations && pastAllocations.length > 0
-                            ? `過去${pastAllocations.length}件の配分パターンを参考`
-                            : '過去の配分履歴がありません'
-                        }
+                        primary="履歴から配分..."
+                        secondary="期間と条件を指定して配分"
                       />
                     </MenuItem>
                   </Menu>
@@ -858,6 +890,22 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         open={showStatistics}
         onClose={() => setShowStatistics(false)}
         formData={formData}
+      />
+
+      {/* 履歴ベース自動配分モーダル */}
+      <HistoryAllocationModal
+        open={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        onApply={handleHistoryAllocate}
+        currentProduct={
+          formData.products.length > 0
+            ? {
+                name: formData.products[0].name,
+                origin: formData.products[0].origin,
+                categoryCode: formData.products[0].categoryCode,
+              }
+            : undefined
+        }
       />
     </Box>
   );

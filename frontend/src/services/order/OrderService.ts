@@ -599,4 +599,163 @@ export class OrderService {
       success: true,
     };
   }
+
+  /**
+   * パターン方式による配分計算
+   *
+   * 店舗別の比率からパターン配列を生成し、1個ずつ配分することで
+   * 端数を出さずに正確な配分を行います。
+   *
+   * @param totalDelivery - 総納品数
+   * @param storeRatios - 店舗別の比率配列 [{ storeCode, ratio }, ...]
+   * @param lockedAllocations - ロック済み店舗の配分（店舗コード → 数量）
+   * @returns 配分結果
+   *
+   * @example
+   * ```typescript
+   * const ratios = [
+   *   { storeCode: '01', ratio: 0.20 },
+   *   { storeCode: '02', ratio: 0.30 },
+   *   // ...
+   * ];
+   * const result = OrderService.calculatePatternBasedAllocation(100, ratios);
+   * // → 店舗01: 20個, 店舗02: 30個, ...
+   * ```
+   */
+  static calculatePatternBasedAllocation(
+    totalDelivery: number,
+    storeRatios: { storeCode: string; ratio: number }[],
+    lockedAllocations: Map<string, number> = new Map()
+  ): AllocationResult {
+    const allocations = new Array(STORE_DATA.length).fill(0);
+
+    if (totalDelivery <= 0) {
+      return {
+        allocations,
+        method: 'history',
+        success: true,
+      };
+    }
+
+    // 1. ロック済み店舗の値をセット
+    let lockedTotal = 0;
+    lockedAllocations.forEach((qty, storeCode) => {
+      const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+      if (storeIndex >= 0) {
+        allocations[storeIndex] = qty;
+        lockedTotal += qty;
+      }
+    });
+
+    // ロック済みの合計が総納品数を超えている場合はエラー
+    if (lockedTotal > totalDelivery) {
+      return {
+        allocations: new Array(STORE_DATA.length).fill(0),
+        method: 'history',
+        success: false,
+        error: 'ロック済み店舗の合計が総納品数を超えています',
+      };
+    }
+
+    // 2. 残りの配分数量
+    const remainingQty = totalDelivery - lockedTotal;
+
+    if (remainingQty === 0) {
+      return {
+        allocations,
+        method: 'history',
+        success: true,
+      };
+    }
+
+    // 3. ロックされていない店舗の比率を再計算
+    const unlockedRatios: { storeCode: string; storeIndex: number; ratio: number }[] = [];
+    let unlockedRatioSum = 0;
+
+    storeRatios.forEach((sr) => {
+      if (!lockedAllocations.has(sr.storeCode)) {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === sr.storeCode);
+        if (storeIndex >= 0 && sr.ratio > 0) {
+          unlockedRatios.push({
+            storeCode: sr.storeCode,
+            storeIndex,
+            ratio: sr.ratio,
+          });
+          unlockedRatioSum += sr.ratio;
+        }
+      }
+    });
+
+    // 有効な店舗がない場合
+    if (unlockedRatios.length === 0 || unlockedRatioSum === 0) {
+      // 均等配分にフォールバック
+      const unlockedIndices: number[] = [];
+      STORE_DATA.forEach((store, index) => {
+        if (!lockedAllocations.has(store.code)) {
+          unlockedIndices.push(index);
+        }
+      });
+
+      if (unlockedIndices.length > 0) {
+        const baseAmount = Math.floor(remainingQty / unlockedIndices.length);
+        const remainder = remainingQty % unlockedIndices.length;
+
+        unlockedIndices.forEach((index, i) => {
+          allocations[index] = baseAmount + (i < remainder ? 1 : 0);
+        });
+      }
+
+      return {
+        allocations,
+        method: 'history',
+        success: true,
+      };
+    }
+
+    // 4. 正規化された比率を計算
+    const normalizedRatios = unlockedRatios.map((ur) => ({
+      ...ur,
+      normalizedRatio: ur.ratio / unlockedRatioSum,
+    }));
+
+    // 5. パターン配列を生成（100個周期を基本とし、比率に応じて調整）
+    const patternLength = 100;
+    const pattern: number[] = []; // storeIndexの配列
+
+    // 各店舗の「累積すべき数」を追跡
+    const cumulativeTarget: number[] = normalizedRatios.map(() => 0);
+    const cumulativeActual: number[] = normalizedRatios.map(() => 0);
+
+    for (let i = 0; i < patternLength; i++) {
+      // 各店舗の「遅れ」を計算（目標 - 実績）
+      let maxDebt = -Infinity;
+      let maxDebtIndex = 0;
+
+      normalizedRatios.forEach((nr, idx) => {
+        cumulativeTarget[idx] = nr.normalizedRatio * (i + 1);
+        const debt = cumulativeTarget[idx] - cumulativeActual[idx];
+        if (debt > maxDebt) {
+          maxDebt = debt;
+          maxDebtIndex = idx;
+        }
+      });
+
+      // 最も遅れている店舗を選択
+      pattern.push(normalizedRatios[maxDebtIndex].storeIndex);
+      cumulativeActual[maxDebtIndex]++;
+    }
+
+    // 6. パターンを使って配分
+    for (let i = 0; i < remainingQty; i++) {
+      const patternIndex = i % patternLength;
+      const storeIndex = pattern[patternIndex];
+      allocations[storeIndex]++;
+    }
+
+    return {
+      allocations,
+      method: 'history',
+      success: true,
+    };
+  }
 }
