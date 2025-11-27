@@ -345,6 +345,13 @@ export const AllocationHistoryPage: React.FC = () => {
       renderCell: (params) => {
         const dateStr = params.value as string;
         if (!dateStr) return '-';
+        if (dateStr === '合計') {
+          return (
+            <Box sx={{ fontWeight: 700, color: 'primary.main' }}>
+              {dateStr}
+            </Box>
+          );
+        }
         return format(parseISO(dateStr), 'M月d日(E)', { locale: ja });
       },
     },
@@ -471,11 +478,24 @@ export const AllocationHistoryPage: React.FC = () => {
   /**
    * 詳細モーダル用のDataGrid行データ作成
    */
-  // 日付範囲選択時の行データ
+  // 日付範囲選択時の行データ（商品ごとにグループ化）
   const dateRangeRows: DetailGridRow[] = useMemo(() => {
     if (!selectedDateRange) return [];
 
     const rows: DetailGridRow[] = [];
+
+    // 商品ごとにグループ化（productName + origin + specification）
+    const productGroups = new Map<string, AllocationDetail[]>();
+
+    details.forEach(detail => {
+      const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
+      if (!productGroups.has(key)) {
+        productGroups.set(key, []);
+      }
+      productGroups.get(key)!.push(detail);
+    });
+
+    console.log('📦 Product groups:', productGroups.size);
 
     // 選択範囲の全ての日付を生成
     const allDates = eachDayOfInterval({
@@ -483,15 +503,66 @@ export const AllocationHistoryPage: React.FC = () => {
       end: parseISO(selectedDateRange.end),
     }).map(date => format(date, 'yyyy-MM-dd'));
 
-    console.log('📅 All dates in range:', allDates);
+    // 各商品グループごとに行を生成
+    productGroups.forEach((groupDetails, key) => {
+      const [productName, origin, specification] = key.split('|');
 
-    // 各日付ごとに行を生成
+      // 合計用の配列を初期化
+      const totalsByStore: number[] = Array(STORE_DATA.length).fill(0);
+      let grandTotal = 0;
+
+      // 各日付の行を生成
+      allDates.forEach(dateStr => {
+        const detailForDate = groupDetails.find(d => (d as any).deliveryDate === dateStr);
+
+        if (detailForDate) {
+          // データがある日付
+          const row: DetailGridRow = {
+            id: `${key}-${dateStr}`,
+            productName,
+            origin,
+            specification,
+            totalDelivery: detailForDate.totalDelivery,
+            deliveryDate: dateStr,
+          };
+
+          // 各店舗の配分数量を追加
+          detailForDate.storeAllocations.forEach((qty, storeIdx) => {
+            if (storeIdx < STORE_DATA.length) {
+              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
+              totalsByStore[storeIdx] += qty;
+            }
+          });
+
+          grandTotal += detailForDate.totalDelivery;
+          rows.push(row);
+        }
+      });
+
+      // 合計行を追加
+      const totalRow: DetailGridRow = {
+        id: `${key}-total`,
+        productName,
+        origin,
+        specification,
+        totalDelivery: grandTotal,
+        deliveryDate: '合計',
+      };
+
+      // 各店舗の合計を追加
+      totalsByStore.forEach((total, storeIdx) => {
+        if (storeIdx < STORE_DATA.length) {
+          totalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
+        }
+      });
+
+      rows.push(totalRow);
+    });
+
+    // データがない日付のみの表示（全商品にデータがない日付）
     allDates.forEach(dateStr => {
-      // その日付のdetailsを取得
-      const detailsForDate = details.filter(d => (d as any).deliveryDate === dateStr);
-
-      if (detailsForDate.length === 0) {
-        // データがない日付も表示
+      const hasData = details.some(d => (d as any).deliveryDate === dateStr);
+      if (!hasData) {
         rows.push({
           id: `empty-${dateStr}`,
           productName: '-',
@@ -499,27 +570,6 @@ export const AllocationHistoryPage: React.FC = () => {
           specification: '-',
           totalDelivery: 0,
           deliveryDate: dateStr,
-        });
-      } else {
-        // その日付の各商品を行として追加
-        detailsForDate.forEach((detail, idx) => {
-          const row: DetailGridRow = {
-            id: `${dateStr}-${detail.id || idx}`,
-            productName: detail.productName,
-            origin: detail.origin,
-            specification: detail.specification,
-            totalDelivery: detail.totalDelivery,
-            deliveryDate: dateStr,
-          };
-
-          // 各店舗の配分数量を追加
-          detail.storeAllocations.forEach((qty, storeIdx) => {
-            if (storeIdx < STORE_DATA.length) {
-              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-            }
-          });
-
-          rows.push(row);
         });
       }
     });
