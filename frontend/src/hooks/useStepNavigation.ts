@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -75,6 +75,22 @@ export const useStepNavigation = ({
   handlePrevStep,
   handleNextStep,
 }: UseStepNavigationParams) => {
+  // NOTE: 関数をrefで保持して依存配列から除外（無限ループ防止）
+  // これらの関数はactiveStepに依存するため、毎回新しい参照が作成される
+  // refを使うことで、依存配列の変更による再実行を防ぐ
+  const handlePrevStepRef = useRef(handlePrevStep);
+  const handleNextStepRef = useRef(handleNextStep);
+  const setActiveProductIndexRef = useRef(setActiveProductIndex);
+  const getValuesRef = useRef(getValues);
+
+  // 最新の参照を保持
+  useEffect(() => {
+    handlePrevStepRef.current = handlePrevStep;
+    handleNextStepRef.current = handleNextStep;
+    setActiveProductIndexRef.current = setActiveProductIndex;
+    getValuesRef.current = getValues;
+  });
+
   /**
    * NavigationContextを更新（ステップナビゲーション表示状態）
    * React#185対策: formDataを直接監視せず、getValues()を使用
@@ -87,16 +103,16 @@ export const useStepNavigation = ({
       // フォーム入力中はステップナビゲーションをアクティブに
       // ステップ2-4では商品インデックスと商品切り替えハンドラーも渡す
       const isProductMode = activeStep >= 1 && activeStep <= 3;
-      const currentFormData = getValues();
+      const currentFormData = getValuesRef.current();
       setStepNavigation(
         true,
         activeStep,
         TOTAL_STEPS,
         currentFormData,
         isProductMode ? activeProductIndex : undefined,
-        activeStep > 0 ? handlePrevStep : undefined,
-        activeStep < TOTAL_STEPS - 1 ? handleNextStep : undefined,
-        isProductMode ? setActiveProductIndex : undefined
+        activeStep > 0 ? () => handlePrevStepRef.current() : undefined,
+        activeStep < TOTAL_STEPS - 1 ? () => handleNextStepRef.current() : undefined,
+        isProductMode ? (index: number) => setActiveProductIndexRef.current(index) : undefined
       );
     }
 
@@ -104,20 +120,13 @@ export const useStepNavigation = ({
     return () => {
       setStepNavigation(false);
     };
-    // NOTE: products, suppliers, deliveryDateは依存配列から除外
-    // これらはuseWatchから取得され、毎回新しい参照が作成されるため
-    // 無限ループ(React #185)を引き起こす
-    // フォームデータはgetValues()経由で取得するため問題なし
+    // NOTE: 関数はrefで保持しているため依存配列から除外
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeStep,
     activeProductIndex,
     showGeneratedPreview,
-    getValues,
     setStepNavigation,
-    handlePrevStep,
-    handleNextStep,
-    setActiveProductIndex,
     TOTAL_STEPS,
   ]);
 };
