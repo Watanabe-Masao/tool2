@@ -709,12 +709,17 @@ export const AllocationHistoryPage: React.FC = () => {
 
   /**
    * WebDataRocks初期化（原則1: インスタンス生成は1回だけ）
+   * ピボットタブが表示されたときに初期化
    */
   useEffect(() => {
+    // ピボットタブが選択されていない、またはコンテナがない場合は何もしない
+    if (detailViewTab !== 'pivot') return;
     if (!pivotContainerRef.current) return;
     if (pivotInstanceRef.current) return; // すでに作成済みなら何もしない
 
-    // ✅ 初回マウント時にだけインスタンス生成
+    console.log('🔧 WebDataRocks初期化開始');
+
+    // ✅ 初回表示時にだけインスタンス生成
     pivotInstanceRef.current = new (WebDataRocksReact as any).WebDataRocks({
       container: pivotContainerRef.current,
       toolbar: true,
@@ -723,23 +728,30 @@ export const AllocationHistoryPage: React.FC = () => {
       width: '100%',
     });
 
-    // ✅ アンマウント時にdisposeしてリーク防止
-    return () => {
-      if (pivotInstanceRef.current) {
-        pivotInstanceRef.current.dispose();
-        pivotInstanceRef.current = null;
-      }
-    };
-  }, []); // ← 空配列：マウント時のみ
+    console.log('✅ WebDataRocksインスタンス生成完了');
+  }, [detailViewTab]); // ピボットタブ選択時にのみチェック
+
+  /**
+   * モーダルクローズ時のクリーンアップ
+   */
+  useEffect(() => {
+    // モーダルが閉じられたらインスタンスを破棄
+    if (!selectedBatch && !selectedDateRange && pivotInstanceRef.current) {
+      console.log('🧹 WebDataRocksクリーンアップ（モーダルクローズ）');
+      pivotInstanceRef.current.dispose();
+      pivotInstanceRef.current = null;
+    }
+  }, [selectedBatch, selectedDateRange]);
 
   /**
    * WebDataRocksレポート更新（原則2: インスタンスのメソッドで更新）
    */
   useEffect(() => {
-    if (pivotInstanceRef.current && pivotReport) {
+    if (pivotInstanceRef.current && pivotReport && detailViewTab === 'pivot') {
+      console.log('🔄 WebDataRocksレポート更新');
       pivotInstanceRef.current.setReport(pivotReport);
     }
-  }, [pivotReport]); // report propが変わったときだけpivotに反映
+  }, [pivotReport, detailViewTab]); // report propが変わったときだけpivotに反映
 
 
   return (
