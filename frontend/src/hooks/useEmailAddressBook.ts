@@ -98,21 +98,54 @@ export const useEmailAddressBook = () => {
 
     // リアルタイムリスナーを設定
     setLoading(true);
-    const unsubscribe = firestoreServiceRef.current.subscribeToEmailAddresses(
-      userId,
-      (data) => {
-        setEntries(data);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Failed to subscribe to email addresses:', error);
-        setLoading(false);
-      }
-    );
+    let unsubscribe: (() => void) | null = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const setupListener = () => {
+      unsubscribe = firestoreServiceRef.current.subscribeToEmailAddresses(
+        userId,
+        (data) => {
+          setEntries(data);
+          setLoading(false);
+          retryCount = 0; // 成功したらリトライカウントをリセット
+        },
+        async (error) => {
+          console.error('Failed to subscribe to email addresses:', error);
+
+          // リアルタイムリスナーが失敗した場合、リトライまたはフォールバック
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying email addresses subscription (${retryCount}/${maxRetries})...`);
+            // 既存のリスナーをクリーンアップ
+            if (unsubscribe) {
+              unsubscribe();
+              unsubscribe = null;
+            }
+            // 少し待ってからリトライ
+            setTimeout(setupListener, 1000 * retryCount);
+          } else {
+            // リトライ上限に達した場合、一度だけ通常クエリを実行
+            console.log('Falling back to one-time query for email addresses');
+            try {
+              const data = await firestoreServiceRef.current.getEmailAddresses(userId);
+              setEntries(data);
+            } catch (fallbackError) {
+              console.error('Fallback query also failed:', fallbackError);
+            }
+            setLoading(false);
+          }
+        }
+      );
+    };
+
+    setupListener();
 
     // クリーンアップ
     return () => {
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
     // NOTE: userIdは文字列なので安定、firestoreServiceRefはrefなので安定
     // eslint-disable-next-line react-hooks/exhaustive-deps
