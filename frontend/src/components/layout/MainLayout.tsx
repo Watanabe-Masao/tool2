@@ -8,6 +8,7 @@ import { NewOrderPage } from '@/pages/NewOrderPage';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
+import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
 
 /**
  * メインレイアウト（認証後）
@@ -45,6 +46,9 @@ export const MainLayout: React.FC = () => {
 
           {/* 店舗カテゴリー管理 */}
           <Route path="/store-categories" element={<StoreCategoryManagementPage />} />
+
+          {/* 配分履歴 */}
+          <Route path="/allocation-history" element={<AllocationHistoryPage />} />
 
           {/* デフォルトリダイレクト */}
           <Route path="/" element={<Navigate to="/new-order" replace />} />
