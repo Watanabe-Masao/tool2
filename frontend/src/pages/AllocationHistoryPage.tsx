@@ -65,6 +65,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
   // 詳細モーダル
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -111,6 +112,7 @@ export const AllocationHistoryPage: React.FC = () => {
     if (!batch.id || !user?.uid) return;
 
     setSelectedBatch(batch);
+    setSelectedDates([]);
     setDetailsLoading(true);
 
     try {
@@ -128,6 +130,69 @@ export const AllocationHistoryPage: React.FC = () => {
   }, [user?.uid]);
 
   /**
+   * 複数日付の詳細を取得して集計
+   */
+  const fetchMultipleDateDetails = useCallback(async (dates: Date[]) => {
+    if (dates.length === 0 || !user?.uid) return;
+
+    setSelectedDates(dates);
+    setSelectedBatch(null);
+    setDetailsLoading(true);
+
+    try {
+      const db = getFirebaseFirestore();
+      const firestoreService = new FirestoreServiceFacade(db);
+
+      // 選択された日付のすべてのバッチの詳細を取得
+      const allDetails: AllocationDetail[] = [];
+
+      for (const date of dates) {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const dayBatches = batchesByDate[dateKey] || [];
+
+        for (const batch of dayBatches) {
+          if (batch.id) {
+            const details = await firestoreService.getAllocationDetails(user.uid, batch.id);
+            allDetails.push(...details);
+          }
+        }
+      }
+
+      // 同一商品（商品名、規格、入数が同じ）をグループ化して集計
+      const groupedDetailsMap = new Map<string, AllocationDetail>();
+
+      for (const detail of allDetails) {
+        // グループ化キー: 商品名 + 産地 + 規格
+        const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
+
+        if (groupedDetailsMap.has(key)) {
+          // 既存のグループに加算
+          const existing = groupedDetailsMap.get(key)!;
+          existing.totalDelivery += detail.totalDelivery;
+
+          // 店舗ごとの配分を加算
+          detail.storeAllocations.forEach((qty, idx) => {
+            existing.storeAllocations[idx] = (existing.storeAllocations[idx] || 0) + qty;
+          });
+        } else {
+          // 新しいグループを作成（storeAllocationsを複製）
+          groupedDetailsMap.set(key, {
+            ...detail,
+            storeAllocations: [...detail.storeAllocations],
+          });
+        }
+      }
+
+      setDetails(Array.from(groupedDetailsMap.values()));
+    } catch (err) {
+      console.error('Failed to fetch multiple date details:', err);
+      setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [user?.uid, batchesByDate]);
+
+  /**
    * 初回読み込み
    */
   useEffect(() => {
@@ -139,6 +204,7 @@ export const AllocationHistoryPage: React.FC = () => {
    */
   const handleCloseDetails = () => {
     setSelectedBatch(null);
+    setSelectedDates([]);
     setDetails([]);
   };
 
@@ -414,8 +480,25 @@ export const AllocationHistoryPage: React.FC = () => {
               },
             }}
           >
+            <Box sx={{ mb: 2, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                日付をクリックして選択 • 複数選択可能 • 選択後に「詳細を表示」ボタンをクリック
+              </Typography>
+              {selectedDates.length > 0 && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => fetchMultipleDateDetails(selectedDates)}
+                  sx={{ mt: 1 }}
+                >
+                  詳細を表示 ({selectedDates.length}日分)
+                </Button>
+              )}
+            </Box>
             <DayPicker
-              mode="single"
+              mode="multiple"
+              selected={selectedDates}
+              onSelect={(dates) => setSelectedDates(dates || [])}
               locale={ja}
               month={new Date()}
               modifiers={{
@@ -432,8 +515,6 @@ export const AllocationHistoryPage: React.FC = () => {
                   const { date } = props;
                   const batchCount = getBatchCountForDate(date);
                   const productCount = getTotalProductsForDate(date);
-                  const dateKey = format(date, 'yyyy-MM-dd');
-                  const dayBatches = batchesByDate[dateKey] || [];
 
                   return (
                     <Box
@@ -446,12 +527,6 @@ export const AllocationHistoryPage: React.FC = () => {
                         justifyContent: 'flex-start',
                         p: 0.5,
                         cursor: batchCount > 0 ? 'pointer' : 'default',
-                      }}
-                      onClick={() => {
-                        if (dayBatches.length > 0) {
-                          // 最初のバッチの詳細を表示
-                          fetchBatchDetails(dayBatches[0]);
-                        }
                       }}
                     >
                       <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -613,11 +688,15 @@ export const AllocationHistoryPage: React.FC = () => {
       >
         <DialogTitle sx={{ fontWeight: 600 }}>
           配分履歴詳細
-          {selectedBatch && (
+          {selectedBatch ? (
             <Typography variant="subtitle2" color="text.secondary">
               納品日: {format(new Date(selectedBatch.deliveryDate), 'yyyy年M月d日(E)', { locale: ja })}
             </Typography>
-          )}
+          ) : selectedDates.length > 0 ? (
+            <Typography variant="subtitle2" color="text.secondary">
+              期間: {selectedDates.length}日分を集計表示（同一商品をまとめて表示）
+            </Typography>
+          ) : null}
         </DialogTitle>
 
         <DialogContent dividers sx={{ p: 0 }}>
