@@ -90,7 +90,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
   /**
    * 指定した品名に基づいて、産地の一意のリストを取得
    */
-  const getUniqueOrigins = (name: string) => {
+  const getUniqueOrigins = useCallback((name: string) => {
     const filtered = history.filter((item) => item.name === name);
     const origins = new Map<string, number>();
     filtered.forEach((item) => {
@@ -100,12 +100,12 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     return Array.from(origins.entries())
       .sort((a, b) => b[1] - a[1])
       .map((entry) => entry[0]);
-  };
+  }, [history]);
 
   /**
    * 指定した品名と産地に基づいて、規格の一意のリストを取得
    */
-  const getUniqueSpecifications = (name: string, origin: string) => {
+  const getUniqueSpecifications = useCallback((name: string, origin: string) => {
     const filtered = history.filter((item) => item.name === name && item.origin === origin);
     const specs = new Map<string, number>();
     filtered.forEach((item) => {
@@ -115,12 +115,12 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     return Array.from(specs.entries())
       .sort((a, b) => b[1] - a[1])
       .map((entry) => entry[0]);
-  };
+  }, [history]);
 
   /**
    * 指定した品名、産地、規格に基づいて、入数の一意のリストを取得
    */
-  const getUniqueQuantities = (name: string, origin: string, specification: string) => {
+  const getUniqueQuantities = useCallback((name: string, origin: string, specification: string) => {
     const filtered = history.filter(
       (item) =>
         item.name === name && item.origin === origin && item.specification === specification
@@ -134,12 +134,12 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
       .sort((a, b) => b[1] - a[1])
       .map((entry) => entry[0])
       .filter((qty): qty is number => qty !== null); // Filter out null values
-  };
+  }, [history]);
 
   /**
    * 指定した品名、産地、規格に基づいて、単位の一意のリストを取得
    */
-  const getUniqueUnits = (name: string, origin: string, specification: string) => {
+  const getUniqueUnits = useCallback((name: string, origin: string, specification: string) => {
     const filtered = history.filter(
       (item) =>
         item.name === name && item.origin === origin && item.specification === specification
@@ -154,7 +154,7 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     return Array.from(units.entries())
       .sort((a, b) => b[1] - a[1])
       .map((entry) => entry[0]);
-  };
+  }, [history]);
 
   /**
    * 履歴を削除
@@ -202,23 +202,38 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
   /**
    * 品名からカテゴリーコードを取得
    */
-  const getCategoryCodeByName = (name: string): string | undefined => {
+  const getCategoryCodeByName = useCallback((name: string): string | undefined => {
     const item = history.find((h) => h.name === name);
     return item?.categoryCode;
-  };
+  }, [history]);
 
-  return {
-    history,
-    loading,
-    getUniqueNames,
-    getUniqueOrigins,
-    getUniqueSpecifications,
-    getUniqueQuantities,
-    getUniqueUnits,
-    deleteHistory,
-    getCategoryCodeByName,
-    loadHistory, // 履歴を再読み込み
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      history,
+      loading,
+      getUniqueNames,
+      getUniqueOrigins,
+      getUniqueSpecifications,
+      getUniqueQuantities,
+      getUniqueUnits,
+      deleteHistory,
+      getCategoryCodeByName,
+      loadHistory, // 履歴を再読み込み
+    }),
+    [
+      history,
+      loading,
+      getUniqueNames,
+      getUniqueOrigins,
+      getUniqueSpecifications,
+      getUniqueQuantities,
+      getUniqueUnits,
+      deleteHistory,
+      getCategoryCodeByName,
+      loadHistory,
+    ]
+  );
 };
 
 // Re-export for backward compatibility

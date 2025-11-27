@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
 import { useAuthContext } from '@/context/AuthContext';
 import type { PricingHistoryItem } from '@/types/hooks';
@@ -113,37 +113,46 @@ export const usePricingHistory = () => {
   }, [loadPricingHistory]);
 
   /**
-   * 特定のキーに一致する価格履歴を検索
-   */
-  const findMatchingHistory = (
-    productName: string,
-    specification: string,
-    quantityPerPackage: number
-  ): PricingHistoryItem[] => {
-    return pricingHistory.filter(
-      (item) =>
-        item.productName === productName &&
-        item.specification === specification &&
-        item.quantityPerPackage === quantityPerPackage
-    );
-  };
-
-  /**
    * 初回ロード
    */
   useEffect(() => {
     loadPricingHistory();
   }, [loadPricingHistory]);
 
-  return {
-    pricingHistory,
-    loading,
-    error,
-    loadPricingHistory,
-    savePricingHistory,
-    deletePricingHistory,
-    findMatchingHistory,
-  };
+  // findMatchingHistoryをメモ化
+  const findMatchingHistoryMemo = useCallback(
+    (productName: string, specification: string, quantityPerPackage: number): PricingHistoryItem[] => {
+      return pricingHistory.filter(
+        (item) =>
+          item.productName === productName &&
+          item.specification === specification &&
+          item.quantityPerPackage === quantityPerPackage
+      );
+    },
+    [pricingHistory]
+  );
+
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      pricingHistory,
+      loading,
+      error,
+      loadPricingHistory,
+      savePricingHistory,
+      deletePricingHistory,
+      findMatchingHistory: findMatchingHistoryMemo,
+    }),
+    [
+      pricingHistory,
+      loading,
+      error,
+      loadPricingHistory,
+      savePricingHistory,
+      deletePricingHistory,
+      findMatchingHistoryMemo,
+    ]
+  );
 };
 
 // Re-export for backward compatibility

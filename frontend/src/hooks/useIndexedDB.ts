@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { db } from '@/services/storage/indexeddb';
 import { useAuthContext } from '@/context/AuthContext';
 import type { UseIndexedDBReturn } from '@/types/hooks';
@@ -125,14 +125,30 @@ export const useIndexedDB = (): UseIndexedDBReturn => {
     return db.clearAllData();
   }, []);
 
-  return {
-    orders,
-    isLoading: orders === undefined,
-    saveOrder,
-    updateOrder,
-    deleteOrder,
-    getUnsyncedOrders,
-    getOrdersByDate,
-    clearAllData,
-  };
+  // isLoadingをメモ化
+  const isLoading = useMemo(() => orders === undefined, [orders]);
+
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      orders,
+      isLoading,
+      saveOrder,
+      updateOrder,
+      deleteOrder,
+      getUnsyncedOrders,
+      getOrdersByDate,
+      clearAllData,
+    }),
+    [
+      orders,
+      isLoading,
+      saveOrder,
+      updateOrder,
+      deleteOrder,
+      getUnsyncedOrders,
+      getOrdersByDate,
+      clearAllData,
+    ]
+  );
 };

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
 
@@ -138,7 +138,11 @@ export const useHistoryTracking = ({
     []
   );
 
-  return {
-    saveAllHistories,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      saveAllHistories,
+    }),
+    [saveAllHistories]
+  );
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { useFirestoreServiceRef } from '@/context/ServiceContext';
@@ -187,8 +187,9 @@ export const useDataSync = (): UseDataSyncReturn => {
 
   /**
    * 注文を保存（オンライン/オフライン自動判定）
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const saveOrder = async (order: OrderFormData, buyerName: string): Promise<void> => {
+  const saveOrder = useCallback(async (order: OrderFormData, buyerName: string): Promise<void> => {
     if (!userRef.current) {
       throw new Error('ユーザーがログインしていません');
     }
@@ -212,25 +213,34 @@ export const useDataSync = (): UseDataSyncReturn => {
       });
       await updateUnsyncedCount();
     }
-  };
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, saveToIndexedDB, updateUnsyncedCount]);
 
   /**
    * 手動で同期を実行
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const syncNow = async (): Promise<void> => {
+  const syncNow = useCallback(async (): Promise<void> => {
     if (!isOnline) {
       showWarningRef.current('オフラインのため同期できません');
       return;
     }
 
     await syncIndexedDBToFirestore();
-  };
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, syncIndexedDBToFirestore]);
 
-  return {
-    isOnline,
-    isSyncing,
-    unsyncedCount,
-    saveOrder,
-    syncNow,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      isOnline,
+      isSyncing,
+      unsyncedCount,
+      saveOrder,
+      syncNow,
+    }),
+    [isOnline, isSyncing, unsyncedCount, saveOrder, syncNow]
+  );
 };

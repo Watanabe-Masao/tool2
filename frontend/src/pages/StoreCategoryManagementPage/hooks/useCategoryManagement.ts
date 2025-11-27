@@ -2,7 +2,7 @@
  * カテゴリー管理ロジックフック
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNotification } from '@/context/NotificationContext';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { STORE_DATA } from '@/utils/constants';
@@ -170,19 +170,35 @@ export const useCategoryManagement = ({ userId }: UseCategoryManagementProps) =>
     loadCategories();
   }, [loadCategories]);
 
-  return {
-    categories,
-    selectedCategory,
-    selectedStores,
-    isLoading,
-    setSelectedCategory,
-    setSelectedStores,
-    loadCategories,
-    getUncategorizedStores,
-    addCategory,
-    editCategory,
-    deleteCategory,
-    addStoresToCategory,
-    removeStoresFromCategory,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      categories,
+      selectedCategory,
+      selectedStores,
+      isLoading,
+      setSelectedCategory,
+      setSelectedStores,
+      loadCategories,
+      getUncategorizedStores,
+      addCategory,
+      editCategory,
+      deleteCategory,
+      addStoresToCategory,
+      removeStoresFromCategory,
+    }),
+    [
+      categories,
+      selectedCategory,
+      selectedStores,
+      isLoading,
+      loadCategories,
+      getUncategorizedStores,
+      addCategory,
+      editCategory,
+      deleteCategory,
+      addStoresToCategory,
+      removeStoresFromCategory,
+    ]
+  );
 };
