@@ -88,6 +88,7 @@ export const AllocationHistoryPage: React.FC = () => {
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null);
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'productName' | 'totalDesc' | 'totalAsc'>('totalDesc');
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -503,8 +504,27 @@ export const AllocationHistoryPage: React.FC = () => {
       end: parseISO(selectedDateRange.end),
     }).map(date => format(date, 'yyyy-MM-dd'));
 
+    // 商品グループと合計値のペアを作成
+    const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
+      const grandTotal = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
+      return { key, groupDetails, grandTotal };
+    });
+
+    // ソート順に応じて商品グループをソート
+    if (sortOrder === 'productName') {
+      groupsWithTotals.sort((a, b) => {
+        const [nameA] = a.key.split('|');
+        const [nameB] = b.key.split('|');
+        return nameA.localeCompare(nameB, 'ja');
+      });
+    } else if (sortOrder === 'totalDesc') {
+      groupsWithTotals.sort((a, b) => b.grandTotal - a.grandTotal);
+    } else if (sortOrder === 'totalAsc') {
+      groupsWithTotals.sort((a, b) => a.grandTotal - b.grandTotal);
+    }
+
     // 各商品グループごとに行を生成
-    productGroups.forEach((groupDetails, key) => {
+    groupsWithTotals.forEach(({ key, groupDetails }) => {
       const [productName, origin, specification] = key.split('|');
 
       // 合計用の配列を初期化
@@ -576,7 +596,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
     console.log('📋 Generated rows:', rows.length);
     return rows;
-  }, [selectedDateRange, details]);
+  }, [selectedDateRange, details, sortOrder]);
 
   // 単一バッチ選択時の行データ
   const singleBatchRows: DetailGridRow[] = useMemo(() => {
@@ -900,6 +920,33 @@ export const AllocationHistoryPage: React.FC = () => {
             </Typography>
           )}
         </DialogTitle>
+
+        {/* ソート選択（日付範囲選択時のみ） */}
+        {selectedDateRange && (
+          <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
+                表示順:
+              </Typography>
+              <ToggleButtonGroup
+                value={sortOrder}
+                exclusive
+                onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
+                size="small"
+              >
+                <ToggleButton value="totalDesc">
+                  配分量の多い順
+                </ToggleButton>
+                <ToggleButton value="totalAsc">
+                  配分量の少ない順
+                </ToggleButton>
+                <ToggleButton value="productName">
+                  商品名順
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          </Box>
+        )}
 
         <DialogContent dividers sx={{ p: 0 }}>
           {detailsLoading ? (
