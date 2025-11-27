@@ -5,7 +5,15 @@ import { PricingHistoryRepository } from './repositories/PricingHistoryRepositor
 import { AutocompleteRepository, type AutocompleteField } from './repositories/AutocompleteRepository';
 import { PresetRepository } from './repositories/PresetRepository';
 import { EmailAddressRepository } from './repositories/EmailAddressRepository';
+import { AllocationHistoryRepository } from './repositories/AllocationHistoryRepository';
 import type { OrderData } from '@/types';
+import type {
+  AllocationBatch,
+  AllocationDetail,
+  SaveAllocationHistoryInput,
+  AllocationHistoryView,
+  AllocationDaySummary,
+} from '@/types/allocationHistory';
 
 /**
  * FirestoreServiceFacade
@@ -36,6 +44,7 @@ export class FirestoreServiceFacade {
   private autocompleteRepo: AutocompleteRepository;
   private presetRepo: PresetRepository;
   private emailRepo: EmailAddressRepository;
+  private allocationHistoryRepo: AllocationHistoryRepository;
 
   constructor(db: Firestore) {
     this.orderRepo = new OrderRepository(db);
@@ -44,6 +53,7 @@ export class FirestoreServiceFacade {
     this.autocompleteRepo = new AutocompleteRepository(db);
     this.presetRepo = new PresetRepository(db);
     this.emailRepo = new EmailAddressRepository(db);
+    this.allocationHistoryRepo = new AllocationHistoryRepository(db);
   }
 
   // ==========================================
@@ -473,5 +483,111 @@ export class FirestoreServiceFacade {
    */
   async deletePricingHistory(historyId: string): Promise<void> {
     return this.pricingHistoryRepo.delete(historyId);
+  }
+
+  // ==========================================
+  // 配分履歴関連メソッド
+  // ==========================================
+
+  /**
+   * 配分履歴を保存
+   *
+   * @param userId - ユーザーID
+   * @param input - 配分履歴データ
+   * @returns 作成されたバッチID
+   */
+  async saveAllocationHistory(
+    userId: string,
+    input: SaveAllocationHistoryInput
+  ): Promise<string> {
+    return this.allocationHistoryRepo.saveAllocationHistory(userId, input);
+  }
+
+  /**
+   * 日付範囲で配分バッチを取得
+   *
+   * @param userId - ユーザーID
+   * @param startDate - 開始日（YYYY-MM-DD）
+   * @param endDate - 終了日（YYYY-MM-DD）
+   * @returns 配分バッチの配列
+   */
+  async getAllocationBatchesByDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<AllocationBatch[]> {
+    return this.allocationHistoryRepo.findBatchesByDateRange(userId, startDate, endDate);
+  }
+
+  /**
+   * 特定日の配分バッチを取得
+   *
+   * @param userId - ユーザーID
+   * @param deliveryDate - 納品日（YYYY-MM-DD）
+   * @returns 配分バッチの配列
+   */
+  async getAllocationBatchesByDate(
+    userId: string,
+    deliveryDate: string
+  ): Promise<AllocationBatch[]> {
+    return this.allocationHistoryRepo.findBatchesByDate(userId, deliveryDate);
+  }
+
+  /**
+   * バッチIDで配分明細を取得
+   *
+   * @param batchId - バッチID
+   * @returns 配分明細の配列
+   */
+  async getAllocationDetails(batchId: string): Promise<AllocationDetail[]> {
+    return this.allocationHistoryRepo.findDetailsByBatchId(batchId);
+  }
+
+  /**
+   * バッチと明細を一括取得
+   *
+   * @param userId - ユーザーID
+   * @param batchId - バッチID
+   * @returns 配分履歴ビュー
+   */
+  async getAllocationHistoryView(
+    userId: string,
+    batchId: string
+  ): Promise<AllocationHistoryView | null> {
+    return this.allocationHistoryRepo.getHistoryView(userId, batchId);
+  }
+
+  /**
+   * 日付別の配分サマリーを取得（カレンダー用）
+   *
+   * @param userId - ユーザーID
+   * @param startDate - 開始日（YYYY-MM-DD）
+   * @param endDate - 終了日（YYYY-MM-DD）
+   * @returns 日付別サマリーの配列
+   */
+  async getAllocationDaySummaries(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<AllocationDaySummary[]> {
+    return this.allocationHistoryRepo.getDaySummaries(userId, startDate, endDate);
+  }
+
+  /**
+   * 商品名と帳合先で過去の配分パターンを取得（学習用）
+   *
+   * @param userId - ユーザーID
+   * @param productName - 商品名
+   * @param supplier - 帳合先（オプション）
+   * @param limitCount - 取得件数制限
+   * @returns 過去の配分配列
+   */
+  async getPastAllocations(
+    userId: string,
+    productName: string,
+    supplier?: string,
+    limitCount: number = 10
+  ): Promise<number[][]> {
+    return this.allocationHistoryRepo.getPastAllocations(userId, productName, supplier, limitCount);
   }
 }

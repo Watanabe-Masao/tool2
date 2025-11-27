@@ -8,8 +8,12 @@ import {
   useTheme,
   useMediaQuery,
   TextField,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
-import { PictureAsPdf, ArrowBack, Description, Send, Assessment } from '@mui/icons-material';
+import { PictureAsPdf, ArrowBack, Description, Send, Assessment, AutoFixHigh, History, Balance, Save } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams, GridRenderEditCellParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
@@ -18,6 +22,10 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
 import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { StoreStatisticsModal } from '@/components/modals/StoreStatisticsModal';
+import { HistoryAllocationModal, type StoreRatio } from '@/components/modals/HistoryAllocationModal';
+import { OrderService } from '@/services/order/OrderService';
+import type { AllocationMethod } from '@/services/order/OrderService';
+import type { StoreSettings } from '@/types/storeSettings';
 
 /**
  * AllocationPreviewContentのProps
@@ -57,6 +65,16 @@ interface AllocationPreviewContentProps {
   activeProductIndex?: number;
   /** 商品選択変更ハンドラ（表の行クリック時） */
   onProductChange?: (productIndex: number) => void;
+  /** 店舗設定（自動配分用） */
+  storeSettings?: Record<string, StoreSettings>;
+  /** 過去の配分データ（履歴ベース自動配分用） */
+  pastAllocations?: number[][];
+  /** 配分履歴保存ハンドラ */
+  onSaveHistory?: () => void;
+  /** 配分履歴保存中フラグ */
+  isSavingHistory?: boolean;
+  /** 配分履歴保存済みフラグ */
+  isHistorySaved?: boolean;
 }
 
 /**
@@ -102,12 +120,19 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   setSelectedCategories: _setSelectedCategories,
   activeProductIndex,
   onProductChange,
+  storeSettings,
+  pastAllocations,
+  onSaveHistory,
+  isSavingHistory = false,
+  isHistorySaved = false,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const isGenerationComplete = Boolean(pdfFilename);
 
@@ -116,6 +141,118 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
   useEffect(() => {
     lockedStoresRef.current = lockedStores;
   }, [lockedStores]);
+
+  /**
+   * 自動配分を実行
+   */
+  const handleAutoAllocate = useCallback((method: AllocationMethod) => {
+    setAutoAllocateMenuAnchor(null);
+
+    if (!onAllocationChange) return;
+
+    formData.products.forEach((product, productIndex) => {
+      // ロック済み店舗の現在値を取得
+      const productLockedStores = lockedStores.get(productIndex) || new Set();
+      const lockedAllocations = new Map<string, number>();
+
+      productLockedStores.forEach((storeCode) => {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+        if (storeIndex >= 0) {
+          lockedAllocations.set(storeCode, product.storeAllocations[storeIndex] || 0);
+        }
+      });
+
+      let newAllocations: number[];
+
+      switch (method) {
+        case 'salesRatio':
+          if (storeSettings) {
+            const result = OrderService.calculateSalesRatioAllocation(
+              product.totalDelivery,
+              storeSettings,
+              lockedAllocations
+            );
+            newAllocations = result.allocations;
+          } else {
+            // 店舗設定がない場合は均等配分にフォールバック
+            newAllocations = OrderService.calculateEvenAllocation(
+              product.totalDelivery,
+              STORE_DATA.length
+            );
+          }
+          break;
+
+        case 'history':
+          if (pastAllocations && pastAllocations.length > 0) {
+            const result = OrderService.calculateHistoryBasedAllocation(
+              product.totalDelivery,
+              pastAllocations,
+              lockedAllocations
+            );
+            newAllocations = result.allocations;
+          } else {
+            // 過去データがない場合は均等配分にフォールバック
+            newAllocations = OrderService.calculateEvenAllocation(
+              product.totalDelivery,
+              STORE_DATA.length
+            );
+          }
+          break;
+
+        case 'even':
+        default:
+          newAllocations = OrderService.calculateEvenAllocation(
+            product.totalDelivery,
+            STORE_DATA.length
+          );
+          // ロック済み店舗の値を上書き
+          lockedAllocations.forEach((qty, storeCode) => {
+            const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+            if (storeIndex >= 0) {
+              newAllocations[storeIndex] = qty;
+            }
+          });
+          break;
+      }
+
+      // 各店舗の配分を更新
+      newAllocations.forEach((qty, storeIndex) => {
+        onAllocationChange(productIndex, storeIndex, qty);
+      });
+    });
+  }, [formData.products, lockedStores, onAllocationChange, storeSettings, pastAllocations]);
+
+  /**
+   * 履歴ベース自動配分を実行（パターン方式）
+   */
+  const handleHistoryAllocate = useCallback((storeRatios: StoreRatio[]) => {
+    if (!onAllocationChange) return;
+
+    formData.products.forEach((product, productIndex) => {
+      // ロック済み店舗の現在値を取得
+      const productLockedStores = lockedStores.get(productIndex) || new Set();
+      const lockedAllocations = new Map<string, number>();
+
+      productLockedStores.forEach((storeCode) => {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+        if (storeIndex >= 0) {
+          lockedAllocations.set(storeCode, product.storeAllocations[storeIndex] || 0);
+        }
+      });
+
+      // パターン方式で配分
+      const result = OrderService.calculatePatternBasedAllocation(
+        product.totalDelivery,
+        storeRatios.map((sr) => ({ storeCode: sr.storeCode, ratio: sr.ratio })),
+        lockedAllocations
+      );
+
+      // 各店舗の配分を更新
+      result.allocations.forEach((qty, storeIndex) => {
+        onAllocationChange(productIndex, storeIndex, qty);
+      });
+    });
+  }, [formData.products, lockedStores, onAllocationChange]);
 
   /**
    * 行データを生成
@@ -487,22 +624,104 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           {/* 生成前 */}
-          {!isGenerationComplete && onGenerate && (
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              startIcon={<Description />}
-              onClick={onGenerate}
-              sx={{ flex: 1, minWidth: '200px' }}
-            >
-              配分表を生成
-            </Button>
+          {!isGenerationComplete && (
+            <>
+              {/* 自動配分ボタン */}
+              {onAllocationChange && (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    size="large"
+                    startIcon={<AutoFixHigh />}
+                    onClick={(e) => setAutoAllocateMenuAnchor(e.currentTarget)}
+                    sx={{ minWidth: isMobile ? 'auto' : '160px' }}
+                  >
+                    {isMobile ? '自動配分' : '自動配分'}
+                  </Button>
+                  <Menu
+                    anchorEl={autoAllocateMenuAnchor}
+                    open={Boolean(autoAllocateMenuAnchor)}
+                    onClose={() => setAutoAllocateMenuAnchor(null)}
+                  >
+                    <MenuItem onClick={() => handleAutoAllocate('even')}>
+                      <ListItemIcon>
+                        <Balance fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText primary="均等配分" secondary="全店舗に均等に配分" />
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => handleAutoAllocate('salesRatio')}
+                      disabled={!storeSettings || Object.keys(storeSettings).length === 0}
+                    >
+                      <ListItemIcon>
+                        <AutoFixHigh fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="販売構成比で配分"
+                        secondary={
+                          storeSettings && Object.keys(storeSettings).length > 0
+                            ? '店舗の販売構成比に基づいて配分'
+                            : '販売構成比が未設定です'
+                        }
+                      />
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setAutoAllocateMenuAnchor(null);
+                        setShowHistoryModal(true);
+                      }}
+                    >
+                      <ListItemIcon>
+                        <History fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="履歴から配分..."
+                        secondary="期間と条件を指定して配分"
+                      />
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
+
+              {/* 配分表を生成ボタン */}
+              {onGenerate && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  startIcon={<Description />}
+                  onClick={onGenerate}
+                  sx={{ flex: 1, minWidth: '200px' }}
+                >
+                  配分表を生成
+                </Button>
+              )}
+            </>
           )}
 
           {/* 生成後 */}
           {isGenerationComplete && (
             <>
+              {/* 配分履歴保存ボタン */}
+              {onSaveHistory && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<Save />}
+                  onClick={onSaveHistory}
+                  disabled={isSavingHistory || isHistorySaved}
+                  sx={{
+                    flex: 1,
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    minWidth: isMobile ? 'auto' : '120px',
+                    px: isMobile ? 1 : 2,
+                  }}
+                >
+                  {isSavingHistory ? '保存中...' : isHistorySaved ? '保存済み' : '履歴を保存'}
+                </Button>
+              )}
+
               {onDownloadExcel && (
                 <Button
                   variant="contained"
@@ -671,6 +890,22 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         open={showStatistics}
         onClose={() => setShowStatistics(false)}
         formData={formData}
+      />
+
+      {/* 履歴ベース自動配分モーダル */}
+      <HistoryAllocationModal
+        open={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        onApply={handleHistoryAllocate}
+        currentProduct={
+          formData.products.length > 0
+            ? {
+                name: formData.products[0].name,
+                origin: formData.products[0].origin,
+                categoryCode: formData.products[0].categoryCode,
+              }
+            : undefined
+        }
       />
     </Box>
   );

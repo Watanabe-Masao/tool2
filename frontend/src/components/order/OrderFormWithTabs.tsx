@@ -60,6 +60,11 @@ interface OrderFormWithTabsProps {
   handleAllocationChange: (productIndex: number, storeIndex: number, newValue: number) => void;
   handleDownloadExcel: () => void;
   handleDownloadPdf: () => void;
+
+  // 配分履歴保存
+  onSaveHistory?: () => void;
+  isSavingHistory?: boolean;
+  isHistorySaved?: boolean;
 }
 
 /**
@@ -105,6 +110,9 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   handleAllocationChange,
   handleDownloadExcel,
   handleDownloadPdf,
+  onSaveHistory,
+  isSavingHistory,
+  isHistorySaved,
 }) => {
   // Zustand Store（UI状態）
   const activeStep = useOrderFormStore((state) => state.activeStep);
@@ -194,6 +202,9 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
             onDownloadPdf={handleDownloadPdf}
             onSendEmail={memoizedOnSendEmail}
             onBackToEdit={memoizedOnBackToEdit}
+            onSaveHistory={onSaveHistory}
+            isSavingHistory={isSavingHistory}
+            isHistorySaved={isHistorySaved}
           />
         </Box>
       </Box>
