@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -26,7 +26,6 @@ import { Visibility, Refresh, CalendarMonth, Delete, ViewList, CalendarToday } f
 import { format, subDays, parseISO, startOfWeek, endOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
-import type { DayContentProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -73,6 +72,20 @@ export const AllocationHistoryPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  /**
+   * 日付ごとにバッチをグループ化
+   */
+  const batchesByDate = useMemo(() => {
+    return batches.reduce((acc, batch) => {
+      const dateKey = batch.deliveryDate;
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(batch);
+      return acc;
+    }, {} as Record<string, AllocationBatch[]>);
+  }, [batches]);
 
   /**
    * 履歴を取得（過去30日間）
@@ -252,18 +265,6 @@ export const AllocationHistoryPage: React.FC = () => {
       setDeleting(false);
     }
   };
-
-  /**
-   * 日付ごとにバッチをグループ化
-   */
-  const batchesByDate = batches.reduce((acc, batch) => {
-    const dateKey = batch.deliveryDate;
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(batch);
-    return acc;
-  }, {} as Record<string, AllocationBatch[]>);
 
   /**
    * 特定の日付のバッチ数を取得
@@ -511,7 +512,7 @@ export const AllocationHistoryPage: React.FC = () => {
                 },
               }}
               components={{
-                DayContent: (props: DayContentProps) => {
+                DayContent: (props: { date: Date }) => {
                   const { date } = props;
                   const batchCount = getBatchCountForDate(date);
                   const productCount = getTotalProductsForDate(date);
