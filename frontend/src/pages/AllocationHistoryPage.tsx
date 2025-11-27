@@ -77,7 +77,7 @@ export const AllocationHistoryPage: React.FC = () => {
    * 日付ごとにバッチをグループ化
    */
   const batchesByDate = useMemo(() => {
-    return batches.reduce((acc, batch) => {
+    const grouped = batches.reduce((acc, batch) => {
       const dateKey = batch.deliveryDate;
       if (!acc[dateKey]) {
         acc[dateKey] = [];
@@ -85,6 +85,11 @@ export const AllocationHistoryPage: React.FC = () => {
       acc[dateKey].push(batch);
       return acc;
     }, {} as Record<string, AllocationBatch[]>);
+
+    console.log('🗂️ batchesByDate が再計算されました:', Object.keys(grouped).length, '日分');
+    console.log('🗂️ 各日付のバッチ数:', grouped);
+
+    return grouped;
   }, [batches]);
 
   /**
@@ -108,6 +113,9 @@ export const AllocationHistoryPage: React.FC = () => {
         startDate,
         endDate
       );
+
+      console.log('📦 取得したバッチ数:', fetchedBatches.length);
+      console.log('📦 バッチ一覧:', fetchedBatches.map(b => ({ id: b.id, date: b.deliveryDate })));
 
       setBatches(fetchedBatches);
     } catch (err) {
@@ -146,7 +154,14 @@ export const AllocationHistoryPage: React.FC = () => {
    * 複数日付の詳細を取得して集計
    */
   const fetchMultipleDateDetails = useCallback(async (dates: Date[]) => {
-    if (dates.length === 0 || !user?.uid) return;
+    console.log('🔵 fetchMultipleDateDetails が呼ばれました');
+    console.log('📅 選択された日付オブジェクト:', dates);
+    console.log('📊 現在のbatchesByDateのキー:', Object.keys(batchesByDate));
+
+    if (dates.length === 0 || !user?.uid) {
+      console.log('⚠️ 日付が0件またはユーザーIDなし');
+      return;
+    }
 
     setSelectedDates(dates);
     setSelectedBatch(null);
@@ -159,13 +174,13 @@ export const AllocationHistoryPage: React.FC = () => {
       // 選択された日付のすべてのバッチの詳細を取得
       const allDetails: AllocationDetail[] = [];
 
-      console.log('選択された日付:', dates.length, '日分');
+      console.log('✅ 選択された日付:', dates.length, '日分');
 
       for (const date of dates) {
         const dateKey = format(date, 'yyyy-MM-dd');
         const dayBatches = batchesByDate[dateKey] || [];
 
-        console.log(`${dateKey}: ${dayBatches.length}件のバッチ`);
+        console.log(`📆 ${dateKey}: ${dayBatches.length}件のバッチ (日付オブジェクト: ${date})`);
 
         for (const batch of dayBatches) {
           if (batch.id) {
