@@ -21,13 +21,12 @@ import {
   Stack,
   ToggleButtonGroup,
   ToggleButton,
-  Badge,
-  Tooltip,
 } from '@mui/material';
 import { Visibility, Refresh, CalendarMonth, Delete, ViewList, CalendarToday } from '@mui/icons-material';
-import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval } from 'date-fns';
+import { format, subDays, parseISO, startOfWeek, endOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
+import type { DayContentProps } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -429,7 +428,8 @@ export const AllocationHistoryPage: React.FC = () => {
                 },
               }}
               components={{
-                DayContent: ({ date }) => {
+                DayContent: (props: DayContentProps) => {
+                  const { date } = props;
                   const batchCount = getBatchCountForDate(date);
                   const productCount = getTotalProductsForDate(date);
                   const dateKey = format(date, 'yyyy-MM-dd');
