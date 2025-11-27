@@ -159,17 +159,25 @@ export const AllocationHistoryPage: React.FC = () => {
       // 選択された日付のすべてのバッチの詳細を取得
       const allDetails: AllocationDetail[] = [];
 
+      console.log('選択された日付:', dates.length, '日分');
+
       for (const date of dates) {
         const dateKey = format(date, 'yyyy-MM-dd');
         const dayBatches = batchesByDate[dateKey] || [];
 
+        console.log(`${dateKey}: ${dayBatches.length}件のバッチ`);
+
         for (const batch of dayBatches) {
           if (batch.id) {
+            console.log(`バッチID: ${batch.id} の詳細を取得中...`);
             const details = await firestoreService.getAllocationDetails(user.uid, batch.id);
+            console.log(`取得した商品数: ${details.length}品`);
             allDetails.push(...details);
           }
         }
       }
+
+      console.log('合計商品数（集計前）:', allDetails.length);
 
       // 同一商品（商品名、規格、入数が同じ）をグループ化して集計
       const groupedDetailsMap = new Map<string, AllocationDetail>();
@@ -196,7 +204,10 @@ export const AllocationHistoryPage: React.FC = () => {
         }
       }
 
-      setDetails(Array.from(groupedDetailsMap.values()));
+      const groupedDetails = Array.from(groupedDetailsMap.values());
+      console.log('グループ化後の商品数:', groupedDetails.length);
+
+      setDetails(groupedDetails);
     } catch (err) {
       console.error('Failed to fetch multiple date details:', err);
       setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
