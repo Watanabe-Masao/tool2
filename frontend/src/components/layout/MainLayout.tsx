@@ -5,7 +5,6 @@ import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { GlobalKeyboardShortcuts } from '@/components/common/GlobalKeyboardShortcuts';
 import { NewOrderPage } from '@/pages/NewOrderPage';
-import { CalendarPage } from '@/pages/CalendarPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
@@ -38,8 +37,8 @@ export const MainLayout: React.FC = () => {
           {/* 新規作成 */}
           <Route path="/new-order" element={<NewOrderPage />} />
 
-          {/* カレンダー */}
-          <Route path="/calendar" element={<CalendarPage />} />
+          {/* カレンダー（配分履歴にリダイレクト） */}
+          <Route path="/calendar" element={<Navigate to="/allocation-history" replace />} />
 
           {/* ユーザープロフィール */}
           <Route path="/profile" element={<UserProfilePage />} />

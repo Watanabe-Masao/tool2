@@ -34,10 +34,10 @@ const navigationItems = [
     value: 'new-order',
   },
   {
-    label: 'カレンダー',
+    label: '配分履歴',
     icon: <CalendarToday />,
-    path: '/calendar',
-    value: 'calendar',
+    path: '/allocation-history',
+    value: 'allocation-history',
   },
   {
     label: 'テーマ',

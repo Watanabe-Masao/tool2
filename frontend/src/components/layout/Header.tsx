@@ -25,7 +25,6 @@ import {
 import {
   Logout,
   AddCircle,
-  CalendarToday,
   Person,
   Settings,
   Keyboard,
@@ -185,7 +184,6 @@ export const Header: React.FC = () => {
    */
   const navigationItems = [
     { label: '新規作成', icon: <AddCircle />, path: '/new-order' },
-    { label: 'カレンダー', icon: <CalendarToday />, path: '/calendar' },
     { label: '配分履歴', icon: <History />, path: '/allocation-history' },
     { label: 'ユーザー', icon: <Person />, path: '/profile' },
     { label: '各種管理', icon: <Settings />, path: '/store-categories' },
