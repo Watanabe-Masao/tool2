@@ -23,6 +23,8 @@ import {
   ToggleButton,
   Card,
   CardContent,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Visibility,
@@ -48,6 +50,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
+import { Pivot as WebDataRocksPivot } from '@webdatarocks/react-webdatarocks';
+import '@webdatarocks/webdatarocks/webdatarocks.min.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -89,6 +93,7 @@ export const AllocationHistoryPage: React.FC = () => {
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<'productName' | 'totalDesc' | 'totalAsc'>('totalDesc');
+  const [detailViewTab, setDetailViewTab] = useState<'grid' | 'pivot'>('grid');
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -626,6 +631,36 @@ export const AllocationHistoryPage: React.FC = () => {
   const detailColumns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
   const detailRows = selectedDateRange ? dateRangeRows : singleBatchRows;
 
+  /**
+   * WebDataRocks用のピボットデータ（フラット形式）
+   */
+  const pivotData = useMemo(() => {
+    if (!selectedDateRange) return [];
+
+    const flatData: any[] = [];
+
+    details.forEach(detail => {
+      const deliveryDate = (detail as any).deliveryDate || '';
+
+      // 各店舗ごとに行を作成
+      detail.storeAllocations.forEach((quantity, storeIdx) => {
+        if (storeIdx < STORE_DATA.length && quantity > 0) {
+          flatData.push({
+            '日付': deliveryDate ? format(parseISO(deliveryDate), 'yyyy/MM/dd(E)', { locale: ja }) : '-',
+            '商品名': detail.productName,
+            '産地': detail.origin,
+            '規格': detail.specification,
+            '店舗': `${STORE_DATA[storeIdx].code} ${STORE_DATA[storeIdx].name}`,
+            '店舗コード': STORE_DATA[storeIdx].code,
+            '数量': quantity,
+          });
+        }
+      });
+    });
+
+    return flatData;
+  }, [selectedDateRange, details]);
+
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       {/* ヘッダー */}
@@ -921,8 +956,22 @@ export const AllocationHistoryPage: React.FC = () => {
           )}
         </DialogTitle>
 
-        {/* ソート選択（日付範囲選択時のみ） */}
+        {/* タブ選択（日付範囲選択時のみ） */}
         {selectedDateRange && (
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={detailViewTab}
+              onChange={(_, newTab) => setDetailViewTab(newTab)}
+              aria-label="詳細表示タブ"
+            >
+              <Tab label="データグリッド" value="grid" />
+              <Tab label="ピボット分析" value="pivot" />
+            </Tabs>
+          </Box>
+        )}
+
+        {/* ソート選択（データグリッドタブのみ） */}
+        {selectedDateRange && detailViewTab === 'grid' && (
           <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
               <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
@@ -957,7 +1006,53 @@ export const AllocationHistoryPage: React.FC = () => {
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">詳細データがありません</Typography>
             </Box>
+          ) : selectedDateRange && detailViewTab === 'pivot' ? (
+            /* ピボットテーブル表示 */
+            <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%', p: 2 }}>
+              <WebDataRocksPivot
+                toolbar={true}
+                height="100%"
+                report={{
+                  dataSource: {
+                    data: pivotData,
+                  },
+                  slice: {
+                    rows: [
+                      { uniqueName: '商品名' },
+                      { uniqueName: '産地' },
+                      { uniqueName: '規格' },
+                    ],
+                    columns: [
+                      { uniqueName: '店舗' },
+                      { uniqueName: '日付' },
+                    ],
+                    measures: [
+                      {
+                        uniqueName: '数量',
+                        aggregation: 'sum',
+                        format: 'integer',
+                      },
+                    ],
+                  },
+                  options: {
+                    grid: {
+                      type: 'flat',
+                      showTotals: true,
+                      showGrandTotals: 'on',
+                    },
+                  },
+                  formats: [
+                    {
+                      name: 'integer',
+                      thousandsSeparator: ',',
+                      decimalPlaces: 0,
+                    },
+                  ],
+                }}
+              />
+            </Box>
           ) : (
+            /* データグリッド表示 */
             <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
               <DataGrid
                 rows={detailRows}
