@@ -1009,47 +1009,53 @@ export const AllocationHistoryPage: React.FC = () => {
           ) : selectedDateRange && detailViewTab === 'pivot' ? (
             /* ピボットテーブル表示 */
             <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%', p: 2 }}>
-              <WebDataRocksPivot
-                toolbar={true}
-                height="100%"
-                report={{
-                  dataSource: {
-                    data: pivotData,
-                  },
-                  slice: {
-                    rows: [
-                      { uniqueName: '商品名' },
-                      { uniqueName: '産地' },
-                      { uniqueName: '規格' },
-                    ],
-                    columns: [
-                      { uniqueName: '店舗' },
-                      { uniqueName: '日付' },
-                    ],
-                    measures: [
+              {pivotData.length === 0 ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography color="text.secondary">ピボット分析用のデータがありません</Typography>
+                </Box>
+              ) : (
+                <WebDataRocksPivot
+                  toolbar={true}
+                  height="100%"
+                  report={{
+                    dataSource: {
+                      data: pivotData,
+                    },
+                    slice: {
+                      rows: [
+                        { uniqueName: '商品名' },
+                        { uniqueName: '産地' },
+                        { uniqueName: '規格' },
+                      ],
+                      columns: [
+                        { uniqueName: '店舗' },
+                        { uniqueName: '日付' },
+                      ],
+                      measures: [
+                        {
+                          uniqueName: '数量',
+                          aggregation: 'sum',
+                          format: 'integer',
+                        },
+                      ],
+                    },
+                    options: {
+                      grid: {
+                        type: 'flat',
+                        showTotals: true,
+                        showGrandTotals: 'on',
+                      },
+                    },
+                    formats: [
                       {
-                        uniqueName: '数量',
-                        aggregation: 'sum',
-                        format: 'integer',
+                        name: 'integer',
+                        thousandsSeparator: ',',
+                        decimalPlaces: 0,
                       },
                     ],
-                  },
-                  options: {
-                    grid: {
-                      type: 'flat',
-                      showTotals: true,
-                      showGrandTotals: 'on',
-                    },
-                  },
-                  formats: [
-                    {
-                      name: 'integer',
-                      thousandsSeparator: ',',
-                      decimalPlaces: 0,
-                    },
-                  ],
-                }}
-              />
+                  }}
+                />
+              )}
             </Box>
           ) : (
             /* データグリッド表示 */
