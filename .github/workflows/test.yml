@@ -116,6 +116,41 @@ jobs:
       run: |
         pytest test_haibun_template_creator.py --cov=haibun_template_creator --cov-fail-under=80
 
+  render-loop-detection:
+    runs-on: ubuntu-latest
+    name: Render Loop Detection (React #185)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run render loop detection tests
+      working-directory: ./frontend
+      run: npm test -- --run --reporter=verbose src/__tests__/performance/PageRenderCounts.test.tsx src/__tests__/components/RenderLoopPrevention.test.tsx
+
+    - name: Comment on PR with warning if tests fail
+      if: failure() && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚠️ **React #185 (Maximum update depth exceeded) の可能性**\n\nレンダリング回数監視テストが失敗しました。以下を確認してください:\n\n- `useMemo` / `useCallback` でオブジェクト・関数をメモ化しているか\n- `useEffect` の依存配列に不安定な参照が含まれていないか\n- `useWatch` の値を依存配列に含めていないか\n- Zustandセレクターで `useShallow` を使用しているか\n\n詳細は `npm test -- --run src/__tests__/performance/PageRenderCounts.test.tsx` で確認できます。'
+          })
+
   code-quality:
     runs-on: ubuntu-latest
     name: Code Quality Checks
