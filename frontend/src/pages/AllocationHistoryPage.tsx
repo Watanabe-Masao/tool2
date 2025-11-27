@@ -1016,7 +1016,8 @@ export const AllocationHistoryPage: React.FC = () => {
               ) : (
                 <WebDataRocksPivot
                   toolbar={true}
-                  height="100%"
+                  width="100%"
+                  height={window.innerWidth < 600 ? 400 : window.innerWidth < 960 ? 500 : 600}
                   report={{
                     dataSource: {
                       data: pivotData,
@@ -1029,13 +1030,11 @@ export const AllocationHistoryPage: React.FC = () => {
                       ],
                       columns: [
                         { uniqueName: '店舗' },
-                        { uniqueName: '日付' },
                       ],
                       measures: [
                         {
                           uniqueName: '数量',
                           aggregation: 'sum',
-                          format: 'integer',
                         },
                       ],
                     },
@@ -1046,13 +1045,6 @@ export const AllocationHistoryPage: React.FC = () => {
                         showGrandTotals: 'on',
                       },
                     },
-                    formats: [
-                      {
-                        name: 'integer',
-                        thousandsSeparator: ',',
-                        decimalPlaces: 0,
-                      },
-                    ],
                   }}
                 />
               )}
