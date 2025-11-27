@@ -267,6 +267,48 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // 配分履歴バッチ（学習データ用）
+    match /allocation_batches/{batchId} {
+      // 読み取り: 認証済みユーザーのみ（自分のバッチのみ）
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+      // 作成: 認証済みユーザーのみ + 必須フィールドチェック
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'suppliers', 'product_count', 'total_quantity', 'created_at', 'updated_at']) &&
+                       request.resource.data.delivery_date is string &&
+                       request.resource.data.suppliers is list &&
+                       request.resource.data.product_count is number &&
+                       request.resource.data.total_quantity is number;
+      // 更新: 自分のバッチのみ
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+      // 削除: 自分のバッチのみ
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+    }
+
+    // 配分履歴明細（学習データ用）
+    match /allocation_details/{detailId} {
+      // 読み取り: 認証済みユーザーのみ（自分の明細のみ）
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+      // 作成: 認証済みユーザーのみ + 必須フィールドチェック
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
+                       request.resource.data.batch_id is string &&
+                       request.resource.data.product_name is string &&
+                       request.resource.data.store_allocations is list &&
+                       request.resource.data.allocation_method is string;
+      // 更新: 自分の明細のみ
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+      // 削除: 自分の明細のみ
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+    }
+
     // デフォルト: すべて拒否
     match /{document=**} {
       allow read, write: if false;

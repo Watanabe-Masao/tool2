@@ -15,6 +15,7 @@ import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
 import { StoreAllocationForm } from '@/components/forms/StoreAllocationForm';
 import { AllocationPreviewContent } from '@/components/AllocationPreviewContent';
 import { useOrderFormStore } from '@/stores/orderFormStore';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 
 /**
  * OrderFormSteps
@@ -73,6 +74,11 @@ interface OrderFormStepsProps {
   onDownloadPdf: () => void;
   onSendEmail: () => void;
   onBackToEdit: () => void;
+
+  // 配分履歴保存
+  onSaveHistory?: () => void;
+  isSavingHistory?: boolean;
+  isHistorySaved?: boolean;
 }
 
 export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
@@ -96,6 +102,9 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   onDownloadPdf,
   onSendEmail,
   onBackToEdit,
+  onSaveHistory,
+  isSavingHistory,
+  isHistorySaved,
 }) => {
   // Zustand Store（UI状態）
   const activeStep = useOrderFormStore((state) => state.activeStep);
@@ -107,6 +116,9 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   const selectedCategories = useOrderFormStore((state) => state.selectedCategories);
   const setSelectedCategories = useOrderFormStore((state) => state.setSelectedCategories);
   const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
+
+  // 店舗設定（自動配分用）
+  const { storeSettings } = useStoreSettings();
 
   // React#185対策: formDataオブジェクトをメモ化して不要な再レンダリングを防止
   const formData = useMemo(() => ({
@@ -189,6 +201,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
               setSelectedCategories={setSelectedCategories}
               activeProductIndex={activeProductIndex}
               onProductChange={setActiveProductIndex}
+              storeSettings={storeSettings}
             />
           ) : (
             /* 生成後のプレビュー */
@@ -208,6 +221,10 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
                 setSelectedCategories={setSelectedCategories}
                 activeProductIndex={activeProductIndex}
                 onProductChange={setActiveProductIndex}
+                storeSettings={storeSettings}
+                onSaveHistory={onSaveHistory}
+                isSavingHistory={isSavingHistory}
+                isHistorySaved={isHistorySaved}
               />
             )
           )}

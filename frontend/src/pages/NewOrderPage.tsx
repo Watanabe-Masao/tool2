@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
@@ -9,6 +9,7 @@ import {
   useOrderFormContext,
   TOTAL_STEPS,
 } from '@/context/OrderFormContext';
+import { useAllocationHistorySave } from '@/hooks/useAllocationHistorySave';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -18,6 +19,10 @@ import {
 const OrderFormContent: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 配分履歴保存フック
+  const { saveHistory, isSaving } = useAllocationHistorySave();
+  const [isHistorySaved, setIsHistorySaved] = useState(false);
 
   const {
     // 認証・ユーザー
@@ -96,6 +101,22 @@ const OrderFormContent: React.FC = () => {
     [activeStep, handleAllocationChange]
   );
 
+  // 配分履歴保存ハンドラ
+  const handleSaveHistory = useCallback(async () => {
+    if (!deliveryDate || !suppliers || !products) return;
+
+    const formData = {
+      deliveryDate,
+      suppliers,
+      products,
+    };
+
+    const batchId = await saveHistory(formData);
+    if (batchId) {
+      setIsHistorySaved(true);
+    }
+  }, [deliveryDate, suppliers, products, saveHistory]);
+
   return (
     <>
       <Box sx={{ width: '100%', minHeight: '100vh', overflow: 'auto' }}>
@@ -129,6 +150,9 @@ const OrderFormContent: React.FC = () => {
           handleAllocationChange={handleAllocationChange}
           handleDownloadExcel={submission.handleDownloadExcel}
           handleDownloadPdf={submission.handleDownloadPdf}
+          onSaveHistory={handleSaveHistory}
+          isSavingHistory={isSaving}
+          isHistorySaved={isHistorySaved}
         />
       </Box>
 

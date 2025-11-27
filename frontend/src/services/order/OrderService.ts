@@ -1,3 +1,25 @@
+import { STORE_DATA } from '@/utils/constants';
+import type { StoreSettings } from '@/types/storeSettings';
+
+/**
+ * 自動配分の方式
+ */
+export type AllocationMethod = 'even' | 'salesRatio' | 'proportional' | 'history';
+
+/**
+ * 自動配分の結果
+ */
+export interface AllocationResult {
+  /** 配分配列（36店舗） */
+  allocations: number[];
+  /** 使用した配分方式 */
+  method: AllocationMethod;
+  /** 配分が成功したか */
+  success: boolean;
+  /** エラーメッセージ（失敗時） */
+  error?: string;
+}
+
 /**
  * OrderService
  *
@@ -292,5 +314,289 @@ export class OrderService {
    */
   static formatPercentage(value: number, decimals: number = 1): string {
     return `${value.toFixed(decimals)}%`;
+  }
+
+  /**
+   * 販売構成比に基づく自動配分
+   *
+   * 各店舗の販売構成比（salesRatio）に基づいて配分を計算します。
+   * ロック済み店舗がある場合、残りの数量を未ロック店舗に配分します。
+   *
+   * @param totalDelivery - 総納品数
+   * @param storeSettings - 店舗設定（店舗コードをキーとするオブジェクト）
+   * @param lockedAllocations - ロック済み店舗の配分（店舗コード → 数量）
+   * @returns 配分結果
+   *
+   * @example
+   * ```typescript
+   * const result = OrderService.calculateSalesRatioAllocation(
+   *   100,
+   *   { '01': { salesRatio: 10, enabled: true }, '02': { salesRatio: 20, enabled: true } },
+   *   new Map([['01', 15]])  // 店舗01は15個で固定
+   * );
+   * // 残り85個を店舗02以降にsalesRatioで配分
+   * ```
+   */
+  static calculateSalesRatioAllocation(
+    totalDelivery: number,
+    storeSettings: Record<string, StoreSettings>,
+    lockedAllocations: Map<string, number> = new Map()
+  ): AllocationResult {
+    if (totalDelivery <= 0) {
+      return {
+        allocations: new Array(STORE_DATA.length).fill(0),
+        method: 'salesRatio',
+        success: true,
+      };
+    }
+
+    // 1. ロック済み店舗の合計を計算
+    let lockedTotal = 0;
+    lockedAllocations.forEach((qty) => {
+      lockedTotal += qty;
+    });
+
+    // ロック済みの合計が総納品数を超えている場合はエラー
+    if (lockedTotal > totalDelivery) {
+      return {
+        allocations: new Array(STORE_DATA.length).fill(0),
+        method: 'salesRatio',
+        success: false,
+        error: 'ロック済み店舗の合計が総納品数を超えています',
+      };
+    }
+
+    // 2. 残りの配分数量
+    const remainingQty = totalDelivery - lockedTotal;
+
+    // 3. 有効な店舗のsalesRatio合計を計算（ロック済み・無効店舗を除外）
+    let totalRatio = 0;
+    const enabledStores: { index: number; code: string; ratio: number }[] = [];
+
+    STORE_DATA.forEach((store, index) => {
+      if (!lockedAllocations.has(store.code)) {
+        const setting = storeSettings[store.code];
+        // enabled が undefined または true の場合は有効とみなす
+        if (setting?.enabled !== false) {
+          const ratio = setting?.salesRatio ?? 0;
+          if (ratio > 0) {
+            totalRatio += ratio;
+            enabledStores.push({ index, code: store.code, ratio });
+          }
+        }
+      }
+    });
+
+    // 4. 配分配列を初期化
+    const allocations: number[] = new Array(STORE_DATA.length).fill(0);
+
+    // 5. ロック済み店舗の値を設定
+    STORE_DATA.forEach((store, index) => {
+      if (lockedAllocations.has(store.code)) {
+        allocations[index] = lockedAllocations.get(store.code)!;
+      }
+    });
+
+    // 6. 残りを販売構成比で配分
+    if (remainingQty > 0 && totalRatio > 0) {
+      let allocated = 0;
+
+      // 比率に基づいて配分（小数点以下切り捨て）
+      enabledStores.forEach(({ index, ratio }) => {
+        const amount = Math.floor((ratio / totalRatio) * remainingQty);
+        allocations[index] = amount;
+        allocated += amount;
+      });
+
+      // 7. 端数調整（最大比率の店舗に追加）
+      const shortfall = remainingQty - allocated;
+      if (shortfall > 0 && enabledStores.length > 0) {
+        // 最大比率の店舗を探す
+        const maxStore = enabledStores.reduce((max, store) =>
+          store.ratio > max.ratio ? store : max
+        );
+        allocations[maxStore.index] += shortfall;
+      }
+    } else if (remainingQty > 0 && totalRatio === 0) {
+      // 販売構成比が設定されていない場合は均等配分にフォールバック
+      const enabledIndices = STORE_DATA
+        .map((store, index) => ({ store, index }))
+        .filter(({ store }) => {
+          if (lockedAllocations.has(store.code)) return false;
+          const setting = storeSettings[store.code];
+          return setting?.enabled !== false;
+        })
+        .map(({ index }) => index);
+
+      if (enabledIndices.length > 0) {
+        const baseAmount = Math.floor(remainingQty / enabledIndices.length);
+        const remainder = remainingQty % enabledIndices.length;
+
+        enabledIndices.forEach((index, i) => {
+          allocations[index] = baseAmount + (i < remainder ? 1 : 0);
+        });
+      }
+    }
+
+    return {
+      allocations,
+      method: 'salesRatio',
+      success: true,
+    };
+  }
+
+  /**
+   * 過去の配分履歴に基づく自動配分
+   *
+   * 同じ商品名（または類似商品）の過去の配分パターンを参考に配分を計算します。
+   * 過去データがない場合は均等配分にフォールバックします。
+   *
+   * @param totalDelivery - 総納品数
+   * @param pastAllocations - 過去の配分データ（配列の配列）
+   * @param lockedAllocations - ロック済み店舗の配分（店舗コード → 数量）
+   * @returns 配分結果
+   *
+   * @example
+   * ```typescript
+   * const pastData = [
+   *   [10, 20, 15, ...],  // 過去の配分1
+   *   [12, 18, 16, ...],  // 過去の配分2
+   * ];
+   * const result = OrderService.calculateHistoryBasedAllocation(100, pastData);
+   * // 過去の平均比率で配分
+   * ```
+   */
+  static calculateHistoryBasedAllocation(
+    totalDelivery: number,
+    pastAllocations: number[][],
+    lockedAllocations: Map<string, number> = new Map()
+  ): AllocationResult {
+    if (totalDelivery <= 0) {
+      return {
+        allocations: new Array(STORE_DATA.length).fill(0),
+        method: 'history',
+        success: true,
+      };
+    }
+
+    // 過去データがない場合は均等配分
+    if (pastAllocations.length === 0) {
+      const evenAllocations = this.calculateEvenAllocation(totalDelivery, STORE_DATA.length);
+      return {
+        allocations: evenAllocations,
+        method: 'history',
+        success: true,
+        error: '過去の配分履歴がないため、均等配分を適用しました',
+      };
+    }
+
+    // 1. ロック済み店舗の合計を計算
+    let lockedTotal = 0;
+    lockedAllocations.forEach((qty) => {
+      lockedTotal += qty;
+    });
+
+    if (lockedTotal > totalDelivery) {
+      return {
+        allocations: new Array(STORE_DATA.length).fill(0),
+        method: 'history',
+        success: false,
+        error: 'ロック済み店舗の合計が総納品数を超えています',
+      };
+    }
+
+    const remainingQty = totalDelivery - lockedTotal;
+
+    // 2. 過去データの平均比率を計算
+    const avgRatios: number[] = new Array(STORE_DATA.length).fill(0);
+    let validDataCount = 0;
+
+    pastAllocations.forEach((allocation) => {
+      const total = allocation.reduce((sum, val) => sum + (val || 0), 0);
+      if (total > 0) {
+        validDataCount++;
+        allocation.forEach((val, index) => {
+          avgRatios[index] += (val || 0) / total;
+        });
+      }
+    });
+
+    // 平均を計算
+    if (validDataCount > 0) {
+      avgRatios.forEach((_, index) => {
+        avgRatios[index] /= validDataCount;
+      });
+    }
+
+    // 3. 配分配列を初期化
+    const allocations: number[] = new Array(STORE_DATA.length).fill(0);
+
+    // 4. ロック済み店舗の値を設定
+    STORE_DATA.forEach((store, index) => {
+      if (lockedAllocations.has(store.code)) {
+        allocations[index] = lockedAllocations.get(store.code)!;
+      }
+    });
+
+    // 5. ロックされていない店舗の比率を再計算
+    let unlockedRatioTotal = 0;
+    STORE_DATA.forEach((store, index) => {
+      if (!lockedAllocations.has(store.code)) {
+        unlockedRatioTotal += avgRatios[index];
+      }
+    });
+
+    // 6. 残りを過去の比率で配分
+    if (remainingQty > 0 && unlockedRatioTotal > 0) {
+      let allocated = 0;
+
+      STORE_DATA.forEach((store, index) => {
+        if (!lockedAllocations.has(store.code)) {
+          const normalizedRatio = avgRatios[index] / unlockedRatioTotal;
+          const amount = Math.floor(normalizedRatio * remainingQty);
+          allocations[index] = amount;
+          allocated += amount;
+        }
+      });
+
+      // 7. 端数調整（最大比率の未ロック店舗に追加）
+      const shortfall = remainingQty - allocated;
+      if (shortfall > 0) {
+        let maxIndex = -1;
+        let maxRatio = 0;
+        STORE_DATA.forEach((store, index) => {
+          if (!lockedAllocations.has(store.code) && avgRatios[index] > maxRatio) {
+            maxRatio = avgRatios[index];
+            maxIndex = index;
+          }
+        });
+        if (maxIndex >= 0) {
+          allocations[maxIndex] += shortfall;
+        }
+      }
+    } else if (remainingQty > 0) {
+      // 比率がない場合は均等配分
+      const unlockedIndices: number[] = [];
+      STORE_DATA.forEach((store, index) => {
+        if (!lockedAllocations.has(store.code)) {
+          unlockedIndices.push(index);
+        }
+      });
+
+      if (unlockedIndices.length > 0) {
+        const baseAmount = Math.floor(remainingQty / unlockedIndices.length);
+        const remainder = remainingQty % unlockedIndices.length;
+
+        unlockedIndices.forEach((index, i) => {
+          allocations[index] = baseAmount + (i < remainder ? 1 : 0);
+        });
+      }
+    }
+
+    return {
+      allocations,
+      method: 'history',
+      success: true,
+    };
   }
 }
