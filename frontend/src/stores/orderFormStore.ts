@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/shallow';
 import { env } from '@/config/env';
 
 /**
@@ -363,74 +364,87 @@ export const useOrderFormStore = create<OrderFormState>()(
 
 /**
  * Selector Hooks（パフォーマンス最適化用）
+ *
+ * NOTE: useShallowを使用して浅い比較を行い、
+ * オブジェクト参照の変更による不要な再レンダリング（React #185）を防止
  */
 
 // ステップ情報のみ取得
 export const useActiveStep = () =>
-  useOrderFormStore((state) => ({
-    activeStep: state.activeStep,
-    setActiveStep: state.setActiveStep,
-  }));
+  useOrderFormStore(
+    useShallow((state) => ({
+      activeStep: state.activeStep,
+      setActiveStep: state.setActiveStep,
+    }))
+  );
 
 // 商品インデックスと操作を取得
 export const useActiveProductIndex = () =>
-  useOrderFormStore((state) => ({
-    activeProductIndex: state.activeProductIndex,
-    totalProducts: state.totalProducts,
-    setActiveProductIndex: state.setActiveProductIndex,
-    setTotalProducts: state.setTotalProducts,
-    goToNextProduct: state.goToNextProduct,
-    goToPrevProduct: state.goToPrevProduct,
-    goToProduct: state.goToProduct,
-    resetProductIndex: state.resetProductIndex,
-    handleProductDeleted: state.handleProductDeleted,
-    // Computed
-    isFirstProduct: state.activeProductIndex === 0,
-    isLastProduct: state.activeProductIndex === Math.max(state.totalProducts - 1, 0),
-    hasProducts: state.totalProducts > 0,
-  }));
+  useOrderFormStore(
+    useShallow((state) => ({
+      activeProductIndex: state.activeProductIndex,
+      totalProducts: state.totalProducts,
+      setActiveProductIndex: state.setActiveProductIndex,
+      setTotalProducts: state.setTotalProducts,
+      goToNextProduct: state.goToNextProduct,
+      goToPrevProduct: state.goToPrevProduct,
+      goToProduct: state.goToProduct,
+      resetProductIndex: state.resetProductIndex,
+      handleProductDeleted: state.handleProductDeleted,
+      // Computed
+      isFirstProduct: state.activeProductIndex === 0,
+      isLastProduct: state.activeProductIndex === Math.max(state.totalProducts - 1, 0),
+      hasProducts: state.totalProducts > 0,
+    }))
+  );
 
 // モーダル状態のみ取得
 export const useModalStates = () =>
-  useOrderFormStore((state) => ({
-    showPDFPreview: state.showPDFPreview,
-    showDownloadModal: state.showDownloadModal,
-    showPreviewModal: state.showPreviewModal,
-    showEmailModal: state.showEmailModal,
-    showGeneratedPreview: state.showGeneratedPreview,
-    bookNameDialog: state.bookNameDialog,
-    setShowPDFPreview: state.setShowPDFPreview,
-    setShowDownloadModal: state.setShowDownloadModal,
-    setShowPreviewModal: state.setShowPreviewModal,
-    setShowEmailModal: state.setShowEmailModal,
-    setShowGeneratedPreview: state.setShowGeneratedPreview,
-    setBookNameDialog: state.setBookNameDialog,
-  }));
+  useOrderFormStore(
+    useShallow((state) => ({
+      showPDFPreview: state.showPDFPreview,
+      showDownloadModal: state.showDownloadModal,
+      showPreviewModal: state.showPreviewModal,
+      showEmailModal: state.showEmailModal,
+      showGeneratedPreview: state.showGeneratedPreview,
+      bookNameDialog: state.bookNameDialog,
+      setShowPDFPreview: state.setShowPDFPreview,
+      setShowDownloadModal: state.setShowDownloadModal,
+      setShowPreviewModal: state.setShowPreviewModal,
+      setShowEmailModal: state.setShowEmailModal,
+      setShowGeneratedPreview: state.setShowGeneratedPreview,
+      setBookNameDialog: state.setBookNameDialog,
+    }))
+  );
 
 // 店舗ロック状態のみ取得
 export const useStoreLocks = () =>
-  useOrderFormStore((state) => ({
-    lockedStores: state.lockedStores,
-    setLockedStores: state.setLockedStores,
-    toggleStoreLock: state.toggleStoreLock,
-  }));
+  useOrderFormStore(
+    useShallow((state) => ({
+      lockedStores: state.lockedStores,
+      setLockedStores: state.setLockedStores,
+      toggleStoreLock: state.toggleStoreLock,
+    }))
+  );
 
 // フォームロック状態を取得
 export const useFormLock = () =>
-  useOrderFormStore((state) => ({
-    isLocked: state.isLocked,
-    hasUnsavedChanges: state.hasUnsavedChanges,
-    isSubmitting: state.isSubmitting,
-    setIsLocked: state.setIsLocked,
-    setHasUnsavedChanges: state.setHasUnsavedChanges,
-    setIsSubmitting: state.setIsSubmitting,
-    lockForm: state.lockForm,
-    unlockForm: state.unlockForm,
-    markAsUnsaved: state.markAsUnsaved,
-    markAsSaved: state.markAsSaved,
-    startSubmitting: state.startSubmitting,
-    endSubmitting: state.endSubmitting,
-    // Computed
-    canSubmit: !state.isLocked && !state.isSubmitting,
-    shouldWarnBeforeLeave: state.hasUnsavedChanges,
-  }));
+  useOrderFormStore(
+    useShallow((state) => ({
+      isLocked: state.isLocked,
+      hasUnsavedChanges: state.hasUnsavedChanges,
+      isSubmitting: state.isSubmitting,
+      setIsLocked: state.setIsLocked,
+      setHasUnsavedChanges: state.setHasUnsavedChanges,
+      setIsSubmitting: state.setIsSubmitting,
+      lockForm: state.lockForm,
+      unlockForm: state.unlockForm,
+      markAsUnsaved: state.markAsUnsaved,
+      markAsSaved: state.markAsSaved,
+      startSubmitting: state.startSubmitting,
+      endSubmitting: state.endSubmitting,
+      // Computed
+      canSubmit: !state.isLocked && !state.isSubmitting,
+      shouldWarnBeforeLeave: state.hasUnsavedChanges,
+    }))
+  );
