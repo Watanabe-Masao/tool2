@@ -24,7 +24,7 @@ import {
 import { CalendarMonth, Today, DateRange } from '@mui/icons-material';
 import { subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { DayPicker, DateRange as DateRangeType } from 'react-day-picker';
+import { DayPicker, type DateRange as DateRangeType } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import './HistoryAllocationModal.css';
 import { useAuthContext } from '@/context/AuthContext';
@@ -281,7 +281,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
                 backgroundColor: 'action.hover',
               },
             }}
-            onClick={(e) => setCalendarAnchor(e.currentTarget as HTMLButtonElement)}
+            onClick={(e) => setCalendarAnchor(e.currentTarget as unknown as HTMLButtonElement)}
           >
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
