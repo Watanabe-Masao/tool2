@@ -275,15 +275,6 @@ export const AllocationHistoryPage: React.FC = () => {
   };
 
   /**
-   * 特定の日付の合計商品数を取得
-   */
-  const getTotalProductsForDate = (date: Date): number => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    const dayBatches = batchesByDate[dateKey] || [];
-    return dayBatches.reduce((sum, b) => sum + b.productCount, 0);
-  };
-
-  /**
    * バッチを週ごとにグループ化
    */
   const batchesByWeek = batches.reduce((acc, batch) => {
