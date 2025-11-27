@@ -20,8 +20,9 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
 
   // suppliersをJSON文字列化して安定した比較を可能にする
   // NOTE: 配列の場合、毎回新しい参照になるため、内容で比較する必要がある
+  // NOTE: undefinedの場合はnullとして扱い、JSON.parse時のエラーを防止
   const suppliersJson = useMemo(
-    () => JSON.stringify(suppliers),
+    () => JSON.stringify(suppliers ?? null),
     [suppliers]
   );
 
