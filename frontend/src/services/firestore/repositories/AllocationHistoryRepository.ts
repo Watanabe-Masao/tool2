@@ -358,16 +358,21 @@ export class AllocationHistoryRepository {
    *
    * バッチドキュメントとそれに関連するすべての詳細ドキュメントを削除します。
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 削除が成功したらtrue
    */
-  async deleteBatch(batchId: string): Promise<boolean> {
+  async deleteBatch(userId: string, batchId: string): Promise<boolean> {
     try {
       const batch = writeBatch(this.db);
 
-      // 1. 関連する詳細ドキュメントを取得
+      // 1. 関連する詳細ドキュメントを取得（userIdでもフィルタ）
       const detailsRef = collection(this.db, this.detailsCollection);
-      const detailsQuery = query(detailsRef, where('batch_id', '==', batchId));
+      const detailsQuery = query(
+        detailsRef,
+        where('batch_id', '==', batchId),
+        where('userId', '==', userId)
+      );
       const detailsSnapshot = await getDocs(detailsQuery);
 
       // 2. すべての詳細ドキュメントを削除対象に追加
@@ -385,7 +390,7 @@ export class AllocationHistoryRepository {
       return true;
     } catch (error) {
       console.error('Failed to delete batch:', error);
-      return false;
+      throw error; // エラーを上位に伝播
     }
   }
 }

@@ -546,11 +546,12 @@ export class FirestoreServiceFacade {
   /**
    * 配分バッチを削除
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 削除が成功したらtrue
    */
-  async deleteAllocationBatch(batchId: string): Promise<boolean> {
-    return this.allocationHistoryRepo.deleteBatch(batchId);
+  async deleteAllocationBatch(userId: string, batchId: string): Promise<boolean> {
+    return this.allocationHistoryRepo.deleteBatch(userId, batchId);
   }
 
   /**

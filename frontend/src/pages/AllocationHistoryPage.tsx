@@ -140,7 +140,7 @@ export const AllocationHistoryPage: React.FC = () => {
    * 配分履歴を削除
    */
   const handleDelete = async () => {
-    if (!batchToDelete?.id) return;
+    if (!batchToDelete?.id || !user?.uid) return;
 
     setDeleting(true);
 
@@ -148,7 +148,7 @@ export const AllocationHistoryPage: React.FC = () => {
       const db = getFirebaseFirestore();
       const firestoreService = new FirestoreServiceFacade(db);
 
-      const success = await firestoreService.deleteAllocationBatch(batchToDelete.id);
+      const success = await firestoreService.deleteAllocationBatch(user.uid, batchToDelete.id);
 
       if (success) {
         // 一覧から削除
@@ -159,7 +159,7 @@ export const AllocationHistoryPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to delete batch:', err);
-      setError('削除に失敗しました');
+      setError(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setDeleting(false);
     }
