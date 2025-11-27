@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { SessionStorageService } from '@/utils/sessionStorageService';
@@ -8,13 +8,15 @@ const DRAFT_DIALOG_SHOWN_KEY = 'draft-dialog-shown';
 
 /**
  * useOrderDraftManagementのパラメータ
+ *
+ * NOTE: products, suppliers, deliveryDateは依存配列から除外
+ * これらはuseWatchから取得され、毎回新しい参照が作成されるため
+ * 無限ループ(React #185)を引き起こす
+ * フォームデータはmethods.getValues()経由で取得するため問題なし
  */
 interface UseOrderDraftManagementParams {
   user: { uid: string } | null;
   methods: UseFormReturn<OrderFormData>;
-  products: any[] | undefined;
-  suppliers: string[] | undefined;
-  deliveryDate: Date | null | undefined;
 }
 
 /**
@@ -34,26 +36,33 @@ interface UseOrderDraftManagementParams {
  *   setRestoreDialogOpen,
  *   hasUnsavedChanges,
  *   setHasUnsavedChanges,
+ *   triggerAutoSave,
  * } = useOrderDraftManagement({
  *   user,
  *   methods,
- *   products,
- *   suppliers,
- *   deliveryDate,
  * });
+ *
+ * // フォーム変更時に呼び出す
+ * triggerAutoSave();
  * ```
  */
 export const useOrderDraftManagement = ({
   user,
   methods,
-  products,
-  suppliers,
-  deliveryDate,
 }: UseOrderDraftManagementParams) => {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const autoSaveTimer = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
+
+  // userとmethodsをrefで保持して安定した参照を維持
+  const userRef = useRef(user);
+  const methodsRef = useRef(methods);
+
+  useEffect(() => {
+    userRef.current = user;
+    methodsRef.current = methods;
+  }, [user, methods]);
 
   /**
    * 下書き復元確認
@@ -80,11 +89,14 @@ export const useOrderDraftManagement = ({
   }, [user]);
 
   /**
-   * フォームデータの自動保存（debounce付き）
-   * React#185対策: watch()を使わず、必要なフィールドのみ監視
+   * フォームデータの自動保存をトリガー（debounce付き）
+   *
+   * NOTE: React#185対策 - useWatchの値を依存配列に含めず、
+   * 呼び出し側から明示的にトリガーする設計に変更。
+   * これによりuseWatchからの不安定な参照による無限ループを防止。
    */
-  useEffect(() => {
-    if (!user || isInitialLoad.current) return;
+  const triggerAutoSave = useCallback(() => {
+    if (!userRef.current || isInitialLoad.current) return;
 
     // 変更があることをマーク
     setHasUnsavedChanges(true);
@@ -96,17 +108,21 @@ export const useOrderDraftManagement = ({
 
     // 2秒後に自動保存
     autoSaveTimer.current = window.setTimeout(() => {
-      const currentFormData = methods.getValues();
-      SessionStorageService.saveDraft(user.uid, currentFormData);
+      if (!userRef.current) return;
+      const currentFormData = methodsRef.current.getValues();
+      SessionStorageService.saveDraft(userRef.current.uid, currentFormData);
       console.log('Form auto-saved');
     }, 2000);
+  }, []);
 
+  // クリーンアップ用のuseEffect
+  useEffect(() => {
     return () => {
       if (autoSaveTimer.current) {
         window.clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [products, suppliers, deliveryDate, user, methods]);
+  }, []);
 
   /**
    * ページ離脱時の警告
@@ -130,16 +146,26 @@ export const useOrderDraftManagement = ({
    * 下書きダイアログ表示フラグをリセット
    * フォーム送信成功後など、新しいフォーム入力を開始する際に呼び出す
    */
-  const resetDraftDialogFlag = () => {
+  const resetDraftDialogFlag = useCallback(() => {
     sessionStorage.removeItem(DRAFT_DIALOG_SHOWN_KEY);
-  };
+  }, []);
 
-  return {
-    restoreDialogOpen,
-    setRestoreDialogOpen,
-    hasUnsavedChanges,
-    setHasUnsavedChanges,
-    isInitialLoad,
-    resetDraftDialogFlag,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      restoreDialogOpen,
+      setRestoreDialogOpen,
+      hasUnsavedChanges,
+      setHasUnsavedChanges,
+      isInitialLoad,
+      resetDraftDialogFlag,
+      triggerAutoSave,
+    }),
+    [
+      restoreDialogOpen,
+      hasUnsavedChanges,
+      resetDraftDialogFlag,
+      triggerAutoSave,
+    ]
+  );
 };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
@@ -50,51 +50,89 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   const [totalSteps, setTotalSteps] = useState(0);
   const [formData, setFormData] = useState<OrderFormData | undefined>(undefined);
   const [activeProductIndex, setActiveProductIndex] = useState<number | undefined>(undefined);
-  const [onPrevStep, setOnPrevStep] = useState<(() => void) | undefined>(undefined);
-  const [onNextStep, setOnNextStep] = useState<(() => void) | undefined>(undefined);
-  const [onProductChange, setOnProductChange] = useState<((index: number) => void) | undefined>(undefined);
   const [showProgressSummary, setShowProgressSummary] = useState(false);
 
-  const toggleProgressSummary = () => {
-    setShowProgressSummary((prev) => !prev);
-  };
+  // ハンドラーはrefで保持して状態更新による再レンダリングを防ぐ
+  // NOTE: これにより無限ループ(React #185)を防止
+  const onPrevStepRef = useRef<(() => void) | undefined>(undefined);
+  const onNextStepRef = useRef<(() => void) | undefined>(undefined);
+  const onProductChangeRef = useRef<((index: number) => void) | undefined>(undefined);
 
-  const setStepNavigation = (
-    active: boolean,
-    step: number = 0,
-    total: number = 0,
-    data?: OrderFormData,
-    productIndex?: number,
-    onPrev?: () => void,
-    onNext?: () => void,
-    onProdChange?: (index: number) => void
-  ) => {
-    setIsStepNavigationActive(active);
-    setActiveStep(step);
-    setTotalSteps(total);
-    setFormData(data);
-    setActiveProductIndex(productIndex);
-    setOnPrevStep(() => onPrev);
-    setOnNextStep(() => onNext);
-    setOnProductChange(() => onProdChange);
-  };
+  const toggleProgressSummary = useCallback(() => {
+    setShowProgressSummary((prev) => !prev);
+  }, []);
+
+  // setStepNavigationをuseCallbackでメモ化
+  // NOTE: 依存配列が空なので、この関数参照は安定している
+  const setStepNavigation = useCallback(
+    (
+      active: boolean,
+      step: number = 0,
+      total: number = 0,
+      data?: OrderFormData,
+      productIndex?: number,
+      onPrev?: () => void,
+      onNext?: () => void,
+      onProdChange?: (index: number) => void
+    ) => {
+      setIsStepNavigationActive(active);
+      setActiveStep(step);
+      setTotalSteps(total);
+      setFormData(data);
+      setActiveProductIndex(productIndex);
+      // refに保存するだけなので再レンダリングを引き起こさない
+      onPrevStepRef.current = onPrev;
+      onNextStepRef.current = onNext;
+      onProductChangeRef.current = onProdChange;
+    },
+    []
+  );
+
+  // refから関数を呼び出すラッパー関数
+  const onPrevStep = useCallback(() => {
+    onPrevStepRef.current?.();
+  }, []);
+
+  const onNextStep = useCallback(() => {
+    onNextStepRef.current?.();
+  }, []);
+
+  const onProductChange = useCallback((index: number) => {
+    onProductChangeRef.current?.(index);
+  }, []);
+
+  // Context valueをメモ化して安定した参照を維持（無限ループ防止）
+  const value = useMemo<NavigationContextType>(
+    () => ({
+      isStepNavigationActive,
+      activeStep,
+      totalSteps,
+      formData,
+      activeProductIndex,
+      onPrevStep,
+      onNextStep,
+      onProductChange,
+      showProgressSummary,
+      toggleProgressSummary,
+      setStepNavigation,
+    }),
+    [
+      isStepNavigationActive,
+      activeStep,
+      totalSteps,
+      formData,
+      activeProductIndex,
+      onPrevStep,
+      onNextStep,
+      onProductChange,
+      showProgressSummary,
+      toggleProgressSummary,
+      setStepNavigation,
+    ]
+  );
 
   return (
-    <NavigationContext.Provider
-      value={{
-        isStepNavigationActive,
-        activeStep,
-        totalSteps,
-        formData,
-        activeProductIndex,
-        onPrevStep,
-        onNextStep,
-        onProductChange,
-        showProgressSummary,
-        toggleProgressSummary,
-        setStepNavigation,
-      }}
-    >
+    <NavigationContext.Provider value={value}>
       {children}
     </NavigationContext.Provider>
   );

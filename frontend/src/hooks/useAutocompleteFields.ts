@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAutocomplete } from './useAutocomplete';
 
 /**
@@ -5,6 +6,9 @@ import { useAutocomplete } from './useAutocomplete';
  *
  * 注文フォームで使用する複数のオートコンプリートフィールドを
  * 一つのフックで管理します。
+ *
+ * NOTE: 返り値のオブジェクトをuseMemoでメモ化し、
+ * 無限ループ(React #185)を防止
  *
  * @returns 各フィールドのオートコンプリート状態
  *
@@ -22,15 +26,19 @@ export const useAutocompleteFields = () => {
   const productName = useAutocomplete('productName');
   const origin = useAutocomplete('origin');
 
-  return {
-    supplier,
-    productName,
-    origin,
-    // Convenience accessors for options only
-    supplierOptions: supplier.options,
-    productNameOptions: productName.options,
-    originOptions: origin.options,
-  };
+  // オブジェクトをメモ化して安定した参照を維持
+  return useMemo(
+    () => ({
+      supplier,
+      productName,
+      origin,
+      // Convenience accessors for options only
+      supplierOptions: supplier.options,
+      productNameOptions: productName.options,
+      originOptions: origin.options,
+    }),
+    [supplier, productName, origin]
+  );
 };
 
 export type UseAutocompleteFieldsReturn = ReturnType<typeof useAutocompleteFields>;

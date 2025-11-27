@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useRef, useEffect } from 'react';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { TemplateService } from '@/services/api/templateService';
@@ -160,4 +160,36 @@ export const useTemplateService = (): ITemplateService => {
  */
 export const useSessionStorageService = (): ISessionStorageService => {
   return useServices().sessionStorageService;
+};
+
+/**
+ * useFirestoreServiceRef
+ *
+ * Firestore Service の安定した参照を取得する。
+ * useEffectやuseCallbackの依存配列に含めても無限ループを引き起こさない。
+ *
+ * NOTE: このフックは無限ループ(React #185)を防止するために使用する。
+ * firestoreServiceを依存配列に含める必要がある場合は、このフックを使用する。
+ *
+ * @returns MutableRefObject<IFirestoreService>
+ *
+ * @example
+ * ```tsx
+ * const firestoreServiceRef = useFirestoreServiceRef();
+ *
+ * const loadData = useCallback(async () => {
+ *   const data = await firestoreServiceRef.current.getData();
+ *   // ...
+ * }, []); // 依存配列にfirestoreServiceを含めなくてもOK
+ * ```
+ */
+export const useFirestoreServiceRef = (): React.MutableRefObject<IFirestoreService> => {
+  const firestoreService = useFirestoreService();
+  const ref = useRef(firestoreService);
+
+  useEffect(() => {
+    ref.current = firestoreService;
+  }, [firestoreService]);
+
+  return ref;
 };

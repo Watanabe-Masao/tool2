@@ -5,7 +5,7 @@
  * コンテキスト値を生成するためのカスタムフック
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { orderFormSchema, type OrderFormData } from '@/schemas/orderSchema';
@@ -127,13 +127,24 @@ export const useOrderFormProvider = (): {
     setRestoreDialogOpen,
     setHasUnsavedChanges,
     isInitialLoad,
+    triggerAutoSave,
   } = useOrderDraftManagement({
     user,
     methods,
-    products,
-    suppliers,
-    deliveryDate,
   });
+
+  // フォーム変更時に自動保存をトリガー
+  // NOTE: useWatchの値を直接useEffectの依存配列に含めると無限ループ(React #185)が発生するため、
+  // JSON.stringifyで文字列化して比較し、実際に変更があった場合のみtriggerAutoSaveを呼び出す
+  const formDataJson = JSON.stringify({ products, suppliers, deliveryDate: deliveryDate?.toISOString() });
+  const prevFormDataRef = useRef(formDataJson);
+
+  useEffect(() => {
+    if (prevFormDataRef.current !== formDataJson) {
+      prevFormDataRef.current = formDataJson;
+      triggerAutoSave();
+    }
+  }, [formDataJson, triggerAutoSave]);
 
   // ===== 帳合先管理 =====
   const {
@@ -188,9 +199,6 @@ export const useOrderFormProvider = (): {
     activeProductIndex,
     showGeneratedPreview: modalStates.showGeneratedPreview,
     TOTAL_STEPS,
-    products,
-    suppliers,
-    deliveryDate,
     getValues,
     setStepNavigation,
     setActiveProductIndex,
@@ -272,6 +280,10 @@ export const useOrderFormProvider = (): {
       setProgressSummaryHeight,
       showProgressSummary,
     }),
+    // NOTE: suppliers, products, deliveryDateはuseWatchから取得されるため、
+    // 毎回新しい参照が返され、依存配列に含めると無限ループ(React #185)が発生する
+    // これらの値はcontextValueに含まれるが、依存配列からは除外する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       user,
       userSettings,
@@ -281,9 +293,7 @@ export const useOrderFormProvider = (): {
       appendProduct,
       removeProduct,
       moveProduct,
-      suppliers,
-      products,
-      deliveryDate,
+      // suppliers, products, deliveryDate は除外（useWatchからの不安定な参照）
       activeStep,
       setActiveStep,
       activeProductIndex,

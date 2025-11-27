@@ -1,3 +1,4 @@
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import type { UserSettings } from '@/types/userSettings';
 import { useOrderDataSubmit } from './useOrderDataSubmit';
@@ -138,6 +139,15 @@ export const useOrderSubmit = (params: UseOrderSubmitParams) => {
     hideLoading,
   });
 
+  // NOTE: userとsaveAllHistoriesをrefで保持して安定した参照を維持（無限ループ防止）
+  const userRef = useRef(user);
+  const saveAllHistoriesRef = useRef(saveAllHistories);
+
+  useEffect(() => {
+    userRef.current = user;
+    saveAllHistoriesRef.current = saveAllHistories;
+  }, [user, saveAllHistories]);
+
   /**
    * フォーム送信処理（統合版）
    *
@@ -147,20 +157,20 @@ export const useOrderSubmit = (params: UseOrderSubmitParams) => {
    * @param onBookNameDialogOpen - ブック名ダイアログを開くコールバック
    * @returns 成功時にtrue、ブック名ダイアログ表示時にfalse
    */
-  const handleSubmit = async (
-    data: OrderFormData,
-    onBookNameDialogOpen: () => void
-  ): Promise<boolean> => {
-    // データ送信
-    const result = await submitOrderData(data, onBookNameDialogOpen);
+  const handleSubmit = useCallback(
+    async (data: OrderFormData, onBookNameDialogOpen: () => void): Promise<boolean> => {
+      // データ送信
+      const result = await submitOrderData(data, onBookNameDialogOpen);
 
-    // 成功時のみ履歴保存
-    if (result && user) {
-      await saveAllHistories(data);
-    }
+      // 成功時のみ履歴保存
+      if (result && userRef.current) {
+        await saveAllHistoriesRef.current(data);
+      }
 
-    return result;
-  };
+      return result;
+    },
+    [submitOrderData]
+  );
 
   /**
    * ブック名確認後のテンプレート生成
@@ -169,37 +179,52 @@ export const useOrderSubmit = (params: UseOrderSubmitParams) => {
    * @param bookName - ブック名
    * @param setHasUnsavedChanges - 未保存変更フラグの更新関数
    */
-  const handleGenerateTemplate = async (
-    data: OrderFormData,
-    bookName: string,
-    setHasUnsavedChanges: (value: boolean) => void
-  ): Promise<boolean> => {
-    return await generateTemplate(data, bookName, setHasUnsavedChanges);
-  };
+  const handleGenerateTemplate = useCallback(
+    async (
+      data: OrderFormData,
+      bookName: string,
+      setHasUnsavedChanges: (value: boolean) => void
+    ): Promise<boolean> => {
+      return await generateTemplate(data, bookName, setHasUnsavedChanges);
+    },
+    [generateTemplate]
+  );
 
   /**
    * Excelファイルをダウンロード
    */
-  const handleDownloadExcel = async () => {
+  const handleDownloadExcel = useCallback(async () => {
     await downloadExcel();
-  };
+  }, [downloadExcel]);
 
   /**
    * PDFファイルをダウンロード
    */
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = useCallback(async () => {
     await downloadPdf();
-  };
+  }, [downloadPdf]);
 
-  // 既存のインターフェースを維持（後方互換性）
-  return {
-    generatedFiles,
-    setGeneratedFiles,
-    excelBlob,
-    setExcelBlob,
-    handleSubmit,
-    handleGenerateTemplate,
-    handleDownloadExcel,
-    handleDownloadPdf,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      generatedFiles,
+      setGeneratedFiles,
+      excelBlob,
+      setExcelBlob,
+      handleSubmit,
+      handleGenerateTemplate,
+      handleDownloadExcel,
+      handleDownloadPdf,
+    }),
+    [
+      generatedFiles,
+      setGeneratedFiles,
+      excelBlob,
+      setExcelBlob,
+      handleSubmit,
+      handleGenerateTemplate,
+      handleDownloadExcel,
+      handleDownloadPdf,
+    ]
+  );
 };

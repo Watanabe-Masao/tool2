@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useCallback, useMemo } from 'react';
 import { db } from '@/services/storage/indexeddb';
 import { useAuthContext } from '@/context/AuthContext';
 import type { UseIndexedDBReturn } from '@/types/hooks';
@@ -52,73 +53,102 @@ export const useIndexedDB = (): UseIndexedDBReturn => {
 
   /**
    * 注文を保存
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const saveOrder = async (
-    order: Omit<IndexedDBOrderData, 'id' | 'timestamp' | 'userId' | 'synced'>
-  ): Promise<number> => {
-    if (!user) {
-      throw new Error('ユーザーがログインしていません');
-    }
+  const saveOrder = useCallback(
+    async (order: Omit<IndexedDBOrderData, 'id' | 'timestamp' | 'userId' | 'synced'>): Promise<number> => {
+      if (!user) {
+        throw new Error('ユーザーがログインしていません');
+      }
 
-    const orderData: IndexedDBOrderData = {
-      ...order,
-      userId: user.uid,
-      timestamp: new Date(),
-      synced: false, // デフォルトは未同期
-    };
+      const orderData: IndexedDBOrderData = {
+        ...order,
+        userId: user.uid,
+        timestamp: new Date(),
+        synced: false, // デフォルトは未同期
+      };
 
-    return db.saveOrder(orderData);
-  };
+      return db.saveOrder(orderData);
+    },
+    [user]
+  );
 
   /**
    * 注文を更新
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const updateOrder = async (id: number, changes: Partial<IndexedDBOrderData>): Promise<number> => {
-    return db.updateOrder(id, changes);
-  };
+  const updateOrder = useCallback(
+    async (id: number, changes: Partial<IndexedDBOrderData>): Promise<number> => {
+      return db.updateOrder(id, changes);
+    },
+    []
+  );
 
   /**
    * 注文を削除
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const deleteOrder = async (id: number): Promise<void> => {
+  const deleteOrder = useCallback(async (id: number): Promise<void> => {
     return db.deleteOrder(id);
-  };
+  }, []);
 
   /**
    * 未同期の注文を取得
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const getUnsyncedOrders = async (): Promise<IndexedDBOrderData[]> => {
+  const getUnsyncedOrders = useCallback(async (): Promise<IndexedDBOrderData[]> => {
     if (!user) {
       return [];
     }
     return db.getUnsyncedOrders(user.uid);
-  };
+  }, [user]);
 
   /**
    * 特定の日付の注文を取得
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const getOrdersByDate = async (date: Date): Promise<IndexedDBOrderData[]> => {
-    if (!user) {
-      return [];
-    }
-    return db.getOrdersByDate(user.uid, date);
-  };
+  const getOrdersByDate = useCallback(
+    async (date: Date): Promise<IndexedDBOrderData[]> => {
+      if (!user) {
+        return [];
+      }
+      return db.getOrdersByDate(user.uid, date);
+    },
+    [user]
+  );
 
   /**
    * すべてのデータをクリア（開発・テスト用）
+   * NOTE: useCallbackでメモ化して無限ループ(React #185)を防止
    */
-  const clearAllData = async (): Promise<void> => {
+  const clearAllData = useCallback(async (): Promise<void> => {
     return db.clearAllData();
-  };
+  }, []);
 
-  return {
-    orders,
-    isLoading: orders === undefined,
-    saveOrder,
-    updateOrder,
-    deleteOrder,
-    getUnsyncedOrders,
-    getOrdersByDate,
-    clearAllData,
-  };
+  // isLoadingをメモ化
+  const isLoading = useMemo(() => orders === undefined, [orders]);
+
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      orders,
+      isLoading,
+      saveOrder,
+      updateOrder,
+      deleteOrder,
+      getUnsyncedOrders,
+      getOrdersByDate,
+      clearAllData,
+    }),
+    [
+      orders,
+      isLoading,
+      saveOrder,
+      updateOrder,
+      deleteOrder,
+      getUnsyncedOrders,
+      getOrdersByDate,
+      clearAllData,
+    ]
+  );
 };

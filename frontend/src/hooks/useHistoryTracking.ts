@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { useFirestoreService } from '@/context/ServiceContext';
+import { useFirestoreServiceRef } from '@/context/ServiceContext';
 
 /**
  * useHistoryTrackingのパラメータ
@@ -30,6 +30,9 @@ interface UseHistoryTrackingParams {
  * - 商品履歴の保存（帳合先ごと）
  * - 価格履歴の保存（商品名・規格・入数ごと）
  *
+ * NOTE: firestoreServiceはuseFirestoreServiceRefで取得し、
+ * 依存配列に含めないことで無限ループ(React #185)を防止
+ *
  * API設計:
  * 単一メソッド saveAllHistories() のみを公開することで、
  * シンプルで使いやすいAPIを提供します。
@@ -53,8 +56,21 @@ export const useHistoryTracking = ({
   productNameAutocomplete,
   originAutocomplete,
 }: UseHistoryTrackingParams) => {
-  // Service Context から FirestoreService を取得
-  const firestoreService = useFirestoreService();
+  // Service Context から FirestoreService を取得（refで安定化）
+  const firestoreServiceRef = useFirestoreServiceRef();
+
+  // パラメータをrefで保持して安定した参照を維持
+  const userRef = useRef(user);
+  const supplierAutocompleteRef = useRef(supplierAutocomplete);
+  const productNameAutocompleteRef = useRef(productNameAutocomplete);
+  const originAutocompleteRef = useRef(originAutocomplete);
+
+  useEffect(() => {
+    userRef.current = user;
+    supplierAutocompleteRef.current = supplierAutocomplete;
+    productNameAutocompleteRef.current = productNameAutocomplete;
+    originAutocompleteRef.current = originAutocomplete;
+  }, [user, supplierAutocomplete, productNameAutocomplete, originAutocomplete]);
 
   /**
    * すべての履歴を保存
@@ -66,23 +82,23 @@ export const useHistoryTracking = ({
    */
   const saveAllHistories = useCallback(
     async (data: OrderFormData) => {
-      if (!user) return;
+      if (!userRef.current) return;
 
       try {
         // 帳合先履歴
         for (const supplier of data.suppliers) {
-          await supplierAutocomplete.addToHistory(supplier);
+          await supplierAutocompleteRef.current.addToHistory(supplier);
         }
 
         // 商品関連履歴
         for (const product of data.products) {
           // オートコンプリート履歴
-          await productNameAutocomplete.addToHistory(product.name);
-          await originAutocomplete.addToHistory(product.origin);
+          await productNameAutocompleteRef.current.addToHistory(product.name);
+          await originAutocompleteRef.current.addToHistory(product.origin);
 
           // 商品履歴（各商品の帳合先ごとに）
-          await firestoreService.saveProductHistory(
-            user.uid,
+          await firestoreServiceRef.current.saveProductHistory(
+            userRef.current.uid,
             product.supplier,
             product.name,
             product.origin,
@@ -99,8 +115,8 @@ export const useHistoryTracking = ({
             product.priceExcludingTax &&
             product.quantityPerPackage
           ) {
-            await firestoreService.savePricingHistory(
-              user.uid,
+            await firestoreServiceRef.current.savePricingHistory(
+              userRef.current.uid,
               product.name,
               product.specification || '',
               product.quantityPerPackage,
@@ -117,10 +133,16 @@ export const useHistoryTracking = ({
         // 履歴保存の失敗は致命的ではないのでエラーログのみ
       }
     },
-    [user, supplierAutocomplete, productNameAutocomplete, originAutocomplete, firestoreService]
+    // NOTE: refは安定しているため依存配列に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
-  return {
-    saveAllHistories,
-  };
+  // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
+  return useMemo(
+    () => ({
+      saveAllHistories,
+    }),
+    [saveAllHistories]
+  );
 };
