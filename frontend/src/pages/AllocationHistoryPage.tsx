@@ -21,12 +21,34 @@ import {
   Stack,
   ToggleButtonGroup,
   ToggleButton,
+  Grid,
+  Card,
+  CardContent,
 } from '@mui/material';
-import { Visibility, Refresh, CalendarMonth, Delete, ViewList, CalendarToday } from '@mui/icons-material';
-import { format, subDays, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import {
+  Visibility,
+  Refresh,
+  CalendarMonth,
+  Delete,
+  ViewList,
+  CalendarToday,
+  ChevronLeft,
+  ChevronRight
+} from '@mui/icons-material';
+import {
+  format,
+  subDays,
+  parseISO,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  addMonths,
+  subMonths
+} from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { useAuthContext } from '@/context/AuthContext';
@@ -48,6 +70,110 @@ interface DetailGridRow {
 }
 
 /**
+ * 曜日ラベル
+ */
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/**
+ * カレンダー日付セルのProps
+ */
+interface CalendarDayCellProps {
+  date: Date;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
+  batchCount?: number;
+  totalProducts?: number;
+  onClick: (date: Date) => void;
+}
+
+/**
+ * カレンダー日付セル
+ */
+const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
+  date,
+  isCurrentMonth,
+  isSelected,
+  batchCount = 0,
+  totalProducts = 0,
+  onClick,
+}) => {
+  const day = date.getDate();
+  const dayOfWeek = getDay(date);
+  const isSunday = dayOfWeek === 0;
+  const isSaturday = dayOfWeek === 6;
+  const hasData = batchCount > 0;
+
+  return (
+    <Paper
+      elevation={isSelected ? 4 : hasData ? 2 : 0}
+      sx={{
+        p: { xs: 0.5, sm: 1 },
+        minHeight: { xs: 60, sm: 80 },
+        cursor: 'pointer',
+        backgroundColor: isSelected
+          ? 'primary.light'
+          : hasData
+          ? 'action.hover'
+          : 'background.paper',
+        opacity: isCurrentMonth ? 1 : 0.4,
+        border: isSelected ? '2px solid' : '1px solid',
+        borderColor: isSelected ? 'primary.main' : 'divider',
+        transition: 'all 0.2s',
+        '&:hover': {
+          backgroundColor: isSelected ? 'primary.light' : 'action.selected',
+          elevation: 2,
+        },
+      }}
+      onClick={() => onClick(date)}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: isSelected ? 700 : 400,
+          fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          color: isSelected
+            ? 'primary.contrastText'
+            : isSunday
+            ? 'error.main'
+            : isSaturday
+            ? 'info.main'
+            : 'text.primary',
+        }}
+      >
+        {day}
+      </Typography>
+
+      {hasData && (
+        <Box sx={{ mt: 0.5 }}>
+          <Chip
+            label={`${batchCount}件`}
+            size="small"
+            color={isSelected ? 'primary' : 'default'}
+            sx={{
+              fontSize: { xs: '0.55rem', sm: '0.65rem' },
+              height: { xs: 16, sm: 18 },
+            }}
+          />
+          {totalProducts > 0 && (
+            <Typography
+              variant="caption"
+              display="block"
+              color={isSelected ? 'primary.contrastText' : 'text.secondary'}
+              sx={{
+                fontSize: { xs: '0.5rem', sm: '0.6rem' },
+                mt: 0.25,
+              }}
+            >
+              {totalProducts}商品
+            </Typography>
+          )}
+        </Box>
+      )}
+    </Paper>
+  );
+};
+
+/**
  * 配分履歴一覧ページ
  *
  * 過去の配分履歴を一覧表示し、詳細を確認できます。
@@ -61,6 +187,9 @@ export const AllocationHistoryPage: React.FC = () => {
 
   // 表示モード
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('calendar');
+
+  // カレンダー月
+  const [currentMonth, setCurrentMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
 
   // 詳細モーダル
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
@@ -93,7 +222,57 @@ export const AllocationHistoryPage: React.FC = () => {
   }, [batches]);
 
   /**
-   * 履歴を取得（過去30日間）
+   * カレンダー表示用の日付を生成
+   */
+  const calendarDays = useMemo(() => {
+    const monthDate = parseISO(currentMonth + '-01');
+    const start = startOfMonth(monthDate);
+    const end = endOfMonth(monthDate);
+
+    // 月の日付を取得
+    const days = eachDayOfInterval({ start, end });
+
+    // 月の最初の曜日を取得（0=日曜日）
+    const startDayOfWeek = getDay(start);
+
+    // 前月の日付を追加（カレンダーグリッドを埋める）
+    const prevMonthDays: Date[] = [];
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const date = new Date(start);
+      date.setDate(date.getDate() - (i + 1));
+      prevMonthDays.push(date);
+    }
+
+    // 次月の日付を追加（6行のグリッドにする）
+    const totalDays = prevMonthDays.length + days.length;
+    const remainingDays = totalDays % 7 === 0 ? 0 : 7 - (totalDays % 7);
+    const nextMonthDays: Date[] = [];
+    for (let i = 1; i <= remainingDays; i++) {
+      const date = new Date(end);
+      date.setDate(date.getDate() + i);
+      nextMonthDays.push(date);
+    }
+
+    return [...prevMonthDays, ...days, ...nextMonthDays];
+  }, [currentMonth]);
+
+  /**
+   * 日付別サマリーをMapに変換
+   */
+  const summaryMap = useMemo(() => {
+    const map = new Map<string, { batchCount: number; totalProducts: number }>();
+    Object.entries(batchesByDate).forEach(([dateKey, dayBatches]) => {
+      const totalProducts = dayBatches.reduce((sum, batch) => sum + (batch.productCount || 0), 0);
+      map.set(dateKey, {
+        batchCount: dayBatches.length,
+        totalProducts,
+      });
+    });
+    return map;
+  }, [batchesByDate]);
+
+  /**
+   * 履歴を取得（過去90日間）
    */
   const fetchHistory = useCallback(async () => {
     if (!user?.uid) return;
@@ -105,8 +284,8 @@ export const AllocationHistoryPage: React.FC = () => {
       const db = getFirebaseFirestore();
       const firestoreService = new FirestoreServiceFacade(db);
 
-      const endDate = format(new Date(), 'yyyy-MM-dd');
-      const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      const endDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+      const startDate = format(subDays(new Date(), 90), 'yyyy-MM-dd');
 
       const fetchedBatches = await firestoreService.getAllocationBatchesByDateRange(
         user.uid,
@@ -248,6 +427,41 @@ export const AllocationHistoryPage: React.FC = () => {
   };
 
   /**
+   * 月を変更
+   */
+  const handlePrevMonth = () => {
+    const prevMonth = subMonths(parseISO(currentMonth + '-01'), 1);
+    setCurrentMonth(format(prevMonth, 'yyyy-MM'));
+    setSelectedDates([]);
+  };
+
+  const handleNextMonth = () => {
+    const nextMonth = addMonths(parseISO(currentMonth + '-01'), 1);
+    setCurrentMonth(format(nextMonth, 'yyyy-MM'));
+    setSelectedDates([]);
+  };
+
+  /**
+   * 日付をクリック（複数選択対応）
+   */
+  const handleDateClick = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    // データがない日付はスキップ
+    if (!summaryMap.has(dateStr)) return;
+
+    setSelectedDates((prev) => {
+      const index = prev.findIndex((d) => format(d, 'yyyy-MM-dd') === dateStr);
+      if (index >= 0) {
+        // 既に選択されている場合は解除
+        return prev.filter((_, i) => i !== index);
+      } else {
+        // 選択されていない場合は追加
+        return [...prev, date];
+      }
+    });
+  };
+
+  /**
    * 削除確認ダイアログを開く
    */
   const handleOpenDeleteDialog = (batch: AllocationBatch) => {
@@ -290,14 +504,6 @@ export const AllocationHistoryPage: React.FC = () => {
     } finally {
       setDeleting(false);
     }
-  };
-
-  /**
-   * 特定の日付のバッチ数を取得
-   */
-  const getBatchCountForDate = (date: Date): number => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    return batchesByDate[dateKey]?.length || 0;
   };
 
   /**
@@ -422,11 +628,19 @@ export const AllocationHistoryPage: React.FC = () => {
         gap: 2
       }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              color: 'primary.main',
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2rem' }
+            }}
+          >
             配分履歴
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            過去30日間の配分履歴を表示しています
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+            過去90日間の配分履歴を表示しています
           </Typography>
         </Box>
 
@@ -482,64 +696,99 @@ export const AllocationHistoryPage: React.FC = () => {
         </Paper>
       ) : viewMode === 'calendar' ? (
         /* カレンダー表示 */
-        <Paper sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <Box
-            sx={{
-              '.rdp': {
-                '--rdp-cell-size': { xs: '40px', sm: '60px', md: '80px' },
-                '--rdp-accent-color': '#1976d2',
-                '--rdp-background-color': '#e3f2fd',
-                margin: '0 auto',
-                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-              },
-              '.rdp-day': {
-                height: { xs: '40px', sm: '60px', md: '80px' },
-                border: '1px solid #e0e0e0',
-                borderRadius: '4px',
-                position: 'relative',
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                },
-              },
-              '.rdp-day_selected': {
-                backgroundColor: '#e3f2fd !important',
-                border: '2px solid #1976d2',
-              },
-            }}
-          >
-            <Box sx={{ mb: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                日付をクリックして選択 • 複数選択可能 • 選択後に「詳細を表示」ボタンをクリック
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            {/* 月ナビゲーション */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 3,
+              }}
+            >
+              <IconButton onClick={handlePrevMonth} size="small">
+                <ChevronLeft />
+              </IconButton>
+              <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })}
               </Typography>
-              {selectedDates.length > 0 && (
+              <IconButton onClick={handleNextMonth} size="small">
+                <ChevronRight />
+              </IconButton>
+            </Box>
+
+            {/* 選択ボタン */}
+            {selectedDates.length > 0 && (
+              <Box sx={{ mb: 2, textAlign: 'center' }}>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={() => fetchMultipleDateDetails(selectedDates)}
-                  sx={{ mt: 1 }}
+                  sx={{ mb: 1 }}
                 >
                   詳細を表示 ({selectedDates.length}日分)
                 </Button>
-              )}
-            </Box>
-            <DayPicker
-              mode="multiple"
-              selected={selectedDates}
-              onSelect={(dates) => setSelectedDates(dates || [])}
-              locale={ja}
-              month={new Date()}
-              modifiers={{
-                hasAllocations: (date) => getBatchCountForDate(date) > 0,
-              }}
-              modifiersStyles={{
-                hasAllocations: {
-                  backgroundColor: '#e3f2fd',
-                  fontWeight: 'bold',
-                },
-              }}
-            />
-          </Box>
-        </Paper>
+                <Typography variant="caption" display="block" color="text.secondary">
+                  日付をクリックして選択 • 複数選択可能
+                </Typography>
+              </Box>
+            )}
+
+            {/* 曜日ヘッダー */}
+            <Grid container spacing={{ xs: 0.5, sm: 1 }} sx={{ mb: 1 }}>
+              {WEEKDAY_LABELS.map((label, index) => (
+                <Grid item xs key={index}>
+                  <Typography
+                    variant="body2"
+                    align="center"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                      color:
+                        index === 0
+                          ? 'error.main'
+                          : index === 6
+                          ? 'info.main'
+                          : 'text.primary',
+                    }}
+                  >
+                    {label}
+                  </Typography>
+                </Grid>
+              ))}
+            </Grid>
+
+            {/* カレンダーグリッド */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Grid container spacing={{ xs: 0.5, sm: 1 }}>
+                {calendarDays.map((date, index) => {
+                  const dateStr = format(date, 'yyyy-MM-dd');
+                  const isCurrentMonth = format(date, 'yyyy-MM') === currentMonth;
+                  const summary = summaryMap.get(dateStr);
+                  const isSelected = selectedDates.some((d) => format(d, 'yyyy-MM-dd') === dateStr);
+
+                  return (
+                    <Grid item xs key={index} sx={{ minWidth: 0 }}>
+                      <CalendarDayCell
+                        date={date}
+                        isCurrentMonth={isCurrentMonth}
+                        isSelected={isSelected}
+                        batchCount={summary?.batchCount}
+                        totalProducts={summary?.totalProducts}
+                        onClick={handleDateClick}
+                      />
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         /* テーブル表示（週単位） */
         <TableContainer component={Paper}>
