@@ -1,15 +1,24 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import type { UseAuthReturn } from '@/types/hooks';
-import { initializeFirebase } from '@/services/firebase/config';
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import type { User } from 'firebase/auth';
+import { initializeFirebase, getFirebaseAuth } from '@/services/firebase/config';
 import { CircularProgress, Box } from '@mui/material';
 
 /**
  * 認証コンテキストの型
  */
-export interface AuthContextType extends UseAuthReturn {
-  /** Firebase初期化完了フラグ */
+export interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  error: Error | null;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
   firebaseInitialized: boolean;
 }
 
@@ -30,6 +39,8 @@ interface AuthProviderProps {
  *
  * Firebaseの初期化と認証状態の管理を提供します。
  *
+ * NOTE: Context valueをuseMemoでメモ化し、無限ループ(React #185)を防止
+ *
  * 使用例:
  * ```tsx
  * <AuthProvider>
@@ -40,6 +51,9 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   const [initError, setInitError] = useState<Error | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
   // Firebase初期化
   useEffect(() => {
@@ -49,17 +63,97 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await initializeFirebase();
         setFirebaseInitialized(true);
         console.log('Firebase初期化完了');
-      } catch (error) {
-        console.error('Firebase初期化エラー:', error);
-        setInitError(error as Error);
+      } catch (err) {
+        console.error('Firebase初期化エラー:', err);
+        setInitError(err as Error);
       }
     };
 
     init();
   }, []);
 
-  // 認証フック（Firebase初期化後にのみ使用）
-  const auth = useAuth();
+  // 認証状態の監視（Firebase初期化後）
+  useEffect(() => {
+    if (!firebaseInitialized) return;
+
+    try {
+      const auth = getFirebaseAuth();
+
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (currentUser) => {
+          setUser(currentUser);
+          setLoading(false);
+          setError(null);
+        },
+        (err) => {
+          console.error('Auth state change error:', err);
+          setError(err as Error);
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Auth initialization error:', err);
+      setError(err as Error);
+      setLoading(false);
+    }
+  }, [firebaseInitialized]);
+
+  /**
+   * Googleアカウントでサインイン
+   */
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const auth = getFirebaseAuth();
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ locale: 'ja' });
+
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setError(err as Error);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * サインアウト
+   */
+  const signOut = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const auth = getFirebaseAuth();
+      await firebaseSignOut(auth);
+    } catch (err) {
+      console.error('Sign out error:', err);
+      setError(err as Error);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Context valueをメモ化して安定した参照を維持
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      loading,
+      error,
+      signInWithGoogle,
+      signOut,
+      firebaseInitialized,
+    }),
+    [user, loading, error, signInWithGoogle, signOut, firebaseInitialized]
+  );
 
   // Firebase初期化中
   if (!firebaseInitialized) {
@@ -85,11 +179,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       </Box>
     );
   }
-
-  const value: AuthContextType = {
-    ...auth,
-    firebaseInitialized,
-  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

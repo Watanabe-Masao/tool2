@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 
@@ -6,6 +6,9 @@ import type { UserSettings } from '@/types/userSettings';
  * useUserSettings
  *
  * ユーザー設定の読み込みを管理するカスタムフック
+ *
+ * NOTE: user.uidを依存配列に使用し、オブジェクト参照ではなく値で比較することで
+ * 無限ループ(React #185)を防止
  *
  * 責務:
  * - ユーザー設定の非同期読み込み
@@ -24,12 +27,24 @@ import type { UserSettings } from '@/types/userSettings';
 export const useUserSettings = (user: { uid: string } | null): UserSettings | null => {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
 
+  // user.uidを安定した値として保持（オブジェクト参照ではなく値で比較）
+  const userId = user?.uid;
+
+  // userをrefで保持して非同期処理中の参照を安定化
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   useEffect(() => {
     const loadUserSettings = async () => {
-      if (!user) return;
+      if (!userId) {
+        setUserSettings(null);
+        return;
+      }
 
       try {
-        const settings = await UserSettingsService.getOrCreate(user.uid);
+        const settings = await UserSettingsService.getOrCreate(userId);
         setUserSettings(settings);
       } catch (error) {
         console.error('Error loading user settings:', error);
@@ -37,7 +52,7 @@ export const useUserSettings = (user: { uid: string } | null): UserSettings | nu
     };
 
     loadUserSettings();
-  }, [user]);
+  }, [userId]); // user.uidで比較（文字列なので安定）
 
   return userSettings;
 };
