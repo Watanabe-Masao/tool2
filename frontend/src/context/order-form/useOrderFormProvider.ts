@@ -303,6 +303,10 @@ export const useOrderFormProvider = (): {
       setProgressSummaryHeight,
       showProgressSummary,
     }),
+    // NOTE: suppliers, products, deliveryDateはuseWatchから取得されるため、
+    // 毎回新しい参照が返され、依存配列に含めると無限ループ(React #185)が発生する
+    // これらの値はcontextValueに含まれるが、依存配列からは除外する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       user,
       userSettings,
@@ -312,9 +316,7 @@ export const useOrderFormProvider = (): {
       appendProduct,
       removeProduct,
       moveProduct,
-      suppliers,
-      products,
-      deliveryDate,
+      // suppliers, products, deliveryDate は除外（useWatchからの不安定な参照）
       activeStep,
       setActiveStep,
       activeProductIndex,
