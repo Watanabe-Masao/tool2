@@ -661,6 +661,38 @@ export const AllocationHistoryPage: React.FC = () => {
     return flatData;
   }, [selectedDateRange, details]);
 
+  /**
+   * WebDataRocks用のreportオブジェクト（メモ化して無限レンダリングを防ぐ）
+   */
+  const pivotReport = useMemo(() => ({
+    dataSource: {
+      data: pivotData,
+    },
+    slice: {
+      rows: [
+        { uniqueName: '商品名' },
+        { uniqueName: '産地' },
+        { uniqueName: '規格' },
+      ],
+      columns: [
+        { uniqueName: '店舗' },
+      ],
+      measures: [
+        {
+          uniqueName: '数量',
+          aggregation: 'sum',
+        },
+      ],
+    },
+    options: {
+      grid: {
+        type: 'flat',
+        showTotals: true,
+        showGrandTotals: 'on',
+      },
+    },
+  }), [pivotData]);
+
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       {/* ヘッダー */}
@@ -1018,34 +1050,7 @@ export const AllocationHistoryPage: React.FC = () => {
                   toolbar={true}
                   width="100%"
                   height={window.innerWidth < 600 ? 400 : window.innerWidth < 960 ? 500 : 600}
-                  report={{
-                    dataSource: {
-                      data: pivotData,
-                    },
-                    slice: {
-                      rows: [
-                        { uniqueName: '商品名' },
-                        { uniqueName: '産地' },
-                        { uniqueName: '規格' },
-                      ],
-                      columns: [
-                        { uniqueName: '店舗' },
-                      ],
-                      measures: [
-                        {
-                          uniqueName: '数量',
-                          aggregation: 'sum',
-                        },
-                      ],
-                    },
-                    options: {
-                      grid: {
-                        type: 'flat',
-                        showTotals: true,
-                        showGrandTotals: 'on',
-                      },
-                    },
-                  }}
+                  report={pivotReport}
                 />
               )}
             </Box>
