@@ -50,8 +50,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
-// import { Pivot as WebDataRocksPivot } from '@webdatarocks/react-webdatarocks';
-// import '@webdatarocks/webdatarocks/webdatarocks.min.css';
+import PivotTableUI from 'react-pivottable/PivotTableUI';
+import 'react-pivottable/pivottable.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -94,6 +94,7 @@ export const AllocationHistoryPage: React.FC = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<'productName' | 'totalDesc' | 'totalAsc'>('totalDesc');
   const [detailViewTab, setDetailViewTab] = useState<'grid' | 'pivot'>('grid');
+  const [pivotState, setPivotState] = useState<any>({});
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -661,37 +662,6 @@ export const AllocationHistoryPage: React.FC = () => {
     return flatData;
   }, [selectedDateRange, details]);
 
-  /**
-   * WebDataRocks用のreportオブジェクト（メモ化して無限レンダリングを防ぐ）
-   */
-  const pivotReport = useMemo(() => ({
-    dataSource: {
-      data: pivotData,
-    },
-    slice: {
-      rows: [
-        { uniqueName: '商品名' },
-        { uniqueName: '産地' },
-        { uniqueName: '規格' },
-      ],
-      columns: [
-        { uniqueName: '店舗' },
-      ],
-      measures: [
-        {
-          uniqueName: '数量',
-          aggregation: 'sum',
-        },
-      ],
-    },
-    options: {
-      grid: {
-        type: 'flat',
-        showTotals: true,
-        showGrandTotals: 'on',
-      },
-    },
-  }), [pivotData]);
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -1040,40 +1010,22 @@ export const AllocationHistoryPage: React.FC = () => {
             </Box>
           ) : selectedDateRange && detailViewTab === 'pivot' ? (
             /* ピボットテーブル表示 */
-            <Box sx={{ height: { xs: 400, sm: 500, md: 600 }, width: '100%', p: 2 }}>
+            <Box sx={{ height: 'auto', width: '100%', p: 2, overflow: 'auto' }}>
               {pivotData.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                   <Typography color="text.secondary">ピボット分析用のデータがありません</Typography>
                 </Box>
               ) : (
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>
-                    ピボット分析（デバッグモード）
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    pivotData.length: {pivotData.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    pivotReport.dataSource.data.length: {pivotReport.dataSource.data.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    サンプルデータ (最初の3件):
-                  </Typography>
-                  <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '200px' }}>
-                    {JSON.stringify(pivotData.slice(0, 3), null, 2)}
-                  </pre>
-                  <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-                    ※ WebDataRocksPivotコンポーネントは一時的に無効化されています
-                  </Typography>
-                  {/* WebDataRocksPivot を一時的にコメントアウト
-                  <WebDataRocksPivot
-                    toolbar={true}
-                    width="100%"
-                    height={window.innerWidth < 600 ? 400 : window.innerWidth < 960 ? 500 : 600}
-                    report={pivotReport}
-                  />
-                  */}
-                </Box>
+                <PivotTableUI
+                  data={pivotData}
+                  onChange={(s: any) => setPivotState(s)}
+                  rows={['商品名', '産地', '規格']}
+                  cols={['店舗']}
+                  vals={['数量']}
+                  aggregatorName="Sum"
+                  rendererName="Table"
+                  {...pivotState}
+                />
               )}
             </Box>
           ) : (

@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (increased for WebDataRocks)
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB (reduced from 5MB - react-pivottable is lighter than WebDataRocks)
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
