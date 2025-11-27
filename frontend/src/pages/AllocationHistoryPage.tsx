@@ -50,8 +50,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
-import { Pivot as WebDataRocksPivot } from '@webdatarocks/react-webdatarocks';
-import '@webdatarocks/webdatarocks/webdatarocks.min.css';
+// import { Pivot as WebDataRocksPivot } from '@webdatarocks/react-webdatarocks';
+// import '@webdatarocks/webdatarocks/webdatarocks.min.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -1046,12 +1046,34 @@ export const AllocationHistoryPage: React.FC = () => {
                   <Typography color="text.secondary">ピボット分析用のデータがありません</Typography>
                 </Box>
               ) : (
-                <WebDataRocksPivot
-                  toolbar={true}
-                  width="100%"
-                  height={window.innerWidth < 600 ? 400 : window.innerWidth < 960 ? 500 : 600}
-                  report={pivotReport}
-                />
+                <Box sx={{ p: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    ピボット分析（デバッグモード）
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    pivotData.length: {pivotData.length}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    pivotReport.dataSource.data.length: {pivotReport.dataSource.data.length}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    サンプルデータ (最初の3件):
+                  </Typography>
+                  <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '200px' }}>
+                    {JSON.stringify(pivotData.slice(0, 3), null, 2)}
+                  </pre>
+                  <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
+                    ※ WebDataRocksPivotコンポーネントは一時的に無効化されています
+                  </Typography>
+                  {/* WebDataRocksPivot を一時的にコメントアウト
+                  <WebDataRocksPivot
+                    toolbar={true}
+                    width="100%"
+                    height={window.innerWidth < 600 ? 400 : window.innerWidth < 960 ? 500 : 600}
+                    report={pivotReport}
+                  />
+                  */}
+                </Box>
               )}
             </Box>
           ) : (
