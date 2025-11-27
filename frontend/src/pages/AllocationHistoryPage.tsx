@@ -511,52 +511,6 @@ export const AllocationHistoryPage: React.FC = () => {
                   fontWeight: 'bold',
                 },
               }}
-              components={{
-                DayContent: (props: { date: Date }) => {
-                  const { date } = props;
-                  const batchCount = getBatchCountForDate(date);
-                  const productCount = getTotalProductsForDate(date);
-
-                  return (
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        p: 0.5,
-                        cursor: batchCount > 0 ? 'pointer' : 'default',
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {format(date, 'd')}
-                      </Typography>
-                      {batchCount > 0 && (
-                        <Box sx={{ textAlign: 'center', width: '100%' }}>
-                          <Chip
-                            label={`${batchCount}件`}
-                            size="small"
-                            color="primary"
-                            sx={{ mb: 0.5, fontSize: '0.7rem', height: '18px' }}
-                          />
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontSize: '0.65rem',
-                              color: 'text.secondary',
-                              display: 'block',
-                            }}
-                          >
-                            {productCount}品
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                },
-              }}
             />
           </Box>
         </Paper>
