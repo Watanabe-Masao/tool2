@@ -17,9 +17,10 @@
  * ```
  */
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isTest = process.env.NODE_ENV === 'test';
-const isDebugEnabled = isDevelopment || isTest || process.env.VITE_DEBUG === 'true';
+// Viteでは import.meta.env を使用
+const isDevelopment = import.meta.env.DEV;
+const isTest = import.meta.env.MODE === 'test';
+const isDebugEnabled = isDevelopment || isTest || import.meta.env.VITE_DEBUG === 'true';
 
 // 無限ループ検出のデフォルト閾値
 const INFINITE_LOOP_THRESHOLD = 50;
