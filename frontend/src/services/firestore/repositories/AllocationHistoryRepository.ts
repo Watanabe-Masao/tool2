@@ -199,14 +199,16 @@ export class AllocationHistoryRepository {
   /**
    * バッチIDで配分明細を取得
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 配分明細の配列
    */
-  async findDetailsByBatchId(batchId: string): Promise<AllocationDetail[]> {
+  async findDetailsByBatchId(userId: string, batchId: string): Promise<AllocationDetail[]> {
     const ref = collection(this.db, this.detailsCollection);
     const q = query(
       ref,
       where('batch_id', '==', batchId),
+      where('userId', '==', userId),
       orderBy('created_at', 'asc')
     );
 
@@ -268,7 +270,7 @@ export class AllocationHistoryRepository {
     };
 
     // 明細を取得
-    const details = await this.findDetailsByBatchId(batchId);
+    const details = await this.findDetailsByBatchId(userId, batchId);
 
     return { batch, details };
   }

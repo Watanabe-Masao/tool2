@@ -136,7 +136,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
 
       for (const batch of batches) {
         if (batch.id) {
-          const details = await firestoreService.getAllocationDetails(batch.id);
+          const details = await firestoreService.getAllocationDetails(user.uid, batch.id);
           details.forEach((detail) => {
             allDetails.push({
               storeAllocations: detail.storeAllocations,

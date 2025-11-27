@@ -536,11 +536,12 @@ export class FirestoreServiceFacade {
   /**
    * バッチIDで配分明細を取得
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 配分明細の配列
    */
-  async getAllocationDetails(batchId: string): Promise<AllocationDetail[]> {
-    return this.allocationHistoryRepo.findDetailsByBatchId(batchId);
+  async getAllocationDetails(userId: string, batchId: string): Promise<AllocationDetail[]> {
+    return this.allocationHistoryRepo.findDetailsByBatchId(userId, batchId);
   }
 
   /**

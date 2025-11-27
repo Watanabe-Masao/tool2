@@ -86,7 +86,7 @@ export const AllocationHistoryPage: React.FC = () => {
    * バッチの詳細を取得
    */
   const fetchBatchDetails = useCallback(async (batch: AllocationBatch) => {
-    if (!batch.id) return;
+    if (!batch.id || !user?.uid) return;
 
     setSelectedBatch(batch);
     setDetailsLoading(true);
@@ -95,15 +95,15 @@ export const AllocationHistoryPage: React.FC = () => {
       const db = getFirebaseFirestore();
       const firestoreService = new FirestoreServiceFacade(db);
 
-      const fetchedDetails = await firestoreService.getAllocationDetails(batch.id);
+      const fetchedDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
       setDetails(fetchedDetails);
     } catch (err) {
       console.error('Failed to fetch batch details:', err);
-      setError('詳細の取得に失敗しました');
+      setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setDetailsLoading(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   /**
    * 初回読み込み
