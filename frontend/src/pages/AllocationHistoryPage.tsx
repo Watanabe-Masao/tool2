@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -50,8 +50,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
-import PivotTableUI from 'react-pivottable/PivotTableUI';
-import 'react-pivottable/pivottable.css';
+import * as WebDataRocksReact from '@webdatarocks/react-webdatarocks';
+import '@webdatarocks/webdatarocks/webdatarocks.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -99,6 +99,10 @@ export const AllocationHistoryPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // WebDataRocks用のref（原則に従い1回だけ生成）
+  const pivotContainerRef = useRef<HTMLDivElement | null>(null);
+  const pivotInstanceRef = useRef<any>(null);
 
 
   /**
@@ -661,6 +665,82 @@ export const AllocationHistoryPage: React.FC = () => {
     return flatData;
   }, [selectedDateRange, details]);
 
+  /**
+   * WebDataRocks用のレポート設定（原則に従いmemoize）
+   */
+  const pivotReport = useMemo(() => {
+    return {
+      dataSource: {
+        data: pivotData,
+      },
+      slice: {
+        rows: [
+          { uniqueName: '日付' },
+          { uniqueName: '商品名' },
+          { uniqueName: '産地' },
+          { uniqueName: '規格' },
+        ],
+        columns: [
+          { uniqueName: '店舗' },
+        ],
+        measures: [
+          {
+            uniqueName: '数量',
+            aggregation: 'sum',
+          },
+        ],
+      },
+      options: {
+        grid: {
+          type: 'flat',
+          showTotals: 'on',
+          showGrandTotals: 'on',
+        },
+      },
+      formats: [
+        {
+          name: '',
+          thousandsSeparator: ',',
+          decimalPlaces: 0,
+        },
+      ],
+    };
+  }, [pivotData]);
+
+  /**
+   * WebDataRocks初期化（原則1: インスタンス生成は1回だけ）
+   */
+  useEffect(() => {
+    if (!pivotContainerRef.current) return;
+    if (pivotInstanceRef.current) return; // すでに作成済みなら何もしない
+
+    // ✅ 初回マウント時にだけインスタンス生成
+    pivotInstanceRef.current = new (WebDataRocksReact as any).WebDataRocks({
+      container: pivotContainerRef.current,
+      toolbar: true,
+      report: pivotReport,
+      height: 500,
+      width: '100%',
+    });
+
+    // ✅ アンマウント時にdisposeしてリーク防止
+    return () => {
+      if (pivotInstanceRef.current) {
+        pivotInstanceRef.current.dispose();
+        pivotInstanceRef.current = null;
+      }
+    };
+  }, []); // ← 空配列：マウント時のみ
+
+  /**
+   * WebDataRocksレポート更新（原則2: インスタンスのメソッドで更新）
+   */
+  useEffect(() => {
+    if (pivotInstanceRef.current && pivotReport) {
+      pivotInstanceRef.current.setReport(pivotReport);
+    }
+  }, [pivotReport]); // report propが変わったときだけpivotに反映
+
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -1008,25 +1088,14 @@ export const AllocationHistoryPage: React.FC = () => {
               <Typography color="text.secondary">詳細データがありません</Typography>
             </Box>
           ) : selectedDateRange && detailViewTab === 'pivot' ? (
-            /* ピボットテーブル表示 */
+            /* ピボットテーブル表示（WebDataRocks） */
             <Box sx={{ height: 'auto', width: '100%', p: 2, overflow: 'auto' }}>
               {pivotData.length === 0 ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                   <Typography color="text.secondary">ピボット分析用のデータがありません</Typography>
                 </Box>
               ) : (
-                <PivotTableUI
-                  data={pivotData}
-                  onChange={() => {
-                    // ✅ 無限レンダリングを防ぐため、React state は更新しない
-                    // ピボットテーブルの状態は内部で管理される
-                  }}
-                  rows={['商品名', '産地', '規格']}
-                  cols={['店舗']}
-                  vals={['数量']}
-                  aggregatorName="Sum"
-                  rendererName="Table"
-                />
+                <div ref={pivotContainerRef} style={{ width: '100%', height: '500px' }} />
               )}
             </Box>
           ) : (
