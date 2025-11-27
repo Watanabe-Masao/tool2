@@ -26,6 +26,12 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/interaction": "^6.1.19",
+    "@fullcalendar/list": "^6.1.19",
+    "@fullcalendar/react": "^6.1.19",
+    "@fullcalendar/timegrid": "^6.1.19",
     "@hookform/resolvers": "^4.0.1",
     "@mui/icons-material": "^6.3.0",
     "@mui/material": "^6.3.0",
@@ -63,6 +69,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^27.2.0",
+    "madge": "^8.0.0",
     "msw": "^2.12.3",
     "prettier": "^3.4.2",
     "typescript": "~5.9.3",
@@ -70,7 +77,6 @@
     "vite": "^7.2.2",
     "vite-plugin-pwa": "^1.1.0",
     "vitest": "^3.2.4",
-    "workbox-window": "^7.4.0",
-    "madge": "^8.0.0"
+    "workbox-window": "^7.4.0"
   }
 }
