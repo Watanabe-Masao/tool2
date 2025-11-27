@@ -3,6 +3,8 @@ import {
   collection,
   doc,
   getDocs,
+  getDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -351,5 +353,41 @@ export class AllocationHistoryRepository {
 
     // 件数制限
     return details.slice(0, limitCount).map((d) => d.storeAllocations);
+  }
+
+  /**
+   * 配分バッチを削除
+   *
+   * バッチドキュメントとそれに関連するすべての詳細ドキュメントを削除します。
+   *
+   * @param batchId - バッチID
+   * @returns 削除が成功したらtrue
+   */
+  async deleteBatch(batchId: string): Promise<boolean> {
+    try {
+      const batch = writeBatch(this.db);
+
+      // 1. 関連する詳細ドキュメントを取得
+      const detailsRef = collection(this.db, this.detailsCollection);
+      const detailsQuery = query(detailsRef, where('batch_id', '==', batchId));
+      const detailsSnapshot = await getDocs(detailsQuery);
+
+      // 2. すべての詳細ドキュメントを削除対象に追加
+      detailsSnapshot.docs.forEach((detailDoc) => {
+        batch.delete(detailDoc.ref);
+      });
+
+      // 3. バッチドキュメントを削除対象に追加
+      const batchRef = doc(this.db, this.batchesCollection, batchId);
+      batch.delete(batchRef);
+
+      // 4. 一括削除を実行
+      await batch.commit();
+
+      return true;
+    } catch (error) {
+      console.error('Failed to delete batch:', error);
+      return false;
+    }
   }
 }

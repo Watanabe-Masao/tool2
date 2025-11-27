@@ -20,7 +20,7 @@ import {
   DialogActions,
   Stack,
 } from '@mui/material';
-import { Visibility, Refresh, CalendarMonth } from '@mui/icons-material';
+import { Visibility, Refresh, CalendarMonth, Delete } from '@mui/icons-material';
 import { format, subDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useAuthContext } from '@/context/AuthContext';
@@ -45,6 +45,11 @@ export const AllocationHistoryPage: React.FC = () => {
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
   const [details, setDetails] = useState<AllocationDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // 削除確認ダイアログ
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   /**
    * 履歴を取得（過去30日間）
@@ -113,6 +118,51 @@ export const AllocationHistoryPage: React.FC = () => {
   const handleCloseDetails = () => {
     setSelectedBatch(null);
     setDetails([]);
+  };
+
+  /**
+   * 削除確認ダイアログを開く
+   */
+  const handleOpenDeleteDialog = (batch: AllocationBatch) => {
+    setBatchToDelete(batch);
+    setDeleteDialogOpen(true);
+  };
+
+  /**
+   * 削除確認ダイアログを閉じる
+   */
+  const handleCloseDeleteDialog = () => {
+    setBatchToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
+  /**
+   * 配分履歴を削除
+   */
+  const handleDelete = async () => {
+    if (!batchToDelete?.id) return;
+
+    setDeleting(true);
+
+    try {
+      const db = getFirebaseFirestore();
+      const firestoreService = new FirestoreServiceFacade(db);
+
+      const success = await firestoreService.deleteAllocationBatch(batchToDelete.id);
+
+      if (success) {
+        // 一覧から削除
+        setBatches((prev) => prev.filter((b) => b.id !== batchToDelete.id));
+        handleCloseDeleteDialog();
+      } else {
+        setError('削除に失敗しました');
+      }
+    } catch (err) {
+      console.error('Failed to delete batch:', err);
+      setError('削除に失敗しました');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -229,8 +279,17 @@ export const AllocationHistoryPage: React.FC = () => {
                       color="primary"
                       size="small"
                       onClick={() => fetchBatchDetails(batch)}
+                      title="詳細を表示"
                     >
                       <Visibility />
+                    </IconButton>
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleOpenDeleteDialog(batch)}
+                      title="削除"
+                    >
+                      <Delete />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -319,6 +378,60 @@ export const AllocationHistoryPage: React.FC = () => {
 
         <DialogActions>
           <Button onClick={handleCloseDetails}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>
+          配分履歴を削除しますか？
+        </DialogTitle>
+
+        <DialogContent>
+          {batchToDelete && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                以下の配分履歴を削除します。この操作は取り消せません。
+              </Typography>
+              <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
+                <Typography variant="body2">
+                  <strong>納品日:</strong>{' '}
+                  {format(new Date(batchToDelete.deliveryDate), 'yyyy年M月d日(E)', {
+                    locale: ja,
+                  })}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>帳合先:</strong> {batchToDelete.suppliers.join(', ')}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>商品数:</strong> {batchToDelete.productCount}品
+                </Typography>
+                <Typography variant="body2">
+                  <strong>合計数量:</strong> {batchToDelete.totalQuantity.toLocaleString()}個
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} disabled={deleting}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleDelete}
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} /> : <Delete />}
+          >
+            {deleting ? '削除中...' : '削除'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
