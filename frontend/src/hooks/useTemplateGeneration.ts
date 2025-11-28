@@ -78,6 +78,74 @@ export const useTemplateGeneration = ({
   }, []);
 
   /**
+   * フォームデータのバリデーション
+   */
+  const validateFormData = useCallback((data: OrderFormData): string | null => {
+    const missingFields: string[] = [];
+
+    // 店着日チェック
+    if (!data.deliveryDate) {
+      missingFields.push('店着日');
+    }
+
+    // 帳合先チェック
+    if (!data.suppliers || data.suppliers.length === 0) {
+      missingFields.push('帳合先');
+    }
+
+    // 商品チェック
+    if (!data.products || data.products.length === 0) {
+      missingFields.push('商品情報');
+    } else {
+      data.products.forEach((product, index) => {
+        const productNum = index + 1;
+        const productErrors: string[] = [];
+
+        if (!product.name?.trim()) {
+          productErrors.push('品名');
+        }
+        if (!product.origin?.trim()) {
+          productErrors.push('産地');
+        }
+        if (!product.specification?.trim()) {
+          productErrors.push('規格');
+        }
+        if (!product.unit?.trim()) {
+          productErrors.push('規格の単位');
+        }
+        if (!product.quantityPerPackage || product.quantityPerPackage <= 0) {
+          productErrors.push('入数');
+        }
+        if (!product.packageUnit?.trim()) {
+          productErrors.push('入数の単位');
+        }
+        if (product.storeCost === undefined || product.storeCost === null) {
+          productErrors.push('店着原価');
+        }
+        if (product.priceExcludingTax === undefined || product.priceExcludingTax === null) {
+          productErrors.push('税抜売価');
+        }
+        if (!product.totalDelivery || product.totalDelivery <= 0) {
+          productErrors.push('総納品数');
+        }
+        if (!product.supplier?.trim()) {
+          productErrors.push('納品先（帳合先）');
+        }
+
+        if (productErrors.length > 0) {
+          missingFields.push(`商品${productNum}: ${productErrors.join(', ')}`);
+        }
+      });
+    }
+
+    if (missingFields.length > 0) {
+      return `以下の項目を入力してください:\n\n${missingFields.join('\n')}`;
+    }
+
+    return null;
+  }, []);
+
+  /**
    * ブック名確認後のテンプレート生成
    *
    * @param data - フォームデータ
@@ -91,6 +159,13 @@ export const useTemplateGeneration = ({
       setHasUnsavedChanges: (value: boolean) => void
     ): Promise<boolean> => {
       try {
+        // 送信前バリデーション
+        const validationError = validateFormData(data);
+        if (validationError) {
+          showError(validationError);
+          return false;
+        }
+
         showLoading();
 
         // バイヤー名を取得
@@ -144,11 +219,48 @@ export const useTemplateGeneration = ({
         return true;
       } catch (error) {
         hideLoading();
-        showError(error instanceof Error ? error.message : 'テンプレートの生成に失敗しました');
+
+        // エラーメッセージを詳細に表示
+        let errorMessage = 'テンプレートの生成に失敗しました';
+
+        if (error && typeof error === 'object') {
+          const err = error as any;
+
+          // Axiosエラーの場合
+          if (err.response?.data) {
+            const responseData = err.response.data;
+
+            // FastAPI Pydanticバリデーションエラー
+            if (responseData.detail && Array.isArray(responseData.detail)) {
+              const missingFields = responseData.detail
+                .map((detail: any) => {
+                  const fieldName = detail.loc?.slice(-1)[0] || 'unknown';
+                  const message = detail.msg || '';
+                  return `${fieldName}: ${message}`;
+                })
+                .join('\n');
+              errorMessage = `入力項目に不足があります:\n${missingFields}`;
+            }
+            // 文字列のdetail
+            else if (typeof responseData.detail === 'string') {
+              errorMessage = responseData.detail;
+            }
+            // messageフィールド
+            else if (responseData.message) {
+              errorMessage = responseData.message;
+            }
+          }
+          // Errorオブジェクトのmessage
+          else if (err.message) {
+            errorMessage = err.message;
+          }
+        }
+
+        showError(errorMessage);
         return false;
       }
     },
-    [showLoading, userSettings, user, showError, hideLoading, showSuccess, fetchExcelAsBlob, setGeneratedFiles, setExcelBlob, templateService, sessionStorageService]
+    [validateFormData, showLoading, userSettings, user, showError, hideLoading, showSuccess, fetchExcelAsBlob, setGeneratedFiles, setExcelBlob, templateService, sessionStorageService]
   );
 
   // 戻り値をメモ化して安定した参照を維持（無限ループ防止）
