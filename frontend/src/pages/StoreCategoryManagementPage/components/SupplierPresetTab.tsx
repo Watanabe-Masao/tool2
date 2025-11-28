@@ -27,6 +27,7 @@ import {
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { useSupplierPresetManagement } from '../hooks/useSupplierPresetManagement';
 import type { SupplierPresetEntity } from '@/hooks/useSupplierPresets';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 interface SupplierPresetTabProps {
   presets: SupplierPresetEntity[];
@@ -274,7 +275,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       </Card>
 
       {/* 帳合先追加ダイアログ */}
-      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} sx={{ zIndex: 1500 }}>
+      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>帳合先を追加</DialogTitle>
         <DialogContent>
           <TextField
@@ -296,7 +297,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       </Dialog>
 
       {/* 帳合先編集ダイアログ */}
-      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} sx={{ zIndex: 1500 }}>
+      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>帳合先を編集</DialogTitle>
         <DialogContent>
           <TextField
@@ -317,7 +318,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       </Dialog>
 
       {/* 帳合先削除確認ダイアログ */}
-      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} sx={{ zIndex: 1500 }}>
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>帳合先を削除</DialogTitle>
         <DialogContent>
           <Typography variant="body2">

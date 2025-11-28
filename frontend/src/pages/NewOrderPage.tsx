@@ -15,6 +15,7 @@ import { useOrderFormStore } from '@/stores/orderFormStore';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -227,11 +228,11 @@ const OrderFormContent: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
         <IconButton
           onClick={() => setShowAllocationHistoryModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL_CLOSE_BUTTON }}
         >
           <Close />
         </IconButton>
@@ -247,11 +248,11 @@ const OrderFormContent: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
         <IconButton
           onClick={() => setShowUserProfileModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL_CLOSE_BUTTON }}
         >
           <Close />
         </IconButton>
@@ -267,11 +268,11 @@ const OrderFormContent: React.FC = () => {
         maxWidth="lg"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
         <IconButton
           onClick={() => setShowStoreManagementModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL_CLOSE_BUTTON }}
         >
           <Close />
         </IconButton>
