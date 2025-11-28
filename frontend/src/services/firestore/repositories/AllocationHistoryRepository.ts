@@ -97,9 +97,9 @@ export class AllocationHistoryRepository {
     const batchData: FirestoreAllocationBatch = {
       userId,
       delivery_date: format(input.deliveryDate, 'yyyy-MM-dd'),
-      center_delivery_date: input.centerDeliveryDate
-        ? format(input.centerDeliveryDate, 'yyyy-MM-dd')
-        : undefined,
+      ...(input.centerDeliveryDate
+        ? { center_delivery_date: format(input.centerDeliveryDate, 'yyyy-MM-dd') }
+        : {}),
       suppliers: input.suppliers,
       product_count: input.products.length,
       total_quantity: totalQuantity,
@@ -122,7 +122,7 @@ export class AllocationHistoryRepository {
         origin: product.origin,
         specification: product.specification,
         supplier: product.supplier,
-        category_code: product.categoryCode,
+        ...(product.categoryCode ? { category_code: product.categoryCode } : {}),
         quantity_per_package: product.quantityPerPackage,
         unit: product.unit,
         package_unit: product.packageUnit || '',
