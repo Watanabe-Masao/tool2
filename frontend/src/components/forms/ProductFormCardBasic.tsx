@@ -789,7 +789,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Grid>
 
             {/* 規格 */}
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <Controller
                 name={`products.${index}.specification`}
                 control={control}
@@ -850,88 +850,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                 });
                               }}
                               color={field.value === spec ? 'primary' : 'default'}
-                              sx={{ fontSize: '0.75rem' }}
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                    </Box>
-                  );
-                }}
-              />
-            </Grid>
-
-            {/* 入数 */}
-            <Grid item xs={6}>
-              <Controller
-                name={`products.${index}.quantityPerPackage`}
-                control={control}
-                render={({ field }) => {
-                  const quantities =
-                    currentName && currentOrigin && currentSpecification
-                      ? getUniqueQuantities(currentName, currentOrigin, currentSpecification)
-                      : [];
-                  return (
-                    <Box>
-                      <TextField
-                        {...field}
-                        type="number"
-                        label="入数"
-                        placeholder="例: 40"
-                        size="small"
-                        error={!!productErrors?.quantityPerPackage}
-                        helperText={productErrors?.quantityPerPackage?.message}
-                        inputProps={{ min: 1, step: 1 }}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.onChange(value ? parseInt(value, 10) : null);
-                        }}
-                        fullWidth
-                      />
-                      {/* 入数履歴チップ */}
-                      {quantities.length > 0 && (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          {quantities.slice(0, 10).map((qty) => (
-                            <Chip
-                              key={qty}
-                              label={String(qty)}
-                              size="small"
-                              onClick={() => field.onChange(qty)}
-                              onTouchStart={() =>
-                                handleLongPressStart('quantity', qty, {
-                                  name: currentName,
-                                  origin: currentOrigin,
-                                  specification: currentSpecification,
-                                  quantityPerPackage: qty,
-                                })
-                              }
-                              onTouchEnd={handleLongPressEnd}
-                              onMouseDown={() =>
-                                handleLongPressStart('quantity', qty, {
-                                  name: currentName,
-                                  origin: currentOrigin,
-                                  specification: currentSpecification,
-                                  quantityPerPackage: qty,
-                                })
-                              }
-                              onMouseUp={handleLongPressEnd}
-                              onMouseLeave={handleLongPressEnd}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setDeleteDialog({
-                                  open: true,
-                                  type: 'quantity',
-                                  value: qty,
-                                  conditions: {
-                                    name: currentName,
-                                    origin: currentOrigin,
-                                    specification: currentSpecification,
-                                    quantityPerPackage: qty,
-                                  },
-                                });
-                              }}
-                              color={field.value === qty ? 'primary' : 'default'}
                               sx={{ fontSize: '0.75rem' }}
                             />
                           ))}
@@ -1008,6 +926,88 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                 });
                               }}
                               color={field.value === unit ? 'primary' : 'default'}
+                              sx={{ fontSize: '0.75rem' }}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  );
+                }}
+              />
+            </Grid>
+
+            {/* 入数 */}
+            <Grid item xs={12}>
+              <Controller
+                name={`products.${index}.quantityPerPackage`}
+                control={control}
+                render={({ field }) => {
+                  const quantities =
+                    currentName && currentOrigin && currentSpecification
+                      ? getUniqueQuantities(currentName, currentOrigin, currentSpecification)
+                      : [];
+                  return (
+                    <Box>
+                      <TextField
+                        {...field}
+                        type="number"
+                        label="入数"
+                        placeholder="例: 40"
+                        size="small"
+                        error={!!productErrors?.quantityPerPackage}
+                        helperText={productErrors?.quantityPerPackage?.message}
+                        inputProps={{ min: 1, step: 1 }}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value ? parseInt(value, 10) : null);
+                        }}
+                        fullWidth
+                      />
+                      {/* 入数履歴チップ */}
+                      {quantities.length > 0 && (
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                          {quantities.slice(0, 10).map((qty) => (
+                            <Chip
+                              key={qty}
+                              label={String(qty)}
+                              size="small"
+                              onClick={() => field.onChange(qty)}
+                              onTouchStart={() =>
+                                handleLongPressStart('quantity', qty, {
+                                  name: currentName,
+                                  origin: currentOrigin,
+                                  specification: currentSpecification,
+                                  quantityPerPackage: qty,
+                                })
+                              }
+                              onTouchEnd={handleLongPressEnd}
+                              onMouseDown={() =>
+                                handleLongPressStart('quantity', qty, {
+                                  name: currentName,
+                                  origin: currentOrigin,
+                                  specification: currentSpecification,
+                                  quantityPerPackage: qty,
+                                })
+                              }
+                              onMouseUp={handleLongPressEnd}
+                              onMouseLeave={handleLongPressEnd}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setDeleteDialog({
+                                  open: true,
+                                  type: 'quantity',
+                                  value: qty,
+                                  conditions: {
+                                    name: currentName,
+                                    origin: currentOrigin,
+                                    specification: currentSpecification,
+                                    quantityPerPackage: qty,
+                                  },
+                                });
+                              }}
+                              color={field.value === qty ? 'primary' : 'default'}
                               sx={{ fontSize: '0.75rem' }}
                             />
                           ))}
