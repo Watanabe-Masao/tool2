@@ -132,7 +132,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
       );
 
       // 各バッチの詳細を取得
-      const allDetails: { storeAllocations: number[]; productName: string; origin: string; categoryCode?: string }[] = [];
+      const allDetails: { storeAllocations: number[]; productName: string; origin: string; categoryCode?: string | null }[] = [];
 
       for (const batch of batches) {
         if (batch.id) {

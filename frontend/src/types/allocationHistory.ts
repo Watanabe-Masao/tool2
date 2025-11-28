@@ -14,8 +14,8 @@ export interface AllocationBatch {
   userId: string;
   /** 店着日（YYYY-MM-DD） */
   deliveryDate: string;
-  /** センター送信日（YYYY-MM-DD）（オプショナル） */
-  centerDeliveryDate?: string;
+  /** センター送信日（YYYY-MM-DD）（未設定の場合はnull） */
+  centerDeliveryDate?: string | null;
   /** 帳合先リスト */
   suppliers: string[];
   /** 配分した商品数 */
@@ -52,8 +52,8 @@ export interface AllocationDetail {
   specification: string;
   /** 帳合先 */
   supplier: string;
-  /** カテゴリーコード */
-  categoryCode?: string;
+  /** カテゴリーコード（未設定の場合はnull） */
+  categoryCode?: string | null;
   /** 入数 */
   quantityPerPackage: number | null;
   /** 規格の単位 */

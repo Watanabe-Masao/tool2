@@ -24,7 +24,7 @@ import type {
 interface FirestoreAllocationBatch {
   userId: string;
   delivery_date: string;
-  center_delivery_date?: string;
+  center_delivery_date: string | null;
   suppliers: string[];
   product_count: number;
   total_quantity: number;
@@ -45,7 +45,7 @@ interface FirestoreAllocationDetail {
   origin: string;
   specification: string;
   supplier: string;
-  category_code?: string;
+  category_code: string | null;
   quantity_per_package: number | null;
   unit: string;
   package_unit: string;
@@ -97,9 +97,9 @@ export class AllocationHistoryRepository {
     const batchData: FirestoreAllocationBatch = {
       userId,
       delivery_date: format(input.deliveryDate, 'yyyy-MM-dd'),
-      ...(input.centerDeliveryDate
-        ? { center_delivery_date: format(input.centerDeliveryDate, 'yyyy-MM-dd') }
-        : {}),
+      center_delivery_date: input.centerDeliveryDate
+        ? format(input.centerDeliveryDate, 'yyyy-MM-dd')
+        : null,
       suppliers: input.suppliers,
       product_count: input.products.length,
       total_quantity: totalQuantity,
@@ -122,7 +122,7 @@ export class AllocationHistoryRepository {
         origin: product.origin,
         specification: product.specification,
         supplier: product.supplier,
-        ...(product.categoryCode ? { category_code: product.categoryCode } : {}),
+        category_code: product.categoryCode || null,
         quantity_per_package: product.quantityPerPackage,
         unit: product.unit,
         package_unit: product.packageUnit || '',
