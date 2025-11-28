@@ -122,6 +122,10 @@ export const AllocationHistoryPage: React.FC = () => {
   // 設定ドロワー
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // 日付範囲ピッカー
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [tempDateRange, setTempDateRange] = useState<{ start: string; end: string } | null>(null);
+
   // 列の表示/非表示
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
 
@@ -151,18 +155,20 @@ export const AllocationHistoryPage: React.FC = () => {
     const events: EventInput[] = [];
 
     batches.forEach((batch) => {
-      // 各バッチから帳合先名を取得
-      const suppliers = batch.suppliers.join(', ');
+      // ファイル名がある場合はそれを使用、なければ帳合先名を使用
+      const fileName = (batch as any).fileName;
+      const displayTitle = fileName || batch.suppliers.join(', ');
       const productCount = batch.productCount || 0;
 
       events.push({
         id: batch.id || '',
-        title: suppliers,
+        title: displayTitle,
         date: batch.deliveryDate,
         extendedProps: {
           batch,
           productCount,
           totalQuantity: batch.totalQuantity,
+          fileName,
         },
         backgroundColor: '#1976d2',
         borderColor: '#1565c0',
@@ -377,31 +383,6 @@ export const AllocationHistoryPage: React.FC = () => {
   const sortedWeeks = Object.values(batchesByWeek).sort((a, b) =>
     b.weekStart.getTime() - a.weekStart.getTime()
   );
-
-  /**
-   * フィルター用のユニーク値を取得
-   */
-  const uniqueFilterValues = useMemo(() => {
-    const productNames = new Set<string>();
-    const origins = new Set<string>();
-    const specifications = new Set<string>();
-    const dates = new Set<string>();
-
-    details.forEach(detail => {
-      productNames.add(detail.productName);
-      origins.add(detail.origin);
-      specifications.add(detail.specification);
-      const deliveryDate = (detail as any).deliveryDate;
-      if (deliveryDate) dates.add(deliveryDate);
-    });
-
-    return {
-      productNames: Array.from(productNames).sort(),
-      origins: Array.from(origins).sort(),
-      specifications: Array.from(specifications).sort(),
-      dates: Array.from(dates).sort(),
-    };
-  }, [details]);
 
   /**
    * フィルター適用関数
@@ -924,6 +905,62 @@ export const AllocationHistoryPage: React.FC = () => {
     });
   }, [selectedDateRange, details]);
 
+  /**
+   * アクティブなフィルター値を取得（他のフィルターを考慮）
+   * 各フィルターは、他のフィルター条件を適用した結果で利用可能な値のみを表示
+   */
+  const availableFilterValues = useMemo(() => {
+    // ベースとなる行データ
+    const baseRows = selectedDateRange ? dateRangeRows : singleBatchRows;
+
+    // 商品名: 産地、規格、日付フィルターのみを適用
+    const productNameRows = baseRows.filter(row => {
+      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
+      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
+      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
+      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
+      return true;
+    });
+    const productNames = Array.from(new Set(productNameRows.map(r => r.productName))).sort();
+
+    // 産地: 商品名、規格、日付フィルターのみを適用
+    const originRows = baseRows.filter(row => {
+      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
+      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
+      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
+      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
+      return true;
+    });
+    const origins = Array.from(new Set(originRows.map(r => r.origin))).sort();
+
+    // 規格: 商品名、産地、日付フィルターのみを適用
+    const specRows = baseRows.filter(row => {
+      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
+      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
+      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
+      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
+      return true;
+    });
+    const specifications = Array.from(new Set(specRows.map(r => r.specification))).sort();
+
+    // 日付: 商品名、産地、規格フィルターのみを適用
+    const dateRows = baseRows.filter(row => {
+      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
+      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
+      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
+      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
+      return true;
+    });
+    const dates = Array.from(new Set(dateRows.map(r => r.deliveryDate).filter((d): d is string => !!d))).sort();
+
+    return {
+      productNames,
+      origins,
+      specifications,
+      dates,
+    };
+  }, [selectedDateRange, dateRangeRows, singleBatchRows, filters]);
+
   // 使用するカラムと行を選択（フィルター適用 + 列の非表示適用）
   const detailColumns = useMemo(() => {
     const columns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
@@ -1248,7 +1285,7 @@ export const AllocationHistoryPage: React.FC = () => {
                   alignItems: 'center',
                   gap: 0.5,
                 }}
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => setDatePickerOpen(true)}
               >
                 <DateRange fontSize="small" />
                 {format(parseISO(selectedDateRange.start), 'M月d日(E)', { locale: ja })}〜
@@ -1259,6 +1296,17 @@ export const AllocationHistoryPage: React.FC = () => {
 
           {/* アクションボタン */}
           <Stack direction="row" spacing={0.5}>
+            {/* 非表示行の復元ボタン */}
+            {hiddenRowIds.size > 0 && (
+              <Chip
+                label={`${hiddenRowIds.size}件非表示`}
+                size="small"
+                color="warning"
+                onDelete={() => setHiddenRowIds(new Set())}
+                deleteIcon={<Visibility fontSize="small" />}
+                sx={{ height: 24, fontSize: '0.7rem' }}
+              />
+            )}
             <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
               {isFullScreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
             </IconButton>
@@ -1482,6 +1530,7 @@ export const AllocationHistoryPage: React.FC = () => {
         anchor="bottom"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        sx={{ zIndex: 1400 }} // Dialog(1300)より上に表示
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
@@ -1522,7 +1571,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                   >
-                    {uniqueFilterValues.productNames.map((name) => (
+                    {availableFilterValues.productNames.map((name) => (
                       <MenuItem key={name} value={name}>
                         <Checkbox checked={filters.productNames.includes(name)} />
                         <ListItemText primary={name} />
@@ -1546,7 +1595,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                   >
-                    {uniqueFilterValues.origins.map((origin) => (
+                    {availableFilterValues.origins.map((origin) => (
                       <MenuItem key={origin} value={origin}>
                         <Checkbox checked={filters.origins.includes(origin)} />
                         <ListItemText primary={origin} />
@@ -1570,7 +1619,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                   >
-                    {uniqueFilterValues.specifications.map((spec) => (
+                    {availableFilterValues.specifications.map((spec) => (
                       <MenuItem key={spec} value={spec}>
                         <Checkbox checked={filters.specifications.includes(spec)} />
                         <ListItemText primary={spec} />
@@ -1594,7 +1643,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                   >
-                    {uniqueFilterValues.dates.map((date) => (
+                    {availableFilterValues.dates.map((date) => (
                       <MenuItem key={date} value={date}>
                         <Checkbox checked={filters.dates.includes(date)} />
                         <ListItemText primary={format(parseISO(date), 'M月d日(E)', { locale: ja })} />
@@ -1624,120 +1673,80 @@ export const AllocationHistoryPage: React.FC = () => {
               <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                 列の表示/非表示
               </Typography>
+
+              {/* 基本項目 */}
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 0.5 }}>
+                基本項目
+              </Typography>
               <FormGroup>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!hiddenColumns.has('deliveryDate')}
-                      onChange={(e) => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (e.target.checked) {
-                          newHidden.delete('deliveryDate');
-                        } else {
-                          newHidden.add('deliveryDate');
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                    />
-                  }
-                  label="日付"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!hiddenColumns.has('productName')}
-                      onChange={(e) => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (e.target.checked) {
-                          newHidden.delete('productName');
-                        } else {
-                          newHidden.add('productName');
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                    />
-                  }
-                  label="品名"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!hiddenColumns.has('origin')}
-                      onChange={(e) => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (e.target.checked) {
-                          newHidden.delete('origin');
-                        } else {
-                          newHidden.add('origin');
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                    />
-                  }
-                  label="産地"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!hiddenColumns.has('specification')}
-                      onChange={(e) => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (e.target.checked) {
-                          newHidden.delete('specification');
-                        } else {
-                          newHidden.add('specification');
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                    />
-                  }
-                  label="規格"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!hiddenColumns.has('totalDelivery')}
-                      onChange={(e) => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (e.target.checked) {
-                          newHidden.delete('totalDelivery');
-                        } else {
-                          newHidden.add('totalDelivery');
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                    />
-                  }
-                  label="合計"
-                />
-                {STORE_DATA.map((store) => (
+                {[
+                  { field: 'deliveryDate', label: '日付' },
+                  { field: 'productName', label: '品名' },
+                  { field: 'origin', label: '産地' },
+                  { field: 'specification', label: '規格' },
+                  { field: 'totalDelivery', label: '合計' },
+                ].map(({ field, label }) => (
                   <FormControlLabel
-                    key={store.code}
+                    key={field}
                     control={
                       <Checkbox
-                        checked={!hiddenColumns.has(`store_${store.code}`)}
+                        checked={!hiddenColumns.has(field)}
                         onChange={(e) => {
                           const newHidden = new Set(hiddenColumns);
-                          const fieldName = `store_${store.code}`;
                           if (e.target.checked) {
-                            newHidden.delete(fieldName);
+                            newHidden.delete(field);
                           } else {
-                            newHidden.add(fieldName);
+                            newHidden.add(field);
                           }
                           setHiddenColumns(newHidden);
                         }}
                       />
                     }
-                    label={`${store.code} ${store.name}`}
+                    label={label}
                   />
                 ))}
               </FormGroup>
+
+              {/* 店舗選択（チップスタイル） */}
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, mb: 1 }}>
+                店舗選択
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {STORE_DATA.map((store) => {
+                  const fieldName = `store_${store.code}`;
+                  const isVisible = !hiddenColumns.has(fieldName);
+                  return (
+                    <Chip
+                      key={store.code}
+                      label={`${store.code} ${store.name}`}
+                      size="small"
+                      color={isVisible ? 'primary' : 'default'}
+                      variant={isVisible ? 'filled' : 'outlined'}
+                      onClick={() => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (isVisible) {
+                          newHidden.add(fieldName);
+                        } else {
+                          newHidden.delete(fieldName);
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                      sx={{
+                        cursor: 'pointer',
+                        '&:hover': {
+                          opacity: 0.8,
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
 
               {hiddenColumns.size > 0 && (
                 <Button
                   size="small"
                   variant="outlined"
-                  sx={{ mt: 1 }}
+                  sx={{ mt: 2 }}
                   onClick={() => setHiddenColumns(new Set())}
                 >
                   すべて表示
@@ -1804,6 +1813,116 @@ export const AllocationHistoryPage: React.FC = () => {
           >
             閉じる
           </Button>
+        </Box>
+      </Drawer>
+
+      {/* 日付範囲選択ドロワー */}
+      <Drawer
+        anchor="bottom"
+        open={datePickerOpen}
+        onClose={() => setDatePickerOpen(false)}
+        sx={{ zIndex: 1400 }}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px 16px 0 0',
+            maxHeight: '80vh',
+            overflow: 'auto',
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          {/* ヘッダー */}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6" fontWeight={600}>期間選択</Typography>
+            <IconButton size="small" onClick={() => setDatePickerOpen(false)}>
+              <Close />
+            </IconButton>
+          </Stack>
+
+          {/* 利用可能な日付リスト（チェックボックス形式） */}
+          <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+            日付を選択（複数選択可）
+          </Typography>
+
+          <FormGroup sx={{ maxHeight: '50vh', overflow: 'auto' }}>
+            {batches
+              .map(b => b.deliveryDate)
+              .filter((date, index, self) => self.indexOf(date) === index)
+              .sort()
+              .map((date) => {
+                const isSelected = tempDateRange?.start === date || tempDateRange?.end === date;
+                return (
+                  <FormControlLabel
+                    key={date}
+                    control={
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => {
+                          if (!tempDateRange) {
+                            setTempDateRange({ start: date, end: date });
+                          } else if (!tempDateRange.end || tempDateRange.start === tempDateRange.end) {
+                            // 2つ目の日付を選択
+                            if (date < tempDateRange.start) {
+                              setTempDateRange({ start: date, end: tempDateRange.start });
+                            } else {
+                              setTempDateRange({ start: tempDateRange.start, end: date });
+                            }
+                          } else {
+                            // リセットして新しい開始日
+                            setTempDateRange({ start: date, end: date });
+                          }
+                        }}
+                      />
+                    }
+                    label={format(parseISO(date), 'yyyy年M月d日(E)', { locale: ja })}
+                  />
+                );
+              })}
+          </FormGroup>
+
+          {/* 選択された範囲の表示 */}
+          {tempDateRange && (
+            <Box sx={{ mt: 2, p: 2, backgroundColor: 'primary.50', borderRadius: 1 }}>
+              <Typography variant="body2" color="primary.main">
+                選択範囲: {format(parseISO(tempDateRange.start), 'M月d日(E)', { locale: ja })}
+                {tempDateRange.start !== tempDateRange.end && (
+                  <> 〜 {format(parseISO(tempDateRange.end), 'M月d日(E)', { locale: ja })}</>
+                )}
+              </Typography>
+            </Box>
+          )}
+
+          {/* 適用ボタン */}
+          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => {
+                setTempDateRange(null);
+                setDatePickerOpen(false);
+              }}
+            >
+              キャンセル
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
+              disabled={!tempDateRange}
+              onClick={() => {
+                if (tempDateRange) {
+                  handleDateSelect({
+                    start: parseISO(tempDateRange.start),
+                    end: addMonths(parseISO(tempDateRange.end), 0), // Use actual end date
+                    allDay: true,
+                  } as any);
+                  setDatePickerOpen(false);
+                  setTempDateRange(null);
+                }
+              }}
+            >
+              適用
+            </Button>
+          </Stack>
         </Box>
       </Drawer>
     </Box>
