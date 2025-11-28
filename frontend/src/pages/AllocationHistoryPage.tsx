@@ -23,6 +23,16 @@ import {
   ToggleButton,
   Card,
   CardContent,
+  Drawer,
+  ListItemText,
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import {
   Visibility,
@@ -34,6 +44,10 @@ import {
   Fullscreen,
   FullscreenExit,
   VisibilityOff,
+  Settings,
+  FilterList,
+  Close,
+  DateRange,
 } from '@mui/icons-material';
 import {
   format,
@@ -104,6 +118,25 @@ export const AllocationHistoryPage: React.FC = () => {
 
   // フルスクリーンモード
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // 設定ドロワー
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // 列の表示/非表示
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+
+  // フィルター
+  const [filters, setFilters] = useState<{
+    productNames: string[];
+    origins: string[];
+    specifications: string[];
+    dates: string[];
+  }>({
+    productNames: [],
+    origins: [],
+    specifications: [],
+    dates: [],
+  });
 
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -344,6 +377,63 @@ export const AllocationHistoryPage: React.FC = () => {
   const sortedWeeks = Object.values(batchesByWeek).sort((a, b) =>
     b.weekStart.getTime() - a.weekStart.getTime()
   );
+
+  /**
+   * フィルター用のユニーク値を取得
+   */
+  const uniqueFilterValues = useMemo(() => {
+    const productNames = new Set<string>();
+    const origins = new Set<string>();
+    const specifications = new Set<string>();
+    const dates = new Set<string>();
+
+    details.forEach(detail => {
+      productNames.add(detail.productName);
+      origins.add(detail.origin);
+      specifications.add(detail.specification);
+      const deliveryDate = (detail as any).deliveryDate;
+      if (deliveryDate) dates.add(deliveryDate);
+    });
+
+    return {
+      productNames: Array.from(productNames).sort(),
+      origins: Array.from(origins).sort(),
+      specifications: Array.from(specifications).sort(),
+      dates: Array.from(dates).sort(),
+    };
+  }, [details]);
+
+  /**
+   * フィルター適用関数
+   */
+  const applyFilters = useCallback((rows: DetailGridRow[]) => {
+    return rows.filter(row => {
+      // 合計行は常に表示
+      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return true;
+
+      // 商品名フィルター
+      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) {
+        return false;
+      }
+
+      // 産地フィルター
+      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) {
+        return false;
+      }
+
+      // 規格フィルター
+      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) {
+        return false;
+      }
+
+      // 日付フィルター
+      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [filters]);
 
   /**
    * 詳細モーダル用のDataGridカラム定義
@@ -834,9 +924,16 @@ export const AllocationHistoryPage: React.FC = () => {
     });
   }, [selectedDateRange, details]);
 
-  // 使用するカラムと行を選択
-  const detailColumns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
-  const detailRows = selectedDateRange ? dateRangeRows : singleBatchRows;
+  // 使用するカラムと行を選択（フィルター適用 + 列の非表示適用）
+  const detailColumns = useMemo(() => {
+    const columns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
+    return columns.filter(col => !hiddenColumns.has(col.field));
+  }, [selectedDateRange, dateRangeColumns, singleBatchColumns, hiddenColumns]);
+
+  const detailRows = useMemo(() => {
+    const rows = selectedDateRange ? dateRangeRows : singleBatchRows;
+    return applyFilters(rows);
+  }, [selectedDateRange, dateRangeRows, singleBatchRows, applyFilters]);
 
 
 
@@ -1120,89 +1217,115 @@ export const AllocationHistoryPage: React.FC = () => {
         fullWidth
         fullScreen={isFullScreen || window.innerWidth < 600}
       >
-        <DialogTitle sx={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            {selectedDateRange ? '複数日付の配分履歴' : '配分履歴詳細'}
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            py: { xs: 1, sm: 2 },
+            px: { xs: 1.5, sm: 3 },
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
+              {selectedDateRange ? '配分履歴' : '配分詳細'}
+            </Typography>
             {selectedBatch && (
-              <Typography variant="subtitle2" color="text.secondary">
-                納品日: {format(new Date(selectedBatch.deliveryDate), 'yyyy年M月d日(E)', { locale: ja })}
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                {format(new Date(selectedBatch.deliveryDate), 'M月d日(E)', { locale: ja })}
               </Typography>
             )}
             {selectedDateRange && (
-              <Typography variant="subtitle2" color="text.secondary">
-                期間: {format(parseISO(selectedDateRange.start), 'yyyy年M月d日(E)', { locale: ja })} 〜{' '}
-                {format(parseISO(selectedDateRange.end), 'yyyy年M月d日(E)', { locale: ja })}
+              <Typography
+                variant="caption"
+                color="primary.main"
+                sx={{
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                  cursor: 'pointer',
+                  '&:hover': { textDecoration: 'underline' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+                onClick={() => setSettingsOpen(true)}
+              >
+                <DateRange fontSize="small" />
+                {format(parseISO(selectedDateRange.start), 'M月d日(E)', { locale: ja })}〜
+                {format(parseISO(selectedDateRange.end), 'M月d日(E)', { locale: ja })}
               </Typography>
             )}
           </Box>
 
-          {/* フルスクリーンボタン */}
-          <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
-            {isFullScreen ? <FullscreenExit /> : <Fullscreen />}
-          </IconButton>
+          {/* アクションボタン */}
+          <Stack direction="row" spacing={0.5}>
+            <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
+              {isFullScreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+            </IconButton>
+            {selectedDateRange && (
+              <IconButton
+                onClick={() => setSettingsOpen(true)}
+                size="small"
+                color={settingsOpen ? 'primary' : 'default'}
+              >
+                <Settings fontSize="small" />
+              </IconButton>
+            )}
+          </Stack>
         </DialogTitle>
 
-        {/* グループ化とソート選択（日付範囲選択時のみ） */}
-        {selectedDateRange && (
-          <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <Stack spacing={2}>
-              {/* グループ化モード */}
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="space-between">
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
-                    グループ化:
-                  </Typography>
-                  <ToggleButtonGroup
-                    value={groupMode}
-                    exclusive
-                    onChange={(_, newMode) => newMode && setGroupMode(newMode)}
-                    size="small"
-                  >
-                    <ToggleButton value="date">
-                      日付ごと
-                    </ToggleButton>
-                    <ToggleButton value="product">
-                      商品ごと
-                    </ToggleButton>
-                    <ToggleButton value="composite">
-                      複合
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
+        {/* コンパクトなグループ化コントロール（モバイル用） */}
+        {selectedDateRange && !settingsOpen && (
+          <Box sx={{
+            px: { xs: 1, sm: 2 },
+            py: 0.5,
+            borderBottom: 1,
+            borderColor: 'divider',
+            backgroundColor: 'grey.50',
+          }}>
+            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                グループ:
+              </Typography>
+              <ToggleButtonGroup
+                value={groupMode}
+                exclusive
+                onChange={(_, newMode) => newMode && setGroupMode(newMode)}
+                size="small"
+                sx={{
+                  '& .MuiToggleButton-root': {
+                    py: { xs: 0.25, sm: 0.5 },
+                    px: { xs: 0.75, sm: 1 },
+                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                    minWidth: { xs: 40, sm: 60 },
+                  },
+                }}
+              >
+                <ToggleButton value="date">日付</ToggleButton>
+                <ToggleButton value="product">商品</ToggleButton>
+                <ToggleButton value="composite">複合</ToggleButton>
+              </ToggleButtonGroup>
 
-                {/* 非表示行を再表示 */}
-                {hiddenRowIds.size > 0 && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Visibility />}
-                    onClick={() => setHiddenRowIds(new Set())}
-                  >
-                    すべて表示 ({hiddenRowIds.size}件非表示中)
-                  </Button>
-                )}
-              </Stack>
+              {(filters.productNames.length > 0 || filters.origins.length > 0 ||
+                filters.specifications.length > 0 || filters.dates.length > 0) && (
+                <Chip
+                  label={`フィルター ${filters.productNames.length + filters.origins.length +
+                    filters.specifications.length + filters.dates.length}`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: '0.65rem' }}
+                />
+              )}
 
-              {/* ソート順（商品/複合グループのみ） */}
-              {(groupMode === 'product' || groupMode === 'composite') && (
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Typography variant="body2" fontWeight={600} sx={{ mr: 1 }}>
-                    並び順:
-                  </Typography>
-                  <ToggleButtonGroup
-                    value={sortOrder}
-                    exclusive
-                    onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
-                    size="small"
-                  >
-                    <ToggleButton value="totalDesc">
-                      配分量の多い順
-                    </ToggleButton>
-                    <ToggleButton value="totalAsc">
-                      配分量の少ない順
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
+              {(hiddenRowIds.size > 0 || hiddenColumns.size > 0) && (
+                <Chip
+                  label={`非表示 ${hiddenRowIds.size + hiddenColumns.size}`}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: '0.65rem' }}
+                />
               )}
             </Stack>
           </Box>
@@ -1236,20 +1359,36 @@ export const AllocationHistoryPage: React.FC = () => {
                 }}
                 sx={{
                   border: 'none',
+                  '& .MuiDataGrid-main': {
+                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // モバイルでより小さく
+                  },
                   '& .MuiDataGrid-cell': {
                     borderColor: '#e0e0e0',
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    padding: { xs: '4px', sm: '8px' },
+                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // さらに小さく
+                    padding: { xs: '2px 3px', sm: '8px' }, // パディングを削減
+                    lineHeight: { xs: 1.2, sm: 1.43 }, // 行間を狭く
                   },
                   '& .MuiDataGrid-columnHeaders': {
                     backgroundColor: '#f5f5f5',
                     fontWeight: 600,
+                    minHeight: { xs: '36px !important', sm: '56px !important' }, // ヘッダー高さを削減
+                  },
+                  '& .MuiDataGrid-columnHeader': {
+                    padding: { xs: '2px 4px', sm: '8px' },
                   },
                   '& .MuiDataGrid-columnHeaderTitle': {
                     fontWeight: 600,
                     whiteSpace: 'pre-wrap',
-                    lineHeight: 1.2,
-                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                    lineHeight: 1.1,
+                    fontSize: { xs: '0.6rem', sm: '0.875rem' }, // ヘッダーも小さく
+                  },
+                  '& .MuiDataGrid-row': {
+                    minHeight: { xs: '28px !important', sm: '52px !important' }, // 行高を削減
+                  },
+                  '& .MuiDataGrid-virtualScroller': {
+                    // 横スクロールをスムーズに
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
                   },
                   // 小計行のスタイル
                   '& .row-subtotal': {
@@ -1259,6 +1398,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       color: '#1565c0',
                       borderTop: '2px solid #1976d2',
                       borderBottom: '1px solid #1976d2',
+                      fontSize: { xs: '0.7rem', sm: '0.9rem' },
                     },
                   },
                   // 総合計行のスタイル
@@ -1267,7 +1407,7 @@ export const AllocationHistoryPage: React.FC = () => {
                     fontWeight: 700,
                     '& .MuiDataGrid-cell': {
                       color: '#ffffff',
-                      fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                      fontSize: { xs: '0.75rem', sm: '0.95rem' },
                       borderTop: '3px solid #0d47a1',
                       borderBottom: '3px solid #0d47a1',
                     },
@@ -1336,6 +1476,336 @@ export const AllocationHistoryPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 設定ドロワー（詳細設定） */}
+      <Drawer
+        anchor="bottom"
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px 16px 0 0',
+            maxHeight: '90vh',
+            overflow: 'auto',
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          {/* ヘッダー */}
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6" fontWeight={600}>詳細設定</Typography>
+            <IconButton size="small" onClick={() => setSettingsOpen(false)}>
+              <Close />
+            </IconButton>
+          </Stack>
+
+          <Stack spacing={3}>
+            {/* フィルター */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FilterList fontSize="small" />
+                フィルター
+              </Typography>
+              <Stack spacing={2}>
+                {/* 商品名フィルター */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>商品名</InputLabel>
+                  <Select
+                    multiple
+                    value={filters.productNames}
+                    onChange={(e) => setFilters({ ...filters, productNames: e.target.value as string[] })}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {uniqueFilterValues.productNames.map((name) => (
+                      <MenuItem key={name} value={name}>
+                        <Checkbox checked={filters.productNames.includes(name)} />
+                        <ListItemText primary={name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 産地フィルター */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>産地</InputLabel>
+                  <Select
+                    multiple
+                    value={filters.origins}
+                    onChange={(e) => setFilters({ ...filters, origins: e.target.value as string[] })}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {uniqueFilterValues.origins.map((origin) => (
+                      <MenuItem key={origin} value={origin}>
+                        <Checkbox checked={filters.origins.includes(origin)} />
+                        <ListItemText primary={origin} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 規格フィルター */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>規格</InputLabel>
+                  <Select
+                    multiple
+                    value={filters.specifications}
+                    onChange={(e) => setFilters({ ...filters, specifications: e.target.value as string[] })}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {uniqueFilterValues.specifications.map((spec) => (
+                      <MenuItem key={spec} value={spec}>
+                        <Checkbox checked={filters.specifications.includes(spec)} />
+                        <ListItemText primary={spec} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 日付フィルター */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>日付</InputLabel>
+                  <Select
+                    multiple
+                    value={filters.dates}
+                    onChange={(e) => setFilters({ ...filters, dates: e.target.value as string[] })}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={format(parseISO(value), 'M/d(E)', { locale: ja })} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {uniqueFilterValues.dates.map((date) => (
+                      <MenuItem key={date} value={date}>
+                        <Checkbox checked={filters.dates.includes(date)} />
+                        <ListItemText primary={format(parseISO(date), 'M月d日(E)', { locale: ja })} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* フィルタークリアボタン */}
+                {(filters.productNames.length > 0 || filters.origins.length > 0 ||
+                  filters.specifications.length > 0 || filters.dates.length > 0) && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setFilters({ productNames: [], origins: [], specifications: [], dates: [] })}
+                  >
+                    フィルターをクリア
+                  </Button>
+                )}
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            {/* 列の表示/非表示 */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                列の表示/非表示
+              </Typography>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!hiddenColumns.has('deliveryDate')}
+                      onChange={(e) => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (e.target.checked) {
+                          newHidden.delete('deliveryDate');
+                        } else {
+                          newHidden.add('deliveryDate');
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                    />
+                  }
+                  label="日付"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!hiddenColumns.has('productName')}
+                      onChange={(e) => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (e.target.checked) {
+                          newHidden.delete('productName');
+                        } else {
+                          newHidden.add('productName');
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                    />
+                  }
+                  label="品名"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!hiddenColumns.has('origin')}
+                      onChange={(e) => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (e.target.checked) {
+                          newHidden.delete('origin');
+                        } else {
+                          newHidden.add('origin');
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                    />
+                  }
+                  label="産地"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!hiddenColumns.has('specification')}
+                      onChange={(e) => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (e.target.checked) {
+                          newHidden.delete('specification');
+                        } else {
+                          newHidden.add('specification');
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                    />
+                  }
+                  label="規格"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!hiddenColumns.has('totalDelivery')}
+                      onChange={(e) => {
+                        const newHidden = new Set(hiddenColumns);
+                        if (e.target.checked) {
+                          newHidden.delete('totalDelivery');
+                        } else {
+                          newHidden.add('totalDelivery');
+                        }
+                        setHiddenColumns(newHidden);
+                      }}
+                    />
+                  }
+                  label="合計"
+                />
+                {STORE_DATA.map((store) => (
+                  <FormControlLabel
+                    key={store.code}
+                    control={
+                      <Checkbox
+                        checked={!hiddenColumns.has(`store_${store.code}`)}
+                        onChange={(e) => {
+                          const newHidden = new Set(hiddenColumns);
+                          const fieldName = `store_${store.code}`;
+                          if (e.target.checked) {
+                            newHidden.delete(fieldName);
+                          } else {
+                            newHidden.add(fieldName);
+                          }
+                          setHiddenColumns(newHidden);
+                        }}
+                      />
+                    }
+                    label={`${store.code} ${store.name}`}
+                  />
+                ))}
+              </FormGroup>
+
+              {hiddenColumns.size > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mt: 1 }}
+                  onClick={() => setHiddenColumns(new Set())}
+                >
+                  すべて表示
+                </Button>
+              )}
+            </Box>
+
+            <Divider />
+
+            {/* 非表示行の管理 */}
+            {hiddenRowIds.size > 0 && (
+              <Box>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<Visibility />}
+                  onClick={() => setHiddenRowIds(new Set())}
+                >
+                  非表示の行を再表示 ({hiddenRowIds.size}件)
+                </Button>
+              </Box>
+            )}
+
+            {/* ソート順（商品・複合グループの場合） */}
+            {(groupMode === 'product' || groupMode === 'composite') && (
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  並び順
+                </Typography>
+                <ToggleButtonGroup
+                  value={sortOrder}
+                  exclusive
+                  onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
+                  size="small"
+                  fullWidth
+                >
+                  <ToggleButton value="totalDesc">
+                    配分量の多い順
+                  </ToggleButton>
+                  <ToggleButton value="totalAsc">
+                    配分量の少ない順
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+            )}
+
+            {/* 複合キーのカスタマイズ（将来実装予定） */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom color="text.secondary">
+                複合キー設定（将来実装予定）
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                長押しタップで複合キーのフィールドを選択できるようになります
+              </Typography>
+            </Box>
+          </Stack>
+
+          {/* 閉じるボタン */}
+          <Button
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3 }}
+            onClick={() => setSettingsOpen(false)}
+          >
+            閉じる
+          </Button>
+        </Box>
+      </Drawer>
     </Box>
   );
 };
