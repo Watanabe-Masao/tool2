@@ -847,7 +847,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         borderWidth: 1,
                         borderStyle: 'solid',
                         fontSize: '0.7rem',
-                        height: 24,
+                        height: 26,
+                        minWidth: 70,
+                        '& .MuiChip-label': {
+                          px: 1.5,
+                        },
                         '&:hover': {
                           bgcolor: isSelected ? color.main : color.light,
                         },
@@ -860,7 +864,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   onClick={() => handleToggleCategory('uncategorized')}
                   size="small"
                   variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
-                  sx={{ fontSize: '0.7rem', height: 24 }}
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: 26,
+                    minWidth: 70,
+                    '& .MuiChip-label': {
+                      px: 1.5,
+                    },
+                  }}
                 />
               </Box>
             </CardContent>
@@ -955,7 +966,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             borderColor: color.main,
                             borderWidth: 1,
                             borderStyle: 'solid',
-                            height: 24,
+                            height: 26,
+                            minWidth: 55,
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
                             '&:hover': {
                               bgcolor: isSelected ? color.main : color.light,
                             },
@@ -966,7 +981,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             borderColor: isSelected ? 'primary.main' : 'grey.300',
                             borderWidth: 1,
                             borderStyle: 'solid',
-                            height: 24,
+                            height: 26,
+                            minWidth: 55,
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
                             '&:hover': {
                               bgcolor: isSelected ? 'primary.main' : 'grey.100',
                             },

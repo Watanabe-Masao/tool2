@@ -309,6 +309,13 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
               vertical: 'top',
               horizontal: 'center',
             }}
+            slotProps={{
+              paper: {
+                sx: {
+                  zIndex: 1400, // Dialogより上に表示
+                },
+              },
+            }}
           >
             <Box sx={{ p: 2 }}>
               <DayPicker
