@@ -16,9 +16,17 @@ import {
   Alert,
   Divider,
   CircularProgress,
-  TextField,
+  Paper,
+  Popover,
+  Chip,
+  Stack,
 } from '@mui/material';
-import { subDays, format } from 'date-fns';
+import { CalendarMonth, Today, DateRange } from '@mui/icons-material';
+import { subDays, format, startOfDay, endOfDay } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { DayPicker, type DateRange as DateRangeType } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
+import './HistoryAllocationModal.css';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -69,12 +77,13 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
   const { user } = useAuthContext();
 
   // 期間選択（デフォルト: 過去7日間）
-  const [startDate, setStartDate] = useState<string>(() =>
-    format(subDays(new Date(), 7), 'yyyy-MM-dd')
-  );
-  const [endDate, setEndDate] = useState<string>(() =>
-    format(new Date(), 'yyyy-MM-dd')
-  );
+  const [dateRange, setDateRange] = useState<DateRangeType | undefined>(() => ({
+    from: startOfDay(subDays(new Date(), 7)),
+    to: endOfDay(new Date()),
+  }));
+
+  // カレンダーポップオーバー
+  const [calendarAnchor, setCalendarAnchor] = useState<HTMLButtonElement | null>(null);
 
   // フィルタータイプ
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -89,10 +98,20 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
   const [recordCount, setRecordCount] = useState(0);
 
   /**
+   * 期間プリセットを設定
+   */
+  const setPresetRange = useCallback((days: number) => {
+    const to = endOfDay(new Date());
+    const from = startOfDay(subDays(to, days));
+    setDateRange({ from, to });
+    setCalendarAnchor(null);
+  }, []);
+
+  /**
    * 履歴から比率を計算
    */
   const calculateRatios = useCallback(async () => {
-    if (!user?.uid || !startDate || !endDate) return;
+    if (!user?.uid || !dateRange?.from || !dateRange?.to) return;
 
     setLoading(true);
     setError(null);
@@ -100,6 +119,10 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
     try {
       const db = getFirebaseFirestore();
       const firestoreService = new FirestoreServiceFacade(db);
+
+      // Date型をyyyy-MM-dd文字列に変換
+      const startDate = format(dateRange.from, 'yyyy-MM-dd');
+      const endDate = format(dateRange.to, 'yyyy-MM-dd');
 
       // 期間内のバッチを取得
       const batches = await firestoreService.getAllocationBatchesByDateRange(
@@ -113,7 +136,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
 
       for (const batch of batches) {
         if (batch.id) {
-          const details = await firestoreService.getAllocationDetails(batch.id);
+          const details = await firestoreService.getAllocationDetails(user.uid, batch.id);
           details.forEach((detail) => {
             allDetails.push({
               storeAllocations: detail.storeAllocations,
@@ -176,7 +199,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, startDate, endDate, filterType, currentProduct]);
+  }, [user?.uid, dateRange, filterType, currentProduct]);
 
   /**
    * モーダルが開かれたとき、または条件が変わったときに再計算
@@ -204,30 +227,117 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
       <DialogContent dividers>
         {/* 期間選択 */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
             参照期間
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <TextField
-              type="date"
-              label="開始日"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
+
+          {/* プリセットボタン */}
+          <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Chip
+              icon={<Today />}
+              label="過去7日間"
+              onClick={() => setPresetRange(7)}
+              color={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 7 * 24 * 60 * 60 * 1000
+                ? 'primary' : 'default'}
+              variant={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 7 * 24 * 60 * 60 * 1000
+                ? 'filled' : 'outlined'}
             />
-            <Typography>〜</Typography>
-            <TextField
-              type="date"
-              label="終了日"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
+            <Chip
+              icon={<DateRange />}
+              label="過去14日間"
+              onClick={() => setPresetRange(14)}
+              color={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 14 * 24 * 60 * 60 * 1000
+                ? 'primary' : 'default'}
+              variant={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 14 * 24 * 60 * 60 * 1000
+                ? 'filled' : 'outlined'}
             />
-          </Box>
+            <Chip
+              icon={<CalendarMonth />}
+              label="過去30日間"
+              onClick={() => setPresetRange(30)}
+              color={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 30 * 24 * 60 * 60 * 1000
+                ? 'primary' : 'default'}
+              variant={dateRange?.from && dateRange?.to &&
+                Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) === 30 * 24 * 60 * 60 * 1000
+                ? 'filled' : 'outlined'}
+            />
+          </Stack>
+
+          {/* 期間表示とカレンダーボタン */}
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              },
+            }}
+            onClick={(e) => setCalendarAnchor(e.currentTarget as unknown as HTMLButtonElement)}
+          >
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                選択中の期間
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {dateRange?.from && dateRange?.to
+                  ? `${format(dateRange.from, 'yyyy年M月d日(E)', { locale: ja })} 〜 ${format(dateRange.to, 'yyyy年M月d日(E)', { locale: ja })}`
+                  : '期間を選択してください'}
+              </Typography>
+            </Box>
+            <CalendarMonth color="primary" />
+          </Paper>
+
+          {/* カレンダーポップオーバー */}
+          <Popover
+            open={Boolean(calendarAnchor)}
+            anchorEl={calendarAnchor}
+            onClose={() => setCalendarAnchor(null)}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
+            }}
+          >
+            <Box sx={{ p: 2 }}>
+              <DayPicker
+                mode="range"
+                selected={dateRange}
+                onSelect={setDateRange}
+                locale={ja}
+                numberOfMonths={2}
+                styles={{
+                  caption: { fontWeight: 600 },
+                }}
+              />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                <Button size="small" onClick={() => setCalendarAnchor(null)}>
+                  閉じる
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => {
+                    setCalendarAnchor(null);
+                    calculateRatios();
+                  }}
+                >
+                  適用
+                </Button>
+              </Box>
+            </Box>
+          </Popover>
         </Box>
 
         {/* フィルター選択 */}

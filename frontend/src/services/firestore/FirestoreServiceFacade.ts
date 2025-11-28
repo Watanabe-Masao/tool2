@@ -536,11 +536,23 @@ export class FirestoreServiceFacade {
   /**
    * バッチIDで配分明細を取得
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 配分明細の配列
    */
-  async getAllocationDetails(batchId: string): Promise<AllocationDetail[]> {
-    return this.allocationHistoryRepo.findDetailsByBatchId(batchId);
+  async getAllocationDetails(userId: string, batchId: string): Promise<AllocationDetail[]> {
+    return this.allocationHistoryRepo.findDetailsByBatchId(userId, batchId);
+  }
+
+  /**
+   * 配分バッチを削除
+   *
+   * @param userId - ユーザーID
+   * @param batchId - バッチID
+   * @returns 削除が成功したらtrue
+   */
+  async deleteAllocationBatch(userId: string, batchId: string): Promise<boolean> {
+    return this.allocationHistoryRepo.deleteBatch(userId, batchId);
   }
 
   /**

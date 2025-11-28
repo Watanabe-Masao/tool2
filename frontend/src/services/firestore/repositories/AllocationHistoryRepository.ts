@@ -199,14 +199,16 @@ export class AllocationHistoryRepository {
   /**
    * バッチIDで配分明細を取得
    *
+   * @param userId - ユーザーID
    * @param batchId - バッチID
    * @returns 配分明細の配列
    */
-  async findDetailsByBatchId(batchId: string): Promise<AllocationDetail[]> {
+  async findDetailsByBatchId(userId: string, batchId: string): Promise<AllocationDetail[]> {
     const ref = collection(this.db, this.detailsCollection);
     const q = query(
       ref,
       where('batch_id', '==', batchId),
+      where('userId', '==', userId),
       orderBy('created_at', 'asc')
     );
 
@@ -268,7 +270,7 @@ export class AllocationHistoryRepository {
     };
 
     // 明細を取得
-    const details = await this.findDetailsByBatchId(batchId);
+    const details = await this.findDetailsByBatchId(userId, batchId);
 
     return { batch, details };
   }
@@ -351,5 +353,46 @@ export class AllocationHistoryRepository {
 
     // 件数制限
     return details.slice(0, limitCount).map((d) => d.storeAllocations);
+  }
+
+  /**
+   * 配分バッチを削除
+   *
+   * バッチドキュメントとそれに関連するすべての詳細ドキュメントを削除します。
+   *
+   * @param userId - ユーザーID
+   * @param batchId - バッチID
+   * @returns 削除が成功したらtrue
+   */
+  async deleteBatch(userId: string, batchId: string): Promise<boolean> {
+    try {
+      const batch = writeBatch(this.db);
+
+      // 1. 関連する詳細ドキュメントを取得（userIdでもフィルタ）
+      const detailsRef = collection(this.db, this.detailsCollection);
+      const detailsQuery = query(
+        detailsRef,
+        where('batch_id', '==', batchId),
+        where('userId', '==', userId)
+      );
+      const detailsSnapshot = await getDocs(detailsQuery);
+
+      // 2. すべての詳細ドキュメントを削除対象に追加
+      detailsSnapshot.docs.forEach((detailDoc) => {
+        batch.delete(detailDoc.ref);
+      });
+
+      // 3. バッチドキュメントを削除対象に追加
+      const batchRef = doc(this.db, this.batchesCollection, batchId);
+      batch.delete(batchRef);
+
+      // 4. 一括削除を実行
+      await batch.commit();
+
+      return true;
+    } catch (error) {
+      console.error('Failed to delete batch:', error);
+      throw error; // エラーを上位に伝播
+    }
   }
 }

@@ -184,19 +184,19 @@ describe('主要ページのレンダリング回数監視', () => {
     });
   });
 
-  describe('CalendarPage', () => {
+  describe('AllocationHistoryPage', () => {
     it('初回レンダリング回数が閾値以下であること', async () => {
       const counter = createRenderCounter();
 
-      const { CalendarPage } = await import('@/pages/CalendarPage');
+      const { AllocationHistoryPage } = await import('@/pages/AllocationHistoryPage');
 
       render(
         <TestProviders>
           <RenderCounterWrapper
-            pageName="CalendarPage"
+            pageName="AllocationHistoryPage"
             onRenderCount={counter.increment}
           >
-            <CalendarPage />
+            <AllocationHistoryPage />
           </RenderCounterWrapper>
         </TestProviders>
       );
@@ -204,7 +204,7 @@ describe('主要ページのレンダリング回数監視', () => {
       await waitFor(() => {
         assertNoInfiniteLoop(
           counter.count,
-          'CalendarPage',
+          'AllocationHistoryPage',
           EXPECTED_RENDER_COUNTS.NORMAL_INTERACTION
         );
       });
