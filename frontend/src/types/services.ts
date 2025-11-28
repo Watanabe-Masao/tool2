@@ -96,6 +96,7 @@ export interface IFirestoreService {
       specification: string;
       quantityPerPackage: number | null;
       unit: string;
+      packageUnit: string;
       usageCount: number;
       pinned?: boolean;
       pinOrder?: number;

@@ -246,7 +246,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 fontSize: '0.75rem',
               }}
             >
-              {specification}
+              {specification}{unit ? ` ${unit}` : ''}
             </Box>
           )}
           {quantityPerPackage && (
@@ -261,7 +261,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 fontSize: '0.75rem',
               }}
             >
-              {quantityPerPackage}{unit}
+              {quantityPerPackage}{packageUnit}
             </Box>
           )}
         </Box>
