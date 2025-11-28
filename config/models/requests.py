@@ -24,9 +24,11 @@ class ProductDataRequest(BaseModel):
         delivery_date: 納品日（YYYY-MM-DD形式）
         origin: 産地
         standard: 規格
+        unit: 規格の単位（例: Kg, 玉, 本）
         store_cost: 店着原価
         price: 税抜売価
         quantity: 入数
+        package_unit: 入数の単位（例: 個, 袋, パック）
         total_delivery: 総納品数
         delivery_dest: 納品先
         store_quantities: 店舗配分数（店舗コード: 数量）
@@ -37,9 +39,11 @@ class ProductDataRequest(BaseModel):
     delivery_date: Optional[str] = Field(default=None, description="納品日（YYYY-MM-DD形式）")
     origin: Optional[str] = Field(default=None, max_length=30, description="産地")
     standard: Optional[str] = Field(default=None, max_length=20, description="規格")
+    unit: Optional[str] = Field(default=None, max_length=20, description="規格の単位")
     store_cost: Optional[float] = Field(default=None, description="店着原価")
     price: Optional[float] = Field(default=None, description="税抜売価")
     quantity: Optional[int] = Field(default=None, description="入数")
+    package_unit: Optional[str] = Field(default=None, max_length=20, description="入数の単位")
     total_delivery: Optional[int] = Field(default=None, description="総納品数")
     delivery_dest: Optional[str] = Field(default=None, max_length=30, description="納品先")
     store_quantities: Dict[str, int] = Field(default_factory=dict, description="店舗配分数")

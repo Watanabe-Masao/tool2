@@ -31,10 +31,12 @@ class ProductData:
     delivery_date: Optional[str] = None
     origin: Optional[str] = None
     standard: Optional[str] = None
+    unit: Optional[str] = None
     product_name: Optional[str] = None
     store_cost: Optional[float] = None
     price: Optional[float] = None
     quantity: Optional[int] = None
+    package_unit: Optional[str] = None
     total_delivery: Optional[int] = None
     delivery_dest: Optional[str] = None
     store_quantities: Dict[str, int] = field(default_factory=dict)
@@ -576,10 +578,19 @@ class HaibunTemplateCreator:
         cell.font = Font(name=cfg.font_name, size=11, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 規格（E列 data_row）- 非結合セル
-        standard_value = product_data.standard if product_data else None
+        # 規格（E列 data_row）- 非結合セル（規格 + 単位）
+        if product_data:
+            standard_value = product_data.standard or ''
+            unit_value = product_data.unit or ''
+            # 規格と単位を結合（両方ある場合はスペースで区切る）
+            if standard_value and unit_value:
+                display_value = f"{standard_value} {unit_value}"
+            else:
+                display_value = standard_value or unit_value
+        else:
+            display_value = None
         cell = self.ws[f'E{data_row}']
-        cell.value = standard_value
+        cell.value = display_value
         cell.font = Font(name=cfg.font_name, size=11, bold=True, color=cfg.color_red)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
@@ -607,11 +618,17 @@ class HaibunTemplateCreator:
         cell.font = Font(name=cfg.font_name, size=12, bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 入数（I列、detail_row～blank_rowの全2セル）
-        quantity_value = product_data.quantity if product_data else None
+        # 入数（I列、detail_row～blank_rowの全2セル）（入数 + 単位）
+        if product_data and product_data.quantity is not None:
+            quantity_str = str(product_data.quantity)
+            package_unit_value = product_data.package_unit or ''
+            # 入数と単位を結合
+            quantity_display = f"{quantity_str}{package_unit_value}"
+        else:
+            quantity_display = None
         for row in [detail_row, blank_row]:
             cell = self.ws[f'I{row}']
-            cell.value = quantity_value
+            cell.value = quantity_display
             cell.font = Font(name=cfg.font_name, size=14, bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
