@@ -142,6 +142,10 @@ export const AllocationHistoryPage: React.FC = () => {
     dates: [],
   });
 
+  // 複合キー設定
+  type CompositeKeyField = 'productName' | 'origin' | 'specification' | 'deliveryDate';
+  const [compositeKeyFields, setCompositeKeyFields] = useState<CompositeKeyField[]>(['productName', 'deliveryDate']);
+
   // 削除確認ダイアログ
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
@@ -775,18 +779,34 @@ export const AllocationHistoryPage: React.FC = () => {
 
     } else {
       // ========================================
-      // 複合グループ化（商品 → 日付）
+      // 複合グループ化（動的フィールド対応）
       // ========================================
-      const productGroups = new Map<string, AllocationDetail[]>();
-      details.forEach(detail => {
-        const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
-        if (!productGroups.has(key)) {
-          productGroups.set(key, []);
+      // 複合キーの値を取得するヘルパー関数
+      const getFieldValue = (detail: AllocationDetail, field: CompositeKeyField): string => {
+        switch (field) {
+          case 'productName':
+            return detail.productName;
+          case 'origin':
+            return detail.origin;
+          case 'specification':
+            return detail.specification;
+          case 'deliveryDate':
+            return (detail as any).deliveryDate || '';
         }
-        productGroups.get(key)!.push(detail);
+      };
+
+      // 第1階層のグループキーを生成
+      const primaryGroups = new Map<string, AllocationDetail[]>();
+      details.forEach(detail => {
+        const keyParts = compositeKeyFields.map(field => getFieldValue(detail, field));
+        const key = keyParts.join('|');
+        if (!primaryGroups.has(key)) {
+          primaryGroups.set(key, []);
+        }
+        primaryGroups.get(key)!.push(detail);
       });
 
-      const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
+      const groupsWithTotals = Array.from(primaryGroups.entries()).map(([key, groupDetails]) => {
         const total = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
         return { key, groupDetails, total };
       });
@@ -798,57 +818,57 @@ export const AllocationHistoryPage: React.FC = () => {
       }
 
       groupsWithTotals.forEach(({ key, groupDetails }) => {
-        const [productName, origin, specification] = key.split('|');
-        const productSubtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
-        let productSubtotalQuantity = 0;
+        const groupSubtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
+        let groupSubtotalQuantity = 0;
 
-        // 日付ごとにサブグループ化
-        const dateGroups = new Map<string, AllocationDetail>();
-        groupDetails.forEach(detail => {
-          const dateKey = (detail as any).deliveryDate || '';
-          dateGroups.set(dateKey, detail);
-        });
-
-        const sortedDates = Array.from(dateGroups.keys()).sort();
-
-        sortedDates.forEach(dateStr => {
-          const detail = dateGroups.get(dateStr)!;
+        // グループ内の詳細を追加
+        groupDetails.forEach((detail, idx) => {
           const row: DetailGridRow = {
-            id: `${key}-${dateStr}`,
-            productName,
-            origin,
-            specification,
+            id: `${key}-${idx}`,
+            productName: detail.productName,
+            origin: detail.origin,
+            specification: detail.specification,
             totalDelivery: detail.totalDelivery,
-            deliveryDate: dateStr,
+            deliveryDate: (detail as any).deliveryDate,
             rowType: 'data',
           };
 
           detail.storeAllocations.forEach((qty, storeIdx) => {
             if (storeIdx < STORE_DATA.length) {
               row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-              productSubtotalByStore[storeIdx] += qty;
+              groupSubtotalByStore[storeIdx] += qty;
               grandTotalsByStore[storeIdx] += qty;
             }
           });
 
-          productSubtotalQuantity += detail.totalDelivery;
+          groupSubtotalQuantity += detail.totalDelivery;
           grandTotalQuantity += detail.totalDelivery;
           rows.push(row);
         });
 
-        // 商品ごとの小計行
+        // グループごとの小計行（第1フィールドで表示）
+        const firstDetail = groupDetails[0];
+        const subtotalLabel = compositeKeyFields
+          .map((field) => {
+            const value = getFieldValue(firstDetail, field);
+            return field === 'deliveryDate' && value
+              ? format(parseISO(value), 'M月d日(E)', { locale: ja })
+              : value;
+          })
+          .join(' / ') + ' 小計';
+
         const subtotalRow: DetailGridRow = {
           id: `subtotal-${key}`,
-          productName: `${productName} 小計`,
-          origin,
-          specification,
-          totalDelivery: productSubtotalQuantity,
+          productName: subtotalLabel,
+          origin: '',
+          specification: '',
+          totalDelivery: groupSubtotalQuantity,
           deliveryDate: '小計',
           rowType: 'subtotal',
           groupKey: key,
         };
 
-        productSubtotalByStore.forEach((total, storeIdx) => {
+        groupSubtotalByStore.forEach((total, storeIdx) => {
           if (storeIdx < STORE_DATA.length) {
             subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
           }
@@ -879,7 +899,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
     console.log('📋 Generated rows:', rows.length, 'Group mode:', groupMode);
     return rows;
-  }, [selectedDateRange, details, groupMode, sortOrder]);
+  }, [selectedDateRange, details, groupMode, sortOrder, compositeKeyFields]);
 
   // 単一バッチ選択時の行データ
   const singleBatchRows: DetailGridRow[] = useMemo(() => {
@@ -1793,15 +1813,70 @@ export const AllocationHistoryPage: React.FC = () => {
               </Box>
             )}
 
-            {/* 複合キーのカスタマイズ（将来実装予定） */}
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom color="text.secondary">
-                複合キー設定（将来実装予定）
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                長押しタップで複合キーのフィールドを選択できるようになります
-              </Typography>
-            </Box>
+            {/* 複合キーのカスタマイズ */}
+            {groupMode === 'composite' && (
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  複合キー設定
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  グループ化に使用するフィールドを選択してください（複数選択可）
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {[
+                    { field: 'productName' as CompositeKeyField, label: '品名' },
+                    { field: 'origin' as CompositeKeyField, label: '産地' },
+                    { field: 'specification' as CompositeKeyField, label: '規格' },
+                    { field: 'deliveryDate' as CompositeKeyField, label: '日付' },
+                  ].map(({ field, label }) => {
+                    const isSelected = compositeKeyFields.includes(field);
+                    const position = compositeKeyFields.indexOf(field) + 1;
+                    return (
+                      <Chip
+                        key={field}
+                        label={isSelected ? `${position}. ${label}` : label}
+                        size="small"
+                        color={isSelected ? 'primary' : 'default'}
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        onClick={() => {
+                          if (isSelected) {
+                            // 削除（最低1つは残す）
+                            if (compositeKeyFields.length > 1) {
+                              setCompositeKeyFields(compositeKeyFields.filter(f => f !== field));
+                            }
+                          } else {
+                            // 追加
+                            setCompositeKeyFields([...compositeKeyFields, field]);
+                          }
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.8,
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+
+                <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 1 }}>
+                  選択順がグループ化の階層になります（番号順）
+                </Typography>
+
+                {compositeKeyFields.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    sx={{ mt: 1 }}
+                    onClick={() => setCompositeKeyFields(['productName', 'deliveryDate'])}
+                  >
+                    デフォルトに戻す
+                  </Button>
+                )}
+              </Box>
+            )}
           </Stack>
 
           {/* 閉じるボタン */}
