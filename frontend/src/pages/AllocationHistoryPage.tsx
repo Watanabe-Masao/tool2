@@ -1291,6 +1291,7 @@ export const AllocationHistoryPage: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isFullScreen || window.innerWidth < 600}
+        sx={{ zIndex: 1500 }}
       >
         <DialogTitle
           sx={{
@@ -1515,6 +1516,7 @@ export const AllocationHistoryPage: React.FC = () => {
         onClose={handleCloseDeleteDialog}
         maxWidth="sm"
         fullWidth
+        sx={{ zIndex: 1500 }}
       >
         <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>
           配分履歴を削除しますか？
@@ -1568,7 +1570,7 @@ export const AllocationHistoryPage: React.FC = () => {
         anchor="bottom"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        sx={{ zIndex: 1400 }} // Dialog(1300)より上に表示
+        sx={{ zIndex: 1500 }} // 配分履歴モーダル(1400)より上に表示
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
@@ -1960,7 +1962,7 @@ export const AllocationHistoryPage: React.FC = () => {
         anchor="bottom"
         open={datePickerOpen}
         onClose={() => setDatePickerOpen(false)}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: 1500 }}
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
