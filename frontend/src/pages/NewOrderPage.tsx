@@ -224,18 +224,18 @@ const OrderFormContent: React.FC = () => {
       <Dialog
         open={showAllocationHistoryModal}
         onClose={() => setShowAllocationHistoryModal(false)}
-        maxWidth="lg"
+        maxWidth="xl"
         fullWidth
         fullScreen={isMobile}
         sx={{ zIndex: 1400 }}
       >
         <IconButton
           onClick={() => setShowAllocationHistoryModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
         >
           <Close />
         </IconButton>
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent>
           <AllocationHistoryPage />
         </DialogContent>
       </Dialog>
@@ -251,11 +251,11 @@ const OrderFormContent: React.FC = () => {
       >
         <IconButton
           onClick={() => setShowUserProfileModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
         >
           <Close />
         </IconButton>
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent>
           <UserProfilePage />
         </DialogContent>
       </Dialog>
@@ -271,11 +271,11 @@ const OrderFormContent: React.FC = () => {
       >
         <IconButton
           onClick={() => setShowStoreManagementModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1401 }}
         >
           <Close />
         </IconButton>
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent>
           <StoreCategoryManagementPage />
         </DialogContent>
       </Dialog>
