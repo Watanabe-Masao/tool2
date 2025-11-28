@@ -243,10 +243,71 @@ export const createAppTheme = (mode: PaletteMode = 'light') => createTheme(
       },
       MuiChip: {
         styleOverrides: {
-          root: {
-            minHeight: '32px', // タップしやすく
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          root: ({ ownerState }) => {
+            const isClickable = ownerState.onClick !== undefined || ownerState.clickable;
+
+            return {
+              minHeight: '28px',
+              height: '28px',
+              borderRadius: 14,
+              fontWeight: 500,
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              // デフォルトの影
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+              // クリック可能な場合のみインタラクティブ効果を適用
+              ...(isClickable && {
+                cursor: 'pointer',
+                '&:hover': {
+                  transform: 'scale(1.05) translateY(-1px)',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                },
+                '&:active': {
+                  transform: 'scale(0.98)',
+                },
+              }),
+            };
           },
+          filled: ({ ownerState }) => {
+            const isClickable = ownerState.onClick !== undefined || ownerState.clickable;
+            const color = ownerState.color || 'default';
+
+            // カラーに応じたシャドウ
+            const getColorShadow = () => {
+              if (color === 'primary') return '0 2px 6px rgba(25, 118, 210, 0.3)';
+              if (color === 'secondary') return '0 2px 6px rgba(220, 0, 78, 0.3)';
+              if (color === 'error') return '0 2px 6px rgba(211, 47, 47, 0.3)';
+              if (color === 'warning') return '0 2px 6px rgba(237, 108, 2, 0.3)';
+              if (color === 'info') return '0 2px 6px rgba(2, 136, 209, 0.3)';
+              if (color === 'success') return '0 2px 6px rgba(46, 125, 50, 0.3)';
+              return '0 2px 6px rgba(0, 0, 0, 0.15)';
+            };
+
+            const getHoverShadow = () => {
+              if (color === 'primary') return '0 3px 10px rgba(25, 118, 210, 0.4)';
+              if (color === 'secondary') return '0 3px 10px rgba(220, 0, 78, 0.4)';
+              if (color === 'error') return '0 3px 10px rgba(211, 47, 47, 0.4)';
+              if (color === 'warning') return '0 3px 10px rgba(237, 108, 2, 0.4)';
+              if (color === 'info') return '0 3px 10px rgba(2, 136, 209, 0.4)';
+              if (color === 'success') return '0 3px 10px rgba(46, 125, 50, 0.4)';
+              return '0 3px 10px rgba(0, 0, 0, 0.2)';
+            };
+
+            return {
+              fontWeight: 600,
+              boxShadow: getColorShadow(),
+              transform: 'scale(1.02)',
+              ...(isClickable && {
+                '&:hover': {
+                  transform: 'scale(1.05) translateY(-1px)',
+                  boxShadow: getHoverShadow(),
+                },
+              }),
+            };
+          },
+          outlined: () => ({
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderColor: 'rgba(0, 0, 0, 0.08)',
+          }),
         },
       },
       MuiPaper: {
