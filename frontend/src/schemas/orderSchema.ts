@@ -46,10 +46,17 @@ export const productSchema = z.object({
     .int('整数で入力してください')
     .nullable(),
 
-  /** 単位 */
+  /** 規格の単位（商品自体の単位: 玉、本、束など） */
   unit: z
     .string()
     .max(MAX_LENGTH.SPECIFICATION, `単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
+    .optional()
+    .default(''),
+
+  /** 入数の単位（パッケージ内の数量の単位: 個、袋、パックなど） */
+  packageUnit: z
+    .string()
+    .max(MAX_LENGTH.SPECIFICATION, `入数の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
     .optional()
     .default(''),
 

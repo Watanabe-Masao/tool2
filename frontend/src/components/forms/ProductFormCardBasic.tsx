@@ -938,7 +938,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Grid>
 
             {/* 入数 */}
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <Controller
                 name={`products.${index}.quantityPerPackage`}
                 control={control}
@@ -1016,6 +1016,26 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     </Box>
                   );
                 }}
+              />
+            </Grid>
+
+            {/* 入数の単位 */}
+            <Grid item xs={6}>
+              <Controller
+                name={`products.${index}.packageUnit`}
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="入数の単位"
+                    placeholder="例: 個、袋、パック"
+                    size="small"
+                    error={!!productErrors?.packageUnit}
+                    helperText={productErrors?.packageUnit?.message}
+                    value={field.value || ''}
+                    fullWidth
+                  />
+                )}
               />
             </Grid>
           </Grid>

@@ -321,6 +321,7 @@ export class FirestoreServiceFacade {
     specification: string,
     quantityPerPackage: number | null,
     unit: string,
+    packageUnit: string,
     categoryCode?: string
   ): Promise<string> {
     return this.productHistoryRepo.saveOrUpdate({
@@ -331,6 +332,7 @@ export class FirestoreServiceFacade {
       specification,
       quantityPerPackage,
       unit,
+      packageUnit,
       categoryCode,
       usageCount: 1,
       pinned: false,
@@ -459,6 +461,7 @@ export class FirestoreServiceFacade {
     specification: string,
     quantityPerPackage: number,
     unit: string,
+    packageUnit: string,
     centerCost: number,
     storeCost: number,
     priceExcludingTax: number,
@@ -470,6 +473,7 @@ export class FirestoreServiceFacade {
       specification,
       quantityPerPackage,
       unit,
+      packageUnit,
       centerCost,
       storeCost,
       priceExcludingTax,

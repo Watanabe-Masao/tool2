@@ -65,6 +65,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const specification = useWatch({ control, name: `products.${index}.specification` });
   const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
   const unit = useWatch({ control, name: `products.${index}.unit` });
+  const packageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
@@ -163,6 +164,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         specification,
         quantityPerPackage,
         unit,
+        packageUnit || '',
         centerCost,
         storeCost,
         priceExcludingTax,

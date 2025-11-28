@@ -181,11 +181,12 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'userId']) &&
+                       request.resource.data.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'packageUnit', 'userId']) &&
                        request.resource.data.supplier is string &&
                        request.resource.data.supplier.size() > 0 &&
                        request.resource.data.name is string &&
-                       request.resource.data.name.size() > 0;
+                       request.resource.data.name.size() > 0 &&
+                       request.resource.data.packageUnit is string;
       // 更新: 自分の履歴のみ
       allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
@@ -204,13 +205,14 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['productName', 'specification', 'quantityPerPackage', 'unit', 'centerCost', 'storeCost', 'priceExcludingTax', 'userId']) &&
+                       request.resource.data.keys().hasAll(['productName', 'specification', 'quantityPerPackage', 'unit', 'packageUnit', 'centerCost', 'storeCost', 'priceExcludingTax', 'userId']) &&
                        request.resource.data.productName is string &&
                        request.resource.data.productName.size() > 0 &&
                        request.resource.data.specification is string &&
                        request.resource.data.quantityPerPackage is number &&
                        request.resource.data.quantityPerPackage > 0 &&
                        request.resource.data.unit is string &&
+                       request.resource.data.packageUnit is string &&
                        request.resource.data.centerCost is number &&
                        request.resource.data.centerCost >= 0 &&
                        request.resource.data.storeCost is number &&
@@ -307,7 +309,7 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
+                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'unit', 'package_unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
                        request.resource.data.batch_id is string &&
                        request.resource.data.batch_id.size() > 0 &&
                        request.resource.data.product_name is string &&
@@ -317,6 +319,7 @@ service cloud.firestore {
                        request.resource.data.supplier is string &&
                        request.resource.data.supplier.size() > 0 &&
                        request.resource.data.unit is string &&
+                       request.resource.data.package_unit is string &&
                        request.resource.data.center_cost is number &&
                        request.resource.data.center_cost >= 0 &&
                        request.resource.data.center_fee_rate is number &&

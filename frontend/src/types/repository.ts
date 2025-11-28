@@ -57,6 +57,7 @@ export interface PricingHistory {
   specification: string;
   quantityPerPackage: number;
   unit: string;
+  packageUnit: string;
   centerCost: number;
   storeCost: number;
   priceExcludingTax: number;
@@ -80,6 +81,7 @@ export interface ProductHistory {
   specification: string;
   quantityPerPackage: number | null;
   unit: string;
+  packageUnit: string;
   usageCount: number;
   pinned: boolean;
   pinOrder: number;
@@ -97,5 +99,6 @@ export interface DeleteProductHistoryConditions {
   specification?: string;
   quantityPerPackage?: number | null;
   unit?: string;
+  packageUnit?: string;
   exceptPinned?: boolean;
 }

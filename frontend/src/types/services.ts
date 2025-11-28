@@ -80,6 +80,7 @@ export interface IFirestoreService {
     specification: string,
     quantityPerPackage: number | null,
     unit: string,
+    packageUnit: string,
     categoryCode?: string
   ): Promise<string>;
   getProductHistory(
@@ -130,6 +131,7 @@ export interface IFirestoreService {
     specification: string,
     quantityPerPackage: number,
     unit: string,
+    packageUnit: string,
     centerCost: number,
     storeCost: number,
     priceExcludingTax: number,

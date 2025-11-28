@@ -56,8 +56,10 @@ export interface AllocationDetail {
   categoryCode?: string;
   /** 入数 */
   quantityPerPackage: number | null;
-  /** 単位 */
+  /** 規格の単位 */
   unit: string;
+  /** 入数の単位 */
+  packageUnit: string;
   /** センター着原価 */
   centerCost: number;
   /** センターフィー率（%） */
@@ -103,6 +105,7 @@ export interface SaveAllocationHistoryInput {
     categoryCode?: string;
     quantityPerPackage: number | null;
     unit: string;
+    packageUnit?: string;
     centerCost: number;
     centerFeeRate: number;
     storeCost: number;

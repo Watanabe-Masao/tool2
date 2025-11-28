@@ -48,6 +48,7 @@ interface FirestoreAllocationDetail {
   category_code?: string;
   quantity_per_package: number | null;
   unit: string;
+  package_unit: string;
   center_cost: number;
   center_fee_rate: number;
   store_cost: number;
@@ -124,6 +125,7 @@ export class AllocationHistoryRepository {
         category_code: product.categoryCode,
         quantity_per_package: product.quantityPerPackage,
         unit: product.unit,
+        package_unit: product.packageUnit || '',
         center_cost: product.centerCost,
         center_fee_rate: product.centerFeeRate,
         store_cost: product.storeCost,
@@ -256,6 +258,7 @@ export class AllocationHistoryRepository {
         categoryCode: data.category_code,
         quantityPerPackage: data.quantity_per_package,
         unit: data.unit,
+        packageUnit: data.package_unit || '',
         centerCost: data.center_cost,
         centerFeeRate: data.center_fee_rate,
         storeCost: data.store_cost,
