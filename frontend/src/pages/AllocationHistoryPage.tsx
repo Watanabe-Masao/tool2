@@ -1611,6 +1611,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                    }}
                   >
                     {availableFilterValues.productNames.map((name) => (
                       <MenuItem key={name} value={name}>
@@ -1635,6 +1638,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                    }}
                   >
                     {availableFilterValues.origins.map((origin) => (
                       <MenuItem key={origin} value={origin}>
@@ -1659,6 +1665,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                    }}
                   >
                     {availableFilterValues.specifications.map((spec) => (
                       <MenuItem key={spec} value={spec}>
@@ -1683,6 +1692,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                    }}
                   >
                     {availableFilterValues.dates.map((date) => (
                       <MenuItem key={date} value={date}>

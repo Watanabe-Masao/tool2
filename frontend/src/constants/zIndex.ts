@@ -17,9 +17,9 @@
  */
 
 /**
- * モーダル階層のzIndex定義
+ * モーダル階層のベース値
  */
-export const MODAL_Z_INDEX = {
+const MODAL_BASE = {
   /**
    * ページモーダル（第1階層）
    * 用途: 配分履歴、ユーザープロフィール、店舗管理などのページをモーダル表示
@@ -40,13 +40,27 @@ export const MODAL_Z_INDEX = {
    * ネストされたダイアログより100上に設定
    */
   NESTED_NESTED_DIALOG: 1600,
+} as const;
+
+/**
+ * モーダル階層のzIndex定義
+ *
+ * 計算式で使用可能:
+ * @example
+ * ```tsx
+ * // Drawer内のSelectのMenu（Drawerより100上）
+ * <Select MenuProps={{ sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 } }} />
+ * ```
+ */
+export const MODAL_Z_INDEX = {
+  ...MODAL_BASE,
 
   /**
    * ページモーダルの閉じるボタン（第1階層 + 1）
    * 用途: モーダル内のコンテンツに重ならないように表示
    */
-  PAGE_MODAL_CLOSE_BUTTON: 1401,
-} as const;
+  PAGE_MODAL_CLOSE_BUTTON: MODAL_BASE.PAGE_MODAL + 1,
+};
 
 /**
  * その他のzIndex定義
@@ -128,5 +142,31 @@ export const getModalZIndex = {
  * <Dialog sx={{ zIndex: MODAL_Z_INDEX.NESTED_NESTED_DIALOG }}>
  *   ...
  * </Dialog>
+ * ```
+ *
+ * @example 計算式を使用（Drawer内のSelectのMenu）
+ * ```tsx
+ * import { MODAL_Z_INDEX } from '@/constants/zIndex';
+ *
+ * <Drawer sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
+ *   <Select
+ *     MenuProps={{
+ *       sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }
+ *     }}
+ *   >
+ *     ...
+ *   </Select>
+ * </Drawer>
+ * ```
+ *
+ * @example モーダル内のポップオーバー（相対的なzIndex）
+ * ```tsx
+ * import { MODAL_Z_INDEX } from '@/constants/zIndex';
+ *
+ * <Popover
+ *   sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL + 50 }}
+ * >
+ *   ...
+ * </Popover>
  * ```
  */
