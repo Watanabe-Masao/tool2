@@ -103,7 +103,7 @@ const OrderFormContent: React.FC = () => {
 
   // 配分履歴保存ハンドラ
   const handleSaveHistory = useCallback(async () => {
-    if (!deliveryDate || !suppliers || !products) return;
+    if (!deliveryDate || !suppliers || !products || !submission.generatedFiles) return;
 
     const formData = {
       deliveryDate,
@@ -111,11 +111,17 @@ const OrderFormContent: React.FC = () => {
       products,
     };
 
-    const batchId = await saveHistory(formData);
+    // バイヤー名を取得（UserSettings > ユーザー名 > メールアドレス > '匿名'）
+    const buyerName = userSettings?.buyerName?.trim() || user?.displayName || user?.email || '匿名';
+
+    // ブック名を取得（生成されたファイル名）
+    const bookName = submission.generatedFiles.filename;
+
+    const batchId = await saveHistory(formData, buyerName, bookName);
     if (batchId) {
       setIsHistorySaved(true);
     }
-  }, [deliveryDate, suppliers, products, saveHistory]);
+  }, [deliveryDate, suppliers, products, submission.generatedFiles, userSettings, user, saveHistory]);
 
   return (
     <>

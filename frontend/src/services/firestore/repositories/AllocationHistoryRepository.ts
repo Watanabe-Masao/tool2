@@ -24,9 +24,13 @@ import type {
 interface FirestoreAllocationBatch {
   userId: string;
   delivery_date: string;
+  center_delivery_date?: string;
   suppliers: string[];
   product_count: number;
   total_quantity: number;
+  buyer_name: string;
+  book_name: string;
+  sheet_name: string;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -42,6 +46,12 @@ interface FirestoreAllocationDetail {
   specification: string;
   supplier: string;
   category_code?: string;
+  quantity_per_package: number | null;
+  unit: string;
+  center_cost: number;
+  center_fee_rate: number;
+  store_cost: number;
+  price_excluding_tax: number;
   total_delivery: number;
   store_allocations: number[];
   allocation_method: string;
@@ -86,9 +96,15 @@ export class AllocationHistoryRepository {
     const batchData: FirestoreAllocationBatch = {
       userId,
       delivery_date: format(input.deliveryDate, 'yyyy-MM-dd'),
+      center_delivery_date: input.centerDeliveryDate
+        ? format(input.centerDeliveryDate, 'yyyy-MM-dd')
+        : undefined,
       suppliers: input.suppliers,
       product_count: input.products.length,
       total_quantity: totalQuantity,
+      buyer_name: input.buyerName,
+      book_name: input.bookName,
+      sheet_name: input.sheetName || '配分書',
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
@@ -106,6 +122,12 @@ export class AllocationHistoryRepository {
         specification: product.specification,
         supplier: product.supplier,
         category_code: product.categoryCode,
+        quantity_per_package: product.quantityPerPackage,
+        unit: product.unit,
+        center_cost: product.centerCost,
+        center_fee_rate: product.centerFeeRate,
+        store_cost: product.storeCost,
+        price_excluding_tax: product.priceExcludingTax,
         total_delivery: product.totalDelivery,
         store_allocations: product.storeAllocations,
         allocation_method: product.allocationMethod || 'manual',
@@ -152,9 +174,13 @@ export class AllocationHistoryRepository {
         id: doc.id,
         userId: data.userId,
         deliveryDate: data.delivery_date,
+        centerDeliveryDate: data.center_delivery_date,
         suppliers: data.suppliers,
         productCount: data.product_count,
         totalQuantity: data.total_quantity,
+        buyerName: data.buyer_name,
+        bookName: data.book_name,
+        sheetName: data.sheet_name,
         createdAt: data.created_at?.toDate(),
         updatedAt: data.updated_at?.toDate(),
       };
@@ -187,9 +213,13 @@ export class AllocationHistoryRepository {
         id: doc.id,
         userId: data.userId,
         deliveryDate: data.delivery_date,
+        centerDeliveryDate: data.center_delivery_date,
         suppliers: data.suppliers,
         productCount: data.product_count,
         totalQuantity: data.total_quantity,
+        buyerName: data.buyer_name,
+        bookName: data.book_name,
+        sheetName: data.sheet_name,
         createdAt: data.created_at?.toDate(),
         updatedAt: data.updated_at?.toDate(),
       };
@@ -224,6 +254,12 @@ export class AllocationHistoryRepository {
         specification: data.specification,
         supplier: data.supplier,
         categoryCode: data.category_code,
+        quantityPerPackage: data.quantity_per_package,
+        unit: data.unit,
+        centerCost: data.center_cost,
+        centerFeeRate: data.center_fee_rate,
+        storeCost: data.store_cost,
+        priceExcludingTax: data.price_excluding_tax,
         totalDelivery: data.total_delivery,
         storeAllocations: data.store_allocations,
         allocationMethod: data.allocation_method as AllocationDetail['allocationMethod'],
@@ -262,9 +298,13 @@ export class AllocationHistoryRepository {
       id: batchDoc.id,
       userId: batchData.userId,
       deliveryDate: batchData.delivery_date,
+      centerDeliveryDate: batchData.center_delivery_date,
       suppliers: batchData.suppliers,
       productCount: batchData.product_count,
       totalQuantity: batchData.total_quantity,
+      buyerName: batchData.buyer_name,
+      bookName: batchData.book_name,
+      sheetName: batchData.sheet_name,
       createdAt: batchData.created_at?.toDate(),
       updatedAt: batchData.updated_at?.toDate(),
     };
