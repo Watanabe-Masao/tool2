@@ -379,7 +379,7 @@ export const UserProfilePage: React.FC = () => {
           </Box>
 
         {/* ログアウト確認ダイアログ */}
-        <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)}>
+        <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)} sx={{ zIndex: 1500 }}>
           <DialogTitle>ログアウト確認</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -420,6 +420,7 @@ export const UserProfilePage: React.FC = () => {
           onClose={() => !loading && setEmailSettingsDialogOpen(false)}
           maxWidth="sm"
           fullWidth
+          sx={{ zIndex: 1500 }}
         >
           <DialogTitle>メール設定</DialogTitle>
           <DialogContent>
@@ -463,6 +464,7 @@ export const UserProfilePage: React.FC = () => {
           onClose={() => !loading && setBuyerNameDialogOpen(false)}
           maxWidth="sm"
           fullWidth
+          sx={{ zIndex: 1500 }}
         >
           <DialogTitle>担当バイヤー名設定</DialogTitle>
           <DialogContent>

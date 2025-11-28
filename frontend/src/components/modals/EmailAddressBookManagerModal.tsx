@@ -476,7 +476,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth sx={{ zIndex: 1500 }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
           <Typography variant="h6">メールアドレス帳管理</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -618,7 +618,7 @@ export const EmailAddressBookManagerModal: React.FC<EmailAddressBookManagerModal
       </Dialog>
 
       {/* 削除確認ダイアログ */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} sx={{ zIndex: 1600 }}>
         <DialogTitle>アドレス帳を削除</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
