@@ -68,8 +68,10 @@ import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/cor
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
+import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
+import type { StoreCategory } from '@/types/storeCategory';
 
 /**
  * グリッド行データの型（詳細モーダル用）
@@ -98,6 +100,7 @@ export const AllocationHistoryPage: React.FC = () => {
   const [batches, setBatches] = useState<AllocationBatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
 
   // 表示モード
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('calendar');
@@ -242,11 +245,26 @@ export const AllocationHistoryPage: React.FC = () => {
 
 
   /**
+   * 店舗カテゴリーを取得
+   */
+  const fetchStoreCategories = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      const categories = await StoreCategoryService.getAll(user.uid);
+      setStoreCategories(categories);
+    } catch (err) {
+      console.error('Failed to fetch store categories:', err);
+    }
+  }, [user?.uid]);
+
+  /**
    * 初回読み込み
    */
   useEffect(() => {
     fetchHistory();
-  }, [fetchHistory]);
+    fetchStoreCategories();
+  }, [fetchHistory, fetchStoreCategories]);
 
   /**
    * 詳細モーダルを閉じる
@@ -1727,9 +1745,55 @@ export const AllocationHistoryPage: React.FC = () => {
                 ))}
               </FormGroup>
 
+              {/* 店舗カテゴリー選択 */}
+              {storeCategories.length > 0 && (
+                <>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, mb: 1 }}>
+                    店舗カテゴリー（一括選択）
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {storeCategories.map((category) => {
+                      // カテゴリー内の店舗がすべて表示されているかチェック
+                      const categoryStoreFields = category.storeIds.map(id => `store_${id}`);
+                      const allVisible = categoryStoreFields.every(field => !hiddenColumns.has(field));
+                      const someVisible = categoryStoreFields.some(field => !hiddenColumns.has(field));
+
+                      return (
+                        <Chip
+                          key={category.id}
+                          label={`${category.name} (${category.storeIds.length}店舗)`}
+                          size="small"
+                          color={allVisible ? 'secondary' : someVisible ? 'default' : 'default'}
+                          variant={allVisible ? 'filled' : someVisible ? 'outlined' : 'outlined'}
+                          onClick={() => {
+                            const newHidden = new Set(hiddenColumns);
+                            if (allVisible) {
+                              // すべて非表示に
+                              categoryStoreFields.forEach(field => newHidden.add(field));
+                            } else {
+                              // すべて表示に
+                              categoryStoreFields.forEach(field => newHidden.delete(field));
+                            }
+                            setHiddenColumns(newHidden);
+                          }}
+                          sx={{
+                            cursor: 'pointer',
+                            '&:hover': {
+                              opacity: 0.8,
+                            },
+                            opacity: someVisible && !allVisible ? 0.7 : 1,
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                </>
+              )}
+
               {/* 店舗選択（チップスタイル） */}
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, mb: 1 }}>
-                店舗選択
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                個別店舗選択
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {STORE_DATA.map((store) => {
@@ -1925,31 +1989,75 @@ export const AllocationHistoryPage: React.FC = () => {
               .filter((date, index, self) => self.indexOf(date) === index)
               .sort()
               .map((date) => {
-                const isSelected = tempDateRange?.start === date || tempDateRange?.end === date;
+                // 範囲内のすべての日付をチェック状態にする
+                const isInRange = tempDateRange &&
+                  date >= tempDateRange.start &&
+                  date <= tempDateRange.end;
+                const isEdge = tempDateRange &&
+                  (date === tempDateRange.start || date === tempDateRange.end);
+
                 return (
                   <FormControlLabel
                     key={date}
                     control={
                       <Checkbox
-                        checked={isSelected}
+                        checked={!!isInRange}
+                        indeterminate={!!(isInRange && !isEdge)} // 中間の日付は indeterminate 状態
                         onChange={() => {
                           if (!tempDateRange) {
+                            // 初回選択：開始日として設定
                             setTempDateRange({ start: date, end: date });
-                          } else if (!tempDateRange.end || tempDateRange.start === tempDateRange.end) {
-                            // 2つ目の日付を選択
-                            if (date < tempDateRange.start) {
-                              setTempDateRange({ start: date, end: tempDateRange.start });
-                            } else {
-                              setTempDateRange({ start: tempDateRange.start, end: date });
-                            }
                           } else {
-                            // リセットして新しい開始日
-                            setTempDateRange({ start: date, end: date });
+                            // 範囲の拡張または縮小
+                            const currentStart = tempDateRange.start;
+                            const currentEnd = tempDateRange.end;
+
+                            if (date < currentStart) {
+                              // 開始日を前に拡張
+                              setTempDateRange({ start: date, end: currentEnd });
+                            } else if (date > currentEnd) {
+                              // 終了日を後ろに拡張
+                              setTempDateRange({ start: currentStart, end: date });
+                            } else if (date === currentStart && currentStart === currentEnd) {
+                              // 単一選択をリセット
+                              setTempDateRange(null);
+                            } else if (date === currentStart) {
+                              // 開始日を縮小
+                              const sortedDates = batches
+                                .map(b => b.deliveryDate)
+                                .filter((d, i, self) => self.indexOf(d) === i)
+                                .sort();
+                              const currentIndex = sortedDates.indexOf(date);
+                              const nextDate = sortedDates[currentIndex + 1];
+                              if (nextDate && nextDate <= currentEnd) {
+                                setTempDateRange({ start: nextDate, end: currentEnd });
+                              }
+                            } else if (date === currentEnd) {
+                              // 終了日を縮小
+                              const sortedDates = batches
+                                .map(b => b.deliveryDate)
+                                .filter((d, i, self) => self.indexOf(d) === i)
+                                .sort();
+                              const currentIndex = sortedDates.indexOf(date);
+                              const prevDate = sortedDates[currentIndex - 1];
+                              if (prevDate && prevDate >= currentStart) {
+                                setTempDateRange({ start: currentStart, end: prevDate });
+                              }
+                            } else {
+                              // 範囲内の日付をクリック：新しい範囲を開始
+                              setTempDateRange({ start: date, end: date });
+                            }
                           }
                         }}
                       />
                     }
                     label={format(parseISO(date), 'yyyy年M月d日(E)', { locale: ja })}
+                    sx={{
+                      backgroundColor: isEdge ? 'primary.50' : isInRange ? 'action.hover' : 'transparent',
+                      borderRadius: 1,
+                      mx: -1,
+                      px: 1,
+                    }}
                   />
                 );
               })}
