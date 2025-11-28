@@ -277,9 +277,10 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'suppliers', 'product_count', 'total_quantity', 'buyer_name', 'book_name', 'sheet_name', 'created_at', 'updated_at']) &&
+                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'center_delivery_date', 'suppliers', 'product_count', 'total_quantity', 'buyer_name', 'book_name', 'sheet_name', 'created_at', 'updated_at']) &&
                        request.resource.data.delivery_date is string &&
                        request.resource.data.delivery_date.size() == 10 &&
+                       (request.resource.data.center_delivery_date == null || (request.resource.data.center_delivery_date is string && request.resource.data.center_delivery_date.size() == 10)) &&
                        request.resource.data.suppliers is list &&
                        request.resource.data.suppliers.size() > 0 &&
                        request.resource.data.product_count is number &&
@@ -291,8 +292,7 @@ service cloud.firestore {
                        request.resource.data.book_name is string &&
                        request.resource.data.book_name.size() > 0 &&
                        request.resource.data.sheet_name is string &&
-                       request.resource.data.sheet_name.size() > 0 &&
-                       (!request.resource.data.keys().hasAny(['center_delivery_date']) || request.resource.data.center_delivery_date is string);
+                       request.resource.data.sheet_name.size() > 0;
       // 更新: 自分のバッチのみ
       allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
@@ -309,7 +309,7 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'unit', 'package_unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
+                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'category_code', 'unit', 'package_unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
                        request.resource.data.batch_id is string &&
                        request.resource.data.batch_id.size() > 0 &&
                        request.resource.data.product_name is string &&
@@ -318,6 +318,7 @@ service cloud.firestore {
                        request.resource.data.specification is string &&
                        request.resource.data.supplier is string &&
                        request.resource.data.supplier.size() > 0 &&
+                       (request.resource.data.category_code == null || request.resource.data.category_code is string) &&
                        request.resource.data.unit is string &&
                        request.resource.data.package_unit is string &&
                        request.resource.data.center_cost is number &&
