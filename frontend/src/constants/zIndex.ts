@@ -1,8 +1,27 @@
 /**
  * zIndex定数の中央管理
  *
- * アプリケーション全体のzIndex階層を一箇所で定義し、
- * モーダル・ダイアログ・オーバーレイの重なり順を管理します。
+ * ## 設計方針
+ *
+ * ### 階層構造（500飛び）
+ * - 1000番台: ページモーダル（第1階層）
+ * - 1500番台: ネストされたダイアログ（第2階層）
+ * - 2000番台: さらにネストされたダイアログ（第3階層）
+ * - 2500番台: 最深階層のダイアログ（第4階層）
+ * - 3000番台: メッセージログ、トースト通知など
+ *
+ * ### 要素オフセット（1〜499）
+ * - 1: 閉じるボタン
+ * - 50: ポップオーバー
+ * - 100: Selectのドロップダウンメニュー
+ * - 150: オートコンプリートのドロップダウン
+ * - 200: 日付ピッカー
+ * - 250: カラーピッカー
+ *
+ * ### 使用例
+ * - ページモーダル: MODAL_Z_INDEX.PAGE_MODAL
+ * - 閉じるボタン: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON
+ * - Drawer内のSelect: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU
  *
  * Material-UIのデフォルトzIndex:
  * - mobileStepper: 1000
@@ -17,156 +36,86 @@
  */
 
 /**
- * モーダル階層のベース値
+ * 要素オフセット定数（1〜499）
+ *
+ * 階層のベース値に加算して使用します。
+ * これにより、同じ階層内での細かい前後関係を管理できます。
  */
-const MODAL_BASE = {
-  /**
-   * ページモーダル（第1階層）
-   * 用途: 配分履歴、ユーザープロフィール、店舗管理などのページをモーダル表示
-   * MUIのsnackbarと同じレベル
-   */
-  PAGE_MODAL: 1400,
-
-  /**
-   * ページモーダル内のダイアログ（第2階層）
-   * 用途: ページモーダル内で開くダイアログ、設定画面、編集フォームなど
-   * ページモーダルより100上に設定
-   */
-  NESTED_DIALOG: 1500,
-
-  /**
-   * ネストされたダイアログ内のダイアログ（第3階層）
-   * 用途: 削除確認ダイアログ、エラーダイアログなど
-   * ネストされたダイアログより100上に設定
-   */
-  NESTED_NESTED_DIALOG: 1600,
+export const ELEMENT_OFFSET = {
+  /** 閉じるボタン */
+  CLOSE_BUTTON: 1,
+  /** ポップオーバー */
+  POPOVER: 50,
+  /** Selectのドロップダウンメニュー */
+  SELECT_MENU: 100,
+  /** オートコンプリートのドロップダウン */
+  AUTOCOMPLETE_MENU: 150,
+  /** 日付ピッカー */
+  DATE_PICKER: 200,
+  /** カラーピッカー */
+  COLOR_PICKER: 250,
 } as const;
 
 /**
- * モーダル階層のzIndex定義
+ * モーダル階層のzIndex定義（500飛び）
  *
- * 計算式で使用可能:
- * @example
- * ```tsx
- * // Drawer内のSelectのMenu（Drawerより100上）
- * <Select MenuProps={{ sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 } }} />
- * ```
+ * 各階層は500の間隔を持ち、要素オフセット（1〜499）を加算できます。
  */
 export const MODAL_Z_INDEX = {
-  ...MODAL_BASE,
-
-  /**
-   * ページモーダルの閉じるボタン（第1階層 + 1）
-   * 用途: モーダル内のコンテンツに重ならないように表示
-   */
-  PAGE_MODAL_CLOSE_BUTTON: MODAL_BASE.PAGE_MODAL + 1,
-};
+  /** ページモーダル（第1階層）- 1000番台 */
+  PAGE_MODAL: 1000,
+  /** ネストされたダイアログ（第2階層）- 1500番台 */
+  NESTED_DIALOG: 1500,
+  /** さらにネストされたダイアログ（第3階層）- 2000番台 */
+  NESTED_NESTED_DIALOG: 2000,
+  /** 最深階層のダイアログ（第4階層）- 2500番台 */
+  DEEP_NESTED_DIALOG: 2500,
+} as const;
 
 /**
- * その他のzIndex定義
+ * メッセージ・通知のzIndex定義 - 3000番台
+ *
+ * すべてのモーダル階層より上に表示されます。
+ */
+export const MESSAGE_Z_INDEX = {
+  /** トースト通知 - 3000番台 */
+  TOAST: 3000,
+  /** スナックバー - 3000番台 */
+  SNACKBAR: 3000,
+  /** グローバルエラーメッセージ - 3500番台 */
+  GLOBAL_ERROR: 3500,
+  /** ローディングオーバーレイ - 4000番台 */
+  LOADING_OVERLAY: 4000,
+} as const;
+
+/**
+ * アプリケーション固定要素のzIndex定義
+ *
+ * ページコンテンツより上、モーダルより下に配置されます。
  */
 export const APP_Z_INDEX = {
-  /**
-   * 固定ヘッダー
-   * MUIのappBarより上に表示
-   */
-  HEADER: 1100,
-
-  /**
-   * モバイルボトムナビゲーション
-   * MUIのappBarと同じレベル
-   */
-  MOBILE_BOTTOM_NAV: 1100,
-
-  /**
-   * フローティング進捗サマリー
-   * ヘッダーやボトムナビの上に表示
-   */
-  FLOATING_PROGRESS_SUMMARY: 1150,
+  /** 固定ヘッダー - 100番台 */
+  HEADER: 100,
+  /** モバイルボトムナビゲーション - 100番台 */
+  MOBILE_BOTTOM_NAV: 100,
+  /** フローティング進捗サマリー - 150番台 */
+  FLOATING_PROGRESS_SUMMARY: 150,
+  /** サイドバー - 200番台 */
+  SIDEBAR: 200,
 } as const;
 
 /**
- * モーダル階層のヘルパー関数
- */
-export const getModalZIndex = {
-  /**
-   * ページモーダルのzIndexを取得
-   * @returns {number} zIndex値
-   */
-  pageModal: () => MODAL_Z_INDEX.PAGE_MODAL,
-
-  /**
-   * ページモーダル内のダイアログのzIndexを取得
-   * @returns {number} zIndex値
-   */
-  nestedDialog: () => MODAL_Z_INDEX.NESTED_DIALOG,
-
-  /**
-   * ネストされたダイアログ内のダイアログのzIndexを取得
-   * @returns {number} zIndex値
-   */
-  nestedNestedDialog: () => MODAL_Z_INDEX.NESTED_NESTED_DIALOG,
-
-  /**
-   * ページモーダルの閉じるボタンのzIndexを取得
-   * @returns {number} zIndex値
-   */
-  pageModalCloseButton: () => MODAL_Z_INDEX.PAGE_MODAL_CLOSE_BUTTON,
-} as const;
-
-/**
- * zIndex使用例:
+ * zIndex階層の全体像
  *
- * @example ページモーダル
- * ```tsx
- * import { MODAL_Z_INDEX } from '@/constants/zIndex';
- *
- * <Dialog sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}>
- *   ...
- * </Dialog>
- * ```
- *
- * @example ページモーダル内のダイアログ
- * ```tsx
- * import { MODAL_Z_INDEX } from '@/constants/zIndex';
- *
- * <Dialog sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
- *   ...
- * </Dialog>
- * ```
- *
- * @example 削除確認ダイアログ（ネストされたダイアログ内）
- * ```tsx
- * import { MODAL_Z_INDEX } from '@/constants/zIndex';
- *
- * <Dialog sx={{ zIndex: MODAL_Z_INDEX.NESTED_NESTED_DIALOG }}>
- *   ...
- * </Dialog>
- * ```
- *
- * @example 計算式を使用（Drawer内のSelectのMenu）
- * ```tsx
- * import { MODAL_Z_INDEX } from '@/constants/zIndex';
- *
- * <Drawer sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
- *   <Select
- *     MenuProps={{
- *       sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }
- *     }}
- *   >
- *     ...
- *   </Select>
- * </Drawer>
- * ```
- *
- * @example モーダル内のポップオーバー（相対的なzIndex）
- * ```tsx
- * import { MODAL_Z_INDEX } from '@/constants/zIndex';
- *
- * <Popover
- *   sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL + 50 }}
- * >
- *   ...
- * </Popover>
- * ```
+ * 4000番台: ローディングオーバーレイ（最上層）
+ * 3500番台: グローバルエラー
+ * 3000番台: トースト通知、スナックバー
+ * 2500番台: 最深階層ダイアログ（第4階層）
+ * 2000番台: ネストされたダイアログ（第3階層）
+ * 1500番台: ネストされたダイアログ（第2階層）
+ * 1000番台: ページモーダル（第1階層）
+ *  200番台: サイドバー
+ *  150番台: フローティング進捗サマリー
+ *  100番台: ヘッダー、ボトムナビ
+ *    0番台: ページコンテンツ
  */

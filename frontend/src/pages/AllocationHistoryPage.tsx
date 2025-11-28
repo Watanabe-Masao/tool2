@@ -72,7 +72,7 @@ import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
 import type { StoreCategory } from '@/types/storeCategory';
-import { MODAL_Z_INDEX } from '@/constants/zIndex';
+import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
 
 /**
  * グリッド行データの型（詳細モーダル用）
@@ -1612,7 +1612,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                     MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
                     }}
                   >
                     {availableFilterValues.productNames.map((name) => (
@@ -1639,7 +1639,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                     MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
                     }}
                   >
                     {availableFilterValues.origins.map((origin) => (
@@ -1666,7 +1666,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                     MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
                     }}
                   >
                     {availableFilterValues.specifications.map((spec) => (
@@ -1693,7 +1693,7 @@ export const AllocationHistoryPage: React.FC = () => {
                       </Box>
                     )}
                     MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + 100 }, // Drawer内のMenuはDrawerより100上
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
                     }}
                   >
                     {availableFilterValues.dates.map((date) => (
