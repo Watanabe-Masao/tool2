@@ -9,12 +9,14 @@ service cloud.firestore {
 
     // ヘルパー関数: 商品データのバリデーション
     function isValidProduct(product) {
-      return product.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations']) &&
+      return product.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'packageUnit', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations']) &&
              product.supplier is string &&
              product.supplier.size() > 0 &&
              product.name is string &&
              product.origin is string &&
              product.specification is string &&
+             product.unit is string &&
+             product.packageUnit is string &&
              product.store_cost is number &&
              product.price_excluding_tax is number &&
              product.total_delivery is number &&
