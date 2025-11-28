@@ -162,7 +162,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     variant="caption"
                     sx={{ fontSize: '0.65rem', color: 'text.secondary' }}
                   >
-                    {product.specification}
+                    {product.specification}{product.unit ? ` ${product.unit}` : ''}
                   </Typography>
                   {product.quantityPerPackage && (
                     <Typography
@@ -180,7 +180,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   sx={{ fontSize: '0.65rem', color: 'text.secondary' }}
                 >
                   {product.quantityPerPackage}
-                  {product.unit || ''}
+                  {product.packageUnit || ''}
                 </Typography>
               )}
             </Box>
