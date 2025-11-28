@@ -275,11 +275,22 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'suppliers', 'product_count', 'total_quantity', 'created_at', 'updated_at']) &&
+                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'suppliers', 'product_count', 'total_quantity', 'buyer_name', 'book_name', 'sheet_name', 'created_at', 'updated_at']) &&
                        request.resource.data.delivery_date is string &&
+                       request.resource.data.delivery_date.size() == 10 &&
                        request.resource.data.suppliers is list &&
+                       request.resource.data.suppliers.size() > 0 &&
                        request.resource.data.product_count is number &&
-                       request.resource.data.total_quantity is number;
+                       request.resource.data.product_count > 0 &&
+                       request.resource.data.total_quantity is number &&
+                       request.resource.data.total_quantity > 0 &&
+                       request.resource.data.buyer_name is string &&
+                       request.resource.data.buyer_name.size() > 0 &&
+                       request.resource.data.book_name is string &&
+                       request.resource.data.book_name.size() > 0 &&
+                       request.resource.data.sheet_name is string &&
+                       request.resource.data.sheet_name.size() > 0 &&
+                       (!request.resource.data.keys().hasAny(['center_delivery_date']) || request.resource.data.center_delivery_date is string);
       // 更新: 自分のバッチのみ
       allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
@@ -296,11 +307,31 @@ service cloud.firestore {
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
+                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
                        request.resource.data.batch_id is string &&
+                       request.resource.data.batch_id.size() > 0 &&
                        request.resource.data.product_name is string &&
+                       request.resource.data.product_name.size() > 0 &&
+                       request.resource.data.origin is string &&
+                       request.resource.data.specification is string &&
+                       request.resource.data.supplier is string &&
+                       request.resource.data.supplier.size() > 0 &&
+                       request.resource.data.unit is string &&
+                       request.resource.data.center_cost is number &&
+                       request.resource.data.center_cost >= 0 &&
+                       request.resource.data.center_fee_rate is number &&
+                       request.resource.data.center_fee_rate >= 0 &&
+                       request.resource.data.center_fee_rate <= 100 &&
+                       request.resource.data.store_cost is number &&
+                       request.resource.data.store_cost >= 0 &&
+                       request.resource.data.price_excluding_tax is number &&
+                       request.resource.data.price_excluding_tax >= 0 &&
+                       request.resource.data.total_delivery is number &&
+                       request.resource.data.total_delivery > 0 &&
                        request.resource.data.store_allocations is list &&
-                       request.resource.data.allocation_method is string;
+                       request.resource.data.store_allocations.size() == 36 &&
+                       request.resource.data.allocation_method is string &&
+                       request.resource.data.has_manual_adjustment is bool;
       // 更新: 自分の明細のみ
       allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
