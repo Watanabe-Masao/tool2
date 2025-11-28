@@ -19,12 +19,14 @@ const PATTERNS = [
   '!src/constants/zIndex.ts', // zIndex定数ファイル自体は除外
 ];
 
-// 許可されたzIndex定数
+// 許可されたzIndex定数とヘルパー関数
 const ALLOWED_CONSTANTS = [
   'MODAL_Z_INDEX',
   'ELEMENT_OFFSET',
   'MESSAGE_Z_INDEX',
   'APP_Z_INDEX',
+  'LAYER_Z_INDEX',
+  'zIndex\\(', // zIndex() ヘルパー関数
 ];
 
 // ハードコードされたzIndex値を検出する正規表現
@@ -80,7 +82,7 @@ function checkFile(filePath: string): ViolationResult[] {
         line: lineIndex + 1,
         column: column + 1,
         value: zIndexValue,
-        message: `ハードコードされたzIndex値が検出されました: ${zIndexValue}。定数を使用してください: MODAL_Z_INDEX, ELEMENT_OFFSET, MESSAGE_Z_INDEX, APP_Z_INDEX`,
+        message: `ハードコードされたzIndex値が検出されました: ${zIndexValue}。型付きヘルパー関数 zIndex() または定数を使用してください`,
       });
     }
   });
@@ -128,9 +130,11 @@ async function main() {
     }
 
     console.log('💡 修正方法:');
-    console.log('   1. frontend/src/constants/zIndex.ts の定数を使用してください');
-    console.log('   2. 階層 + オフセット の形式で記述してください');
-    console.log('   3. 例: zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON\n');
+    console.log('   1. 型付きヘルパー関数 zIndex() を使用してください（推奨）');
+    console.log('      例: zIndex: zIndex("PAGE_MODAL", "CLOSE_BUTTON")');
+    console.log('   2. または定数を使用してください');
+    console.log('      例: zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON');
+    console.log('   3. 詳細: frontend/src/constants/zIndex.ts を参照\n');
 
     process.exit(1);
   }

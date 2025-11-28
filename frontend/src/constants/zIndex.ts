@@ -18,10 +18,15 @@
  * - 200: 日付ピッカー
  * - 250: カラーピッカー
  *
- * ### 使用例
- * - ページモーダル: MODAL_Z_INDEX.PAGE_MODAL
- * - 閉じるボタン: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON
- * - Drawer内のSelect: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU
+ * ### 使用例（型付きヘルパー関数）
+ * - ページモーダル: zIndex('PAGE_MODAL')
+ * - 閉じるボタン: zIndex('PAGE_MODAL', 'CLOSE_BUTTON')
+ * - Drawer内のSelect: zIndex('NESTED_DIALOG', 'SELECT_MENU')
+ *
+ * ### stacking context に注意
+ * z-indexは同じstacking context内でのみ有効です。
+ * transform, filter, opacity < 1, position: fixed/relative + z-index等が
+ * 付いた親要素は新しいstacking contextを作成するため注意が必要です。
  *
  * Material-UIのデフォルトzIndex:
  * - mobileStepper: 1000
@@ -57,11 +62,21 @@ export const ELEMENT_OFFSET = {
 } as const;
 
 /**
- * モーダル階層のzIndex定義（500飛び）
+ * レイヤー階層のzIndex定義
  *
- * 各階層は500の間隔を持ち、要素オフセット（1〜499）を加算できます。
+ * アプリケーション全体の階層構造を定義します。
  */
-export const MODAL_Z_INDEX = {
+export const LAYER_Z_INDEX = {
+  /** ページコンテンツ - 0番台 */
+  PAGE_CONTENT: 0,
+  /** ヘッダー - 100番台 */
+  HEADER: 100,
+  /** モバイルボトムナビゲーション - 100番台 */
+  MOBILE_BOTTOM_NAV: 100,
+  /** フローティング進捗サマリー - 150番台 */
+  FLOATING_SUMMARY: 150,
+  /** サイドバー - 200番台 */
+  SIDEBAR: 200,
   /** ページモーダル（第1階層）- 1000番台 */
   PAGE_MODAL: 1000,
   /** ネストされたダイアログ（第2階層）- 1500番台 */
@@ -70,14 +85,6 @@ export const MODAL_Z_INDEX = {
   NESTED_NESTED_DIALOG: 2000,
   /** 最深階層のダイアログ（第4階層）- 2500番台 */
   DEEP_NESTED_DIALOG: 2500,
-} as const;
-
-/**
- * メッセージ・通知のzIndex定義 - 3000番台
- *
- * すべてのモーダル階層より上に表示されます。
- */
-export const MESSAGE_Z_INDEX = {
   /** トースト通知 - 3000番台 */
   TOAST: 3000,
   /** スナックバー - 3000番台 */
@@ -89,20 +96,98 @@ export const MESSAGE_Z_INDEX = {
 } as const;
 
 /**
- * アプリケーション固定要素のzIndex定義
+ * 後方互換性のための旧定数（非推奨）
  *
- * ページコンテンツより上、モーダルより下に配置されます。
+ * @deprecated 代わりに zIndex() ヘルパー関数を使用してください
+ */
+export const MODAL_Z_INDEX = {
+  PAGE_MODAL: LAYER_Z_INDEX.PAGE_MODAL,
+  NESTED_DIALOG: LAYER_Z_INDEX.NESTED_DIALOG,
+  NESTED_NESTED_DIALOG: LAYER_Z_INDEX.NESTED_NESTED_DIALOG,
+  DEEP_NESTED_DIALOG: LAYER_Z_INDEX.DEEP_NESTED_DIALOG,
+} as const;
+
+/**
+ * @deprecated 代わりに zIndex() ヘルパー関数を使用してください
+ */
+export const MESSAGE_Z_INDEX = {
+  TOAST: LAYER_Z_INDEX.TOAST,
+  SNACKBAR: LAYER_Z_INDEX.SNACKBAR,
+  GLOBAL_ERROR: LAYER_Z_INDEX.GLOBAL_ERROR,
+  LOADING_OVERLAY: LAYER_Z_INDEX.LOADING_OVERLAY,
+} as const;
+
+/**
+ * @deprecated 代わりに zIndex() ヘルパー関数を使用してください
  */
 export const APP_Z_INDEX = {
-  /** 固定ヘッダー - 100番台 */
-  HEADER: 100,
-  /** モバイルボトムナビゲーション - 100番台 */
-  MOBILE_BOTTOM_NAV: 100,
-  /** フローティング進捗サマリー - 150番台 */
-  FLOATING_PROGRESS_SUMMARY: 150,
-  /** サイドバー - 200番台 */
-  SIDEBAR: 200,
+  HEADER: LAYER_Z_INDEX.HEADER,
+  MOBILE_BOTTOM_NAV: LAYER_Z_INDEX.MOBILE_BOTTOM_NAV,
+  FLOATING_PROGRESS_SUMMARY: LAYER_Z_INDEX.FLOATING_SUMMARY,
+  SIDEBAR: LAYER_Z_INDEX.SIDEBAR,
 } as const;
+
+/**
+ * レイヤー名の型
+ */
+type Layer = keyof typeof LAYER_Z_INDEX;
+
+/**
+ * 要素オフセット名の型
+ */
+type ElementOffsetKey = keyof typeof ELEMENT_OFFSET;
+
+/**
+ * 型付きzIndexヘルパー関数
+ *
+ * レイヤーと要素オフセットを組み合わせてzIndex値を計算します。
+ * タイプセーフで、補完が効きます。
+ *
+ * @param layer - レイヤー名
+ * @param offset - 要素オフセット名（オプション）
+ * @returns 計算されたzIndex値
+ *
+ * @example
+ * ```tsx
+ * // レイヤーのみ指定
+ * <Dialog sx={{ zIndex: zIndex('PAGE_MODAL') }}>  // 1000
+ *
+ * // レイヤー + 要素オフセット
+ * <IconButton sx={{ zIndex: zIndex('PAGE_MODAL', 'CLOSE_BUTTON') }}>  // 1001
+ *
+ * // Drawer内のSelect
+ * <Select MenuProps={{ sx: { zIndex: zIndex('NESTED_DIALOG', 'SELECT_MENU') } }} />  // 1600
+ * ```
+ */
+export const zIndex = (layer: Layer, offset?: ElementOffsetKey): number => {
+  return LAYER_Z_INDEX[layer] + (offset ? ELEMENT_OFFSET[offset] : 0);
+};
+
+/**
+ * MUI Theme用のzIndexカスタマイズ
+ *
+ * createTheme()のzIndexオプションとして使用します。
+ *
+ * @example
+ * ```tsx
+ * import { createTheme } from '@mui/material/styles';
+ * import { muiThemeZIndex } from '@/constants/zIndex';
+ *
+ * const theme = createTheme({
+ *   zIndex: muiThemeZIndex,
+ * });
+ * ```
+ */
+export const muiThemeZIndex = {
+  mobileStepper: LAYER_Z_INDEX.PAGE_CONTENT + 50,  // 50
+  fab: LAYER_Z_INDEX.FLOATING_SUMMARY,  // 150
+  speedDial: LAYER_Z_INDEX.FLOATING_SUMMARY + 50,  // 200
+  appBar: LAYER_Z_INDEX.HEADER,  // 100
+  drawer: LAYER_Z_INDEX.SIDEBAR,  // 200
+  modal: LAYER_Z_INDEX.PAGE_MODAL,  // 1000
+  snackbar: LAYER_Z_INDEX.SNACKBAR,  // 3000
+  tooltip: LAYER_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.POPOVER,  // 1050
+};
 
 /**
  * zIndex階層の全体像
@@ -114,8 +199,9 @@ export const APP_Z_INDEX = {
  * 2000番台: ネストされたダイアログ（第3階層）
  * 1500番台: ネストされたダイアログ（第2階層）
  * 1000番台: ページモーダル（第1階層）
- *  200番台: サイドバー
- *  150番台: フローティング進捗サマリー
+ *  200番台: サイドバー、speedDial
+ *  150番台: フローティング進捗サマリー、FAB
  *  100番台: ヘッダー、ボトムナビ
+ *   50番台: mobileStepper
  *    0番台: ページコンテンツ
  */
