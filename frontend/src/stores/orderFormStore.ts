@@ -92,6 +92,16 @@ interface OrderFormState {
   bookNameDialog: BookNameDialog;
   setBookNameDialog: (dialog: BookNameDialog) => void;
 
+  // ページモーダル（ページ遷移の代わりにモーダル表示）
+  showAllocationHistoryModal: boolean;
+  setShowAllocationHistoryModal: (show: boolean) => void;
+
+  showUserProfileModal: boolean;
+  setShowUserProfileModal: (show: boolean) => void;
+
+  showStoreManagementModal: boolean;
+  setShowStoreManagementModal: (show: boolean) => void;
+
   // ===== リセット =====
   reset: () => void;
 }
@@ -121,6 +131,10 @@ const initialState = {
   showEmailModal: false,
   showGeneratedPreview: false,
   bookNameDialog: { open: false, bookName: '' },
+  // ページモーダル
+  showAllocationHistoryModal: false,
+  showUserProfileModal: false,
+  showStoreManagementModal: false,
 };
 
 /**
@@ -343,6 +357,14 @@ export const useOrderFormStore = create<OrderFormState>()(
         setBookNameDialog: (dialog) =>
           set({ bookNameDialog: dialog }, false, 'setBookNameDialog'),
 
+        // ページモーダル状態設定
+        setShowAllocationHistoryModal: (show) =>
+          set({ showAllocationHistoryModal: show }, false, 'setShowAllocationHistoryModal'),
+        setShowUserProfileModal: (show) =>
+          set({ showUserProfileModal: show }, false, 'setShowUserProfileModal'),
+        setShowStoreManagementModal: (show) =>
+          set({ showStoreManagementModal: show }, false, 'setShowStoreManagementModal'),
+
         // 状態リセット
         reset: () => set(initialState, false, 'reset'),
       }),
@@ -408,12 +430,18 @@ export const useModalStates = () =>
       showEmailModal: state.showEmailModal,
       showGeneratedPreview: state.showGeneratedPreview,
       bookNameDialog: state.bookNameDialog,
+      showAllocationHistoryModal: state.showAllocationHistoryModal,
+      showUserProfileModal: state.showUserProfileModal,
+      showStoreManagementModal: state.showStoreManagementModal,
       setShowPDFPreview: state.setShowPDFPreview,
       setShowDownloadModal: state.setShowDownloadModal,
       setShowPreviewModal: state.setShowPreviewModal,
       setShowEmailModal: state.setShowEmailModal,
       setShowGeneratedPreview: state.setShowGeneratedPreview,
       setBookNameDialog: state.setBookNameDialog,
+      setShowAllocationHistoryModal: state.setShowAllocationHistoryModal,
+      setShowUserProfileModal: state.setShowUserProfileModal,
+      setShowStoreManagementModal: state.setShowStoreManagementModal,
     }))
   );
 

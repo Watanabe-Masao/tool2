@@ -35,6 +35,7 @@ import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
 import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * ヘッダーコンポーネント
@@ -48,6 +49,11 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // モーダル状態（Zustand）
+  const setShowAllocationHistoryModal = useOrderFormStore((state) => state.setShowAllocationHistoryModal);
+  const setShowUserProfileModal = useOrderFormStore((state) => state.setShowUserProfileModal);
+  const setShowStoreManagementModal = useOrderFormStore((state) => state.setShowStoreManagementModal);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
@@ -190,10 +196,26 @@ export const Header: React.FC = () => {
   ];
 
   /**
-   * ナビゲーション変更
+   * ナビゲーション変更（モーダル表示）
    */
   const handleNavigationChange = (path: string) => {
-    navigate(path);
+    // 新規作成以外はモーダル表示
+    switch (path) {
+      case '/new-order':
+        navigate(path);
+        break;
+      case '/allocation-history':
+        setShowAllocationHistoryModal(true);
+        break;
+      case '/profile':
+        setShowUserProfileModal(true);
+        break;
+      case '/store-categories':
+        setShowStoreManagementModal(true);
+        break;
+      default:
+        navigate(path);
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { Box, Alert, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, IconButton } from '@mui/material';
+import { Close } from '@mui/icons-material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
 import { OrderModals } from '@/components/order/OrderModals';
@@ -10,6 +11,10 @@ import {
   TOTAL_STEPS,
 } from '@/context/OrderFormContext';
 import { useAllocationHistorySave } from '@/hooks/useAllocationHistorySave';
+import { useOrderFormStore } from '@/stores/orderFormStore';
+import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
+import { UserProfilePage } from '@/pages/UserProfilePage';
+import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -19,6 +24,14 @@ import { useAllocationHistorySave } from '@/hooks/useAllocationHistorySave';
 const OrderFormContent: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // モーダル状態（Zustand）
+  const showAllocationHistoryModal = useOrderFormStore((state) => state.showAllocationHistoryModal);
+  const setShowAllocationHistoryModal = useOrderFormStore((state) => state.setShowAllocationHistoryModal);
+  const showUserProfileModal = useOrderFormStore((state) => state.showUserProfileModal);
+  const setShowUserProfileModal = useOrderFormStore((state) => state.setShowUserProfileModal);
+  const showStoreManagementModal = useOrderFormStore((state) => state.showStoreManagementModal);
+  const setShowStoreManagementModal = useOrderFormStore((state) => state.setShowStoreManagementModal);
 
   // 配分履歴保存フック
   const { saveHistory, isSaving } = useAllocationHistorySave();
@@ -206,6 +219,66 @@ const OrderFormContent: React.FC = () => {
           onAllocationChange={progressAllocationChange}
         />
       )}
+
+      {/* 配分履歴モーダル */}
+      <Dialog
+        open={showAllocationHistoryModal}
+        onClose={() => setShowAllocationHistoryModal(false)}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={isMobile}
+        sx={{ zIndex: 1400 }}
+      >
+        <IconButton
+          onClick={() => setShowAllocationHistoryModal(false)}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+        >
+          <Close />
+        </IconButton>
+        <DialogContent sx={{ p: 0 }}>
+          <AllocationHistoryPage />
+        </DialogContent>
+      </Dialog>
+
+      {/* ユーザープロフィールモーダル */}
+      <Dialog
+        open={showUserProfileModal}
+        onClose={() => setShowUserProfileModal(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+        sx={{ zIndex: 1400 }}
+      >
+        <IconButton
+          onClick={() => setShowUserProfileModal(false)}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+        >
+          <Close />
+        </IconButton>
+        <DialogContent sx={{ p: 0 }}>
+          <UserProfilePage />
+        </DialogContent>
+      </Dialog>
+
+      {/* 各種管理モーダル */}
+      <Dialog
+        open={showStoreManagementModal}
+        onClose={() => setShowStoreManagementModal(false)}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={isMobile}
+        sx={{ zIndex: 1400 }}
+      >
+        <IconButton
+          onClick={() => setShowStoreManagementModal(false)}
+          sx={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+        >
+          <Close />
+        </IconButton>
+        <DialogContent sx={{ p: 0 }}>
+          <StoreCategoryManagementPage />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

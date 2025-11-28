@@ -118,11 +118,16 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   const activeStep = useOrderFormStore((state) => state.activeStep);
   const setActiveStep = useOrderFormStore((state) => state.setActiveStep);
   const progressSummaryHeight = useOrderFormStore((state) => state.progressSummaryHeight);
+  const showGeneratedPreview = useOrderFormStore((state) => state.showGeneratedPreview);
   const setShowGeneratedPreview = useOrderFormStore((state) => state.setShowGeneratedPreview);
   const setShowEmailModal = useOrderFormStore((state) => state.setShowEmailModal);
 
-  // タブ変更ハンドラー
+  // タブ変更ハンドラー（生成後は無効化）
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    // 配分表生成後はタブ切り替えを無効化
+    if (showGeneratedPreview) {
+      return;
+    }
     setActiveStep(newValue);
   };
 
@@ -146,19 +151,22 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   return (
     <Container maxWidth="lg">
       <Box sx={{ width: '100%', py: 2 }}>
-        <Tabs
-          value={activeStep}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-        >
-          <Tab label="店着日・帳合先" />
-          <Tab label="商品情報" />
-          <Tab label="価格・数量" />
-          <Tab label="店舗配分" />
-          <Tab label="プレビュー" />
-        </Tabs>
+        {/* 配分表生成後はタブを非表示 */}
+        {!showGeneratedPreview && (
+          <Tabs
+            value={activeStep}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+          >
+            <Tab label="店着日・帳合先" />
+            <Tab label="商品情報" />
+            <Tab label="価格・数量" />
+            <Tab label="店舗配分" />
+            <Tab label="プレビュー" />
+          </Tabs>
+        )}
 
         {/* コンテンツエリア（スクロール可能） */}
         <Box
