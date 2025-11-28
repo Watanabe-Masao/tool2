@@ -102,6 +102,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
   const currentUnit = useWatch({ control, name: `products.${index}.unit` });
+  const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -229,6 +230,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         currentSpecification || '',
         currentQuantityPerPackage ?? null,
         currentUnit || '',
+        currentPackageUnit || '',
         currentCategoryCode
       );
 
@@ -339,6 +341,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.specification`, preset.specification);
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
+    setValue(`products.${index}.packageUnit`, preset.packageUnit);
     showSuccess('プリセットを読み込みました');
   };
 

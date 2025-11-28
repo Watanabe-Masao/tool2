@@ -356,6 +356,7 @@ export class FirestoreServiceFacade {
       specification: string;
       quantityPerPackage: number | null;
       unit: string;
+      packageUnit: string;
       usageCount: number;
       pinned?: boolean;
       pinOrder?: number;
@@ -374,6 +375,7 @@ export class FirestoreServiceFacade {
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
       unit: history.unit,
+      packageUnit: history.packageUnit,
       usageCount: history.usageCount,
       pinned: history.pinned,
       pinOrder: history.pinOrder,
@@ -441,6 +443,7 @@ export class FirestoreServiceFacade {
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
       unit: history.unit,
+      packageUnit: history.packageUnit,
       centerCost: history.centerCost,
       storeCost: history.storeCost,
       priceExcludingTax: history.priceExcludingTax,
