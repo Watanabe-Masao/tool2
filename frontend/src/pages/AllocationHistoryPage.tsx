@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -37,7 +36,6 @@ import {
   Refresh,
   CalendarMonth,
   Delete,
-  ViewList,
   CalendarToday,
   Fullscreen,
   FullscreenExit,
