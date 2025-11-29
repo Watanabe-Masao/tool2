@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useWatch, useFormContext } from 'react-hook-form';
+import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove, UseFieldArrayMove } from 'react-hook-form';
-import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton } from '@mui/material';
+import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, TextField, Autocomplete, Stack, Chip, Divider } from '@mui/material';
 import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2, SwapVert, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { getSupplierColor, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -42,6 +44,10 @@ interface ProductBasicInfoFormProps {
   activeProductIndex?: number;
   /** 商品インデックス変更ハンドラー */
   onProductIndexChange?: (index: number) => void;
+  /** 帳合先のオートコンプリート候補 */
+  supplierOptions?: string[];
+  /** 帳合先変更時のカスタムハンドラー */
+  onSuppliersChange?: (newValue: string[]) => string[];
 }
 
 /**
@@ -64,8 +70,11 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   onNavigateToStep,
   activeProductIndex,
   onProductIndexChange,
+  supplierOptions = [],
+  onSuppliersChange,
 }) => {
   const firestoreService = useFirestoreService();
+  const { presets } = useSupplierPresets();
 
   // アクティブなタブのインデックス（外部制御または内部状態）
   const [internalTabIndex, setInternalTabIndex] = useState(0);
@@ -372,6 +381,96 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   return (
     <Box>
+      {/* 帳合先選択セクション */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+          帳合先を選択
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+          複数の帳合先を選択できます
+        </Typography>
+
+        <Controller
+          name="suppliers"
+          control={control}
+          render={({ field }) => (
+            <Box>
+              {/* プリセットボタン */}
+              {presets.length > 0 && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {presets.map((preset, index) => {
+                      const isSelected = field.value?.includes(preset.supplier);
+                      const supplierColor = getSupplierColor(index);
+                      return (
+                        <Chip
+                          key={preset.id}
+                          label={preset.supplier}
+                          onClick={() => {
+                            const currentValue = field.value || [];
+                            let newValue: string[];
+                            if (isSelected) {
+                              newValue = currentValue.filter((s: string) => s !== preset.supplier);
+                            } else {
+                              newValue = [...currentValue, preset.supplier];
+                            }
+                            const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                            field.onChange(finalValue);
+                          }}
+                          size="small"
+                          sx={{
+                            mb: 0.5,
+                            borderLeft: `3px solid ${supplierColor}`,
+                            bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
+                            color: isSelected ? supplierColor : 'text.primary',
+                            fontWeight: isSelected ? 600 : 400,
+                            '&:hover': {
+                              bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                  <Divider sx={{ my: 1.5 }} />
+                </Box>
+              )}
+
+              {/* 入力フィールド */}
+              <Autocomplete
+                multiple
+                options={supplierOptions}
+                freeSolo
+                value={field.value || []}
+                onChange={(_, newValue) => {
+                  const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                  field.onChange(finalValue);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="帳合先"
+                    placeholder="例: ○○商事"
+                    error={!!errors.suppliers}
+                    helperText={errors.suppliers?.message}
+                    fullWidth
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && onEnterPress) {
+                        e.preventDefault();
+                        onEnterPress();
+                      }
+                    }}
+                  />
+                )}
+              />
+            </Box>
+          )}
+        />
+      </Box>
+
+      <Divider sx={{ my: 2 }} />
+
       {/* ヘッダーセクション */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="subtitle1" fontWeight="medium">
