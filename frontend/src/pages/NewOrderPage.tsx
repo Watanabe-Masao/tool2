@@ -229,11 +229,24 @@ const OrderFormContent: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
           <AllocationHistoryPage />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          position: 'sticky',
+          bottom: 0,
+        }}>
           <Button
             onClick={() => setShowAllocationHistoryModal(false)}
             variant="contained"
@@ -253,11 +266,24 @@ const OrderFormContent: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
           <UserProfilePage />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          position: 'sticky',
+          bottom: 0,
+        }}>
           <Button
             onClick={() => setShowUserProfileModal(false)}
             variant="contained"
@@ -277,11 +303,24 @@ const OrderFormContent: React.FC = () => {
         fullWidth
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
           <StoreCategoryManagementPage />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          position: 'sticky',
+          bottom: 0,
+        }}>
           <Button
             onClick={() => setShowStoreManagementModal(false)}
             variant="contained"
