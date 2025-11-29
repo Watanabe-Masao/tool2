@@ -59,8 +59,9 @@ import {
 import { ja } from 'date-fns/locale';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import { GlassCalendar, type CalendarEvent } from '@/components/calendar/GlassCalendar';
+import { GlassCalendar, type CalendarEvent, type SupplierPreset, type PreviewProduct } from '@/components/calendar/GlassCalendar';
 import { useAuthContext } from '@/context/AuthContext';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
@@ -95,8 +96,11 @@ interface DetailGridRow {
  */
 export const AllocationHistoryPage: React.FC = () => {
   const { user } = useAuthContext();
+  const { presets: supplierPresets } = useSupplierPresets();
 
   const [batches, setBatches] = useState<AllocationBatch[]>([]);
+  const [previewProducts, setPreviewProducts] = useState<PreviewProduct[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
@@ -168,12 +172,19 @@ export const AllocationHistoryPage: React.FC = () => {
         id: batch.id || '',
         date: batch.deliveryDate,
         title: `${displayTitle} (${productCount}件)`,
-        type: 'work' as const,
-        icon: '📦',
+        suppliers: batch.suppliers, // 帳合先リストを追加
         data: batch,
       };
     });
   }, [batches]);
+
+  // 帳合先プリセットをカレンダー用に変換
+  const calendarSupplierPresets: SupplierPreset[] = useMemo(() => {
+    return supplierPresets.map(p => ({
+      supplier: p.supplier,
+      displayOrder: p.displayOrder,
+    }));
+  }, [supplierPresets]);
 
   /**
    * 履歴を取得（過去90日間）
@@ -273,6 +284,53 @@ export const AllocationHistoryPage: React.FC = () => {
       fetchBatchDetails(batch);
     }
   }, [fetchBatchDetails]);
+
+  /**
+   * 日付クリック時のプレビューデータ取得
+   */
+  const handleDateClick = useCallback(async (date: Date) => {
+    if (!user?.uid) return;
+
+    const dateKey = format(date, 'yyyy-MM-dd');
+
+    // その日付のバッチを取得
+    const dateBatches = batches.filter(b => b.deliveryDate === dateKey);
+    if (dateBatches.length === 0) {
+      setPreviewProducts([]);
+      return;
+    }
+
+    setPreviewLoading(true);
+    try {
+      const db = getFirebaseFirestore();
+      const firestoreService = new FirestoreServiceFacade(db);
+
+      const allProducts: PreviewProduct[] = [];
+      for (const batch of dateBatches) {
+        if (batch.id) {
+          const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
+          batchDetails.forEach(detail => {
+            // バッチの帳合先を使用（詳細には帳合先がないため）
+            const supplier = batch.suppliers[0] || '不明';
+            allProducts.push({
+              productName: detail.productName,
+              origin: detail.origin,
+              specification: detail.specification,
+              quantityPerPackage: detail.quantityPerPackage,
+              totalDelivery: detail.totalDelivery,
+              supplier,
+            });
+          });
+        }
+      }
+      setPreviewProducts(allProducts);
+    } catch (err) {
+      console.error('Failed to fetch preview:', err);
+      setPreviewProducts([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [user?.uid, batches]);
 
   /**
    * GlassCalendarの日付範囲選択ハンドラー
@@ -1145,12 +1203,16 @@ export const AllocationHistoryPage: React.FC = () => {
         /* カレンダー表示 (GlassCalendar) */
         <GlassCalendar
           events={calendarEvents}
+          onDateClick={handleDateClick}
           onEventClick={handleEventClick}
           onDateRangeSelect={handleDateRangeSelect}
           viewMode={viewMode}
           onViewModeChange={(mode) => setViewMode(mode)}
           onRefresh={fetchHistory}
           loading={loading}
+          supplierPresets={calendarSupplierPresets}
+          previewProducts={previewProducts}
+          previewLoading={previewLoading}
         />
       ) : (
         /* テーブル表示（週単位） */

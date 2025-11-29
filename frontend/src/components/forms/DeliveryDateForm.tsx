@@ -17,6 +17,7 @@ import { addDays, isToday as checkIsToday, isTomorrow as checkIsTomorrow } from 
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { getSupplierColor, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 
 /**
  * DeliveryDateFormのProps
@@ -159,8 +160,9 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
               {presets.length > 0 && (
                 <Box sx={{ mb: 1.5 }}>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {presets.map((preset) => {
+                    {presets.map((preset, index) => {
                       const isSelected = field.value?.includes(preset.supplier);
+                      const supplierColor = getSupplierColor(index);
                       return (
                         <Chip
                           key={preset.id}
@@ -179,9 +181,17 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                             const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
                             field.onChange(finalValue);
                           }}
-                          color={isSelected ? 'primary' : 'default'}
                           size="small"
-                          sx={{ mb: 0.5 }}
+                          sx={{
+                            mb: 0.5,
+                            borderLeft: `3px solid ${supplierColor}`,
+                            bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
+                            color: isSelected ? supplierColor : 'text.primary',
+                            fontWeight: isSelected ? 600 : 400,
+                            '&:hover': {
+                              bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
+                            },
+                          }}
                         />
                       );
                     })}

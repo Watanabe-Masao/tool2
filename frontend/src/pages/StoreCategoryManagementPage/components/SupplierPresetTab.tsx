@@ -28,6 +28,7 @@ import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { useSupplierPresetManagement } from '../hooks/useSupplierPresetManagement';
 import type { SupplierPresetEntity } from '@/hooks/useSupplierPresets';
 import { MODAL_Z_INDEX } from '@/constants/zIndex';
+import { getSupplierColor, SUPPLIER_COLORS } from '@/constants/supplierColors';
 
 interface SupplierPresetTabProps {
   presets: SupplierPresetEntity[];
@@ -119,9 +120,13 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
     <>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         帳合先を管理します。長押しで並び替え、左にスワイプで編集、右にスワイプで削除できます。
+        <br />
+        <Typography component="span" variant="caption" color="text.secondary">
+          ※ 表示順でイメージカラーが自動的に割り当てられます（最大{SUPPLIER_COLORS.length}色）
+        </Typography>
       </Typography>
 
-      <Card>
+      <Card sx={{ overflow: 'visible' }}>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" fontWeight="bold">
@@ -149,6 +154,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
                 const isDragging = dragState.isDragging && dragState.draggingId === preset.id;
                 const isDragOver = dragState.isDragging && dragState.dragOverIndex === index && !isDragging;
                 const dragDeltaY = getDragOffset(preset.id);
+                const supplierColor = getSupplierColor(index);
 
                 return (
                   <Box
@@ -162,6 +168,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
                       borderTop: isDragOver && !isDragging ? '3px solid' : 'none',
                       borderColor: 'primary.main',
                       zIndex: isDragging ? 1000 : 1,
+                      mb: 0.5,
                     }}
                   >
                     {showEditHint && (
@@ -252,6 +259,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
                       sx={{
                         py: 1.5,
                         px: 2,
+                        pl: 3,
                         transform: isDragging
                           ? `translateY(${dragDeltaY}px)`
                           : isCurrentSwiping
@@ -262,9 +270,67 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
                         cursor: isDragging ? 'grabbing' : 'grab',
                         opacity: isDragging ? 0.9 : 1,
                         boxShadow: isDragging ? 4 : 0,
+                        borderRadius: 1.5,
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                        position: 'relative',
+                        // カラー「耳」- 左側のアクセント
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          left: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: 4,
+                          height: '60%',
+                          bgcolor: supplierColor,
+                          borderRadius: '0 4px 4px 0',
+                          boxShadow: `0 0 8px ${supplierColor}40`,
+                        },
                       }}
                     >
-                      <ListItemText primary={preset.supplier} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        {/* カラードット */}
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: supplierColor,
+                            flexShrink: 0,
+                            boxShadow: `0 0 4px ${supplierColor}60`,
+                          }}
+                        />
+                        <ListItemText
+                          primary={preset.supplier}
+                          primaryTypographyProps={{
+                            fontWeight: 500,
+                            fontSize: '0.95rem',
+                          }}
+                        />
+                      </Box>
+                      {/* 順番バッジ */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          right: 12,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          bgcolor: `${supplierColor}15`,
+                          border: `1.5px solid ${supplierColor}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          color: supplierColor,
+                        }}
+                      >
+                        {index + 1}
+                      </Box>
                     </ListItemButton>
                   </Box>
                 );
@@ -287,6 +353,24 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             value={newSupplierName}
             onChange={(e) => setNewSupplierName(e.target.value)}
           />
+          {/* 割り当てカラーのプレビュー */}
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              割り当てカラー:
+            </Typography>
+            <Box
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                bgcolor: getSupplierColor(presets.length),
+                boxShadow: `0 0 4px ${getSupplierColor(presets.length)}60`,
+              }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              ({presets.length + 1}番目)
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowAddDialog(false)}>キャンセル</Button>
@@ -325,7 +409,15 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             この帳合先を削除してもよろしいですか？
           </Typography>
           {supplierToDelete && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: getSupplierColor(presets.findIndex(p => p.id === supplierToDelete.id)),
+                }}
+              />
               <Typography variant="body2" fontWeight="medium">
                 {supplierToDelete.supplier}
               </Typography>
