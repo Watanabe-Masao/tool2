@@ -279,6 +279,91 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
         })}
       </Box>
 
+      {/* ページネーションドット */}
+      {fields.length > 1 && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 0.5,
+            mt: 2.5,
+            py: 1.5,
+            px: 2,
+            mx: 'auto',
+            maxWidth: 'fit-content',
+            borderRadius: 3,
+            bgcolor: 'rgba(0, 0, 0, 0.02)',
+            userSelect: 'none',
+          }}
+        >
+          {fields.map((_, index) => {
+            const isActive = activeTabIndex === index;
+            const product = products?.[index];
+            // 価格情報の必須項目: センター着原価、店着原価、本体価格、総納品数
+            const isComplete = product &&
+              product.centerCost &&
+              product.storeCost &&
+              product.priceExcludingTax &&
+              product.totalDelivery;
+            const isEmpty = product && !product.centerCost && !product.storeCost && !product.priceExcludingTax;
+
+            // 非アクティブ時の色: 完了→青、不完全→黄色、空→赤(破線)
+            const inactiveDotColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.4)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.6)'
+                : 'rgba(255, 193, 7, 0.7)';
+
+            const inactiveHoverColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.5)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.8)'
+                : 'rgba(255, 193, 7, 0.9)';
+
+            // アクティブ時のボーダー色: 完了→青、不完全→黄色、空→赤
+            const activeBorderColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.8)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.8)'
+                : 'rgba(255, 193, 7, 0.9)';
+
+            return (
+              <Box
+                key={index}
+                onClick={() => setActiveTabIndex(index)}
+                sx={{
+                  width: isActive ? 24 : 10,
+                  height: 10,
+                  borderRadius: isActive ? '5px' : '50%',
+                  bgcolor: isActive ? 'grey.800' : inactiveDotColor,
+                  border: isActive
+                    ? `2px solid ${activeBorderColor}`
+                    : isEmpty
+                      ? '1px dashed rgba(239, 83, 80, 0.6)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isActive
+                    ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+                    : isComplete && !isEmpty
+                      ? '0 1px 4px rgba(25, 118, 210, 0.25)'
+                      : 'none',
+                  '&:hover': {
+                    bgcolor: isActive ? 'grey.900' : inactiveHoverColor,
+                    transform: 'scale(1.15)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                  },
+                }}
+              />
+            );
+          })}
+        </Box>
+      )}
+
       {/* 全体集計サマリー（画面最下部） */}
       {fields.length > 0 && (
         <Accordion
