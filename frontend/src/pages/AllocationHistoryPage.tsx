@@ -1068,59 +1068,56 @@ export const AllocationHistoryPage: React.FC = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* ヘッダー */}
-      <Box sx={{
-        mb: 3,
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: 2
-      }}>
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: 'primary.main',
-              mb: 1,
-              fontSize: { xs: '1.5rem', sm: '2rem' }
-            }}
-          >
-            配分履歴
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-            過去90日間の配分履歴を表示しています
-          </Typography>
+      {/* ヘッダー（リスト表示時のみ） */}
+      {viewMode === 'table' && (
+        <Box sx={{
+          mb: 2,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2
+        }}>
+          <Box>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                color: 'primary.main',
+                fontSize: { xs: '1.25rem', sm: '1.5rem' }
+              }}
+            >
+              配分履歴
+            </Typography>
+          </Box>
+
+          <Stack direction="row" spacing={1}>
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(_, newMode) => newMode && setViewMode(newMode)}
+              size="small"
+            >
+              <ToggleButton value="calendar">
+                <CalendarToday fontSize="small" />
+              </ToggleButton>
+              <ToggleButton value="table">
+                <ViewList fontSize="small" />
+              </ToggleButton>
+            </ToggleButtonGroup>
+
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Refresh />}
+              onClick={fetchHistory}
+              disabled={loading}
+            >
+              更新
+            </Button>
+          </Stack>
         </Box>
-
-        <Stack direction="row" spacing={2}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
-            <ToggleButton value="calendar">
-              <CalendarToday fontSize="small" sx={{ mr: 0.5 }} />
-              カレンダー
-            </ToggleButton>
-            <ToggleButton value="table">
-              <ViewList fontSize="small" sx={{ mr: 0.5 }} />
-              リスト
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
-            onClick={fetchHistory}
-            disabled={loading}
-          >
-            更新
-          </Button>
-        </Stack>
-      </Box>
+      )}
 
       {/* エラー表示 */}
       {error && (
@@ -1150,6 +1147,10 @@ export const AllocationHistoryPage: React.FC = () => {
           events={calendarEvents}
           onEventClick={handleEventClick}
           onDateRangeSelect={handleDateRangeSelect}
+          viewMode={viewMode}
+          onViewModeChange={(mode) => setViewMode(mode)}
+          onRefresh={fetchHistory}
+          loading={loading}
         />
       ) : (
         /* テーブル表示（週単位） */
