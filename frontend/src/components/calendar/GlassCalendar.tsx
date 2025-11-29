@@ -11,7 +11,7 @@ import {
   ChevronRight,
   CalendarMonth,
 } from '@mui/icons-material';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isToday as isDateToday, isSameMonth } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isToday as isDateToday, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 /**
@@ -72,7 +72,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [pressedDate, setPressedDate] = useState<string | null>(null);
   const [newlySelected, setNewlySelected] = useState<Set<string>>(new Set());
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStartDate = useRef<string | null>(null);
 
   const selectedDates = externalSelectedDates ?? internalSelectedDates;
@@ -153,7 +153,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
     onDateClick?.(date);
   };
 
-  const startDrag = (dateKey: string, date: Date, isCurrentMonth: boolean) => {
+  const startDrag = (dateKey: string, _date: Date, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return;
     setPressedDate(dateKey);
     dragStartDate.current = dateKey;
@@ -209,7 +209,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
     dragStartDate.current = null;
   };
 
-  const handleTouchStart = useCallback((e: React.TouchEvent, dateKey: string, date: Date, isCurrentMonth: boolean) => {
+  const handleTouchStart = useCallback((_e: React.TouchEvent, dateKey: string, date: Date, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return;
     startDrag(dateKey, date, isCurrentMonth);
   }, []);
@@ -346,9 +346,8 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                 size="small"
                 onClick={() => navigateMonth(-1)}
                 sx={{
-                  '&:hover': { bgcolor: 'white' },
                   color: 'grey.500',
-                  '&:hover': { color: 'primary.main' },
+                  '&:hover': { bgcolor: 'white', color: 'primary.main' },
                 }}
               >
                 <ChevronLeft fontSize="small" />
@@ -375,9 +374,8 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                 size="small"
                 onClick={() => navigateMonth(1)}
                 sx={{
-                  '&:hover': { bgcolor: 'white' },
                   color: 'grey.500',
-                  '&:hover': { color: 'primary.main' },
+                  '&:hover': { bgcolor: 'white', color: 'primary.main' },
                 }}
               >
                 <ChevronRight fontSize="small" />
