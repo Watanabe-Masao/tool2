@@ -1,7 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, DialogActions, IconButton, Button } from '@mui/material';
+import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, DialogActions, Button } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
-import { Close } from '@mui/icons-material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
 import { OrderModals } from '@/components/order/OrderModals';
@@ -16,7 +15,7 @@ import { useOrderFormStore } from '@/stores/orderFormStore';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
-import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -231,12 +230,6 @@ const OrderFormContent: React.FC = () => {
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
-        <IconButton
-          onClick={() => setShowAllocationHistoryModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
         <DialogContent>
           <AllocationHistoryPage />
         </DialogContent>
@@ -261,12 +254,6 @@ const OrderFormContent: React.FC = () => {
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
-        <IconButton
-          onClick={() => setShowUserProfileModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
         <DialogContent>
           <UserProfilePage />
         </DialogContent>
@@ -291,12 +278,6 @@ const OrderFormContent: React.FC = () => {
         fullScreen={isMobile}
         sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
       >
-        <IconButton
-          onClick={() => setShowStoreManagementModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
         <DialogContent>
           <StoreCategoryManagementPage />
         </DialogContent>
