@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -59,6 +59,7 @@ interface GlassCalendarProps {
   onDateClick?: (date: Date) => void;
   onDateRangeSelect?: (startDate: Date, endDate: Date) => void;
   onEventClick?: (event: CalendarEvent) => void;
+  onSelectedDatesChange?: (dates: string[]) => void; // 選択日付変更時のコールバック
   selectedDates?: Set<string>;
   initialDate?: Date;
   viewMode?: 'calendar' | 'table';
@@ -80,6 +81,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
   onDateClick,
   onDateRangeSelect,
   onEventClick,
+  onSelectedDatesChange,
   selectedDates: externalSelectedDates,
   initialDate = new Date(),
   viewMode: _viewMode = 'calendar',
@@ -96,6 +98,14 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   const selectedDates = externalSelectedDates ?? internalSelectedDates;
+
+  // 選択日付が変更されたら親に通知
+  useEffect(() => {
+    if (onSelectedDatesChange) {
+      const sortedDates = Array.from(selectedDates).sort();
+      onSelectedDatesChange(sortedDates);
+    }
+  }, [selectedDates, onSelectedDatesChange]);
 
   // 月のすべての日を取得
   const calendarDays = useMemo(() => {

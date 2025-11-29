@@ -286,16 +286,20 @@ export const AllocationHistoryPage: React.FC = () => {
   }, [fetchBatchDetails]);
 
   /**
-   * 日付クリック時のプレビューデータ取得
+   * 選択日付変更時のプレビューデータ取得（複数日対応）
    */
-  const handleDateClick = useCallback(async (date: Date) => {
+  const handleSelectedDatesChange = useCallback(async (dates: string[]) => {
     if (!user?.uid) return;
 
-    const dateKey = format(date, 'yyyy-MM-dd');
+    // 選択解除時はプレビューをクリア
+    if (dates.length === 0) {
+      setPreviewProducts([]);
+      return;
+    }
 
-    // その日付のバッチを取得
-    const dateBatches = batches.filter(b => b.deliveryDate === dateKey);
-    if (dateBatches.length === 0) {
+    // 選択された全日付のバッチを取得
+    const selectedBatches = batches.filter(b => dates.includes(b.deliveryDate));
+    if (selectedBatches.length === 0) {
       setPreviewProducts([]);
       return;
     }
@@ -306,7 +310,7 @@ export const AllocationHistoryPage: React.FC = () => {
       const firestoreService = new FirestoreServiceFacade(db);
 
       const allProducts: PreviewProduct[] = [];
-      for (const batch of dateBatches) {
+      for (const batch of selectedBatches) {
         if (batch.id) {
           const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
           batchDetails.forEach(detail => {
@@ -1204,7 +1208,7 @@ export const AllocationHistoryPage: React.FC = () => {
         /* カレンダー表示 (GlassCalendar) */
         <GlassCalendar
           events={calendarEvents}
-          onDateClick={handleDateClick}
+          onSelectedDatesChange={handleSelectedDatesChange}
           onEventClick={handleEventClick}
           onDateRangeSelect={handleDateRangeSelect}
           viewMode={viewMode}
