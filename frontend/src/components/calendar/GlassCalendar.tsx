@@ -16,7 +16,6 @@ import {
   Close,
 } from '@mui/icons-material';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isToday as isDateToday, isSameMonth } from 'date-fns';
-import { ja } from 'date-fns/locale';
 
 /**
  * カレンダーイベントの型
@@ -67,7 +66,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
   onEventClick,
   selectedDates: externalSelectedDates,
   initialDate = new Date(),
-  viewMode = 'calendar',
+  viewMode: _viewMode = 'calendar',
   onViewModeChange,
   onRefresh,
   loading = false,
@@ -453,7 +452,6 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
 
             const gap = 3;
             const ml = isSelected ? (adj.left ? 0 : gap) : gap;
-            const mr = isSelected ? (adj.right ? 0 : gap) : gap;
             const borderRadius = isSelected
               ? `${adj.left ? 0 : 8}px ${adj.right ? 0 : 8}px ${adj.right ? 0 : 8}px ${adj.left ? 0 : 8}px`
               : '8px';
