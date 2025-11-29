@@ -69,6 +69,7 @@ import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
 import type { StoreCategory } from '@/types/storeCategory';
 import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
+import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 
 /**
  * グリッド行データの型（詳細モーダル用）
@@ -1131,54 +1132,62 @@ export const AllocationHistoryPage: React.FC = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* ヘッダー（リスト表示時のみ） */}
+      {/* ヘッダー（リスト表示時のみ） - モダンデザイン */}
       {viewMode === 'table' && (
-        <Box sx={{
-          mb: 2,
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'stretch', sm: 'center' },
-          gap: 2
-        }}>
-          <Box>
+        <Box
+          sx={{
+            mb: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            minHeight: 36,
+          }}
+        >
+          {/* 左側: タイトル + ナビ */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography
-              variant="h5"
               sx={{
+                fontSize: '1rem',
                 fontWeight: 700,
-                color: 'primary.main',
-                fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                color: 'text.primary',
               }}
             >
               配分履歴
             </Typography>
+            <Typography
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                color: 'grey.500',
+                bgcolor: 'grey.100',
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 1,
+              }}
+            >
+              {batches.length}件
+            </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1}>
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          {/* 右側: コントロール */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton
               size="small"
-            >
-              <ToggleButton value="calendar">
-                <CalendarToday fontSize="small" />
-              </ToggleButton>
-              <ToggleButton value="table">
-                <ViewList fontSize="small" />
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Refresh />}
               onClick={fetchHistory}
               disabled={loading}
+              sx={{ p: 0.5, color: 'grey.600' }}
             >
-              更新
-            </Button>
-          </Stack>
+              {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setViewMode('calendar')}
+              sx={{ p: 0.5, color: 'grey.600' }}
+            >
+              <CalendarToday sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </Box>
       )}
 
@@ -1195,15 +1204,39 @@ export const AllocationHistoryPage: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : batches.length === 0 ? (
-        <Paper sx={{ p: 8, textAlign: 'center' }}>
-          <CalendarMonth sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
+        <Box
+          sx={{
+            py: 6,
+            px: 3,
+            textAlign: 'center',
+            borderRadius: 2,
+            border: '1px dashed',
+            borderColor: 'grey.300',
+            bgcolor: 'grey.50',
+          }}
+        >
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              bgcolor: 'grey.200',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+            }}
+          >
+            <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
+          </Box>
+          <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'grey.600', mb: 0.5 }}>
             配分履歴がありません
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography sx={{ fontSize: '0.75rem', color: 'grey.500' }}>
             配分表を生成して「履歴を保存」すると、ここに表示されます
           </Typography>
-        </Paper>
+        </Box>
       ) : viewMode === 'calendar' ? (
         /* カレンダー表示 (GlassCalendar) */
         <GlassCalendar
@@ -1220,123 +1253,281 @@ export const AllocationHistoryPage: React.FC = () => {
           previewLoading={previewLoading}
         />
       ) : (
-        /* テーブル表示（週単位） */
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>納品日</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>帳合先</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="right">
-                  商品数
-                </TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="right">
-                  合計数量
-                </TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>保存日時</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="center">
-                  操作
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedWeeks.map((week, weekIdx) => (
-                <React.Fragment key={weekIdx}>
-                  {/* 週ヘッダー */}
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      sx={{
-                        backgroundColor: 'grey.100',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        py: 1.5,
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CalendarToday fontSize="small" color="primary" />
-                        <Typography variant="subtitle2" fontWeight={700}>
-                          {format(week.weekStart, 'M月d日', { locale: ja })} 〜{' '}
-                          {format(week.weekEnd, 'M月d日(E)', { locale: ja })}
-                        </Typography>
-                        <Chip
-                          label={`${week.batches.length}件`}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                  {/* 週内のバッチ */}
-                  {week.batches.map((batch) => (
-                    <TableRow
-                      key={batch.id}
-                      hover
-                      sx={{
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <TableCell>
-                        <Chip
-                          icon={<CalendarMonth />}
-                          label={format(new Date(batch.deliveryDate), 'M月d日(E)', { locale: ja })}
-                          color="primary"
-                          variant="outlined"
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                          {batch.suppliers.map((supplier, idx) => (
-                            <Chip key={idx} label={supplier} size="small" />
-                          ))}
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight={600}>
-                          {batch.productCount}品
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight={600} color="primary">
-                          {batch.totalQuantity.toLocaleString()}個
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" color="text.secondary">
-                          {batch.createdAt
-                            ? format(batch.createdAt, 'yyyy/MM/dd HH:mm')
-                            : '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          color="primary"
-                          size="small"
-                          onClick={() => fetchBatchDetails(batch)}
-                          title="詳細を表示"
-                        >
-                          <Visibility />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => handleOpenDeleteDialog(batch)}
-                          title="削除"
-                        >
-                          <Delete />
-                        </IconButton>
+        /* テーブル表示（週単位） - モダンデザイン */
+        <Box
+          sx={{
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'grey.200',
+            bgcolor: 'background.paper',
+            overflow: 'hidden',
+          }}
+        >
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor: 'grey.50',
+                    borderBottom: '1px solid',
+                    borderColor: 'grey.200',
+                  }}
+                >
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    納品日
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    帳合先
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    商品数
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    合計
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                      display: { xs: 'none', sm: 'table-cell' },
+                    }}
+                  >
+                    保存日時
+                  </TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                      width: 80,
+                    }}
+                  >
+                    操作
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedWeeks.map((week, weekIdx) => (
+                  <React.Fragment key={weekIdx}>
+                    {/* 週ヘッダー */}
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        sx={{
+                          background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+                          py: 1,
+                          px: 2,
+                          borderBottom: '1px solid',
+                          borderColor: 'grey.200',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: 'primary.main',
+                            }}
+                          />
+                          <Typography
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              color: 'grey.700',
+                            }}
+                          >
+                            {format(week.weekStart, 'M/d', { locale: ja })} - {format(week.weekEnd, 'M/d(E)', { locale: ja })}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              color: 'primary.main',
+                              bgcolor: 'primary.50',
+                              px: 0.75,
+                              py: 0.25,
+                              borderRadius: 1,
+                            }}
+                          >
+                            {week.batches.length}件
+                          </Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    {/* 週内のバッチ */}
+                    {week.batches.map((batch) => (
+                      <TableRow
+                        key={batch.id}
+                        sx={{
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': {
+                            bgcolor: 'rgba(99, 102, 241, 0.04)',
+                          },
+                          '&:last-child td': {
+                            borderBottom: weekIdx < sortedWeeks.length - 1 ? '1px solid' : 'none',
+                            borderColor: 'grey.100',
+                          },
+                        }}
+                      >
+                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 1,
+                                bgcolor: 'grey.100',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'grey.700' }}>
+                                {format(new Date(batch.deliveryDate), 'd')}
+                              </Typography>
+                            </Box>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'grey.600' }}>
+                              {format(new Date(batch.deliveryDate), 'E', { locale: ja })}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {batch.suppliers.map((supplier, idx) => {
+                              const supplierColor = getSupplierColorByName(supplier, supplierPresets);
+                              return (
+                                <Box
+                                  key={idx}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    px: 1,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
+                                    borderLeft: `3px solid ${supplierColor}`,
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: supplierColor,
+                                    }}
+                                  >
+                                    {supplier}
+                                  </Typography>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'grey.700' }}>
+                            {batch.productCount}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main' }}>
+                            {batch.totalQuantity.toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            py: 1.25,
+                            borderBottom: '1px solid',
+                            borderColor: 'grey.100',
+                            display: { xs: 'none', sm: 'table-cell' },
+                          }}
+                        >
+                          <Typography sx={{ fontSize: '0.7rem', color: 'grey.500' }}>
+                            {batch.createdAt
+                              ? format(batch.createdAt, 'M/d HH:mm')
+                              : '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => fetchBatchDetails(batch)}
+                              sx={{
+                                p: 0.5,
+                                color: 'grey.500',
+                                '&:hover': {
+                                  bgcolor: 'primary.50',
+                                  color: 'primary.main',
+                                },
+                              }}
+                            >
+                              <Visibility sx={{ fontSize: 18 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenDeleteDialog(batch)}
+                              sx={{
+                                p: 0.5,
+                                color: 'grey.400',
+                                '&:hover': {
+                                  bgcolor: 'error.50',
+                                  color: 'error.main',
+                                },
+                              }}
+                            >
+                              <Delete sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       )}
 
       {/* 詳細モーダル */}
