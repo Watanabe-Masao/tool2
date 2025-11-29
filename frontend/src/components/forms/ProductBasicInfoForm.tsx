@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove, UseFieldArrayMove } from 'react-hook-form';
-import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, TextField, Autocomplete, Stack, Chip, Divider } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2, SwapVert, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Box, Typography, Alert, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, Stack, Chip, Divider } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight, Inventory2, SwapVert, ArrowUpward, ArrowDownward, Settings } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getSupplierColor, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
@@ -44,8 +45,6 @@ interface ProductBasicInfoFormProps {
   activeProductIndex?: number;
   /** 商品インデックス変更ハンドラー */
   onProductIndexChange?: (index: number) => void;
-  /** 帳合先のオートコンプリート候補 */
-  supplierOptions?: string[];
   /** 帳合先変更時のカスタムハンドラー */
   onSuppliersChange?: (newValue: string[]) => string[];
 }
@@ -70,9 +69,9 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   onNavigateToStep,
   activeProductIndex,
   onProductIndexChange,
-  supplierOptions = [],
   onSuppliersChange,
 }) => {
+  const navigate = useNavigate();
   const firestoreService = useFirestoreService();
   const { presets } = useSupplierPresets();
 
@@ -96,10 +95,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // ユーザー情報を取得
   const { user } = useAuthContext();
-
-  // 商品追加メニューの状態
-  const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
-  const addMenuOpen = Boolean(addMenuAnchor);
 
   // 商品一括追加モーダルの状態
   const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
@@ -149,20 +144,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   };
 
   /**
-   * 商品追加ボタンをクリック（メニューを表示）
-   */
-  const handleAddButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAddMenuAnchor(event.currentTarget);
-  };
-
-  /**
-   * 商品追加メニューを閉じる
-   */
-  const handleCloseAddMenu = () => {
-    setAddMenuAnchor(null);
-  };
-
-  /**
    * 空のカードを追加
    */
   const handleAddEmptyProduct = () => {
@@ -176,7 +157,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     });
     // 新しく追加された商品のタブに切り替え
     setActiveTabIndex(fields.length);
-    handleCloseAddMenu();
   };
 
   /**
@@ -184,7 +164,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
    */
   const handleAddFromHistory = () => {
     setBulkAddModalOpen(true);
-    handleCloseAddMenu();
   };
 
   /**
@@ -381,89 +360,66 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   return (
     <Box>
-      {/* 帳合先選択セクション */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-          帳合先を選択
-        </Typography>
-
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-          複数の帳合先を選択できます
-        </Typography>
+      {/* 帳合先絞り込みセクション */}
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight="medium">
+            帳合先の絞り込み
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => navigate('/store-categories', { state: { tab: 1 } })}
+            sx={{ color: 'grey.500' }}
+          >
+            <Settings sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
 
         <Controller
           name="suppliers"
           control={control}
           render={({ field }) => (
             <Box>
-              {/* プリセットボタン */}
-              {presets.length > 0 && (
-                <Box sx={{ mb: 1.5 }}>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {presets.map((preset, index) => {
-                      const isSelected = field.value?.includes(preset.supplier);
-                      const supplierColor = getSupplierColor(index);
-                      return (
-                        <Chip
-                          key={preset.id}
-                          label={preset.supplier}
-                          onClick={() => {
-                            const currentValue = field.value || [];
-                            let newValue: string[];
-                            if (isSelected) {
-                              newValue = currentValue.filter((s: string) => s !== preset.supplier);
-                            } else {
-                              newValue = [...currentValue, preset.supplier];
-                            }
-                            const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
-                            field.onChange(finalValue);
-                          }}
-                          size="small"
-                          sx={{
-                            mb: 0.5,
-                            borderLeft: `3px solid ${supplierColor}`,
-                            bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
-                            color: isSelected ? supplierColor : 'text.primary',
-                            fontWeight: isSelected ? 600 : 400,
-                            '&:hover': {
-                              bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
-                            },
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                  <Divider sx={{ my: 1.5 }} />
-                </Box>
+              {presets.length > 0 ? (
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {presets.map((preset, index) => {
+                    const isSelected = field.value?.includes(preset.supplier);
+                    const supplierColor = getSupplierColor(index);
+                    return (
+                      <Chip
+                        key={preset.id}
+                        label={preset.supplier}
+                        onClick={() => {
+                          const currentValue = field.value || [];
+                          let newValue: string[];
+                          if (isSelected) {
+                            newValue = currentValue.filter((s: string) => s !== preset.supplier);
+                          } else {
+                            newValue = [...currentValue, preset.supplier];
+                          }
+                          const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                          field.onChange(finalValue);
+                        }}
+                        size="small"
+                        sx={{
+                          mb: 0.5,
+                          borderLeft: `3px solid ${supplierColor}`,
+                          bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
+                          color: isSelected ? supplierColor : 'text.primary',
+                          fontWeight: isSelected ? 600 : 400,
+                          '&:hover': {
+                            bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  帳合先が登録されていません。設定アイコンから追加してください。
+                </Typography>
               )}
-
-              {/* 入力フィールド */}
-              <Autocomplete
-                multiple
-                options={supplierOptions}
-                freeSolo
-                value={field.value || []}
-                onChange={(_, newValue) => {
-                  const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
-                  field.onChange(finalValue);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="帳合先"
-                    placeholder="例: ○○商事"
-                    error={!!errors.suppliers}
-                    helperText={errors.suppliers?.message}
-                    fullWidth
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && onEnterPress) {
-                        e.preventDefault();
-                        onEnterPress();
-                      }
-                    }}
-                  />
-                )}
-              />
             </Box>
           )}
         />
@@ -474,65 +430,40 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       {/* ヘッダーセクション */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="subtitle1" fontWeight="medium">
-          商品情報1
+          商品情報
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
-            startIcon={<SwapVert />}
-            onClick={() => setReorderModalOpen(true)}
-            disabled={fields.length <= 1}
-            sx={{ fontSize: '0.8rem' }}
+            startIcon={<Inventory2 sx={{ fontSize: 16 }} />}
+            onClick={handleAddFromHistory}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
           >
-            並べ替え
+            PL
           </Button>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
-            startIcon={<Add />}
-            onClick={handleAddButtonClick}
-            disabled={fields.length >= 50}
-            sx={{ fontSize: '0.8rem' }}
+            startIcon={<SwapVert sx={{ fontSize: 16 }} />}
+            onClick={() => setReorderModalOpen(true)}
+            disabled={fields.length <= 1}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
           >
-            商品を追加
+            並替
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<Add sx={{ fontSize: 16 }} />}
+            onClick={handleAddEmptyProduct}
+            disabled={fields.length >= 50}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
+          >
+            追加
           </Button>
         </Box>
       </Box>
-
-      {/* 商品追加メニュー */}
-      <Menu
-        anchorEl={addMenuAnchor}
-        open={addMenuOpen}
-        onClose={handleCloseAddMenu}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={handleAddEmptyProduct}>
-          <ListItemIcon>
-            <NoteAdd fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary="空のカードを追加"
-            secondary="新規商品を入力"
-          />
-        </MenuItem>
-        <MenuItem onClick={handleAddFromHistory}>
-          <ListItemIcon>
-            <Inventory2 fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary="PLから追加"
-            secondary="保存したプリセットを選択"
-          />
-        </MenuItem>
-      </Menu>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
@@ -591,15 +522,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           </IconButton>
         )}
 
-        {/* 商品番号表示（上部中央） */}
-        {fields.length > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-              商品 {activeTabIndex + 1} / {fields.length}
-            </Typography>
-          </Box>
-        )}
-
         {/* アクティブな商品カードのみ表示 */}
         {fields.map((field, index) => {
           const isActive = activeTabIndex === index;
@@ -626,6 +548,42 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             </Box>
           );
         })}
+
+        {/* ページネーションドット */}
+        {fields.length > 1 && (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 0.75,
+              mt: 2,
+              py: 1,
+            }}
+          >
+            {fields.map((_, index) => {
+              const isActive = activeTabIndex === index;
+              return (
+                <Box
+                  key={index}
+                  onClick={() => setActiveTabIndex(index)}
+                  sx={{
+                    width: isActive ? 20 : 8,
+                    height: 8,
+                    borderRadius: isActive ? 4 : '50%',
+                    bgcolor: isActive ? 'primary.main' : 'grey.300',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: isActive ? 'primary.dark' : 'grey.400',
+                      transform: 'scale(1.1)',
+                    },
+                  }}
+                />
+              );
+            })}
+          </Box>
+        )}
       </Box>
 
       {/* 商品一括追加モーダル（PL複数選択モード） */}

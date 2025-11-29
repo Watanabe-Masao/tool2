@@ -26,8 +26,10 @@ import {
   ListItemText,
   Grow,
 } from '@mui/material';
-import { Category as CategoryIcon, Inventory2, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 import type { DeleteDialogState } from '@/types/ui';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -92,6 +94,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const { setValue } = useFormContext<OrderFormData>();
   const { user } = useAuthContext();
   const firestoreService = useFirestoreService();
+  const { presets: supplierPresets } = useSupplierPresets();
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
@@ -288,22 +291,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       return;
     }
     setSupplierSelectOpen(true);
-  };
-
-  /**
-   * プリセット選択ボタンをクリック
-   */
-  const handlePresetButtonClick = () => {
-    // ステップ1で帳合先が選択されていればモーダルを開く
-    if (!suppliers || suppliers.length === 0) {
-      showError('ステップ1で帳合先を選択してください');
-      // ステップ1に戻る
-      if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 300);
-      }
-      return;
-    }
-    setPresetModalOpen(true);
   };
 
   /**
@@ -629,24 +616,32 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 </Typography>
                 <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
               </ButtonBase>
-              <Chip
-                icon={<Inventory2 />}
-                label="PL"
-                onClick={handlePresetButtonClick}
-                variant="outlined"
-                size="small"
-                color="secondary"
-                sx={{ fontSize: '0.75rem' }}
-              />
-              <Chip
-                icon={<Business />}
-                label={currentSupplier || '帳合先'}
-                onClick={handleSupplierClick}
-                variant="outlined"
-                size="small"
-                color={currentSupplier ? 'primary' : 'default'}
-                sx={{ fontSize: '0.75rem' }}
-              />
+              {(() => {
+                const supplierColor = currentSupplier ? getSupplierColorByName(currentSupplier, supplierPresets) : undefined;
+                return (
+                  <Chip
+                    icon={<Business sx={{ color: supplierColor ? `${supplierColor} !important` : undefined }} />}
+                    label={currentSupplier || '帳合先'}
+                    onClick={handleSupplierClick}
+                    variant={currentSupplier ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{
+                      fontSize: '0.75rem',
+                      ...(supplierColor && {
+                        bgcolor: getSupplierColorWithOpacity(supplierColor, 0.15),
+                        color: supplierColor,
+                        borderColor: supplierColor,
+                        '& .MuiChip-icon': {
+                          color: supplierColor,
+                        },
+                        '&:hover': {
+                          bgcolor: getSupplierColorWithOpacity(supplierColor, 0.25),
+                        },
+                      }),
+                    }}
+                  />
+                );
+              })()}
             </Box>
           </Box>
 

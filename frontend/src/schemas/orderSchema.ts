@@ -115,11 +115,11 @@ export const orderFormSchema = z
       invalid_type_error: '有効な日付を選択してください',
     }),
 
-    /** 帳合先（複数選択可能） */
+    /** 帳合先（複数選択可能、フィルター用） */
     suppliers: z
       .array(z.string().max(MAX_LENGTH.SUPPLIER, `帳合先は${MAX_LENGTH.SUPPLIER}文字以内で入力してください`))
-      .min(1, '帳合先を少なくとも1つ入力してください')
-      .max(20, '帳合先は最大20個まで選択できます'),
+      .max(20, '帳合先は最大20個まで選択できます')
+      .default([]),
 
     /** 商品リスト */
     products: z
