@@ -228,7 +228,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',
@@ -246,7 +246,6 @@ const OrderFormContent: React.FC = () => {
           borderColor: 'divider',
           bgcolor: 'background.paper',
           p: 2,
-          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowAllocationHistoryModal(false)}
@@ -268,7 +267,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',
@@ -286,7 +285,6 @@ const OrderFormContent: React.FC = () => {
           borderColor: 'divider',
           bgcolor: 'background.paper',
           p: 2,
-          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowUserProfileModal(false)}
@@ -308,7 +306,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="lg"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',
@@ -326,7 +324,6 @@ const OrderFormContent: React.FC = () => {
           borderColor: 'divider',
           bgcolor: 'background.paper',
           p: 2,
-          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowStoreManagementModal(false)}
