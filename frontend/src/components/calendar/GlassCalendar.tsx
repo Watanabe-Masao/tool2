@@ -43,9 +43,12 @@ export interface PreviewProduct {
   productName: string;
   origin: string;
   specification: string;
+  unit: string; // 規格の単位
   quantityPerPackage: number | null;
+  packageUnit: string; // 入数の単位
   totalDelivery: number;
   supplier: string;
+  deliveryDate: string; // 日付 (YYYY-MM-DD)
 }
 
 /**
@@ -307,17 +310,28 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
     return getSupplierColorByName(supplier, supplierPresets);
   };
 
-  // プレビューデータをグループ化
-  const groupedPreviewProducts = useMemo(() => {
+  // プレビューデータを日付ごとにグループ化
+  const groupedPreviewByDate = useMemo(() => {
     const groups = new Map<string, PreviewProduct[]>();
     previewProducts.forEach(product => {
-      const key = product.supplier;
+      const key = product.deliveryDate;
       const existing = groups.get(key) || [];
       existing.push(product);
       groups.set(key, existing);
     });
-    return groups;
+    // 日付でソート
+    return new Map([...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])));
   }, [previewProducts]);
+
+  // 選択中の日付を表示用にフォーマット
+  const selectedDateDisplay = useMemo(() => {
+    if (selectedDates.size === 0) return '';
+    const sortedDates = Array.from(selectedDates).sort();
+    return sortedDates.map(d => {
+      const date = new Date(d);
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }).join(', ');
+  }, [selectedDates]);
 
   return (
     <Box sx={{ userSelect: 'none', position: 'relative' }}>
@@ -655,129 +669,172 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
           bgcolor: 'grey.50',
           border: '1px solid',
           borderColor: 'grey.200',
-          borderRadius: 1.5,
-          minHeight: 100,
+          borderRadius: 2,
+          minHeight: 140,
+          maxHeight: 280,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <Box sx={{ p: 1.5 }}>
+        {/* ヘッダー */}
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1,
+            borderBottom: previewProducts.length > 0 ? '1px solid' : 'none',
+            borderColor: 'grey.200',
+            bgcolor: 'white',
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              color: 'grey.700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>配分プレビュー</span>
+            {previewProducts.length > 0 && (
+              <Typography component="span" sx={{ fontSize: '0.65rem', color: 'grey.500' }}>
+                {selectedDateDisplay} ({previewProducts.length}品)
+              </Typography>
+            )}
+          </Typography>
+        </Box>
+
+        {/* コンテンツ */}
+        <Box sx={{ flex: 1, overflow: 'auto', p: 1.5 }}>
           {previewLoading ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={20} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={24} />
             </Box>
           ) : previewProducts.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 1.5 }}>
-              <Typography variant="caption" color="text.secondary">
-                日付を選択すると配分内容のプレビューが表示されます
+            <Box sx={{ textAlign: 'center', py: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                日付をタップすると配分内容のプレビューが表示されます
               </Typography>
             </Box>
           ) : (
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  color: 'grey.600',
-                  mb: 0.75,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                }}
-              >
-                配分プレビュー
-                <Typography component="span" sx={{ fontSize: '0.6rem', color: 'grey.400' }}>
-                  ({previewProducts.length}品)
-                </Typography>
-              </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {/* 日付ごとにグループ表示 */}
+              {Array.from(groupedPreviewByDate.entries()).map(([dateKey, products]) => {
+                const dateObj = new Date(dateKey);
+                const dateDisplay = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
-              {/* 帳合先ごとにグループ表示 */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                {Array.from(groupedPreviewProducts.entries()).slice(0, 3).map(([supplier, products]) => (
-                  <Box key={supplier}>
-                    {/* 帳合先ヘッダー */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                      <Box
+                return (
+                  <Box key={dateKey}>
+                    {/* 日付ヘッダー - 複数日選択時のみ表示 */}
+                    {groupedPreviewByDate.size > 1 && (
+                      <Typography
                         sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          bgcolor: getSupplierDotColor(supplier),
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          color: 'primary.main',
+                          mb: 0.75,
+                          pb: 0.5,
+                          borderBottom: '1px solid',
+                          borderColor: 'primary.100',
                         }}
-                      />
-                      <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: 'grey.700' }}>
-                        {supplier}
+                      >
+                        {dateDisplay}
                       </Typography>
-                    </Box>
+                    )}
 
                     {/* 商品リスト */}
-                    <Box sx={{ pl: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {products.slice(0, 2).map((product, idx) => (
-                        <Box
-                          key={idx}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            bgcolor: 'white',
-                            px: 0.75,
-                            py: 0.5,
-                            borderRadius: 0.75,
-                            border: '1px solid',
-                            borderColor: 'grey.200',
-                          }}
-                        >
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography
-                              sx={{
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                color: 'text.primary',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {product.productName}
-                            </Typography>
-                            <Typography
-                              sx={{
-                                fontSize: '0.55rem',
-                                color: 'grey.500',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {product.origin} / {product.specification}
-                              {product.quantityPerPackage && ` / ${product.quantityPerPackage}入`}
-                            </Typography>
-                          </Box>
-                          <Typography
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      {products.map((product, idx) => {
+                        const supplierColor = getSupplierDotColor(product.supplier);
+                        return (
+                          <Box
+                            key={idx}
                             sx={{
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              color: 'primary.main',
-                              ml: 1,
-                              flexShrink: 0,
+                              bgcolor: 'white',
+                              px: 1.25,
+                              py: 1,
+                              borderRadius: 1.5,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                             }}
                           >
-                            {product.totalDelivery.toLocaleString()}
-                          </Typography>
-                        </Box>
-                      ))}
-                      {products.length > 2 && (
-                        <Typography sx={{ fontSize: '0.55rem', color: 'grey.400', pl: 0.5 }}>
-                          +{products.length - 2}件
-                        </Typography>
-                      )}
+                            {/* 帳合先 + 品名 */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+                              <Box
+                                sx={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  bgcolor: supplierColor,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Typography
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 500,
+                                  color: supplierColor,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {product.supplier}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  color: 'text.primary',
+                                  flex: 1,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {product.productName}
+                              </Typography>
+                            </Box>
+
+                            {/* 詳細情報 */}
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                pl: 2,
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  color: 'grey.600',
+                                  flex: 1,
+                                }}
+                              >
+                                {product.origin} / {product.specification}{product.unit}
+                                {product.quantityPerPackage && ` / ${product.quantityPerPackage}${product.packageUnit}`}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  color: 'primary.main',
+                                  ml: 1,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {product.totalDelivery.toLocaleString()}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      })}
                     </Box>
                   </Box>
-                ))}
-                {groupedPreviewProducts.size > 3 && (
-                  <Typography sx={{ fontSize: '0.55rem', color: 'grey.400', textAlign: 'center' }}>
-                    他 {groupedPreviewProducts.size - 3} 帳合先
-                  </Typography>
-                )}
-              </Box>
+                );
+              })}
             </Box>
           )}
         </Box>

@@ -310,15 +310,16 @@ export const AllocationHistoryPage: React.FC = () => {
         if (batch.id) {
           const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
           batchDetails.forEach(detail => {
-            // バッチの帳合先を使用（詳細には帳合先がないため）
-            const supplier = batch.suppliers[0] || '不明';
             allProducts.push({
               productName: detail.productName,
               origin: detail.origin,
               specification: detail.specification,
+              unit: detail.unit || '',
               quantityPerPackage: detail.quantityPerPackage,
+              packageUnit: detail.packageUnit || '入',
               totalDelivery: detail.totalDelivery,
-              supplier,
+              supplier: detail.supplier || '不明',
+              deliveryDate: batch.deliveryDate,
             });
           });
         }
