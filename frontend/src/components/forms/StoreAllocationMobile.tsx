@@ -830,7 +830,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   </Button>
                 )}
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
                   const isSelected = selectedCategories.has(category.id);
@@ -841,15 +841,32 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       onClick={() => handleToggleCategory(category.id)}
                       size="small"
                       sx={{
-                        bgcolor: isSelected ? color.main : 'transparent',
+                        bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
                         color: isSelected ? 'white' : color.main,
-                        borderColor: color.main,
+                        borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
                         borderWidth: 1,
                         borderStyle: 'solid',
                         fontSize: '0.7rem',
-                        height: 24,
+                        fontWeight: isSelected ? 600 : 500,
+                        height: 28,
+                        minWidth: 75,
+                        boxShadow: isSelected
+                          ? `0 2px 8px ${color.main}40`
+                          : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                        '& .MuiChip-label': {
+                          px: 1.5,
+                        },
                         '&:hover': {
                           bgcolor: isSelected ? color.main : color.light,
+                          transform: 'scale(1.05) translateY(-1px)',
+                          boxShadow: isSelected
+                            ? `0 4px 12px ${color.main}50`
+                            : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                        },
+                        '&:active': {
+                          transform: 'scale(0.98)',
                         },
                       }}
                     />
@@ -860,7 +877,36 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   onClick={() => handleToggleCategory('uncategorized')}
                   size="small"
                   variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
-                  sx={{ fontSize: '0.7rem', height: 24 }}
+                  sx={{
+                    fontSize: '0.7rem',
+                    fontWeight: selectedCategories.has('uncategorized') ? 600 : 500,
+                    height: 28,
+                    minWidth: 75,
+                    bgcolor: selectedCategories.has('uncategorized')
+                      ? 'grey.700'
+                      : 'rgba(255, 255, 255, 0.8)',
+                    color: selectedCategories.has('uncategorized') ? 'white' : 'grey.700',
+                    borderColor: selectedCategories.has('uncategorized')
+                      ? 'grey.700'
+                      : 'rgba(0, 0, 0, 0.08)',
+                    boxShadow: selectedCategories.has('uncategorized')
+                      ? '0 2px 8px rgba(0, 0, 0, 0.15)'
+                      : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: selectedCategories.has('uncategorized') ? 'scale(1.02)' : 'scale(1)',
+                    '& .MuiChip-label': {
+                      px: 1.5,
+                    },
+                    '&:hover': {
+                      transform: 'scale(1.05) translateY(-1px)',
+                      boxShadow: selectedCategories.has('uncategorized')
+                        ? '0 4px 12px rgba(0, 0, 0, 0.2)'
+                        : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                    },
+                    '&:active': {
+                      transform: 'scale(0.98)',
+                    },
+                  }}
                 />
               </Box>
             </CardContent>
@@ -930,7 +976,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     key={store.code}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: isSelected ? 600 : 500 }}>
                           {store.code}
                         </Typography>
                         {quantity > 0 && (
@@ -939,7 +985,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                           </Typography>
                         )}
                         {distributionMode === 'ratio' && ratio > 0 && (
-                          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.7 }}>
                             [{ratio}%]
                           </Typography>
                         )}
@@ -950,25 +996,57 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     sx={
                       color
                         ? {
-                            bgcolor: isSelected ? color.main : 'transparent',
+                            bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
                             color: isSelected ? 'white' : color.main,
-                            borderColor: color.main,
+                            borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
                             borderWidth: 1,
                             borderStyle: 'solid',
-                            height: 24,
+                            height: 28,
+                            minWidth: 58,
+                            boxShadow: isSelected
+                              ? `0 2px 6px ${color.main}40`
+                              : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
                             '&:hover': {
                               bgcolor: isSelected ? color.main : color.light,
+                              transform: 'scale(1.05) translateY(-1px)',
+                              boxShadow: isSelected
+                                ? `0 3px 10px ${color.main}50`
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            },
+                            '&:active': {
+                              transform: 'scale(0.98)',
                             },
                           }
                         : {
-                            bgcolor: isSelected ? 'primary.main' : 'transparent',
+                            bgcolor: isSelected ? 'primary.main' : 'rgba(255, 255, 255, 0.8)',
                             color: isSelected ? 'white' : 'text.primary',
-                            borderColor: isSelected ? 'primary.main' : 'grey.300',
+                            borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.08)',
                             borderWidth: 1,
                             borderStyle: 'solid',
-                            height: 24,
+                            height: 28,
+                            minWidth: 58,
+                            boxShadow: isSelected
+                              ? '0 2px 6px rgba(25, 118, 210, 0.3)'
+                              : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
                             '&:hover': {
                               bgcolor: isSelected ? 'primary.main' : 'grey.100',
+                              transform: 'scale(1.05) translateY(-1px)',
+                              boxShadow: isSelected
+                                ? '0 3px 10px rgba(25, 118, 210, 0.4)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            },
+                            '&:active': {
+                              transform: 'scale(0.98)',
                             },
                           }
                     }

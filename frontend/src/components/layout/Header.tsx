@@ -35,6 +35,7 @@ import { useDataSync } from '@/hooks/useDataSync';
 import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
 import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * ヘッダーコンポーネント
@@ -48,6 +49,11 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // モーダル状態（Zustand）
+  const setShowAllocationHistoryModal = useOrderFormStore((state) => state.setShowAllocationHistoryModal);
+  const setShowUserProfileModal = useOrderFormStore((state) => state.setShowUserProfileModal);
+  const setShowStoreManagementModal = useOrderFormStore((state) => state.setShowStoreManagementModal);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
@@ -180,20 +186,27 @@ export const Header: React.FC = () => {
   }, []);
 
   /**
-   * ナビゲーションアイテムの定義
+   * ナビゲーションアイテムの定義（モバイル版に統一）
    */
   const navigationItems = [
     { label: '新規作成', icon: <AddCircle />, path: '/new-order' },
     { label: '配分履歴', icon: <History />, path: '/allocation-history' },
-    { label: 'ユーザー', icon: <Person />, path: '/profile' },
-    { label: '各種管理', icon: <Settings />, path: '/store-categories' },
   ];
 
   /**
-   * ナビゲーション変更
+   * ナビゲーション変更（モーダル表示）
    */
   const handleNavigationChange = (path: string) => {
-    navigate(path);
+    switch (path) {
+      case '/new-order':
+        navigate(path);
+        break;
+      case '/allocation-history':
+        setShowAllocationHistoryModal(true);
+        break;
+      default:
+        navigate(path);
+    }
   };
 
   return (
@@ -415,11 +428,11 @@ export const Header: React.FC = () => {
 
                 <Divider />
 
-                {/* プロフィール */}
+                {/* プロフィール（モーダル表示） */}
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    navigate('/profile');
+                    setShowUserProfileModal(true);
                   }}
                   role="menuitem"
                   aria-label="プロフィール"
@@ -428,11 +441,11 @@ export const Header: React.FC = () => {
                   プロフィール
                 </MenuItem>
 
-                {/* 店舗カテゴリー管理 */}
+                {/* 店舗カテゴリー管理（モーダル表示） */}
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    navigate('/store-categories');
+                    setShowStoreManagementModal(true);
                   }}
                   role="menuitem"
                   aria-label="店舗カテゴリー管理"

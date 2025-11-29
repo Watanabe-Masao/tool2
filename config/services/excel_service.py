@@ -89,10 +89,12 @@ class ExcelService:
                 delivery_date=delivery_date,
                 origin=product_req.origin,
                 standard=product_req.standard,
+                unit=product_req.unit,
                 product_name=product_name,
                 store_cost=product_req.store_cost,
                 price=product_req.price,
                 quantity=product_req.quantity,
+                package_unit=product_req.package_unit,
                 total_delivery=product_req.total_delivery,
                 delivery_dest=product_req.delivery_dest or common_supplier,  # 納品先がなければ帳合先を使用
                 store_quantities=product_req.store_quantities

@@ -129,6 +129,7 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   specification: '',
   quantityPerPackage: null,
   unit: '',
+  packageUnit: '',
   centerCost: 0,
   centerFeeRate: 13,
   storeCost: 0,

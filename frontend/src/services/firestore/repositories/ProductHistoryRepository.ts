@@ -25,6 +25,7 @@ interface FirestoreProductHistory {
   specification: string;
   quantityPerPackage: number | null;
   unit: string;
+  packageUnit: string;
   usageCount: number;
   pinned: boolean;
   pinOrder: number;
@@ -72,6 +73,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
       unit: history.unit,
+      packageUnit: history.packageUnit || '',
       usageCount: history.usageCount || 1,
       pinned: history.pinned || false,
       pinOrder: history.pinOrder ?? 9999,
@@ -94,6 +96,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage ?? null,
       unit: data.unit || '',
+      packageUnit: data.packageUnit || '',
       usageCount: data.usageCount || 1,
       pinned: data.pinned || false,
       pinOrder: data.pinOrder ?? 9999,
@@ -105,7 +108,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
   /**
    * 商品履歴を保存または更新
    *
-   * 同じ商品（userId, supplier, name, origin, specification, quantityPerPackage, unit）が
+   * 同じ商品（userId, supplier, name, origin, specification, quantityPerPackage, unit, packageUnit）が
    * 既に存在する場合は、使用回数をインクリメントして更新日時を更新する。
    * 存在しない場合は新規作成する。
    *
@@ -124,7 +127,8 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       where('origin', '==', history.origin),
       where('specification', '==', history.specification),
       where('quantityPerPackage', '==', history.quantityPerPackage),
-      where('unit', '==', history.unit)
+      where('unit', '==', history.unit),
+      where('packageUnit', '==', history.packageUnit || '')
     );
 
     const snapshot = await getDocs(q);
@@ -237,6 +241,9 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     }
     if (conditions.unit !== undefined) {
       q = query(q, where('unit', '==', conditions.unit));
+    }
+    if (conditions.packageUnit !== undefined) {
+      q = query(q, where('packageUnit', '==', conditions.packageUnit));
     }
 
     const snapshot = await getDocs(q);

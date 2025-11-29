@@ -86,12 +86,14 @@ interface GridRowData {
   deliveryDate: string;
   origin: string;
   specification: string;
+  unit: string;
   productName: string;
   storeCost: number;
   priceExcludingTax: number;
   priceIncludingTax: number;
   totalPackages: number;
   quantityPerPackage: number;
+  packageUnit: string;
   supplier: string;
   total: number;
   totalDelivery: number;
@@ -269,12 +271,14 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         deliveryDate: format(formData.deliveryDate, 'M/d(E)', { locale: ja }),
         origin: product.origin || '',
         specification: product.specification || '',
+        unit: product.unit || '',
         productName: product.name || '',
         storeCost: product.storeCost || 0,
         priceExcludingTax: product.priceExcludingTax || 0,
         priceIncludingTax: product.priceExcludingTax ? Math.floor((product.priceExcludingTax || 0) * 1.1) : 0,
         totalPackages: product.totalDelivery || 0,
         quantityPerPackage: product.quantityPerPackage || 0,
+        packageUnit: product.packageUnit || '',
         supplier: product.supplier || '',
         total,
         totalDelivery: product.totalDelivery || 0,
@@ -313,11 +317,19 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       },
       {
         field: 'specification',
-        headerName: '規格',
+        headerName: '規格_単位',
         width: 100,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
+        valueGetter: (_value, row) => {
+          const spec = row.specification;
+          const unit = row.unit;
+          if (spec && unit) {
+            return `${spec} ${unit}`;
+          }
+          return spec || unit || '';
+        },
       },
       {
         field: 'productName',
@@ -365,12 +377,20 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
       },
       {
         field: 'quantityPerPackage',
-        headerName: '入数',
+        headerName: '入数_単位',
         width: 70,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
         type: 'number',
+        valueGetter: (_value, row) => {
+          const qty = row.quantityPerPackage;
+          const unit = row.packageUnit;
+          if (qty && unit) {
+            return `${qty}${unit}`;
+          }
+          return qty ? String(qty) : (unit || '');
+        },
       },
     ];
 

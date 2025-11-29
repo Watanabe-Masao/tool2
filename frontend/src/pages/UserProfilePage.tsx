@@ -38,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserSettingsService } from '@/services/firebase/userSettingsService';
 import type { UserSettings } from '@/types/userSettings';
 import { EmailAddressBookManagerModal } from '@/components/modals/EmailAddressBookManagerModal';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * ユーザープロフィール・管理ページ
@@ -379,7 +380,7 @@ export const UserProfilePage: React.FC = () => {
           </Box>
 
         {/* ログアウト確認ダイアログ */}
-        <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)}>
+        <Dialog open={logoutDialogOpen} onClose={() => setLogoutDialogOpen(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
           <DialogTitle>ログアウト確認</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -420,6 +421,7 @@ export const UserProfilePage: React.FC = () => {
           onClose={() => !loading && setEmailSettingsDialogOpen(false)}
           maxWidth="sm"
           fullWidth
+          sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
         >
           <DialogTitle>メール設定</DialogTitle>
           <DialogContent>
@@ -463,6 +465,7 @@ export const UserProfilePage: React.FC = () => {
           onClose={() => !loading && setBuyerNameDialogOpen(false)}
           maxWidth="sm"
           fullWidth
+          sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
         >
           <DialogTitle>担当バイヤー名設定</DialogTitle>
           <DialogContent>

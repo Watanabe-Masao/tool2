@@ -182,6 +182,22 @@ jobs:
       working-directory: ./frontend
       run: npm run check-ssot
 
+    - name: Check zIndex usage rules
+      working-directory: ./frontend
+      run: npm run check-zindex
+
+    - name: Comment on PR with zIndex violations
+      if: failure() && github.event_name == 'pull_request' && steps.check-zindex.outcome == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚠️ **zIndex使用ルールに違反しています**\n\nハードコードされたzIndex値が検出されました。型付きヘルパー関数 `zIndex()` または定数を使用してください。\n\n**推奨: 型付きヘルパー関数（タイプセーフ・補完が効く）**\n```tsx\nimport { zIndex } from \"@/constants/zIndex\";\n\n// ✅ レイヤーのみ指定\n<Dialog sx={{ zIndex: zIndex(\"PAGE_MODAL\") }}>\n\n// ✅ レイヤー + 要素オフセット\n<IconButton sx={{ zIndex: zIndex(\"PAGE_MODAL\", \"CLOSE_BUTTON\") }}>\n\n// ✅ Drawer内のSelect\n<Select MenuProps={{ sx: { zIndex: zIndex(\"NESTED_DIALOG\", \"SELECT_MENU\") } }} />\n```\n\n**または定数使用（後方互換性）**\n```tsx\n<Dialog sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>\n<Select MenuProps={{ sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU } }} />\n```\n\n詳細は `npm run check-zindex` で確認できます。'
+          })
+
     - name: Comment on PR with circular dependency warning
       if: failure() && github.event_name == 'pull_request'
       uses: actions/github-script@v7

@@ -11,7 +11,13 @@ import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFac
  */
 interface UseAllocationHistorySaveReturn {
   /** 配分履歴を保存する */
-  saveHistory: (formData: OrderFormData) => Promise<string | null>;
+  saveHistory: (
+    formData: OrderFormData,
+    buyerName: string,
+    bookName: string,
+    centerDeliveryDate?: Date,
+    sheetName?: string
+  ) => Promise<string | null>;
   /** 保存中かどうか */
   isSaving: boolean;
   /** 最後に保存したバッチID */
@@ -34,7 +40,13 @@ interface UseAllocationHistorySaveReturn {
  * const { saveHistory, isSaving } = useAllocationHistorySave();
  *
  * const handleSave = async () => {
- *   const batchId = await saveHistory(formData);
+ *   const batchId = await saveHistory(
+ *     formData,
+ *     'バイヤー名',
+ *     'ブック名.xlsx',
+ *     new Date(), // センター送信日（オプショナル）
+ *     '配分書'    // シート名（オプショナル）
+ *   );
  *   if (batchId) {
  *     console.log('Saved with batchId:', batchId);
  *   }
@@ -51,9 +63,21 @@ export const useAllocationHistorySave = (): UseAllocationHistorySaveReturn => {
 
   /**
    * 配分履歴を保存
+   *
+   * @param formData - フォームデータ
+   * @param buyerName - バイヤー名
+   * @param bookName - ブック名/ファイル名
+   * @param centerDeliveryDate - センター送信日（オプショナル）
+   * @param sheetName - シート名（オプショナル、デフォルト: 配分書）
    */
   const saveHistory = useCallback(
-    async (formData: OrderFormData): Promise<string | null> => {
+    async (
+      formData: OrderFormData,
+      buyerName: string,
+      bookName: string,
+      centerDeliveryDate?: Date,
+      sheetName?: string
+    ): Promise<string | null> => {
       if (!user) {
         setSaveError('ログインが必要です');
         showError('ログインが必要です');
@@ -70,16 +94,26 @@ export const useAllocationHistorySave = (): UseAllocationHistorySaveReturn => {
         // SaveAllocationHistoryInputに変換
         const input: SaveAllocationHistoryInput = {
           deliveryDate: formData.deliveryDate,
+          centerDeliveryDate,
           suppliers: formData.suppliers,
+          buyerName,
+          bookName,
+          sheetName: sheetName || '配分書',
           products: formData.products.map((product) => ({
             name: product.name,
             origin: product.origin,
             specification: product.specification,
             supplier: product.supplier,
             categoryCode: product.categoryCode,
+            quantityPerPackage: product.quantityPerPackage,
+            unit: product.unit || '',
+            packageUnit: product.packageUnit || '',
+            centerCost: product.centerCost,
+            centerFeeRate: product.centerFeeRate,
+            storeCost: product.storeCost,
+            priceExcludingTax: product.priceExcludingTax,
             totalDelivery: product.totalDelivery,
             storeAllocations: product.storeAllocations,
-            // 既存のフォームデータにはこれらのフィールドがないのでデフォルト値を使用
             allocationMethod: 'manual' as const,
             hasManualAdjustment: true,
           })),

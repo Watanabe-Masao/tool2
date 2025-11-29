@@ -60,6 +60,74 @@ export const useOrderDataSubmit = ({
   hideLoading,
 }: UseOrderDataSubmitParams) => {
   /**
+   * フォームデータのバリデーション
+   */
+  const validateFormData = useCallback((data: OrderFormData): string | null => {
+    const missingFields: string[] = [];
+
+    // 店着日チェック
+    if (!data.deliveryDate) {
+      missingFields.push('店着日');
+    }
+
+    // 帳合先チェック
+    if (!data.suppliers || data.suppliers.length === 0) {
+      missingFields.push('帳合先');
+    }
+
+    // 商品チェック
+    if (!data.products || data.products.length === 0) {
+      missingFields.push('商品情報');
+    } else {
+      data.products.forEach((product, index) => {
+        const productNum = index + 1;
+        const productErrors: string[] = [];
+
+        if (!product.name?.trim()) {
+          productErrors.push('品名');
+        }
+        if (!product.origin?.trim()) {
+          productErrors.push('産地');
+        }
+        if (!product.specification?.trim()) {
+          productErrors.push('規格');
+        }
+        if (!product.unit?.trim()) {
+          productErrors.push('規格の単位');
+        }
+        if (!product.quantityPerPackage || product.quantityPerPackage <= 0) {
+          productErrors.push('入数');
+        }
+        if (!product.packageUnit?.trim()) {
+          productErrors.push('入数の単位');
+        }
+        if (product.storeCost === undefined || product.storeCost === null) {
+          productErrors.push('店着原価');
+        }
+        if (product.priceExcludingTax === undefined || product.priceExcludingTax === null) {
+          productErrors.push('税抜売価');
+        }
+        if (!product.totalDelivery || product.totalDelivery <= 0) {
+          productErrors.push('総納品数');
+        }
+        if (!product.supplier?.trim()) {
+          productErrors.push('納品先（帳合先）');
+        }
+
+        if (productErrors.length > 0) {
+          missingFields.push(`商品${productNum}: ${productErrors.join(', ')}`);
+        }
+      });
+    }
+
+    if (missingFields.length > 0) {
+      return `以下の項目を入力してください:\n\n${missingFields.join('\n')}`;
+    }
+
+    return null;
+  }, []);
+
+  /**
    * フォーム送信処理
    *
    * @param data - フォームデータ
@@ -78,6 +146,16 @@ export const useOrderDataSubmit = ({
         }
 
         console.log('Form data:', data);
+
+        // 送信前バリデーション
+        const validationError = validateFormData(data);
+        if (validationError) {
+          if (!isOnline) {
+            hideLoading();
+          }
+          showError(validationError);
+          return false;
+        }
 
         // バリデーション: すべての商品の帳合先がステップ1で選択された帳合先リストに含まれているかチェック
         const invalidProducts = data.products.filter(
@@ -122,7 +200,7 @@ export const useOrderDataSubmit = ({
         return false;
       }
     },
-    [isOnline, showLoading, showError, hideLoading, userSettings, user, saveOrderWithSync, showSuccess]
+    [isOnline, showLoading, showError, hideLoading, userSettings, user, saveOrderWithSync, showSuccess, validateFormData]
   );
 
   // 戻り値をメモ化して安定した参照を維持（無限ループ防止）

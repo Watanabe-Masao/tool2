@@ -102,6 +102,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
   const currentUnit = useWatch({ control, name: `products.${index}.unit` });
+  const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -229,6 +230,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         currentSpecification || '',
         currentQuantityPerPackage ?? null,
         currentUnit || '',
+        currentPackageUnit || '',
         currentCategoryCode
       );
 
@@ -339,6 +341,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.specification`, preset.specification);
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.unit`, preset.unit);
+    setValue(`products.${index}.packageUnit`, preset.packageUnit);
     showSuccess('プリセットを読み込みました');
   };
 
@@ -789,7 +792,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Grid>
 
             {/* 規格 */}
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <Controller
                 name={`products.${index}.specification`}
                 control={control}
@@ -850,6 +853,82 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                 });
                               }}
                               color={field.value === spec ? 'primary' : 'default'}
+                              sx={{ fontSize: '0.75rem' }}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  );
+                }}
+              />
+            </Grid>
+
+            {/* 単位 */}
+            <Grid item xs={6}>
+              <Controller
+                name={`products.${index}.unit`}
+                control={control}
+                render={({ field }) => {
+                  const units =
+                    currentName && currentOrigin && currentSpecification
+                      ? getUniqueUnits(currentName, currentOrigin, currentSpecification)
+                      : [];
+                  return (
+                    <Box>
+                      <TextField
+                        {...field}
+                        label="単位"
+                        placeholder="例: 玉、g、個"
+                        size="small"
+                        error={!!productErrors?.unit}
+                        helperText={productErrors?.unit?.message}
+                        value={field.value || ''}
+                        fullWidth
+                      />
+                      {/* 単位履歴チップ */}
+                      {units.length > 0 && (
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                          {units.slice(0, 10).map((unit) => (
+                            <Chip
+                              key={unit}
+                              label={unit}
+                              size="small"
+                              onClick={() => field.onChange(unit)}
+                              onTouchStart={() =>
+                                handleLongPressStart('unit', unit, {
+                                  name: currentName,
+                                  origin: currentOrigin,
+                                  specification: currentSpecification,
+                                  unit,
+                                })
+                              }
+                              onTouchEnd={handleLongPressEnd}
+                              onMouseDown={() =>
+                                handleLongPressStart('unit', unit, {
+                                  name: currentName,
+                                  origin: currentOrigin,
+                                  specification: currentSpecification,
+                                  unit,
+                                })
+                              }
+                              onMouseUp={handleLongPressEnd}
+                              onMouseLeave={handleLongPressEnd}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setDeleteDialog({
+                                  open: true,
+                                  type: 'unit',
+                                  value: unit,
+                                  conditions: {
+                                    name: currentName,
+                                    origin: currentOrigin,
+                                    specification: currentSpecification,
+                                    unit,
+                                  },
+                                });
+                              }}
+                              color={field.value === unit ? 'primary' : 'default'}
                               sx={{ fontSize: '0.75rem' }}
                             />
                           ))}
@@ -943,79 +1022,23 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               />
             </Grid>
 
-            {/* 単位 */}
+            {/* 入数の単位 */}
             <Grid item xs={6}>
               <Controller
-                name={`products.${index}.unit`}
+                name={`products.${index}.packageUnit`}
                 control={control}
-                render={({ field }) => {
-                  const units =
-                    currentName && currentOrigin && currentSpecification
-                      ? getUniqueUnits(currentName, currentOrigin, currentSpecification)
-                      : [];
-                  return (
-                    <Box>
-                      <TextField
-                        {...field}
-                        label="単位"
-                        placeholder="例: 玉、g、個"
-                        size="small"
-                        error={!!productErrors?.unit}
-                        helperText={productErrors?.unit?.message}
-                        value={field.value || ''}
-                        fullWidth
-                      />
-                      {/* 単位履歴チップ */}
-                      {units.length > 0 && (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          {units.slice(0, 10).map((unit) => (
-                            <Chip
-                              key={unit}
-                              label={unit}
-                              size="small"
-                              onClick={() => field.onChange(unit)}
-                              onTouchStart={() =>
-                                handleLongPressStart('unit', unit, {
-                                  name: currentName,
-                                  origin: currentOrigin,
-                                  specification: currentSpecification,
-                                  unit,
-                                })
-                              }
-                              onTouchEnd={handleLongPressEnd}
-                              onMouseDown={() =>
-                                handleLongPressStart('unit', unit, {
-                                  name: currentName,
-                                  origin: currentOrigin,
-                                  specification: currentSpecification,
-                                  unit,
-                                })
-                              }
-                              onMouseUp={handleLongPressEnd}
-                              onMouseLeave={handleLongPressEnd}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setDeleteDialog({
-                                  open: true,
-                                  type: 'unit',
-                                  value: unit,
-                                  conditions: {
-                                    name: currentName,
-                                    origin: currentOrigin,
-                                    specification: currentSpecification,
-                                    unit,
-                                  },
-                                });
-                              }}
-                              color={field.value === unit ? 'primary' : 'default'}
-                              sx={{ fontSize: '0.75rem' }}
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                    </Box>
-                  );
-                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="入数の単位"
+                    placeholder="例: 個、袋、パック"
+                    size="small"
+                    error={!!productErrors?.packageUnit}
+                    helperText={productErrors?.packageUnit?.message}
+                    value={field.value || ''}
+                    fullWidth
+                  />
+                )}
               />
             </Grid>
           </Grid>

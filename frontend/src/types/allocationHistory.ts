@@ -12,14 +12,22 @@ export interface AllocationBatch {
   id?: string;
   /** ユーザーID */
   userId: string;
-  /** 納品日（YYYY-MM-DD） */
+  /** 店着日（YYYY-MM-DD） */
   deliveryDate: string;
+  /** センター送信日（YYYY-MM-DD）（未設定の場合はnull） */
+  centerDeliveryDate?: string | null;
   /** 帳合先リスト */
   suppliers: string[];
   /** 配分した商品数 */
   productCount: number;
   /** 総配分数量（全商品の合計） */
   totalQuantity: number;
+  /** バイヤー名 */
+  buyerName: string;
+  /** ブック名/ファイル名 */
+  bookName: string;
+  /** シート名（デフォルト: 配分書） */
+  sheetName: string;
   /** 作成日時 */
   createdAt?: Date;
   /** 更新日時 */
@@ -44,8 +52,22 @@ export interface AllocationDetail {
   specification: string;
   /** 帳合先 */
   supplier: string;
-  /** カテゴリーコード */
-  categoryCode?: string;
+  /** カテゴリーコード（未設定の場合はnull） */
+  categoryCode?: string | null;
+  /** 入数 */
+  quantityPerPackage: number | null;
+  /** 規格の単位 */
+  unit: string;
+  /** 入数の単位 */
+  packageUnit: string;
+  /** センター着原価 */
+  centerCost: number;
+  /** センターフィー率（%） */
+  centerFeeRate: number;
+  /** 店原 */
+  storeCost: number;
+  /** 本体価格（税抜） */
+  priceExcludingTax: number;
   /** 総納品数 */
   totalDelivery: number;
   /** 店舗別配分（36店舗） */
@@ -62,10 +84,18 @@ export interface AllocationDetail {
  * 配分履歴の保存用入力型
  */
 export interface SaveAllocationHistoryInput {
-  /** 納品日 */
+  /** 店着日 */
   deliveryDate: Date;
+  /** センター送信日（オプショナル） */
+  centerDeliveryDate?: Date;
   /** 帳合先リスト */
   suppliers: string[];
+  /** バイヤー名 */
+  buyerName: string;
+  /** ブック名/ファイル名 */
+  bookName: string;
+  /** シート名（デフォルト: 配分書） */
+  sheetName?: string;
   /** 商品データ */
   products: Array<{
     name: string;
@@ -73,6 +103,13 @@ export interface SaveAllocationHistoryInput {
     specification: string;
     supplier: string;
     categoryCode?: string;
+    quantityPerPackage: number | null;
+    unit: string;
+    packageUnit?: string;
+    centerCost: number;
+    centerFeeRate: number;
+    storeCost: number;
+    priceExcludingTax: number;
     totalDelivery: number;
     storeAllocations: number[];
     allocationMethod?: 'manual' | 'even' | 'salesRatio' | 'history' | 'hybrid';

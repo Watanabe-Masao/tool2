@@ -207,7 +207,8 @@ describe('FirestoreServiceFacade', () => {
         '青森',
         'L',
         10,
-        '個'
+        '個',
+        'パック'
       );
 
       expect(result).toBe('history-123');
@@ -219,6 +220,7 @@ describe('FirestoreServiceFacade', () => {
         specification: 'L',
         quantityPerPackage: 10,
         unit: '個',
+        packageUnit: 'パック',
         categoryCode: undefined,
         pinned: false,
         pinOrder: 9999,
@@ -238,6 +240,7 @@ describe('FirestoreServiceFacade', () => {
           specification: 'L',
           quantityPerPackage: 10,
           unit: '個',
+          packageUnit: 'パック',
           usageCount: 1,
           pinned: false,
           pinOrder: 9999,
@@ -281,6 +284,7 @@ describe('FirestoreServiceFacade', () => {
           specification: 'L',
           quantityPerPackage: 10,
           unit: '個',
+          packageUnit: 'パック',
           centerCost: 90,
           storeCost: 100,
           priceExcludingTax: 150,
@@ -302,7 +306,7 @@ describe('FirestoreServiceFacade', () => {
       const saveOrUpdateSpy = vi.spyOn(facade['pricingHistoryRepo'], 'saveOrUpdate');
       saveOrUpdateSpy.mockResolvedValue('pricing-123');
 
-      await facade.savePricingHistory('user-123', 'トマト', 'L', 10, '個', 90, 100, 150, 13);
+      await facade.savePricingHistory('user-123', 'トマト', 'L', 10, '個', 'パック', 90, 100, 150, 13);
 
       expect(saveOrUpdateSpy).toHaveBeenCalledWith({
         userId: 'user-123',
@@ -310,6 +314,7 @@ describe('FirestoreServiceFacade', () => {
         specification: 'L',
         quantityPerPackage: 10,
         unit: '個',
+        packageUnit: 'パック',
         centerCost: 90,
         storeCost: 100,
         priceExcludingTax: 150,
@@ -322,7 +327,7 @@ describe('FirestoreServiceFacade', () => {
       const saveOrUpdateSpy = vi.spyOn(facade['pricingHistoryRepo'], 'saveOrUpdate');
       saveOrUpdateSpy.mockResolvedValue('pricing-123');
 
-      await facade.savePricingHistory('user-123', 'トマト', 'L', 10, '個', 90, 100, 150);
+      await facade.savePricingHistory('user-123', 'トマト', 'L', 10, '個', 'パック', 90, 100, 150);
 
       expect(saveOrUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({

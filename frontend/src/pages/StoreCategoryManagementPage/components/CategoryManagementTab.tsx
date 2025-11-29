@@ -31,6 +31,7 @@ import {
 import { STORE_DATA } from '@/utils/constants';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import type { StoreCategory } from '@/types/storeCategory';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 interface CategoryManagementTabProps {
   categories: StoreCategory[];
@@ -335,7 +336,7 @@ export const CategoryManagementTab: React.FC<CategoryManagementTabProps> = ({
       </Grid>
 
       {/* カテゴリー追加ダイアログ */}
-      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)}>
+      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>カテゴリーを追加</DialogTitle>
         <DialogContent>
           <TextField
@@ -357,7 +358,7 @@ export const CategoryManagementTab: React.FC<CategoryManagementTabProps> = ({
       </Dialog>
 
       {/* カテゴリー編集ダイアログ */}
-      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)}>
+      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>カテゴリーを編集</DialogTitle>
         <DialogContent>
           <TextField
@@ -378,7 +379,7 @@ export const CategoryManagementTab: React.FC<CategoryManagementTabProps> = ({
       </Dialog>
 
       {/* カテゴリー削除確認ダイアログ */}
-      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
         <DialogTitle>カテゴリーを削除</DialogTitle>
         <DialogContent>
           <Typography variant="body2">

@@ -21,6 +21,7 @@ interface FirestorePricingHistory {
   specification: string;
   quantityPerPackage: number;
   unit: string;
+  packageUnit: string;
   centerCost: number;
   storeCost: number;
   priceExcludingTax: number;
@@ -75,6 +76,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
       unit: history.unit,
+      packageUnit: history.packageUnit || '',
       centerCost: history.centerCost,
       storeCost: history.storeCost,
       priceExcludingTax: history.priceExcludingTax,
@@ -97,6 +99,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage,
       unit: data.unit,
+      packageUnit: data.packageUnit || '',
       centerCost: data.centerCost,
       storeCost: data.storeCost,
       priceExcludingTax: data.priceExcludingTax,
@@ -161,7 +164,8 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       where('userId', '==', history.userId),
       where('productName', '==', history.productName),
       where('specification', '==', history.specification),
-      where('quantityPerPackage', '==', history.quantityPerPackage)
+      where('quantityPerPackage', '==', history.quantityPerPackage),
+      where('packageUnit', '==', history.packageUnit || '')
     );
 
     const snapshot = await getDocs(q);
@@ -179,7 +183,8 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         existingData.storeCost === history.storeCost &&
         existingData.priceExcludingTax === history.priceExcludingTax &&
         existingData.centerFeeRate === normalizedCenterFeeRate &&
-        existingData.unit === history.unit
+        existingData.unit === history.unit &&
+        existingData.packageUnit === (history.packageUnit || '')
       ) {
         console.log(
           `[${this.collectionName}] Unchanged, skipping update: ${history.productName} (${history.specification})`
@@ -194,6 +199,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         priceExcludingTax: history.priceExcludingTax,
         centerFeeRate: normalizedCenterFeeRate,
         unit: history.unit,
+        packageUnit: history.packageUnit || '',
         usageCount: increment(1),
         lastUsedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),

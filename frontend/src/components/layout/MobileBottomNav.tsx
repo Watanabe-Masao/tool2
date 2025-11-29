@@ -17,6 +17,7 @@ import {
 import { haptic } from '@/utils/hapticFeedback';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useNavigationContext } from '@/context/NavigationContext';
+import { useOrderFormStore } from '@/stores/orderFormStore';
 
 /**
  * ナビゲーションアイテムの定義
@@ -65,6 +66,9 @@ export const MobileBottomNav: React.FC = () => {
   const { mode: themeMode, toggleTheme } = useThemeContext();
   const { toggleProgressSummary } = useNavigationContext();
 
+  // モーダル状態（Zustand）
+  const setShowAllocationHistoryModal = useOrderFormStore((state) => state.setShowAllocationHistoryModal);
+
   // モバイル以外では表示しない
   if (!isMobile) {
     return null;
@@ -76,7 +80,7 @@ export const MobileBottomNav: React.FC = () => {
   )?.value || 'new-order';
 
   /**
-   * ナビゲーション変更ハンドラー
+   * ナビゲーション変更ハンドラー（モーダル表示）
    */
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
     // ハプティックフィードバック
@@ -94,7 +98,13 @@ export const MobileBottomNav: React.FC = () => {
       return;
     }
 
-    // ページ遷移
+    // 配分履歴はモーダル表示
+    if (newValue === 'allocation-history') {
+      setShowAllocationHistoryModal(true);
+      return;
+    }
+
+    // その他はページ遷移
     const item = navigationItems.find((item) => item.value === newValue);
     if (item && item.path) {
       navigate(item.path);

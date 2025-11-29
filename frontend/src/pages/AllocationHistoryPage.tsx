@@ -72,6 +72,7 @@ import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
 import type { StoreCategory } from '@/types/storeCategory';
+import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
 
 /**
  * グリッド行データの型（詳細モーダル用）
@@ -81,11 +82,14 @@ interface DetailGridRow {
   productName: string;
   origin: string;
   specification: string;
+  unit: string; // 規格の単位
+  quantityPerPackage: number | null; // 入数
+  packageUnit: string; // 入数の単位
   totalDelivery: number;
   deliveryDate?: string; // 日付範囲選択時に使用
   rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
   groupKey?: string; // グループキー
-  [key: string]: string | number | undefined;
+  [key: string]: string | number | null | undefined;
 }
 
 
@@ -507,9 +511,33 @@ export const AllocationHistoryPage: React.FC = () => {
     {
       field: 'specification',
       headerName: '規格',
+      width: isMobile ? 100 : 120,
+      sortable: true,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
+          return row.specification || '';
+        }
+        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+      },
+    },
+    {
+      field: 'quantityPerPackage',
+      headerName: '入数',
       width: isMobile ? 80 : 100,
       sortable: true,
       disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
+          return '';
+        }
+        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
+          return '-';
+        }
+        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
+      },
     },
     {
       field: 'totalDelivery',
@@ -591,9 +619,27 @@ export const AllocationHistoryPage: React.FC = () => {
     {
       field: 'specification',
       headerName: '規格',
+      width: isMobile ? 100 : 120,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+      },
+    },
+    {
+      field: 'quantityPerPackage',
+      headerName: '入数',
       width: isMobile ? 80 : 100,
       sortable: false,
       disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
+          return '-';
+        }
+        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
+      },
     },
     {
       field: 'totalDelivery',
@@ -677,6 +723,9 @@ export const AllocationHistoryPage: React.FC = () => {
             productName: detail.productName,
             origin: detail.origin,
             specification: detail.specification,
+            unit: detail.unit,
+            quantityPerPackage: detail.quantityPerPackage,
+            packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
             deliveryDate: dateStr,
             rowType: 'data',
@@ -701,6 +750,9 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: `${format(parseISO(dateStr), 'M月d日(E)', { locale: ja })} 小計`,
           origin: '',
           specification: '',
+          unit: '',
+          quantityPerPackage: null,
+          packageUnit: '',
           totalDelivery: subtotalQuantity,
           deliveryDate: dateStr,
           rowType: 'subtotal',
@@ -755,6 +807,9 @@ export const AllocationHistoryPage: React.FC = () => {
               productName,
               origin,
               specification,
+              unit: detailForDate.unit,
+              quantityPerPackage: detailForDate.quantityPerPackage,
+              packageUnit: detailForDate.packageUnit,
               totalDelivery: detailForDate.totalDelivery,
               deliveryDate: dateStr,
               rowType: 'data',
@@ -780,6 +835,9 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: `${productName} 小計`,
           origin,
           specification,
+          unit: '',
+          quantityPerPackage: null,
+          packageUnit: '',
           totalDelivery: subtotalQuantity,
           deliveryDate: '小計',
           rowType: 'subtotal',
@@ -846,6 +904,9 @@ export const AllocationHistoryPage: React.FC = () => {
             productName: detail.productName,
             origin: detail.origin,
             specification: detail.specification,
+            unit: detail.unit,
+            quantityPerPackage: detail.quantityPerPackage,
+            packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
             deliveryDate: (detail as any).deliveryDate,
             rowType: 'data',
@@ -880,6 +941,9 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: subtotalLabel,
           origin: '',
           specification: '',
+          unit: '',
+          quantityPerPackage: null,
+          packageUnit: '',
           totalDelivery: groupSubtotalQuantity,
           deliveryDate: '小計',
           rowType: 'subtotal',
@@ -902,6 +966,9 @@ export const AllocationHistoryPage: React.FC = () => {
       productName: '総合計',
       origin: '',
       specification: '',
+      unit: '',
+      quantityPerPackage: null,
+      packageUnit: '',
       totalDelivery: grandTotalQuantity,
       deliveryDate: '総合計',
       rowType: 'grandtotal',
@@ -929,6 +996,9 @@ export const AllocationHistoryPage: React.FC = () => {
         productName: detail.productName,
         origin: detail.origin,
         specification: detail.specification,
+        unit: detail.unit,
+        quantityPerPackage: detail.quantityPerPackage,
+        packageUnit: detail.packageUnit,
         totalDelivery: detail.totalDelivery,
       };
 
@@ -1291,6 +1361,7 @@ export const AllocationHistoryPage: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isFullScreen || window.innerWidth < 600}
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
       >
         <DialogTitle
           sx={{
@@ -1505,7 +1576,9 @@ export const AllocationHistoryPage: React.FC = () => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleCloseDetails}>閉じる</Button>
+          <Button onClick={handleCloseDetails} variant="contained" color="primary">
+            閉じる
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1515,6 +1588,7 @@ export const AllocationHistoryPage: React.FC = () => {
         onClose={handleCloseDeleteDialog}
         maxWidth="sm"
         fullWidth
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
       >
         <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>
           配分履歴を削除しますか？
@@ -1548,7 +1622,7 @@ export const AllocationHistoryPage: React.FC = () => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} disabled={deleting}>
+          <Button onClick={handleCloseDeleteDialog} disabled={deleting} variant="outlined">
             キャンセル
           </Button>
           <Button
@@ -1568,7 +1642,7 @@ export const AllocationHistoryPage: React.FC = () => {
         anchor="bottom"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        sx={{ zIndex: 1400 }} // Dialog(1300)より上に表示
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }} // 配分履歴モーダルより上に表示
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
@@ -1608,6 +1682,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
+                    }}
                   >
                     {availableFilterValues.productNames.map((name) => (
                       <MenuItem key={name} value={name}>
@@ -1632,6 +1709,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
+                    }}
                   >
                     {availableFilterValues.origins.map((origin) => (
                       <MenuItem key={origin} value={origin}>
@@ -1656,6 +1736,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
+                    }}
                   >
                     {availableFilterValues.specifications.map((spec) => (
                       <MenuItem key={spec} value={spec}>
@@ -1680,6 +1763,9 @@ export const AllocationHistoryPage: React.FC = () => {
                         ))}
                       </Box>
                     )}
+                    MenuProps={{
+                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
+                    }}
                   >
                     {availableFilterValues.dates.map((date) => (
                       <MenuItem key={date} value={date}>
@@ -1722,6 +1808,7 @@ export const AllocationHistoryPage: React.FC = () => {
                   { field: 'productName', label: '品名' },
                   { field: 'origin', label: '産地' },
                   { field: 'specification', label: '規格' },
+                  { field: 'quantityPerPackage', label: '入数' },
                   { field: 'totalDelivery', label: '合計' },
                 ].map(({ field, label }) => (
                   <FormControlLabel
@@ -1947,6 +2034,7 @@ export const AllocationHistoryPage: React.FC = () => {
           <Button
             fullWidth
             variant="contained"
+            color="primary"
             sx={{ mt: 3 }}
             onClick={() => setSettingsOpen(false)}
           >
@@ -1960,7 +2048,7 @@ export const AllocationHistoryPage: React.FC = () => {
         anchor="bottom"
         open={datePickerOpen}
         onClose={() => setDatePickerOpen(false)}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
@@ -2079,6 +2167,7 @@ export const AllocationHistoryPage: React.FC = () => {
           <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
             <Button
               variant="outlined"
+              color="primary"
               fullWidth
               onClick={() => {
                 setTempDateRange(null);
@@ -2089,6 +2178,7 @@ export const AllocationHistoryPage: React.FC = () => {
             </Button>
             <Button
               variant="contained"
+              color="primary"
               fullWidth
               disabled={!tempDateRange}
               onClick={() => {
