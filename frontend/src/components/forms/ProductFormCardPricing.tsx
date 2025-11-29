@@ -10,14 +10,17 @@ import {
   Box,
   Button,
   Tooltip,
+  IconButton,
+  Popover,
+  InputAdornment,
 } from '@mui/material';
-import { History } from '@mui/icons-material';
+import { History, Calculate } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
-import { calculateEffectiveQuantity } from '@/utils/unitConversion';
+import { calculateEffectiveQuantity, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
 
 /**
  * ProductFormCardPricingのProps
@@ -59,6 +62,11 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
   // 価格履歴モーダルの開閉状態
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+
+  // 箱単価計算ヘルパーの状態
+  const [calcAnchorEl, setCalcAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [boxPrice, setBoxPrice] = useState<string>('');
+  const isCalcOpen = Boolean(calcAnchorEl);
 
   // 各フィールドを監視
   const productName = useWatch({ control, name: `products.${index}.name` });
@@ -202,6 +210,49 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         e.preventDefault();
         onEnterPress();
       }
+    }
+  };
+
+  /**
+   * 箱単価計算ポップオーバーを開く
+   */
+  const handleCalcOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setCalcAnchorEl(event.currentTarget);
+    setBoxPrice('');
+  };
+
+  /**
+   * 箱単価計算ポップオーバーを閉じる
+   */
+  const handleCalcClose = () => {
+    setCalcAnchorEl(null);
+    setBoxPrice('');
+  };
+
+  /**
+   * 単位互換性チェック
+   */
+  const unitCompatibility = checkUnitCompatibility(unit || '', packageUnit || '');
+
+  /**
+   * 箱単価から単位単価を計算
+   */
+  const boxPriceValue = boxPrice ? parseFloat(boxPrice) : 0;
+  const calculationResult = calculateUnitPriceFromBoxPrice({
+    boxPrice: boxPriceValue,
+    quantityPerPackage,
+    packageUnit: packageUnit || '',
+    unit: unit || '',
+  });
+
+  /**
+   * 計算結果をセンター着原価に適用
+   */
+  const handleApplyCalculation = () => {
+    if (calculationResult.isValid) {
+      setValue(`products.${index}.centerCost`, calculationResult.unitPrice);
+      showSuccess(`センター着原価に${calculationResult.unitPrice}円を設定しました`);
+      handleCalcClose();
     }
   };
 
@@ -408,6 +459,21 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                     const value = e.target.value;
                     field.onChange(value ? parseFloat(value) : 0);
                   }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="箱単価から計算">
+                          <IconButton
+                            size="small"
+                            onClick={handleCalcOpen}
+                            sx={{ p: 0.25 }}
+                          >
+                            <Calculate fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               )}
             />
@@ -583,6 +649,103 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         specification={specification}
         quantityPerPackage={quantityPerPackage ?? undefined}
       />
+
+      {/* 箱単価から計算ポップオーバー */}
+      <Popover
+        open={isCalcOpen}
+        anchorEl={calcAnchorEl}
+        onClose={handleCalcClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        <Box sx={{ p: 2, width: 280 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold' }}>
+            箱単価から単位単価を計算
+          </Typography>
+
+          {/* 商品情報表示 */}
+          <Box sx={{ mb: 1.5, p: 1, bgcolor: unitCompatibility.isCompatible ? 'grey.100' : 'error.light', borderRadius: 1 }}>
+            <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
+              規格: {unit || '未設定'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
+              入数: {quantityPerPackage ? `${quantityPerPackage}${packageUnit || ''}` : '未設定'}
+            </Typography>
+            {!unitCompatibility.isCompatible && (
+              <Typography variant="caption" sx={{ color: 'error.dark', fontWeight: 'medium', display: 'block', mt: 0.5 }}>
+                ⚠ {unitCompatibility.warningMessage}
+              </Typography>
+            )}
+            {unitCompatibility.isCompatible && unitConversionResult.isConverted && (
+              <Typography variant="caption" sx={{ color: 'info.main', fontWeight: 'medium', display: 'block' }}>
+                → {effectiveQuantity}単位として計算
+              </Typography>
+            )}
+          </Box>
+
+          {/* 箱単価入力 */}
+          <TextField
+            label="箱単価（1箱あたり）"
+            type="number"
+            size="small"
+            fullWidth
+            value={boxPrice}
+            onChange={(e) => setBoxPrice(e.target.value)}
+            placeholder="例: 2500"
+            inputProps={{ min: 0, step: 1 }}
+            sx={{ mb: 1.5 }}
+            autoFocus
+            disabled={!unitCompatibility.isCompatible || !quantityPerPackage}
+          />
+
+          {/* 計算結果表示 */}
+          {boxPrice && (
+            <Box sx={{ mb: 1.5, p: 1, bgcolor: calculationResult.isValid ? 'success.light' : 'warning.light', borderRadius: 1 }}>
+              {calculationResult.isValid ? (
+                <>
+                  <Typography variant="caption" sx={{ color: 'success.dark', display: 'block' }}>
+                    {calculationResult.conversionDescription}
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'success.dark' }}>
+                    単位単価: ¥{calculationResult.unitPrice.toLocaleString()}
+                  </Typography>
+                </>
+              ) : (
+                <Typography variant="caption" sx={{ color: 'warning.dark' }}>
+                  {calculationResult.errorMessage}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* ボタン */}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              fullWidth
+              onClick={handleApplyCalculation}
+              disabled={!calculationResult.isValid}
+            >
+              適用
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={handleCalcClose}
+            >
+              キャンセル
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
     </Card>
   );
 };

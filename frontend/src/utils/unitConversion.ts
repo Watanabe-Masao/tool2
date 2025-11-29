@@ -119,6 +119,48 @@ export function isWeightBasedPackageUnit(packageUnit: string): boolean {
 }
 
 /**
+ * 単位互換性チェック結果
+ */
+export interface UnitCompatibilityResult {
+  /** 互換性があるかどうか */
+  isCompatible: boolean;
+  /** 警告メッセージ（互換性がない場合） */
+  warningMessage?: string;
+}
+
+/**
+ * 規格単位と入数単位の互換性をチェック
+ *
+ * @param unit - 規格の単位（例: "100gあたり", "個"）
+ * @param packageUnit - 入数の単位（例: "kg", "個"）
+ * @returns 互換性チェック結果
+ */
+export function checkUnitCompatibility(unit: string, packageUnit: string): UnitCompatibilityResult {
+  const isUnitWeightBased = isWeightBasedUnit(unit);
+  const isPackageWeightBased = isWeightBasedPackageUnit(packageUnit);
+
+  // 規格が重量ベースの場合
+  if (isUnitWeightBased) {
+    // 入数の単位が空の場合
+    if (!packageUnit) {
+      return {
+        isCompatible: false,
+        warningMessage: '規格が重量単位のため、入数の単位（kg/g）を設定してください',
+      };
+    }
+    // 入数の単位が重量でない場合（例: 100gあたり + 5個入り）
+    if (!isPackageWeightBased) {
+      return {
+        isCompatible: false,
+        warningMessage: `規格「${unit}」と入数単位「${packageUnit}」の組み合わせが不整合です`,
+      };
+    }
+  }
+
+  return { isCompatible: true };
+}
+
+/**
  * 実効数量を計算
  *
  * 重量ベースの単位変換を行い、実際の販売単位数を計算します。
@@ -212,4 +254,148 @@ export function getEffectiveQuantityForCalculation(
     unit,
   });
   return result.effectiveQuantity;
+}
+
+/**
+ * 箱単価から単位単価計算の入力パラメータ
+ */
+export interface BoxPriceToUnitPriceInput {
+  /** 箱単価（1箱あたりの価格） */
+  boxPrice: number;
+  /** 入数（パッケージあたりの数量） */
+  quantityPerPackage: number | null;
+  /** 入数の単位（kg、g、個など） */
+  packageUnit: string;
+  /** 規格の単位（100gあたり、gあたり、個など） */
+  unit: string;
+}
+
+/**
+ * 箱単価から単位単価計算の結果
+ */
+export interface BoxPriceToUnitPriceResult {
+  /** 計算された単位単価 */
+  unitPrice: number;
+  /** 計算に使用した実効数量 */
+  effectiveQuantity: number;
+  /** 計算が有効かどうか */
+  isValid: boolean;
+  /** 変換の説明（例: "2,500円 ÷ 50単位 = 50円/単位"） */
+  conversionDescription?: string;
+  /** エラーメッセージ（無効な場合） */
+  errorMessage?: string;
+}
+
+/**
+ * 箱単価から単位単価を計算
+ *
+ * 箱単価を実効数量で割って、1単位あたりの価格を算出します。
+ *
+ * @example
+ * ```typescript
+ * // 5kg箱 2500円、100gあたりの単価を計算
+ * const result = calculateUnitPriceFromBoxPrice({
+ *   boxPrice: 2500,
+ *   quantityPerPackage: 5,
+ *   packageUnit: 'kg',
+ *   unit: '100gあたり',
+ * });
+ * // 5kg = 5000g, 5000g / 100g = 50単位
+ * // 2500円 / 50単位 = 50円/単位
+ * console.log(result.unitPrice); // 50
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // 20個入り箱 4000円、1個あたりの単価を計算
+ * const result = calculateUnitPriceFromBoxPrice({
+ *   boxPrice: 4000,
+ *   quantityPerPackage: 20,
+ *   packageUnit: '個',
+ *   unit: '個',
+ * });
+ * // 4000円 / 20個 = 200円/個
+ * console.log(result.unitPrice); // 200
+ * ```
+ *
+ * @param input - 変換入力パラメータ
+ * @returns 変換結果
+ */
+export function calculateUnitPriceFromBoxPrice(
+  input: BoxPriceToUnitPriceInput
+): BoxPriceToUnitPriceResult {
+  const { boxPrice, quantityPerPackage, packageUnit, unit } = input;
+
+  // バリデーション: 箱単価が0の場合
+  if (boxPrice === 0) {
+    return {
+      unitPrice: 0,
+      effectiveQuantity: 0,
+      isValid: false,
+      errorMessage: '箱単価を入力してください',
+    };
+  }
+
+  // バリデーション: 箱単価が負の場合
+  if (boxPrice < 0) {
+    return {
+      unitPrice: 0,
+      effectiveQuantity: 0,
+      isValid: false,
+      errorMessage: '箱単価は0より大きい値を入力してください',
+    };
+  }
+
+  // バリデーション: 入数が設定されていない場合
+  if (quantityPerPackage === null || quantityPerPackage === 0) {
+    return {
+      unitPrice: 0,
+      effectiveQuantity: 0,
+      isValid: false,
+      errorMessage: '入数が設定されていません',
+    };
+  }
+
+  // バリデーション: 単位の互換性チェック
+  const compatibilityResult = checkUnitCompatibility(unit, packageUnit);
+  if (!compatibilityResult.isCompatible) {
+    return {
+      unitPrice: 0,
+      effectiveQuantity: 0,
+      isValid: false,
+      errorMessage: compatibilityResult.warningMessage,
+    };
+  }
+
+  // 実効数量を計算
+  const conversionResult = calculateEffectiveQuantity({
+    quantityPerPackage,
+    packageUnit,
+    unit,
+  });
+  const effectiveQuantity = conversionResult.effectiveQuantity;
+
+  // バリデーション: 実効数量が0の場合（念のため）
+  if (effectiveQuantity === 0) {
+    return {
+      unitPrice: 0,
+      effectiveQuantity: 0,
+      isValid: false,
+      errorMessage: '入数が設定されていません',
+    };
+  }
+
+  // 単位単価を計算（切り捨て）
+  const unitPrice = Math.floor(boxPrice / effectiveQuantity);
+
+  // 変換の説明を生成
+  const formattedBoxPrice = boxPrice.toLocaleString();
+  const conversionDescription = `${formattedBoxPrice}円 ÷ ${effectiveQuantity}単位 = ${unitPrice}円/単位`;
+
+  return {
+    unitPrice,
+    effectiveQuantity,
+    isValid: true,
+    conversionDescription,
+  };
 }
