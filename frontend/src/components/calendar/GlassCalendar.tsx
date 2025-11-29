@@ -5,6 +5,7 @@ import {
   IconButton,
   Button,
   CircularProgress,
+  Fade,
 } from '@mui/material';
 import {
   ChevronLeft,
@@ -12,7 +13,6 @@ import {
   ViewList,
   Refresh,
   Search,
-  CheckCircleOutline,
   Close,
 } from '@mui/icons-material';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isToday as isDateToday, isSameMonth } from 'date-fns';
@@ -208,200 +208,149 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
   };
 
   return (
-    <Box sx={{ userSelect: 'none' }}>
-      {/* ヘッダー */}
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* 年月表示 */}
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-          <Typography
-            component="span"
-            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem' }, fontWeight: 300, color: 'text.primary', fontFamily: 'inherit' }}
+    <Box sx={{ userSelect: 'none', position: 'relative' }}>
+      {/* コンパクトヘッダー */}
+      <Box
+        sx={{
+          mb: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          minHeight: 36,
+        }}
+      >
+        {/* 左側: ナビゲーション + 年月 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: '0 1 auto' }}>
+          <IconButton
+            size="small"
+            onClick={() => navigateMonth(-1)}
+            sx={{
+              p: 0.5,
+              color: 'grey.500',
+              '&:hover': { bgcolor: 'grey.100' },
+            }}
           >
-            {currentDate.getFullYear()}
-          </Typography>
-          <Typography
-            component="span"
-            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem' }, fontWeight: 300, color: 'grey.300' }}
+            <ChevronLeft sx={{ fontSize: 20 }} />
+          </IconButton>
+
+          <Box
+            onClick={goToToday}
+            sx={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 0.25,
+              cursor: 'pointer',
+              px: 0.5,
+              borderRadius: 1,
+              '&:hover': { bgcolor: 'grey.50' },
+              '&:active': { bgcolor: 'grey.100' },
+            }}
           >
-            /
-          </Typography>
-          <Typography
-            component="span"
-            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem' }, fontWeight: 600, color: 'text.primary' }}
+            <Typography
+              component="span"
+              sx={{
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                fontWeight: 400,
+                color: 'grey.500',
+              }}
+            >
+              {currentDate.getFullYear()}
+            </Typography>
+            <Typography
+              component="span"
+              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, color: 'grey.300' }}
+            >
+              /
+            </Typography>
+            <Typography
+              component="span"
+              sx={{
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                fontWeight: 600,
+                color: 'text.primary',
+              }}
+            >
+              {String(currentDate.getMonth() + 1).padStart(2, '0')}
+            </Typography>
+          </Box>
+
+          <IconButton
+            size="small"
+            onClick={() => navigateMonth(1)}
+            sx={{
+              p: 0.5,
+              color: 'grey.500',
+              '&:hover': { bgcolor: 'grey.100' },
+            }}
           >
-            {String(currentDate.getMonth() + 1).padStart(2, '0')}
-          </Typography>
+            <ChevronRight sx={{ fontSize: 20 }} />
+          </IconButton>
         </Box>
 
-        {/* コントロール */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* 右側: コントロール */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
           {/* 複数選択ボタン */}
           <Button
             size="small"
             onClick={toggleSelectMode}
-            variant={isSelectMode ? 'contained' : 'outlined'}
+            variant={isSelectMode ? 'contained' : 'text'}
             color={isSelectMode ? 'primary' : 'inherit'}
             sx={{
-              px: 1.5,
-              py: 0.5,
-              fontSize: '0.75rem',
+              px: 1,
+              py: 0.25,
+              fontSize: '0.7rem',
               fontWeight: 500,
-              borderRadius: 1.5,
+              borderRadius: 1,
               textTransform: 'none',
               minWidth: 'auto',
-              borderColor: isSelectMode ? 'primary.main' : 'grey.300',
-              color: isSelectMode ? 'white' : 'text.secondary',
-              boxShadow: isSelectMode ? 2 : 0,
+              color: isSelectMode ? 'white' : 'grey.600',
+              bgcolor: isSelectMode ? 'primary.main' : 'transparent',
+              '&:hover': {
+                bgcolor: isSelectMode ? 'primary.dark' : 'grey.100',
+              },
             }}
           >
-            {isSelectMode ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Box
-                  sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    bgcolor: '#4ade80',
-                    animation: 'pulse 1.5s infinite',
-                    '@keyframes pulse': {
-                      '0%, 100%': { opacity: 1 },
-                      '50%': { opacity: 0.5 },
-                    },
-                  }}
-                />
-                選択中
-                {selectedDates.size > 0 && (
-                  <Box
-                    component="span"
-                    sx={{
-                      ml: 0.5,
-                      px: 0.75,
-                      py: 0.125,
-                      bgcolor: 'rgba(255,255,255,0.2)',
-                      borderRadius: 0.5,
-                      fontSize: '0.65rem',
-                    }}
-                  >
-                    {selectedDates.size}
-                  </Box>
-                )}
-              </Box>
-            ) : (
-              '複数選択'
-            )}
+            {isSelectMode ? '選択中' : '複数'}
           </Button>
 
-          {/* ナビゲーション */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              bgcolor: 'background.paper',
-              borderRadius: 1.5,
-              border: '1px solid',
-              borderColor: 'grey.200',
-              overflow: 'hidden',
-            }}
-          >
-            <IconButton
-              size="small"
-              onClick={() => navigateMonth(-1)}
-              sx={{ borderRadius: 0, color: 'grey.500', '&:hover': { bgcolor: 'grey.50', color: 'grey.700' } }}
-            >
-              <ChevronLeft fontSize="small" />
-            </IconButton>
-            <Button
-              size="small"
-              onClick={goToToday}
-              sx={{
-                px: 1.5,
-                py: 0.5,
-                fontSize: '0.75rem',
-                fontWeight: 500,
-                color: 'text.secondary',
-                borderRadius: 0,
-                borderLeft: '1px solid',
-                borderRight: '1px solid',
-                borderColor: 'grey.100',
-                '&:hover': { bgcolor: 'grey.50', color: 'text.primary' },
-              }}
-            >
-              Today
-            </Button>
-            <IconButton
-              size="small"
-              onClick={() => navigateMonth(1)}
-              sx={{ borderRadius: 0, color: 'grey.500', '&:hover': { bgcolor: 'grey.50', color: 'grey.700' } }}
-            >
-              <ChevronRight fontSize="small" />
-            </IconButton>
-          </Box>
-
-          {/* 更新・切替 */}
+          {/* 更新ボタン */}
           {onRefresh && (
             <IconButton
               size="small"
               onClick={onRefresh}
               disabled={loading}
-              sx={{ color: 'grey.500', '&:hover': { color: 'grey.700' } }}
+              sx={{
+                p: 0.5,
+                color: 'grey.500',
+                '&:hover': { bgcolor: 'grey.100' },
+              }}
             >
-              {loading ? <CircularProgress size={18} /> : <Refresh fontSize="small" />}
+              {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
             </IconButton>
           )}
+
+          {/* リスト表示ボタン */}
           {onViewModeChange && (
             <IconButton
               size="small"
               onClick={() => onViewModeChange('table')}
-              sx={{ color: 'grey.500', '&:hover': { color: 'grey.700' } }}
+              sx={{
+                p: 0.5,
+                color: 'grey.500',
+                '&:hover': { bgcolor: 'grey.100' },
+              }}
             >
-              <ViewList fontSize="small" />
+              <ViewList sx={{ fontSize: 18 }} />
             </IconButton>
           )}
         </Box>
       </Box>
 
-      {/* 選択アクションバー */}
-      {selectedDates.size > 0 && (
-        <Box
-          sx={{
-            mb: 1.5,
-            px: 2,
-            py: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            bgcolor: 'primary.50',
-            borderRadius: 1.5,
-            border: '1px solid',
-            borderColor: 'primary.100',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CheckCircleOutline sx={{ fontSize: 18, color: 'primary.main' }} />
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
-              {selectedDates.size}日選択中
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleLoadSelection}
-              startIcon={<Search sx={{ fontSize: '1rem !important' }} />}
-              sx={{ px: 1.5, py: 0.25, fontSize: '0.75rem', textTransform: 'none' }}
-            >
-              読み込む
-            </Button>
-            <IconButton size="small" onClick={clearSelection} sx={{ color: 'grey.500' }}>
-              <Close fontSize="small" />
-            </IconButton>
-          </Box>
-        </Box>
-      )}
-
       {/* カレンダー本体 */}
       <Box
         sx={{
+          position: 'relative',
           borderRadius: 2,
           bgcolor: 'background.paper',
           border: '1px solid',
@@ -422,9 +371,9 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
             <Box
               key={day}
               sx={{
-                py: 1,
+                py: 0.75,
                 textAlign: 'center',
-                fontSize: '0.7rem',
+                fontSize: '0.65rem',
                 fontWeight: 600,
                 letterSpacing: '0.05em',
                 color: idx === 0 ? '#f43f5e' : idx === 6 ? '#0ea5e9' : 'grey.400',
@@ -464,13 +413,14 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                 onMouseLeave={() => setHoveredDate(null)}
                 sx={{
                   position: 'relative',
-                  minHeight: { xs: 72, sm: 88 },
+                  minHeight: { xs: 64, sm: 80 },
                   py: `${gap}px`,
                   borderRight: dayOfWeek < 6 ? '1px solid' : 'none',
                   borderBottom: row < 5 ? '1px solid' : 'none',
                   borderColor: 'rgba(0,0,0,0.04)',
                   bgcolor: !isCurrentMonth ? 'rgba(0,0,0,0.015)' : 'transparent',
                   cursor: 'pointer',
+                  transition: 'background-color 0.1s ease',
                 }}
               >
                 <Box
@@ -480,14 +430,14 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                     mx: `${ml}px`,
                     borderRadius: borderRadius,
                     opacity: isCurrentMonth ? 1 : 0.25,
-                    transition: 'all 0.15s ease-out',
+                    transition: 'all 0.1s ease-out',
                     background: isSelected
                       ? 'linear-gradient(to bottom, #f8fafc, #f1f5f9)'
                       : isHovered
                         ? '#fafbfc'
                         : 'transparent',
                     boxShadow: isSelected
-                      ? '0 4px 12px -2px rgba(0,0,0,0.1), 0 2px 6px -2px rgba(0,0,0,0.06)'
+                      ? '0 2px 8px -2px rgba(0,0,0,0.1)'
                       : 'none',
                   }}
                 >
@@ -498,23 +448,23 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                       <Box sx={{ position: 'absolute', insetX: 0, bottom: 0, height: '1px', bgcolor: 'grey.300' }} />
                       {!adj.left && <Box sx={{ position: 'absolute', left: 0, insetY: 0, width: '1px', bgcolor: 'grey.300' }} />}
                       {!adj.right && <Box sx={{ position: 'absolute', right: 0, insetY: 0, width: '1px', bgcolor: 'grey.300' }} />}
-                      {adj.left && <Box sx={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: '1px', bgcolor: 'grey.200' }} />}
+                      {adj.left && <Box sx={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: '1px', bgcolor: 'grey.200' }} />}
                     </Box>
                   )}
 
                   {/* コンテンツ */}
-                  <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 0.5, sm: 1 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 0.5, sm: 0.75 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {/* 日付行 */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
                       <Box
                         sx={{
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           borderRadius: '50%',
-                          fontSize: '0.7rem',
+                          fontSize: '0.65rem',
                           fontWeight: isTodayDate ? 600 : isSelected ? 600 : 500,
                           bgcolor: isTodayDate ? 'grey.800' : 'transparent',
                           color: isTodayDate
@@ -526,19 +476,19 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                                 : dayOfWeek === 6
                                   ? '#0ea5e9'
                                   : 'grey.600',
-                          boxShadow: isTodayDate ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                          boxShadow: isTodayDate ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                         }}
                       >
                         {date.getDate()}
                       </Box>
                       {dayEvents.length > 0 && (
                         <Box sx={{ display: 'flex', gap: 0.25 }}>
-                          {dayEvents.slice(0, 3).map((ev, i) => (
+                          {dayEvents.slice(0, 2).map((ev, i) => (
                             <Box
                               key={i}
                               sx={{
-                                width: 5,
-                                height: 5,
+                                width: 4,
+                                height: 4,
                                 borderRadius: '50%',
                                 bgcolor: typeConfig[ev.type || 'default'].color,
                                 opacity: 0.7,
@@ -563,22 +513,22 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 0.5,
+                              gap: 0.25,
                               px: 0.5,
-                              py: 0.25,
-                              borderRadius: 0.75,
-                              fontSize: '0.6rem',
+                              py: 0.125,
+                              borderRadius: 0.5,
+                              fontSize: '0.55rem',
                               fontWeight: 500,
                               bgcolor: config.bg,
                               color: config.text,
                               overflow: 'hidden',
                               whiteSpace: 'nowrap',
                               cursor: 'pointer',
-                              transition: 'opacity 0.15s',
+                              transition: 'opacity 0.1s',
                               '&:hover': { opacity: 0.8 },
                             }}
                           >
-                            {event.icon && <span style={{ fontSize: '0.65rem', lineHeight: 1 }}>{event.icon}</span>}
+                            {event.icon && <span style={{ fontSize: '0.6rem', lineHeight: 1 }}>{event.icon}</span>}
                             <Box
                               component="span"
                               sx={{
@@ -593,7 +543,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                         );
                       })}
                       {dayEvents.length > 2 && (
-                        <Typography sx={{ fontSize: '0.55rem', color: 'grey.400', fontWeight: 500, pl: 0.5 }}>
+                        <Typography sx={{ fontSize: '0.5rem', color: 'grey.400', fontWeight: 500, pl: 0.5 }}>
                           +{dayEvents.length - 2}
                         </Typography>
                       )}
@@ -604,14 +554,76 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
             );
           })}
         </Box>
+
+        {/* フローティング選択アクション - レイアウトシフトなし */}
+        <Fade in={selectedDates.size > 0}>
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 12,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.5,
+              py: 0.75,
+              bgcolor: 'rgba(30, 41, 59, 0.95)',
+              borderRadius: 2,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 10,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                color: 'white',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {selectedDates.size}日
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleLoadSelection}
+              startIcon={<Search sx={{ fontSize: '0.85rem !important' }} />}
+              sx={{
+                px: 1.5,
+                py: 0.25,
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                bgcolor: 'primary.main',
+                minWidth: 'auto',
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+            >
+              読込
+            </Button>
+            <IconButton
+              size="small"
+              onClick={clearSelection}
+              sx={{
+                p: 0.25,
+                color: 'grey.400',
+                '&:hover': { color: 'white', bgcolor: 'rgba(255,255,255,0.1)' },
+              }}
+            >
+              <Close sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        </Fade>
       </Box>
 
-      {/* 凡例 */}
-      <Box sx={{ mt: 1.5, px: 0.5, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+      {/* 凡例 - コンパクト */}
+      <Box sx={{ mt: 1, px: 0.5, display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
         {Object.entries(typeConfig).slice(1).map(([key, config]) => (
-          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: config.color }} />
-            <Typography sx={{ fontSize: '0.65rem', color: 'grey.500', fontWeight: 500 }}>
+          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: config.color }} />
+            <Typography sx={{ fontSize: '0.6rem', color: 'grey.500', fontWeight: 500 }}>
               {key === 'sale' ? 'セール' : key === 'work' ? '業務' : key === 'delivery' ? '入荷' : key === 'holiday' ? '祝日' : '締切'}
             </Typography>
           </Box>
