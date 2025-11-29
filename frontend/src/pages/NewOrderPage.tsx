@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, IconButton } from '@mui/material';
+import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, DialogActions, IconButton, Button } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { Close } from '@mui/icons-material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
@@ -239,6 +240,16 @@ const OrderFormContent: React.FC = () => {
         <DialogContent>
           <AllocationHistoryPage />
         </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowAllocationHistoryModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* ユーザープロフィールモーダル */}
@@ -259,6 +270,16 @@ const OrderFormContent: React.FC = () => {
         <DialogContent>
           <UserProfilePage />
         </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowUserProfileModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* 各種管理モーダル */}
@@ -279,6 +300,16 @@ const OrderFormContent: React.FC = () => {
         <DialogContent>
           <StoreCategoryManagementPage />
         </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowStoreManagementModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
