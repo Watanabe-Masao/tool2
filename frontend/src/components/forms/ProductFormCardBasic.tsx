@@ -871,10 +871,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     currentName && currentOrigin && currentSpecification
                       ? getUniqueUnits(currentName, currentOrigin, currentSpecification)
                       : [];
-                  // デフォルト単位（規格用）
-                  const defaultUnits = ['gあたり'];
-                  // 履歴にない場合のみデフォルトを追加
-                  const allUnits = [...new Set([...defaultUnits, ...units])];
                   return (
                     <Box>
                       <TextField
@@ -886,38 +882,59 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         helperText={productErrors?.unit?.message}
                         value={field.value || ''}
                         fullWidth
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Box
+                                onClick={() => field.onChange('gあたり')}
+                                sx={{
+                                  px: 0.75,
+                                  py: 0.25,
+                                  bgcolor: field.value === 'gあたり' ? 'primary.main' : 'grey.100',
+                                  color: field.value === 'gあたり' ? 'white' : 'text.secondary',
+                                  borderRadius: 1,
+                                  fontSize: '0.7rem',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    bgcolor: field.value === 'gあたり' ? 'primary.dark' : 'grey.200',
+                                  },
+                                }}
+                              >
+                                gあたり
+                              </Box>
+                            </InputAdornment>
+                          ),
+                        }}
                       />
-                      {/* 単位チップ */}
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                        {allUnits.slice(0, 10).map((unit) => {
-                          const isDefault = defaultUnits.includes(unit);
-                          const isFromHistory = units.includes(unit);
-                          return (
+                      {/* 単位履歴チップ */}
+                      {units.length > 0 && (
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                          {units.slice(0, 10).map((unit) => (
                             <Chip
                               key={unit}
                               label={unit}
                               size="small"
                               onClick={() => field.onChange(unit)}
-                              onTouchStart={isFromHistory ? () =>
+                              onTouchStart={() =>
                                 handleLongPressStart('unit', unit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
                                   unit,
-                                }) : undefined
+                                })
                               }
-                              onTouchEnd={isFromHistory ? handleLongPressEnd : undefined}
-                              onMouseDown={isFromHistory ? () =>
+                              onTouchEnd={handleLongPressEnd}
+                              onMouseDown={() =>
                                 handleLongPressStart('unit', unit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
                                   unit,
-                                }) : undefined
+                                })
                               }
-                              onMouseUp={isFromHistory ? handleLongPressEnd : undefined}
-                              onMouseLeave={isFromHistory ? handleLongPressEnd : undefined}
-                              onContextMenu={isFromHistory ? (e) => {
+                              onMouseUp={handleLongPressEnd}
+                              onMouseLeave={handleLongPressEnd}
+                              onContextMenu={(e) => {
                                 e.preventDefault();
                                 setDeleteDialog({
                                   open: true,
@@ -930,14 +947,13 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     unit,
                                   },
                                 });
-                              } : undefined}
+                              }}
                               color={field.value === unit ? 'primary' : 'default'}
-                              variant={isDefault && !isFromHistory ? 'outlined' : 'filled'}
                               sx={{ fontSize: '0.75rem' }}
                             />
-                          );
-                        })}
-                      </Stack>
+                          ))}
+                        </Stack>
+                      )}
                     </Box>
                   );
                 }}
@@ -1032,38 +1048,46 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               <Controller
                 name={`products.${index}.packageUnit`}
                 control={control}
-                render={({ field }) => {
-                  // デフォルト単位（入数用）
-                  const defaultPackageUnits = ['kg', 'g'];
-                  return (
-                    <Box>
-                      <TextField
-                        {...field}
-                        label="入数の単位"
-                        placeholder="例: 個、袋、パック"
-                        size="small"
-                        error={!!productErrors?.packageUnit}
-                        helperText={productErrors?.packageUnit?.message}
-                        value={field.value || ''}
-                        fullWidth
-                      />
-                      {/* 入数単位チップ */}
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                        {defaultPackageUnits.map((unit) => (
-                          <Chip
-                            key={unit}
-                            label={unit}
-                            size="small"
-                            onClick={() => field.onChange(unit)}
-                            color={field.value === unit ? 'primary' : 'default'}
-                            variant="outlined"
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
-                  );
-                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="入数の単位"
+                    placeholder="例: 個、袋、パック"
+                    size="small"
+                    error={!!productErrors?.packageUnit}
+                    helperText={productErrors?.packageUnit?.message}
+                    value={field.value || ''}
+                    fullWidth
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Stack direction="row" spacing={0.5}>
+                            {['kg', 'g'].map((unit) => (
+                              <Box
+                                key={unit}
+                                onClick={() => field.onChange(unit)}
+                                sx={{
+                                  px: 0.75,
+                                  py: 0.25,
+                                  bgcolor: field.value === unit ? 'primary.main' : 'grey.100',
+                                  color: field.value === unit ? 'white' : 'text.secondary',
+                                  borderRadius: 1,
+                                  fontSize: '0.7rem',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    bgcolor: field.value === unit ? 'primary.dark' : 'grey.200',
+                                  },
+                                }}
+                              >
+                                {unit}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
               />
             </Grid>
           </Grid>
