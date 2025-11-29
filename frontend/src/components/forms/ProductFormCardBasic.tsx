@@ -871,6 +871,10 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     currentName && currentOrigin && currentSpecification
                       ? getUniqueUnits(currentName, currentOrigin, currentSpecification)
                       : [];
+                  // デフォルト単位（規格用）
+                  const defaultUnits = ['gあたり'];
+                  // 履歴にない場合のみデフォルトを追加
+                  const allUnits = [...new Set([...defaultUnits, ...units])];
                   return (
                     <Box>
                       <TextField
@@ -883,35 +887,37 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         value={field.value || ''}
                         fullWidth
                       />
-                      {/* 単位履歴チップ */}
-                      {units.length > 0 && (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          {units.slice(0, 10).map((unit) => (
+                      {/* 単位チップ */}
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                        {allUnits.slice(0, 10).map((unit) => {
+                          const isDefault = defaultUnits.includes(unit);
+                          const isFromHistory = units.includes(unit);
+                          return (
                             <Chip
                               key={unit}
                               label={unit}
                               size="small"
                               onClick={() => field.onChange(unit)}
-                              onTouchStart={() =>
+                              onTouchStart={isFromHistory ? () =>
                                 handleLongPressStart('unit', unit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
                                   unit,
-                                })
+                                }) : undefined
                               }
-                              onTouchEnd={handleLongPressEnd}
-                              onMouseDown={() =>
+                              onTouchEnd={isFromHistory ? handleLongPressEnd : undefined}
+                              onMouseDown={isFromHistory ? () =>
                                 handleLongPressStart('unit', unit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
                                   unit,
-                                })
+                                }) : undefined
                               }
-                              onMouseUp={handleLongPressEnd}
-                              onMouseLeave={handleLongPressEnd}
-                              onContextMenu={(e) => {
+                              onMouseUp={isFromHistory ? handleLongPressEnd : undefined}
+                              onMouseLeave={isFromHistory ? handleLongPressEnd : undefined}
+                              onContextMenu={isFromHistory ? (e) => {
                                 e.preventDefault();
                                 setDeleteDialog({
                                   open: true,
@@ -924,13 +930,14 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     unit,
                                   },
                                 });
-                              }}
+                              } : undefined}
                               color={field.value === unit ? 'primary' : 'default'}
+                              variant={isDefault && !isFromHistory ? 'outlined' : 'filled'}
                               sx={{ fontSize: '0.75rem' }}
                             />
-                          ))}
-                        </Stack>
-                      )}
+                          );
+                        })}
+                      </Stack>
                     </Box>
                   );
                 }}
@@ -1025,18 +1032,38 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               <Controller
                 name={`products.${index}.packageUnit`}
                 control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="入数の単位"
-                    placeholder="例: 個、袋、パック"
-                    size="small"
-                    error={!!productErrors?.packageUnit}
-                    helperText={productErrors?.packageUnit?.message}
-                    value={field.value || ''}
-                    fullWidth
-                  />
-                )}
+                render={({ field }) => {
+                  // デフォルト単位（入数用）
+                  const defaultPackageUnits = ['kg', 'g'];
+                  return (
+                    <Box>
+                      <TextField
+                        {...field}
+                        label="入数の単位"
+                        placeholder="例: 個、袋、パック"
+                        size="small"
+                        error={!!productErrors?.packageUnit}
+                        helperText={productErrors?.packageUnit?.message}
+                        value={field.value || ''}
+                        fullWidth
+                      />
+                      {/* 入数単位チップ */}
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                        {defaultPackageUnits.map((unit) => (
+                          <Chip
+                            key={unit}
+                            label={unit}
+                            size="small"
+                            onClick={() => field.onChange(unit)}
+                            color={field.value === unit ? 'primary' : 'default'}
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem' }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  );
+                }}
               />
             </Grid>
           </Grid>

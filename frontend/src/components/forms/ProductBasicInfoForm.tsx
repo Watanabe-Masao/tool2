@@ -519,6 +519,10 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                           bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
                           color: isSelected ? supplierColor : 'text.primary',
                           fontWeight: isSelected ? 600 : 400,
+                          transition: 'none',
+                          '& .MuiChip-label': {
+                            transition: 'none',
+                          },
                           '&:hover': {
                             bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
                           },
