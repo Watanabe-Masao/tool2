@@ -21,8 +21,6 @@ import {
   Stack,
   ToggleButtonGroup,
   ToggleButton,
-  Card,
-  CardContent,
   Drawer,
   ListItemText,
   Divider,
@@ -61,10 +59,7 @@ import {
 import { ja } from 'date-fns/locale';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
+import { GlassCalendar, type CalendarEvent } from '@/components/calendar/GlassCalendar';
 import { useAuthContext } from '@/context/AuthContext';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
@@ -160,34 +155,24 @@ export const AllocationHistoryPage: React.FC = () => {
 
 
   /**
-   * FullCalendar用のイベントデータを生成
+   * GlassCalendar用のイベントデータを生成
    */
-  const calendarEvents: EventInput[] = useMemo(() => {
-    const events: EventInput[] = [];
-
-    batches.forEach((batch) => {
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    return batches.map((batch) => {
       // ファイル名がある場合はそれを使用、なければ帳合先名を使用
       const fileName = (batch as any).fileName;
       const displayTitle = fileName || batch.suppliers.join(', ');
       const productCount = batch.productCount || 0;
 
-      events.push({
+      return {
         id: batch.id || '',
-        title: displayTitle,
         date: batch.deliveryDate,
-        extendedProps: {
-          batch,
-          productCount,
-          totalQuantity: batch.totalQuantity,
-          fileName,
-        },
-        backgroundColor: '#1976d2',
-        borderColor: '#1565c0',
-        textColor: '#ffffff',
-      });
+        title: `${displayTitle} (${productCount}件)`,
+        type: 'work' as const,
+        icon: '📦',
+        data: batch,
+      };
     });
-
-    return events;
   }, [batches]);
 
   /**
@@ -280,24 +265,23 @@ export const AllocationHistoryPage: React.FC = () => {
   };
 
   /**
-   * FullCalendarのイベントクリックハンドラー
+   * GlassCalendarのイベントクリックハンドラー
    */
-  const handleEventClick = useCallback((clickInfo: EventClickArg) => {
-    const batch = clickInfo.event.extendedProps.batch as AllocationBatch;
+  const handleEventClick = useCallback((event: CalendarEvent) => {
+    const batch = event.data as AllocationBatch;
     if (batch) {
       fetchBatchDetails(batch);
     }
   }, [fetchBatchDetails]);
 
   /**
-   * FullCalendarの日付範囲選択ハンドラー
+   * GlassCalendarの日付範囲選択ハンドラー
    */
-  const handleDateSelect = useCallback(async (selectInfo: DateSelectArg) => {
+  const handleDateRangeSelect = useCallback(async (start: Date, end: Date) => {
     if (!user?.uid) return;
 
-    // FullCalendar の end は排他的なので1日引く
-    const startDate = format(selectInfo.start, 'yyyy-MM-dd');
-    const endDate = format(subDays(selectInfo.end, 1), 'yyyy-MM-dd');
+    const startDate = format(start, 'yyyy-MM-dd');
+    const endDate = format(end, 'yyyy-MM-dd');
 
     console.log('📅 Date range selected:', { startDate, endDate });
 
@@ -1161,79 +1145,12 @@ export const AllocationHistoryPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : viewMode === 'calendar' ? (
-        /* カレンダー表示 (FullCalendar) */
-        <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  '& .fc': {
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  },
-                  '& .fc .fc-toolbar-title': {
-                    fontSize: { xs: '1rem', sm: '1.5rem' },
-                    fontWeight: 600,
-                  },
-                  '& .fc-button': {
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  },
-                  '& .fc-daygrid-day-number': {
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  },
-                  '& .fc-event': {
-                    cursor: 'pointer',
-                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                  },
-                  '& .fc-col-header-cell': {
-                    backgroundColor: 'grey.100',
-                    fontWeight: 600,
-                  },
-                  '& .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number': {
-                    color: 'error.main',
-                  },
-                  '& .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number': {
-                    color: 'info.main',
-                  },
-                }}
-              >
-                <FullCalendar
-                  plugins={[dayGridPlugin, interactionPlugin]}
-                  initialView="dayGridMonth"
-                  locale="ja"
-                  events={calendarEvents}
-                  eventClick={handleEventClick}
-                  selectable={true}
-                  select={handleDateSelect}
-                  selectMirror={true}
-                  unselectAuto={true}
-                  headerToolbar={{
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: '',
-                  }}
-                  buttonText={{
-                    today: '今日',
-                    month: '月',
-                    week: '週',
-                    day: '日',
-                  }}
-                  height="auto"
-                  dayMaxEvents={3}
-                  moreLinkText="他"
-                  eventTimeFormat={{
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  }}
-                />
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+        /* カレンダー表示 (GlassCalendar) */
+        <GlassCalendar
+          events={calendarEvents}
+          onEventClick={handleEventClick}
+          onDateRangeSelect={handleDateRangeSelect}
+        />
       ) : (
         /* テーブル表示（週単位） */
         <TableContainer component={Paper}>
@@ -2183,11 +2100,10 @@ export const AllocationHistoryPage: React.FC = () => {
               disabled={!tempDateRange}
               onClick={() => {
                 if (tempDateRange) {
-                  handleDateSelect({
-                    start: parseISO(tempDateRange.start),
-                    end: addMonths(parseISO(tempDateRange.end), 0), // Use actual end date
-                    allDay: true,
-                  } as any);
+                  handleDateRangeSelect(
+                    parseISO(tempDateRange.start),
+                    parseISO(tempDateRange.end)
+                  );
                   setDatePickerOpen(false);
                   setTempDateRange(null);
                 }
