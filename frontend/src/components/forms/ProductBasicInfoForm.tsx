@@ -519,8 +519,13 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                           bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
                           color: isSelected ? supplierColor : 'text.primary',
                           fontWeight: isSelected ? 600 : 400,
+                          transition: 'background-color 0.15s ease, color 0s, font-weight 0s',
                           '&:hover': {
                             bgcolor: getSupplierColorWithOpacity(supplierColor, 0.2),
+                          },
+                          '&:active': {
+                            bgcolor: isSelected ? 'grey.100' : getSupplierColorWithOpacity(supplierColor, 0.15),
+                            color: isSelected ? 'text.primary' : supplierColor,
                           },
                         }}
                       />
@@ -687,7 +692,31 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             {fields.map((_, index) => {
               const isActive = activeTabIndex === index;
               const product = products?.[index];
+              // 必須項目: 品名、産地、規格、入数
+              const isComplete = product &&
+                product.name &&
+                product.origin &&
+                product.specification &&
+                product.quantityPerPackage;
               const isEmpty = product && !product.name && !product.origin && !product.specification;
+
+              // 色の決定: 完了→青、不完全→黄色、空→赤(破線)
+              const dotColor = isActive
+                ? 'primary.main'
+                : isEmpty
+                  ? 'rgba(239, 83, 80, 0.4)'
+                  : isComplete
+                    ? 'rgba(25, 118, 210, 0.6)'
+                    : 'rgba(255, 193, 7, 0.7)';
+
+              const hoverColor = isActive
+                ? 'primary.dark'
+                : isEmpty
+                  ? 'rgba(239, 83, 80, 0.5)'
+                  : isComplete
+                    ? 'rgba(25, 118, 210, 0.8)'
+                    : 'rgba(255, 193, 7, 0.9)';
+
               return (
                 <Box
                   key={index}
@@ -696,21 +725,17 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                     width: isActive ? 24 : 10,
                     height: 10,
                     borderRadius: isActive ? '5px' : '50%',
-                    bgcolor: isActive
-                      ? 'primary.main'
-                      : isEmpty
-                        ? 'rgba(239, 83, 80, 0.4)'
-                        : 'rgba(0, 0, 0, 0.15)',
+                    bgcolor: dotColor,
                     border: isEmpty && !isActive ? '1px dashed rgba(239, 83, 80, 0.6)' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isActive ? '0 2px 8px rgba(25, 118, 210, 0.35)' : 'none',
+                    boxShadow: isActive
+                      ? '0 2px 8px rgba(25, 118, 210, 0.35)'
+                      : isComplete && !isEmpty
+                        ? '0 1px 4px rgba(25, 118, 210, 0.25)'
+                        : 'none',
                     '&:hover': {
-                      bgcolor: isActive
-                        ? 'primary.dark'
-                        : isEmpty
-                          ? 'rgba(239, 83, 80, 0.5)'
-                          : 'rgba(0, 0, 0, 0.25)',
+                      bgcolor: hoverColor,
                       transform: 'scale(1.2)',
                     },
                   }}

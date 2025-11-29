@@ -808,6 +808,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         helperText={productErrors?.specification?.message}
                         value={field.value || ''}
                         fullWidth
+                        required
                       />
                       {/* 規格履歴チップ */}
                       {specs.length > 0 && (
@@ -963,6 +964,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                           field.onChange(value ? parseInt(value, 10) : null);
                         }}
                         fullWidth
+                        required
                       />
                       {/* 入数履歴チップ */}
                       {quantities.length > 0 && (
