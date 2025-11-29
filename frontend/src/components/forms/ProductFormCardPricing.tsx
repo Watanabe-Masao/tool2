@@ -17,6 +17,7 @@ import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
+import { calculateEffectiveQuantity } from '@/utils/unitConversion';
 
 /**
  * ProductFormCardPricingのProps
@@ -126,9 +127,17 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '0.0';
 
-  // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 入数)）
-  const profitAmount = storeCost && centerCostWithFee && totalDelivery && quantityPerPackage
-    ? Math.round((storeCost - centerCostWithFee) * (totalDelivery * quantityPerPackage))
+  // 単位変換を適用（例: 5kg入り + 100gあたり → 50単位）
+  const unitConversionResult = calculateEffectiveQuantity({
+    quantityPerPackage,
+    packageUnit: packageUnit || '',
+    unit: unit || '',
+  });
+  const effectiveQuantity = unitConversionResult.effectiveQuantity;
+
+  // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 実効数量)）
+  const profitAmount = storeCost && centerCostWithFee && totalDelivery && effectiveQuantity
+    ? Math.round((storeCost - centerCostWithFee) * (totalDelivery * effectiveQuantity))
     : 0;
 
   /**
@@ -262,6 +271,23 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
             >
               {quantityPerPackage}{packageUnit}
+            </Box>
+          )}
+          {/* 単位変換表示 */}
+          {unitConversionResult.isConverted && (
+            <Box
+              component="span"
+              sx={{
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 0.5,
+                bgcolor: 'info.light',
+                color: 'info.contrastText',
+                fontSize: '0.7rem',
+                fontWeight: 500,
+              }}
+            >
+              → {effectiveQuantity}単位
             </Box>
           )}
         </Box>

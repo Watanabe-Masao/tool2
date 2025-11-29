@@ -5,6 +5,7 @@ import { Box, Typography, Alert, Grid, Accordion, AccordionSummary, AccordionDet
 import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { calculateEffectiveQuantity } from '@/utils/unitConversion';
 
 /**
  * ProductPricingFormのProps
@@ -114,11 +115,18 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       const centerFeeRate = product.centerFeeRate || 13;
       const storeCost = product.storeCost || 0;
       const sellingPrice = product.priceExcludingTax || 0;
-      const quantityPerPackage = product.quantityPerPackage || 0;
       const totalDelivery = product.totalDelivery || 0;
 
+      // 単位変換を適用して実効数量を計算
+      const conversionResult = calculateEffectiveQuantity({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: product.unit || '',
+      });
+      const effectiveQuantity = conversionResult.effectiveQuantity;
+
       const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
-      const quantity = totalDelivery * quantityPerPackage;
+      const quantity = totalDelivery * effectiveQuantity;
 
       totalCenterCost += centerCost * quantity;
       totalCenterCostWithFee += centerCostWithFee * quantity;
