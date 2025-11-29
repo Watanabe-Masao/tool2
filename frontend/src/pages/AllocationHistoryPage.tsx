@@ -1528,152 +1528,263 @@ export const AllocationHistoryPage: React.FC = () => {
         </Box>
       )}
 
-      {/* 詳細モーダル */}
+      {/* 詳細モーダル - モダンデザイン */}
       <Dialog
         open={Boolean(selectedBatch) || Boolean(selectedDateRange)}
         onClose={handleCloseDetails}
         maxWidth="xl"
         fullWidth
         fullScreen={isFullScreen || window.innerWidth < 600}
-        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
+        sx={{
+          zIndex: MODAL_Z_INDEX.NESTED_DIALOG,
+          '& .MuiDialog-paper': {
+            borderRadius: isFullScreen ? 0 : 3,
+            overflow: 'hidden',
+          },
+        }}
       >
-        <DialogTitle
+        {/* ヘッダー */}
+        <Box
           sx={{
-            fontWeight: 600,
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            py: { xs: 1, sm: 2 },
-            px: { xs: 1.5, sm: 3 },
+            px: { xs: 1.5, sm: 2 },
+            py: 1.25,
+            borderBottom: '1px solid',
+            borderColor: 'grey.200',
+            bgcolor: 'white',
           }}
         >
-          <Box sx={{ flex: 1 }}>
-            <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
+          {/* 左側: タイトル */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              sx={{
+                fontSize: { xs: '0.9rem', sm: '1rem' },
+                fontWeight: 700,
+                color: 'text.primary',
+              }}
+            >
               {selectedDateRange ? '配分履歴' : '配分詳細'}
             </Typography>
             {selectedBatch && (
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                {format(new Date(selectedBatch.deliveryDate), 'M月d日(E)', { locale: ja })}
+              <Typography
+                sx={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'grey.500',
+                  bgcolor: 'grey.100',
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                }}
+              >
+                {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
               </Typography>
             )}
             {selectedDateRange && (
-              <Typography
-                variant="caption"
-                color="primary.main"
+              <Box
+                onClick={() => setDatePickerOpen(true)}
                 sx={{
-                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  cursor: 'pointer',
-                  '&:hover': { textDecoration: 'underline' },
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: 'primary.50',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'primary.100' },
                 }}
-                onClick={() => setDatePickerOpen(true)}
               >
-                <DateRange fontSize="small" />
-                {format(parseISO(selectedDateRange.start), 'M月d日(E)', { locale: ja })}〜
-                {format(parseISO(selectedDateRange.end), 'M月d日(E)', { locale: ja })}
+                <DateRange sx={{ fontSize: 14, color: 'primary.main' }} />
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'primary.main' }}>
+                  {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} - {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
+                </Typography>
+              </Box>
+            )}
+            {details.length > 0 && (
+              <Typography
+                sx={{
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: 'grey.500',
+                }}
+              >
+                {details.length}品
               </Typography>
             )}
           </Box>
 
-          {/* アクションボタン */}
-          <Stack direction="row" spacing={0.5}>
-            {/* 非表示行の復元ボタン */}
+          {/* 右側: コントロール */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
             {hiddenRowIds.size > 0 && (
-              <Chip
-                label={`${hiddenRowIds.size}件非表示`}
-                size="small"
-                color="warning"
-                onDelete={() => setHiddenRowIds(new Set())}
-                deleteIcon={<Visibility fontSize="small" />}
-                sx={{ height: 24, fontSize: '0.7rem' }}
-              />
+              <Box
+                onClick={() => setHiddenRowIds(new Set())}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: 'warning.50',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'warning.100' },
+                }}
+              >
+                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'warning.main' }}>
+                  {hiddenRowIds.size}件非表示
+                </Typography>
+                <Visibility sx={{ fontSize: 14, color: 'warning.main' }} />
+              </Box>
             )}
-            <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
-              {isFullScreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+            <IconButton
+              size="small"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              sx={{ p: 0.5, color: 'grey.500' }}
+            >
+              {isFullScreen ? <FullscreenExit sx={{ fontSize: 18 }} /> : <Fullscreen sx={{ fontSize: 18 }} />}
             </IconButton>
             {selectedDateRange && (
               <IconButton
+                size="small"
                 onClick={() => setSettingsOpen(true)}
-                size="small"
-                color={settingsOpen ? 'primary' : 'default'}
-              >
-                <Settings fontSize="small" />
-              </IconButton>
-            )}
-          </Stack>
-        </DialogTitle>
-
-        {/* コンパクトなグループ化コントロール（モバイル用） */}
-        {selectedDateRange && !settingsOpen && (
-          <Box sx={{
-            px: { xs: 1, sm: 2 },
-            py: 0.5,
-            borderBottom: 1,
-            borderColor: 'divider',
-            backgroundColor: 'grey.50',
-          }}>
-            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                グループ:
-              </Typography>
-              <ToggleButtonGroup
-                value={groupMode}
-                exclusive
-                onChange={(_, newMode) => newMode && setGroupMode(newMode)}
-                size="small"
                 sx={{
-                  '& .MuiToggleButton-root': {
-                    py: { xs: 0.25, sm: 0.5 },
-                    px: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                    minWidth: { xs: 40, sm: 60 },
-                  },
+                  p: 0.5,
+                  color: settingsOpen ? 'primary.main' : 'grey.500',
                 }}
               >
-                <ToggleButton value="date">日付</ToggleButton>
-                <ToggleButton value="product">商品</ToggleButton>
-                <ToggleButton value="composite">複合</ToggleButton>
-              </ToggleButtonGroup>
+                <Settings sx={{ fontSize: 18 }} />
+              </IconButton>
+            )}
+            <IconButton
+              size="small"
+              onClick={handleCloseDetails}
+              sx={{ p: 0.5, color: 'grey.500' }}
+            >
+              <Close sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* グループ化コントロール */}
+        {selectedDateRange && !settingsOpen && (
+          <Box
+            sx={{
+              px: { xs: 1.5, sm: 2 },
+              py: 0.75,
+              borderBottom: '1px solid',
+              borderColor: 'grey.100',
+              background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'grey.600' }}>
+                グループ:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {[
+                  { value: 'date', label: '日付' },
+                  { value: 'product', label: '商品' },
+                  { value: 'composite', label: '複合' },
+                ].map((option) => (
+                  <Box
+                    key={option.value}
+                    onClick={() => setGroupMode(option.value as typeof groupMode)}
+                    sx={{
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      bgcolor: groupMode === option.value ? 'primary.main' : 'white',
+                      color: groupMode === option.value ? 'white' : 'grey.600',
+                      border: '1px solid',
+                      borderColor: groupMode === option.value ? 'primary.main' : 'grey.300',
+                      '&:hover': {
+                        bgcolor: groupMode === option.value ? 'primary.dark' : 'grey.50',
+                      },
+                    }}
+                  >
+                    {option.label}
+                  </Box>
+                ))}
+              </Box>
 
               {(filters.productNames.length > 0 || filters.origins.length > 0 ||
                 filters.specifications.length > 0 || filters.dates.length > 0) && (
-                <Chip
-                  label={`フィルター ${filters.productNames.length + filters.origins.length +
-                    filters.specifications.length + filters.dates.length}`}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem' }}
-                />
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    bgcolor: 'primary.50',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                  }}
+                >
+                  フィルター {filters.productNames.length + filters.origins.length + filters.specifications.length + filters.dates.length}
+                </Typography>
               )}
 
               {(hiddenRowIds.size > 0 || hiddenColumns.size > 0) && (
-                <Chip
-                  label={`非表示 ${hiddenRowIds.size + hiddenColumns.size}`}
-                  size="small"
-                  color="warning"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem' }}
-                />
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: 'warning.main',
+                    bgcolor: 'warning.50',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                  }}
+                >
+                  非表示 {hiddenRowIds.size + hiddenColumns.size}
+                </Typography>
               )}
-            </Stack>
+            </Box>
           </Box>
         )}
 
-        <DialogContent dividers sx={{ p: 0 }}>
+        <DialogContent sx={{ p: 0 }}>
           {detailsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={28} />
             </Box>
           ) : details.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography color="text.secondary">詳細データがありません</Typography>
+            <Box
+              sx={{
+                py: 6,
+                px: 3,
+                textAlign: 'center',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  bgcolor: 'grey.100',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 2,
+                }}
+              >
+                <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
+              </Box>
+              <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'grey.600' }}>
+                詳細データがありません
+              </Typography>
             </Box>
           ) : (
-            /* データグリッド表示 */
-            <Box sx={{ height: isFullScreen ? 'calc(100vh - 250px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
+            /* データグリッド表示 - モダンスタイル */
+            <Box sx={{ height: isFullScreen ? 'calc(100vh - 140px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
               <DataGrid
                 rows={detailRows.filter(row => !hiddenRowIds.has(row.id))}
                 columns={detailColumns}
@@ -1691,56 +1802,61 @@ export const AllocationHistoryPage: React.FC = () => {
                 sx={{
                   border: 'none',
                   '& .MuiDataGrid-main': {
-                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // モバイルでより小さく
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   },
                   '& .MuiDataGrid-cell': {
-                    borderColor: '#e0e0e0',
-                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // さらに小さく
-                    padding: { xs: '2px 3px', sm: '8px' }, // パディングを削減
-                    lineHeight: { xs: 1.2, sm: 1.43 }, // 行間を狭く
+                    borderColor: 'grey.100',
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
+                    padding: { xs: '4px 6px', sm: '8px 12px' },
+                    lineHeight: 1.4,
                   },
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
-                    fontWeight: 600,
-                    minHeight: { xs: '36px !important', sm: '56px !important' }, // ヘッダー高さを削減
+                    bgcolor: 'grey.50',
+                    borderBottom: '1px solid',
+                    borderColor: 'grey.200',
+                    minHeight: { xs: '40px !important', sm: '48px !important' },
                   },
                   '& .MuiDataGrid-columnHeader': {
-                    padding: { xs: '2px 4px', sm: '8px' },
+                    padding: { xs: '4px 6px', sm: '8px 12px' },
                   },
                   '& .MuiDataGrid-columnHeaderTitle': {
-                    fontWeight: 600,
+                    fontWeight: 700,
                     whiteSpace: 'pre-wrap',
-                    lineHeight: 1.1,
-                    fontSize: { xs: '0.6rem', sm: '0.875rem' }, // ヘッダーも小さく
+                    lineHeight: 1.2,
+                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                    color: 'grey.600',
                   },
                   '& .MuiDataGrid-row': {
-                    minHeight: { xs: '28px !important', sm: '52px !important' }, // 行高を削減
+                    minHeight: { xs: '36px !important', sm: '44px !important' },
+                    transition: 'background-color 0.15s ease',
+                    '&:hover': {
+                      bgcolor: 'rgba(99, 102, 241, 0.04)',
+                    },
                   },
                   '& .MuiDataGrid-virtualScroller': {
-                    // 横スクロールをスムーズに
                     overflowX: 'auto',
                     WebkitOverflowScrolling: 'touch',
                   },
-                  // 小計行のスタイル
+                  // 小計行のスタイル - モダン
                   '& .row-subtotal': {
-                    backgroundColor: '#e3f2fd !important',
-                    fontWeight: 600,
+                    background: 'linear-gradient(to right, #eff6ff, #dbeafe) !important',
                     '& .MuiDataGrid-cell': {
-                      color: '#1565c0',
-                      borderTop: '2px solid #1976d2',
-                      borderBottom: '1px solid #1976d2',
-                      fontSize: { xs: '0.7rem', sm: '0.9rem' },
+                      color: '#3b82f6',
+                      fontWeight: 600,
+                      borderTop: '1px solid #93c5fd',
+                      borderBottom: '1px solid #93c5fd',
+                      fontSize: { xs: '0.7rem', sm: '0.8rem' },
                     },
                   },
-                  // 総合計行のスタイル
+                  // 総合計行のスタイル - モダン
                   '& .row-grandtotal': {
-                    backgroundColor: '#1976d2 !important',
-                    fontWeight: 700,
+                    background: 'linear-gradient(to right, #6366f1, #8b5cf6) !important',
                     '& .MuiDataGrid-cell': {
                       color: '#ffffff',
-                      fontSize: { xs: '0.75rem', sm: '0.95rem' },
-                      borderTop: '3px solid #0d47a1',
-                      borderBottom: '3px solid #0d47a1',
+                      fontWeight: 700,
+                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                      borderTop: 'none',
+                      borderBottom: 'none',
                     },
                   },
                 }}
@@ -1748,12 +1864,6 @@ export const AllocationHistoryPage: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCloseDetails} variant="contained" color="primary">
-            閉じる
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* 削除確認ダイアログ */}
