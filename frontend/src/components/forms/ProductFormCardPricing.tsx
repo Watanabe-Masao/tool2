@@ -592,13 +592,14 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Grid>
         </Grid>
 
-        {/* カード下部：単位あたりの情報 */}
+        {/* カード下部：単位あたり・箱あたりの情報 */}
         {(centerCostWithFee || storeCost) && (
           <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
+            {/* 単位あたりの情報 */}
             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
-              単位あたりの情報
+              {fullUnit ? `${fullUnit}の情報` : '1単位あたりの情報'}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
               {centerCostWithFee > 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
@@ -622,7 +623,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               {centerCostWithFee > 0 && storeCost > 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
-                    差益（1単位）
+                    差益
                   </Typography>
                   <Typography
                     variant="body2"
@@ -636,6 +637,53 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 </Box>
               )}
             </Box>
+
+            {/* 1箱あたりの情報 */}
+            {effectiveQuantity > 1 && (
+              <>
+                <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
+                  1箱あたりの情報（{effectiveQuantity}単位）
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  {centerCostWithFee > 0 && (
+                    <Box>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        センターフィー込原価
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        ¥{(centerCostWithFee * effectiveQuantity).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  )}
+                  {storeCost > 0 && (
+                    <Box>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        店着原価
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        ¥{(storeCost * effectiveQuantity).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  )}
+                  {centerCostWithFee > 0 && storeCost > 0 && (
+                    <Box>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                        差益
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 'medium',
+                          color: (storeCost - centerCostWithFee) < 0 ? 'error.main' : 'text.primary'
+                        }}
+                      >
+                        ¥{((storeCost - centerCostWithFee) * effectiveQuantity).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </>
+            )}
           </Box>
         )}
       </CardContent>
