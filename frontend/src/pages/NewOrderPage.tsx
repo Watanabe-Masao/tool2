@@ -237,21 +237,24 @@ const OrderFormContent: React.FC = () => {
           },
         }}
       >
-        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <AllocationHistoryPage />
         </DialogContent>
         <DialogActions sx={{
+          flexShrink: 0,
           borderTop: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          position: 'sticky',
-          bottom: 0,
+          p: 2,
+          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowAllocationHistoryModal(false)}
             variant="contained"
             color="primary"
             startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
           >
             戻る
           </Button>
@@ -274,21 +277,24 @@ const OrderFormContent: React.FC = () => {
           },
         }}
       >
-        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <UserProfilePage />
         </DialogContent>
         <DialogActions sx={{
+          flexShrink: 0,
           borderTop: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          position: 'sticky',
-          bottom: 0,
+          p: 2,
+          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowUserProfileModal(false)}
             variant="contained"
             color="primary"
             startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
           >
             戻る
           </Button>
@@ -311,21 +317,24 @@ const OrderFormContent: React.FC = () => {
           },
         }}
       >
-        <DialogContent sx={{ flex: 1, overflow: 'auto' }}>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <StoreCategoryManagementPage />
         </DialogContent>
         <DialogActions sx={{
+          flexShrink: 0,
           borderTop: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          position: 'sticky',
-          bottom: 0,
+          p: 2,
+          zIndex: MODAL_Z_INDEX.PAGE_MODAL + 1,
         }}>
           <Button
             onClick={() => setShowStoreManagementModal(false)}
             variant="contained"
             color="primary"
             startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
           >
             戻る
           </Button>
