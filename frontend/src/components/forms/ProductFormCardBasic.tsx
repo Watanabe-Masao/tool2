@@ -86,7 +86,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   originOptions = [],
   onEnterPress,
   suppliers,
-  onNavigateToStep,
+  onNavigateToStep: _onNavigateToStep,
   onAddProductFromPreset,
 }) => {
   const productErrors = errors.products?.[index];
@@ -282,12 +282,13 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * 帳合先チップをクリック
    */
   const handleSupplierClick = () => {
-    if (!suppliers || suppliers.length === 0) {
-      showError('ステップ1で帳合先を選択してください');
-      // ステップ1に戻る
-      if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 300);
-      }
+    // suppliersがない場合はプリセット全体を使用
+    const availableSuppliers = suppliers && suppliers.length > 0
+      ? suppliers
+      : supplierPresets.map(p => p.supplier);
+
+    if (availableSuppliers.length === 0) {
+      showError('帳合先が登録されていません。設定から追加してください。');
       return;
     }
     setSupplierSelectOpen(true);
@@ -1142,24 +1143,65 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       <Dialog open={supplierSelectOpen} onClose={() => setSupplierSelectOpen(false)}>
         <DialogTitle>帳合先を選択</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+          <DialogContentText sx={{ mb: 2, fontSize: '0.85rem' }}>
             この商品の帳合先を選択してください
           </DialogContentText>
-          <Stack spacing={1}>
-            {suppliers?.map((supplier) => (
-              <Button
-                key={supplier}
-                variant={currentSupplier === supplier ? 'contained' : 'outlined'}
-                onClick={() => handleSelectSupplier(supplier)}
-                fullWidth
-              >
-                {supplier}
-              </Button>
-            ))}
+          <Stack spacing={0.75}>
+            {(() => {
+              // suppliersがない場合はプリセット全体を使用
+              const availableSuppliers = suppliers && suppliers.length > 0
+                ? suppliers
+                : supplierPresets.map(p => p.supplier);
+              return availableSuppliers.map((supplier) => {
+                const supplierColor = getSupplierColorByName(supplier, supplierPresets);
+                const isSelected = currentSupplier === supplier;
+                return (
+                  <Box
+                    key={supplier}
+                    onClick={() => handleSelectSupplier(supplier)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1.5,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.50',
+                      border: '1px solid',
+                      borderColor: isSelected ? supplierColor : 'grey.200',
+                      '&:hover': {
+                        bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
+                        borderColor: supplierColor,
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: supplierColor,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: '0.9rem',
+                        fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? supplierColor : 'text.primary',
+                      }}
+                    >
+                      {supplier}
+                    </Typography>
+                  </Box>
+                );
+              });
+            })()}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit">
+          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit" size="small">
             閉じる
           </Button>
         </DialogActions>
