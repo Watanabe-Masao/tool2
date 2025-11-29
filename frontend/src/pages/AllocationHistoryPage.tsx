@@ -82,7 +82,6 @@ interface DetailGridRow {
   packageUnit: string; // 入数の単位
   totalDelivery: number;
   deliveryDate?: string; // 日付範囲選択時に使用
-  supplier?: string; // 帳合先
   rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
   groupKey?: string; // グループキー
   [key: string]: string | number | null | undefined;
@@ -499,7 +498,7 @@ export const AllocationHistoryPage: React.FC = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 32,
+      width: 40,
       sortable: false,
       disableColumnMenu: true,
       renderCell: (params) => {
@@ -515,151 +514,84 @@ export const AllocationHistoryPage: React.FC = () => {
               newHidden.add(row.id);
               setHiddenRowIds(newHidden);
             }}
-            sx={{ p: 0.25 }}
+            sx={{ p: 0.5 }}
           >
-            <VisibilityOff sx={{ fontSize: 14 }} />
+            <VisibilityOff fontSize="small" />
           </IconButton>
         );
       },
     },
     {
       field: 'deliveryDate',
-      headerName: '店着日',
-      width: isMobile ? 70 : 85,
+      headerName: '日付',
+      width: isMobile ? 100 : 120,
       sortable: true,
       disableColumnMenu: true,
       renderCell: (params) => {
-        const row = params.row as DetailGridRow;
         const dateStr = params.value as string;
         if (!dateStr) return '-';
-        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
-          return null;
-        }
-        const dateObj = parseISO(dateStr);
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box
-              sx={{
-                width: 22,
-                height: 22,
-                borderRadius: 0.75,
-                bgcolor: 'grey.100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'grey.700' }}>
-                {format(dateObj, 'd')}
-              </Typography>
+        if (dateStr === '小計' || dateStr === '総合計') {
+          return (
+            <Box sx={{ fontWeight: 700 }}>
+              {dateStr}
             </Box>
-            <Typography sx={{ fontSize: '0.65rem', color: 'grey.500' }}>
-              {format(dateObj, 'E', { locale: ja })}
-            </Typography>
-          </Box>
-        );
+          );
+        }
+        return format(parseISO(dateStr), 'M月d日(E)', { locale: ja });
       },
     },
     {
       field: 'productName',
-      headerName: '帳合先 / 商品情報',
-      width: isMobile ? 180 : 280,
-      flex: 1,
+      headerName: '品名',
+      width: isMobile ? 100 : 150,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'origin',
+      headerName: '産地',
+      width: isMobile ? 80 : 100,
+      sortable: true,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'specification',
+      headerName: '規格',
+      width: isMobile ? 100 : 120,
       sortable: true,
       disableColumnMenu: true,
       renderCell: (params) => {
         const row = params.row as DetailGridRow;
-        if (row.rowType === 'subtotal') {
-          return (
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6' }}>
-              {row.productName}
-            </Typography>
-          );
+        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
+          return row.specification || '';
         }
-        if (row.rowType === 'grandtotal') {
-          return (
-            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>
-              {row.productName}
-            </Typography>
-          );
+        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+      },
+    },
+    {
+      field: 'quantityPerPackage',
+      headerName: '入数',
+      width: isMobile ? 80 : 100,
+      sortable: true,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
+          return '';
         }
-        const supplierColor = row.supplier ? getSupplierColorByName(row.supplier, supplierPresets) : 'grey.500';
-        const specWithUnit = row.unit ? `${row.specification} ${row.unit}` : row.specification;
-        const qtyText = row.quantityPerPackage ? `${row.quantityPerPackage}${row.packageUnit}` : '';
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, py: 0.5, overflow: 'hidden' }}>
-            {/* 帳合先 + 品名 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Box
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  bgcolor: supplierColor,
-                  flexShrink: 0,
-                }}
-              />
-              <Typography
-                sx={{
-                  fontSize: '0.6rem',
-                  fontWeight: 600,
-                  color: supplierColor,
-                  flexShrink: 0,
-                }}
-              >
-                {row.supplier || '-'}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {row.productName}
-              </Typography>
-            </Box>
-            {/* 産地 / 規格 / 入数 */}
-            <Typography
-              sx={{
-                fontSize: '0.6rem',
-                color: 'grey.500',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                pl: 1.5,
-              }}
-            >
-              {row.origin} / {specWithUnit}{qtyText ? ` / ${qtyText}` : ''}
-            </Typography>
-          </Box>
-        );
+        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
+          return '-';
+        }
+        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
       },
     },
     {
       field: 'totalDelivery',
       headerName: '合計',
-      width: isMobile ? 55 : 70,
+      width: isMobile ? 60 : 80,
       sortable: true,
       disableColumnMenu: true,
       type: 'number',
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        return (
-          <Typography
-            sx={{
-              fontSize: row.rowType === 'grandtotal' ? '0.85rem' : '0.8rem',
-              fontWeight: 700,
-              color: row.rowType === 'grandtotal' ? 'white' : row.rowType === 'subtotal' ? '#3b82f6' : 'primary.main',
-            }}
-          >
-            {row.totalDelivery.toLocaleString()}
-          </Typography>
-        );
-      },
     },
     // 店舗カラムを追加
     ...STORE_DATA.map((store) => ({
@@ -696,7 +628,7 @@ export const AllocationHistoryPage: React.FC = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 32,
+      width: 40,
       sortable: false,
       disableColumnMenu: true,
       renderCell: (params) => {
@@ -709,99 +641,59 @@ export const AllocationHistoryPage: React.FC = () => {
               newHidden.add(row.id);
               setHiddenRowIds(newHidden);
             }}
-            sx={{ p: 0.25 }}
+            sx={{ p: 0.5 }}
           >
-            <VisibilityOff sx={{ fontSize: 14 }} />
+            <VisibilityOff fontSize="small" />
           </IconButton>
         );
       },
     },
     {
       field: 'productName',
-      headerName: '帳合先 / 商品情報',
-      width: isMobile ? 180 : 280,
-      flex: 1,
+      headerName: '品名',
+      width: isMobile ? 100 : 150,
+      sortable: false,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'origin',
+      headerName: '産地',
+      width: isMobile ? 80 : 100,
+      sortable: false,
+      disableColumnMenu: true,
+    },
+    {
+      field: 'specification',
+      headerName: '規格',
+      width: isMobile ? 100 : 120,
       sortable: false,
       disableColumnMenu: true,
       renderCell: (params) => {
         const row = params.row as DetailGridRow;
-        const supplierColor = row.supplier ? getSupplierColorByName(row.supplier, supplierPresets) : 'grey.500';
-        const specWithUnit = row.unit ? `${row.specification} ${row.unit}` : row.specification;
-        const qtyText = row.quantityPerPackage ? `${row.quantityPerPackage}${row.packageUnit}` : '';
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, py: 0.5, overflow: 'hidden' }}>
-            {/* 帳合先 + 品名 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Box
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  bgcolor: supplierColor,
-                  flexShrink: 0,
-                }}
-              />
-              <Typography
-                sx={{
-                  fontSize: '0.6rem',
-                  fontWeight: 600,
-                  color: supplierColor,
-                  flexShrink: 0,
-                }}
-              >
-                {row.supplier || '-'}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {row.productName}
-              </Typography>
-            </Box>
-            {/* 産地 / 規格 / 入数 */}
-            <Typography
-              sx={{
-                fontSize: '0.6rem',
-                color: 'grey.500',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                pl: 1.5,
-              }}
-            >
-              {row.origin} / {specWithUnit}{qtyText ? ` / ${qtyText}` : ''}
-            </Typography>
-          </Box>
-        );
+        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+      },
+    },
+    {
+      field: 'quantityPerPackage',
+      headerName: '入数',
+      width: isMobile ? 80 : 100,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params) => {
+        const row = params.row as DetailGridRow;
+        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
+          return '-';
+        }
+        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
       },
     },
     {
       field: 'totalDelivery',
       headerName: '合計',
-      width: isMobile ? 55 : 70,
+      width: isMobile ? 60 : 80,
       sortable: false,
       disableColumnMenu: true,
       type: 'number',
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        return (
-          <Typography
-            sx={{
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              color: 'primary.main',
-            }}
-          >
-            {row.totalDelivery.toLocaleString()}
-          </Typography>
-        );
-      },
     },
     // 店舗カラムを追加
     ...STORE_DATA.map((store) => ({
@@ -882,7 +774,6 @@ export const AllocationHistoryPage: React.FC = () => {
             packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
             deliveryDate: dateStr,
-            supplier: detail.supplier,
             rowType: 'data',
           };
 
@@ -967,7 +858,6 @@ export const AllocationHistoryPage: React.FC = () => {
               packageUnit: detailForDate.packageUnit,
               totalDelivery: detailForDate.totalDelivery,
               deliveryDate: dateStr,
-              supplier: detailForDate.supplier,
               rowType: 'data',
             };
 
@@ -1065,7 +955,6 @@ export const AllocationHistoryPage: React.FC = () => {
             packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
             deliveryDate: (detail as any).deliveryDate,
-            supplier: detail.supplier,
             rowType: 'data',
           };
 
@@ -1157,7 +1046,6 @@ export const AllocationHistoryPage: React.FC = () => {
         quantityPerPackage: detail.quantityPerPackage,
         packageUnit: detail.packageUnit,
         totalDelivery: detail.totalDelivery,
-        supplier: detail.supplier,
       };
 
       // 各店舗の配分数量を追加
