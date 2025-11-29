@@ -136,10 +136,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     : '0.0';
 
   // 単位変換を適用（例: 5kg入り + 100gあたり → 50単位）
+  // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
+  const fullUnit = specification && unit ? `${specification}${unit}` : unit || '';
   const unitConversionResult = calculateEffectiveQuantity({
     quantityPerPackage,
     packageUnit: packageUnit || '',
-    unit: unit || '',
+    unit: fullUnit,
   });
   const effectiveQuantity = unitConversionResult.effectiveQuantity;
 
@@ -232,7 +234,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   /**
    * 単位互換性チェック
    */
-  const unitCompatibility = checkUnitCompatibility(unit || '', packageUnit || '');
+  const unitCompatibility = checkUnitCompatibility(fullUnit, packageUnit || '');
 
   /**
    * 箱単価から単位単価を計算
@@ -242,7 +244,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     boxPrice: boxPriceValue,
     quantityPerPackage,
     packageUnit: packageUnit || '',
-    unit: unit || '',
+    unit: fullUnit,
   });
 
   /**

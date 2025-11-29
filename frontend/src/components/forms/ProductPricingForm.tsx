@@ -118,10 +118,14 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       const totalDelivery = product.totalDelivery || 0;
 
       // 単位変換を適用して実効数量を計算
+      // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
+      const fullUnit = product.specification && product.unit
+        ? `${product.specification}${product.unit}`
+        : product.unit || '';
       const conversionResult = calculateEffectiveQuantity({
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
-        unit: product.unit || '',
+        unit: fullUnit,
       });
       const effectiveQuantity = conversionResult.effectiveQuantity;
 
