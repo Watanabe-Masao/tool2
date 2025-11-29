@@ -886,7 +886,13 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                           endAdornment: (
                             <InputAdornment position="end">
                               <Box
-                                onClick={() => field.onChange('gあたり')}
+                                onClick={() => {
+                                  field.onChange('gあたり');
+                                  // 規格が未入力の場合は「100」を自動設定
+                                  if (!currentSpecification) {
+                                    setValue(`products.${index}.specification`, '100');
+                                  }
+                                }}
                                 sx={{
                                   px: 0.75,
                                   py: 0.25,
