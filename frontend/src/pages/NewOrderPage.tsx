@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, IconButton } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import { Box, Alert, useTheme, useMediaQuery, Dialog, DialogContent, DialogActions, Button } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { OrderDialogs } from '@/components/order/OrderDialogs';
 import { OrderFormWithTabs } from '@/components/order/OrderFormWithTabs';
 import { OrderModals } from '@/components/order/OrderModals';
@@ -15,7 +15,7 @@ import { useOrderFormStore } from '@/stores/orderFormStore';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
-import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -228,17 +228,36 @@ const OrderFormContent: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <IconButton
-          onClick={() => setShowAllocationHistoryModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <AllocationHistoryPage />
         </DialogContent>
+        <DialogActions sx={{
+          flexShrink: 0,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          p: 2,
+        }}>
+          <Button
+            onClick={() => setShowAllocationHistoryModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* ユーザープロフィールモーダル */}
@@ -248,17 +267,36 @@ const OrderFormContent: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <IconButton
-          onClick={() => setShowUserProfileModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <UserProfilePage />
         </DialogContent>
+        <DialogActions sx={{
+          flexShrink: 0,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          p: 2,
+        }}>
+          <Button
+            onClick={() => setShowUserProfileModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* 各種管理モーダル */}
@@ -268,17 +306,36 @@ const OrderFormContent: React.FC = () => {
         maxWidth="lg"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        PaperProps={{
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? '100%' : 'auto',
+          },
+        }}
       >
-        <IconButton
-          onClick={() => setShowStoreManagementModal(false)}
-          sx={{ position: 'absolute', right: 8, top: 8, zIndex: MODAL_Z_INDEX.PAGE_MODAL + ELEMENT_OFFSET.CLOSE_BUTTON }}
-        >
-          <Close />
-        </IconButton>
-        <DialogContent>
+        <DialogContent sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           <StoreCategoryManagementPage />
         </DialogContent>
+        <DialogActions sx={{
+          flexShrink: 0,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          p: 2,
+        }}>
+          <Button
+            onClick={() => setShowStoreManagementModal(false)}
+            variant="contained"
+            color="primary"
+            startIcon={<ArrowBack />}
+            size="large"
+            fullWidth
+          >
+            戻る
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
