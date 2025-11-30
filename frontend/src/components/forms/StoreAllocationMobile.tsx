@@ -268,39 +268,27 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 配分数を増やす（1、5、10単位）
-   */
-  const handleIncrement = (storeCode: string, amount: number) => {
-    const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
-    if (storeIndex === -1) return;
-
-    const currentValue = allocations[storeIndex] || 0;
-    handleChangeAllocation(storeCode, currentValue + amount);
-  };
-
-  /**
-   * 配分数を減らす（1、5、10単位）
-   */
-  const handleDecrement = (storeCode: string, amount: number) => {
-    const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
-    if (storeIndex === -1) return;
-
-    const currentValue = allocations[storeIndex] || 0;
-    handleChangeAllocation(storeCode, Math.max(0, currentValue - amount));
-  };
-
-  /**
    * 店舗選択トグル
    */
   const handleToggleStore = (storeCode: string) => {
     const newSelected = new Set(selectedStores);
+
     if (newSelected.has(storeCode)) {
-      newSelected.delete(storeCode);
-      handleChangeAllocation(storeCode, 0);
+      // 選択済みの場合: 残数があれば+1配分
+      if (remaining > 0) {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+        if (storeIndex !== -1) {
+          const newAllocations = [...allocations];
+          newAllocations[storeIndex] = (newAllocations[storeIndex] || 0) + 1;
+          onChange(newAllocations);
+        }
+      }
+      // 残数がない場合は何もしない（タップしても反応なし）
     } else {
+      // 未選択の場合: 選択状態にする
       newSelected.add(storeCode);
+      setSelectedStores(newSelected);
     }
-    setSelectedStores(newSelected);
   };
 
   /**
@@ -994,7 +982,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             )}
             {remaining > 0 && (
               <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                💡 配分カードの+/-ボタンで数量調整
+                💡 選択済み店舗チップをタップで+1配分
               </Typography>
             )}
           </CardContent>
@@ -1360,57 +1348,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                           </Typography>
                           {isLocked && <Lock sx={{ fontSize: '0.75rem', color: 'warning.main' }} />}
                         </Box>
-                        {/* 入力フィールド + 増減ボタンエリア */}
+                        {/* 入力フィールドエリア */}
                         <Box sx={{ px: 0.5, pb: 0.5 }}>
-                          {/* 減少ボタン行 */}
-                          <Box sx={{ display: 'flex', gap: 0.25, mb: 0.25, justifyContent: 'center' }}>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleDecrement(store.code, 10)}
-                              disabled={isLocked || quantity === 0}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              -10
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleDecrement(store.code, 5)}
-                              disabled={isLocked || quantity === 0}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              -5
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleDecrement(store.code, 1)}
-                              disabled={isLocked || quantity === 0}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              -1
-                            </Button>
-                          </Box>
-                          {/* 数値入力フィールド */}
                           <TextField
                             type="number"
                             size="small"
@@ -1418,7 +1357,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             placeholder={hasPreview ? String(previewValue) : ''}
                             onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
                             onFocus={(e) => e.target.select()}
-                            disabled={isLocked}
                             fullWidth
                             inputProps={{
                               inputMode: 'numeric',
@@ -1433,7 +1371,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             }}
                             sx={{
                               touchAction: 'manipulation',
-                              mb: 0.25,
                               '& .MuiOutlinedInput-root': {
                                 fontSize: '0.75rem',
                               },
@@ -1447,54 +1384,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                               },
                             }}
                           />
-                          {/* 増加ボタン行 */}
-                          <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'center' }}>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleIncrement(store.code, 1)}
-                              disabled={isLocked}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              +1
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleIncrement(store.code, 5)}
-                              disabled={isLocked}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              +5
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleIncrement(store.code, 10)}
-                              disabled={isLocked}
-                              sx={{
-                                minWidth: 'auto',
-                                px: 0.5,
-                                py: 0.25,
-                                fontSize: '0.6rem',
-                                lineHeight: 1,
-                              }}
-                            >
-                              +10
-                            </Button>
-                          </Box>
                         </Box>
                       </CardContent>
                     </Card>
