@@ -777,7 +777,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   </Button>
                 )}
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+              {/* 4列固定グリッド（店舗選択チップと統一） */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.75 }}>
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
                   const isSelected = selectedCategories.has(category.id);
@@ -822,6 +823,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       onClick={() => handleToggleCategory(category.id)}
                       size="small"
                       sx={{
+                        // グリッド幅に合わせる（4列固定）
+                        width: '100%',
                         // 色は2段階のみ: 選択時=薄い色、未選択時=白（即座に）
                         bgcolor: isSelected ? `${color.main}15` : 'white',
                         color: color.main,
@@ -835,7 +838,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                           : '0 1px 2px rgba(0, 0, 0, 0.05)',
                         transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                         '& .MuiChip-label': {
-                          px: 1.25,
+                          px: 0.75,
+                          width: '100%',
                         },
                         '&:hover': {
                           transform: 'translateY(-1px)',
@@ -887,6 +891,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   onClick={() => handleToggleCategory('uncategorized')}
                   size="small"
                   sx={{
+                    width: '100%', // グリッド幅に合わせる
                     // 色は2段階のみ: 選択時=薄いグレー、未選択時=白（即座に）
                     bgcolor: selectedCategories.has('uncategorized')
                       ? 'rgba(117, 117, 117, 0.15)'
@@ -902,7 +907,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       : '0 1px 2px rgba(0, 0, 0, 0.05)',
                     transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                     '& .MuiChip-label': {
-                      px: 1.25,
+                      px: 0.75, // コンパクト化
+                      width: '100%',
                     },
                     '&:hover': {
                       transform: 'translateY(-1px)',
