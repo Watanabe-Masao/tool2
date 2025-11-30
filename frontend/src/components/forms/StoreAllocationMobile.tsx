@@ -272,13 +272,23 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    */
   const handleToggleStore = (storeCode: string) => {
     const newSelected = new Set(selectedStores);
+
     if (newSelected.has(storeCode)) {
-      newSelected.delete(storeCode);
-      handleChangeAllocation(storeCode, 0);
+      // 選択済みの場合: 残数があれば+1配分
+      if (remaining > 0) {
+        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+        if (storeIndex !== -1) {
+          const newAllocations = [...allocations];
+          newAllocations[storeIndex] = (newAllocations[storeIndex] || 0) + 1;
+          onChange(newAllocations);
+        }
+      }
+      // 残数がない場合は何もしない（タップしても反応なし）
     } else {
+      // 未選択の場合: 選択状態にする
       newSelected.add(storeCode);
+      setSelectedStores(newSelected);
     }
-    setSelectedStores(newSelected);
   };
 
   /**
@@ -925,6 +935,59 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </Card>
         )}
 
+        {/* 残数表示 */}
+        <Card
+          variant="outlined"
+          sx={{
+            borderColor: remaining < 0 ? 'error.main' : remaining === 0 ? 'success.main' : 'warning.main',
+            borderWidth: 2,
+            bgcolor: remaining < 0 ? 'error.50' : remaining === 0 ? 'success.50' : 'background.paper',
+          }}
+        >
+          <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 600 }}>
+                  残り配分可能数
+                </Typography>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    color: remaining < 0 ? 'error.main' : remaining === 0 ? 'success.main' : 'warning.main',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {remaining}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                  総数量: {totalDelivery}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
+                  配分済: {totalAllocated}
+                </Typography>
+              </Box>
+            </Box>
+            {remaining < 0 && (
+              <Alert severity="error" sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>
+                配分数が総数量を超えています
+              </Alert>
+            )}
+            {remaining === 0 && totalDelivery > 0 && (
+              <Alert severity="success" icon={<CheckCircle fontSize="small" />} sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>
+                全て配分完了
+              </Alert>
+            )}
+            {remaining > 0 && (
+              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                💡 選択済み店舗チップをタップで+1配分
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 店舗選択 */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -1293,6 +1356,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             value={quantity || ''}
                             placeholder={hasPreview ? String(previewValue) : ''}
                             onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                            onFocus={(e) => e.target.select()}
                             fullWidth
                             inputProps={{
                               inputMode: 'numeric',
