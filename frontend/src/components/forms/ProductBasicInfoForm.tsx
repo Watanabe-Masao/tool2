@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useWatch, useFormContext } from 'react-hook-form';
+import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors, FieldArrayWithId, UseFieldArrayAppend, UseFieldArrayRemove, UseFieldArrayMove } from 'react-hook-form';
-import { Box, Typography, Alert, Button, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton } from '@mui/material';
-import { Add, ChevronLeft, ChevronRight, NoteAdd, Inventory2, SwapVert, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Box, Typography, Alert, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, Stack, Chip, Divider } from '@mui/material';
+import { Add, ChevronLeft, ChevronRight, Inventory2, SwapVert, ArrowUpward, ArrowDownward, Settings } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { getSupplierColor, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 import { ProductFormCardBasic } from './ProductFormCardBasic';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -11,6 +14,7 @@ import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useAuthContext } from '@/context/AuthContext';
 import { useFirestoreService } from '@/context/ServiceContext';
+import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
  * ProductBasicInfoFormのProps
@@ -42,6 +46,8 @@ interface ProductBasicInfoFormProps {
   activeProductIndex?: number;
   /** 商品インデックス変更ハンドラー */
   onProductIndexChange?: (index: number) => void;
+  /** 帳合先変更時のカスタムハンドラー */
+  onSuppliersChange?: (newValue: string[]) => string[];
 }
 
 /**
@@ -64,8 +70,11 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   onNavigateToStep,
   activeProductIndex,
   onProductIndexChange,
+  onSuppliersChange,
 }) => {
+  const navigate = useNavigate();
   const firestoreService = useFirestoreService();
+  const { presets } = useSupplierPresets();
 
   // アクティブなタブのインデックス（外部制御または内部状態）
   const [internalTabIndex, setInternalTabIndex] = useState(0);
@@ -81,6 +90,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
 
   // 全商品の実際のフォームデータを監視
   const products = useWatch({ control, name: 'products' });
+  const currentSuppliers = useWatch({ control, name: 'suppliers' });
 
   // フォームコンテキストからsetValueを取得
   const { setValue } = useFormContext<OrderFormData>();
@@ -88,15 +98,18 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   // ユーザー情報を取得
   const { user } = useAuthContext();
 
-  // 商品追加メニューの状態
-  const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
-  const addMenuOpen = Boolean(addMenuAnchor);
-
   // 商品一括追加モーダルの状態
   const [bulkAddModalOpen, setBulkAddModalOpen] = useState(false);
 
   // 商品並べ替えモーダルの状態
   const [reorderModalOpen, setReorderModalOpen] = useState(false);
+
+  // 空ページクリーンアップ確認ダイアログの状態
+  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
+  const [emptyProductIndices, setEmptyProductIndices] = useState<number[]>([]);
+
+  // ページネーション長押しタイマー
+  const paginationLongPressTimer = React.useRef<number | null>(null);
 
   // ドラッグ&ドロップの状態
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -105,6 +118,16 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   const longPressTimer = React.useRef<number | null>(null);
   const dragStartPos = React.useRef<{ x: number; y: number } | null>(null);
   const isDragging = React.useRef(false);
+
+  // 初期化時に全帳合先を選択状態にする
+  const hasInitializedSuppliers = React.useRef(false);
+  useEffect(() => {
+    if (!hasInitializedSuppliers.current && presets.length > 0 && (!currentSuppliers || currentSuppliers.length === 0)) {
+      const allSuppliers = presets.map(p => p.supplier);
+      setValue('suppliers', allSuppliers);
+      hasInitializedSuppliers.current = true;
+    }
+  }, [presets, currentSuppliers, setValue]);
 
   // PL（プリセット）履歴を取得（全帳合先の履歴）
   const { history: presetHistory, loadHistory: reloadPresetHistory } = useProductHistory(suppliers, undefined);
@@ -140,20 +163,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
   };
 
   /**
-   * 商品追加ボタンをクリック（メニューを表示）
-   */
-  const handleAddButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAddMenuAnchor(event.currentTarget);
-  };
-
-  /**
-   * 商品追加メニューを閉じる
-   */
-  const handleCloseAddMenu = () => {
-    setAddMenuAnchor(null);
-  };
-
-  /**
    * 空のカードを追加
    */
   const handleAddEmptyProduct = () => {
@@ -167,7 +176,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     });
     // 新しく追加された商品のタブに切り替え
     setActiveTabIndex(fields.length);
-    handleCloseAddMenu();
   };
 
   /**
@@ -175,7 +183,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
    */
   const handleAddFromHistory = () => {
     setBulkAddModalOpen(true);
-    handleCloseAddMenu();
   };
 
   /**
@@ -370,70 +377,217 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
     dragStartPos.current = null;
   };
 
+  /**
+   * 空の商品ページを検出
+   */
+  const findEmptyProducts = (): number[] => {
+    if (!products) return [];
+    return products.reduce((indices: number[], product, index) => {
+      const isEmpty = !product.name && !product.origin && !product.specification;
+      if (isEmpty) indices.push(index);
+      return indices;
+    }, []);
+  };
+
+  /**
+   * ページネーション長押し開始
+   */
+  const handlePaginationLongPressStart = () => {
+    paginationLongPressTimer.current = window.setTimeout(() => {
+      const emptyIndices = findEmptyProducts();
+      if (emptyIndices.length > 0) {
+        setEmptyProductIndices(emptyIndices);
+        setCleanupDialogOpen(true);
+      }
+    }, 600);
+  };
+
+  /**
+   * ページネーション長押し終了
+   */
+  const handlePaginationLongPressEnd = () => {
+    if (paginationLongPressTimer.current) {
+      window.clearTimeout(paginationLongPressTimer.current);
+      paginationLongPressTimer.current = null;
+    }
+  };
+
+  /**
+   * 空の商品ページを削除
+   */
+  const handleCleanupEmptyProducts = () => {
+    // 降順でソートして後ろから削除（インデックスがずれないように）
+    const sortedIndices = [...emptyProductIndices].sort((a, b) => b - a);
+    sortedIndices.forEach(idx => remove(idx));
+    setCleanupDialogOpen(false);
+    setEmptyProductIndices([]);
+    // アクティブタブを調整
+    if (activeTabIndex >= fields.length - emptyProductIndices.length) {
+      setActiveTabIndex(Math.max(0, fields.length - emptyProductIndices.length - 1));
+    }
+  };
+
   return (
     <Box>
+      {/* 帳合先絞り込みセクション */}
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle1" fontWeight="medium">
+              帳合先の絞り込み
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Controller
+                name="suppliers"
+                control={control}
+                render={({ field }) => (
+                  <>
+                    <Typography
+                      component="span"
+                      onClick={() => {
+                        const allSuppliers = presets.map(p => p.supplier);
+                        const finalValue = onSuppliersChange ? onSuppliersChange(allSuppliers) : allSuppliers;
+                        field.onChange(finalValue);
+                      }}
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'primary.main',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      全選択
+                    </Typography>
+                    <Typography component="span" sx={{ fontSize: '0.65rem', color: 'grey.400' }}>|</Typography>
+                    <Typography
+                      component="span"
+                      onClick={() => {
+                        const finalValue = onSuppliersChange ? onSuppliersChange([]) : [];
+                        field.onChange(finalValue);
+                      }}
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'grey.500',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      クリア
+                    </Typography>
+                  </>
+                )}
+              />
+            </Box>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => navigate('/store-categories', { state: { tab: 1 } })}
+            sx={{ color: 'grey.500' }}
+          >
+            <Settings sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+
+        <Controller
+          name="suppliers"
+          control={control}
+          render={({ field }) => (
+            <Box>
+              {presets.length > 0 ? (
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {presets.map((preset, index) => {
+                    const isSelected = field.value?.includes(preset.supplier);
+                    const supplierColor = getSupplierColor(index);
+                    return (
+                      <Chip
+                        key={preset.id}
+                        label={preset.supplier}
+                        onClick={() => {
+                          const currentValue = field.value || [];
+                          let newValue: string[];
+                          if (isSelected) {
+                            newValue = currentValue.filter((s: string) => s !== preset.supplier);
+                          } else {
+                            newValue = [...currentValue, preset.supplier];
+                          }
+                          const finalValue = onSuppliersChange ? onSuppliersChange(newValue) : newValue;
+                          field.onChange(finalValue);
+                        }}
+                        size="small"
+                        sx={{
+                          mb: 0.5,
+                          borderLeft: `3px solid ${supplierColor}`,
+                          bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.100',
+                          color: isSelected ? supplierColor : 'text.primary',
+                          fontWeight: isSelected ? 600 : 400,
+                          transition: 'none !important',
+                          '& *': {
+                            transition: 'none !important',
+                          },
+                          '&:hover': {
+                            bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.2) : 'grey.200',
+                            transition: 'none !important',
+                          },
+                          '&:focus': {
+                            transition: 'none !important',
+                          },
+                          '&:active': {
+                            transition: 'none !important',
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  帳合先が登録されていません。設定アイコンから追加してください。
+                </Typography>
+              )}
+            </Box>
+          )}
+        />
+      </Box>
+
+      <Divider sx={{ my: 2 }} />
+
       {/* ヘッダーセクション */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="subtitle1" fontWeight="medium">
-          商品情報1
+          商品情報
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
-            startIcon={<SwapVert />}
-            onClick={() => setReorderModalOpen(true)}
-            disabled={fields.length <= 1}
-            sx={{ fontSize: '0.8rem' }}
+            startIcon={<Inventory2 sx={{ fontSize: 16 }} />}
+            onClick={handleAddFromHistory}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
           >
-            並べ替え
+            PL
           </Button>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
-            startIcon={<Add />}
-            onClick={handleAddButtonClick}
-            disabled={fields.length >= 50}
-            sx={{ fontSize: '0.8rem' }}
+            startIcon={<SwapVert sx={{ fontSize: 16 }} />}
+            onClick={() => setReorderModalOpen(true)}
+            disabled={fields.length <= 1}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
           >
-            商品を追加
+            並替
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<Add sx={{ fontSize: 16 }} />}
+            onClick={handleAddEmptyProduct}
+            disabled={fields.length >= 50}
+            sx={{ fontSize: '0.7rem', px: 1, minWidth: 0, color: 'grey.600' }}
+          >
+            追加
           </Button>
         </Box>
       </Box>
-
-      {/* 商品追加メニュー */}
-      <Menu
-        anchorEl={addMenuAnchor}
-        open={addMenuOpen}
-        onClose={handleCloseAddMenu}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={handleAddEmptyProduct}>
-          <ListItemIcon>
-            <NoteAdd fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary="空のカードを追加"
-            secondary="新規商品を入力"
-          />
-        </MenuItem>
-        <MenuItem onClick={handleAddFromHistory}>
-          <ListItemIcon>
-            <Inventory2 fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary="PLから追加"
-            secondary="保存したプリセットを選択"
-          />
-        </MenuItem>
-      </Menu>
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
@@ -492,15 +646,6 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
           </IconButton>
         )}
 
-        {/* 商品番号表示（上部中央） */}
-        {fields.length > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-              商品 {activeTabIndex + 1} / {fields.length}
-            </Typography>
-          </Box>
-        )}
-
         {/* アクティブな商品カードのみ表示 */}
         {fields.map((field, index) => {
           const isActive = activeTabIndex === index;
@@ -527,6 +672,27 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
             </Box>
           );
         })}
+
+        {/* ページネーションドット（長押しで空ページクリーンアップ） */}
+        <PaginationDots
+          count={fields.length}
+          activeIndex={activeTabIndex}
+          onIndexChange={setActiveTabIndex}
+          getStatus={(index) => {
+            const product = products?.[index];
+            const isEmpty = product && !product.name && !product.origin && !product.specification;
+            const isComplete = product &&
+              product.name &&
+              product.origin &&
+              product.specification &&
+              product.quantityPerPackage;
+            if (isEmpty) return 'empty';
+            if (isComplete) return 'complete';
+            return 'incomplete';
+          }}
+          onLongPressStart={handlePaginationLongPressStart}
+          onLongPressEnd={handlePaginationLongPressEnd}
+        />
       </Box>
 
       {/* 商品一括追加モーダル（PL複数選択モード） */}
@@ -670,6 +836,86 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setReorderModalOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 空ページクリーンアップ確認ダイアログ */}
+      <Dialog
+        open={cleanupDialogOpen}
+        onClose={() => setCleanupDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: 'hidden',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: 'error.main',
+            color: 'white',
+            py: 1.5,
+            fontSize: '1rem',
+          }}
+        >
+          空の商品ページを削除
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5, pb: 1 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            以下の空の商品ページを削除しますか？
+          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.75,
+              p: 1.5,
+              bgcolor: 'grey.50',
+              borderRadius: 2,
+            }}
+          >
+            {emptyProductIndices.map((idx) => (
+              <Chip
+                key={idx}
+                label={`商品 ${idx + 1}`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(239, 83, 80, 0.1)',
+                  color: 'error.dark',
+                  border: '1px solid rgba(239, 83, 80, 0.3)',
+                  fontWeight: 500,
+                }}
+              />
+            ))}
+          </Box>
+          {emptyProductIndices.length > 0 && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mt: 1.5, textAlign: 'center' }}
+            >
+              {emptyProductIndices.length}件の空ページが見つかりました
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button
+            onClick={() => setCleanupDialogOpen(false)}
+            color="inherit"
+            sx={{ color: 'grey.600' }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleCleanupEmptyProducts}
+            variant="contained"
+            color="error"
+            sx={{ minWidth: 80 }}
+          >
+            削除する
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -5,6 +5,8 @@ import { Box, Typography, Alert, Grid, Accordion, AccordionSummary, AccordionDet
 import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { calculateEffectiveQuantity } from '@/utils/unitConversion';
+import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
  * ProductPricingFormのProps
@@ -114,11 +116,22 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       const centerFeeRate = product.centerFeeRate || 13;
       const storeCost = product.storeCost || 0;
       const sellingPrice = product.priceExcludingTax || 0;
-      const quantityPerPackage = product.quantityPerPackage || 0;
       const totalDelivery = product.totalDelivery || 0;
 
+      // 単位変換を適用して実効数量を計算
+      // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
+      const fullUnit = product.specification && product.unit
+        ? `${product.specification}${product.unit}`
+        : product.unit || '';
+      const conversionResult = calculateEffectiveQuantity({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: fullUnit,
+      });
+      const effectiveQuantity = conversionResult.effectiveQuantity;
+
       const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
-      const quantity = totalDelivery * quantityPerPackage;
+      const quantity = totalDelivery * effectiveQuantity;
 
       totalCenterCost += centerCost * quantity;
       totalCenterCostWithFee += centerCostWithFee * quantity;
@@ -266,6 +279,25 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           );
         })}
       </Box>
+
+      {/* ページネーションドット */}
+      <PaginationDots
+        count={fields.length}
+        activeIndex={activeTabIndex}
+        onIndexChange={setActiveTabIndex}
+        getStatus={(index) => {
+          const product = products?.[index];
+          const isEmpty = product && !product.centerCost && !product.storeCost && !product.priceExcludingTax;
+          const isComplete = product &&
+            product.centerCost &&
+            product.storeCost &&
+            product.priceExcludingTax &&
+            product.totalDelivery;
+          if (isEmpty) return 'empty';
+          if (isComplete) return 'complete';
+          return 'incomplete';
+        }}
+      />
 
       {/* 全体集計サマリー（画面最下部） */}
       {fields.length > 0 && (

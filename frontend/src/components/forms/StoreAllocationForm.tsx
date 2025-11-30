@@ -8,6 +8,7 @@ import { StoreAllocationMobile } from './StoreAllocationMobile';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { isMobileDevice } from '@/utils/deviceDetection';
 import { useOrderFormStore } from '@/stores/orderFormStore';
+import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
  * StoreAllocationFormのProps
@@ -283,6 +284,23 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
           );
         })}
       </Box>
+
+      {/* ページネーションドット */}
+      <PaginationDots
+        count={fields.length}
+        activeIndex={activeTabIndex}
+        onIndexChange={setActiveTabIndex}
+        getStatus={(index) => {
+          const product = products?.[index];
+          const totalDelivery = product?.totalDelivery || 0;
+          const storeAllocations = product?.storeAllocations || [];
+          const totalAllocated = storeAllocations.reduce((sum: number, val: number) => sum + (val || 0), 0);
+
+          if (totalAllocated === 0) return 'empty';
+          if (totalAllocated === totalDelivery && totalDelivery > 0) return 'complete';
+          return 'incomplete';
+        }}
+      />
     </Box>
   );
 };

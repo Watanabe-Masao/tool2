@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -21,8 +20,6 @@ import {
   Stack,
   ToggleButtonGroup,
   ToggleButton,
-  Card,
-  CardContent,
   Drawer,
   ListItemText,
   Divider,
@@ -39,7 +36,6 @@ import {
   Refresh,
   CalendarMonth,
   Delete,
-  ViewList,
   CalendarToday,
   Fullscreen,
   FullscreenExit,
@@ -61,11 +57,9 @@ import {
 import { ja } from 'date-fns/locale';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg, EventInput, DateSelectArg } from '@fullcalendar/core';
+import { GlassCalendar, type CalendarEvent, type SupplierPreset, type PreviewProduct } from '@/components/calendar/GlassCalendar';
 import { useAuthContext } from '@/context/AuthContext';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
@@ -73,6 +67,7 @@ import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
 import type { StoreCategory } from '@/types/storeCategory';
 import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
+import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 
 /**
  * グリッド行データの型（詳細モーダル用）
@@ -100,8 +95,11 @@ interface DetailGridRow {
  */
 export const AllocationHistoryPage: React.FC = () => {
   const { user } = useAuthContext();
+  const { presets: supplierPresets } = useSupplierPresets();
 
   const [batches, setBatches] = useState<AllocationBatch[]>([]);
+  const [previewProducts, setPreviewProducts] = useState<PreviewProduct[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
@@ -160,35 +158,32 @@ export const AllocationHistoryPage: React.FC = () => {
 
 
   /**
-   * FullCalendar用のイベントデータを生成
+   * GlassCalendar用のイベントデータを生成
    */
-  const calendarEvents: EventInput[] = useMemo(() => {
-    const events: EventInput[] = [];
-
-    batches.forEach((batch) => {
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    return batches.map((batch) => {
       // ファイル名がある場合はそれを使用、なければ帳合先名を使用
       const fileName = (batch as any).fileName;
       const displayTitle = fileName || batch.suppliers.join(', ');
       const productCount = batch.productCount || 0;
 
-      events.push({
+      return {
         id: batch.id || '',
-        title: displayTitle,
         date: batch.deliveryDate,
-        extendedProps: {
-          batch,
-          productCount,
-          totalQuantity: batch.totalQuantity,
-          fileName,
-        },
-        backgroundColor: '#1976d2',
-        borderColor: '#1565c0',
-        textColor: '#ffffff',
-      });
+        title: `${displayTitle} (${productCount}件)`,
+        suppliers: batch.suppliers, // 帳合先リストを追加
+        data: batch,
+      };
     });
-
-    return events;
   }, [batches]);
+
+  // 帳合先プリセットをカレンダー用に変換
+  const calendarSupplierPresets: SupplierPreset[] = useMemo(() => {
+    return supplierPresets.map(p => ({
+      supplier: p.supplier,
+      displayOrder: p.displayOrder,
+    }));
+  }, [supplierPresets]);
 
   /**
    * 履歴を取得（過去90日間）
@@ -280,24 +275,75 @@ export const AllocationHistoryPage: React.FC = () => {
   };
 
   /**
-   * FullCalendarのイベントクリックハンドラー
+   * GlassCalendarのイベントクリックハンドラー
    */
-  const handleEventClick = useCallback((clickInfo: EventClickArg) => {
-    const batch = clickInfo.event.extendedProps.batch as AllocationBatch;
+  const handleEventClick = useCallback((event: CalendarEvent) => {
+    const batch = event.data as AllocationBatch;
     if (batch) {
       fetchBatchDetails(batch);
     }
   }, [fetchBatchDetails]);
 
   /**
-   * FullCalendarの日付範囲選択ハンドラー
+   * 選択日付変更時のプレビューデータ取得（複数日対応）
    */
-  const handleDateSelect = useCallback(async (selectInfo: DateSelectArg) => {
+  const handleSelectedDatesChange = useCallback(async (dates: string[]) => {
     if (!user?.uid) return;
 
-    // FullCalendar の end は排他的なので1日引く
-    const startDate = format(selectInfo.start, 'yyyy-MM-dd');
-    const endDate = format(subDays(selectInfo.end, 1), 'yyyy-MM-dd');
+    // 選択解除時はプレビューをクリア
+    if (dates.length === 0) {
+      setPreviewProducts([]);
+      return;
+    }
+
+    // 選択された全日付のバッチを取得
+    const selectedBatches = batches.filter(b => dates.includes(b.deliveryDate));
+    if (selectedBatches.length === 0) {
+      setPreviewProducts([]);
+      return;
+    }
+
+    setPreviewLoading(true);
+    try {
+      const db = getFirebaseFirestore();
+      const firestoreService = new FirestoreServiceFacade(db);
+
+      const allProducts: PreviewProduct[] = [];
+      for (const batch of selectedBatches) {
+        if (batch.id) {
+          const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
+          batchDetails.forEach(detail => {
+            allProducts.push({
+              productName: detail.productName,
+              origin: detail.origin,
+              specification: detail.specification,
+              unit: detail.unit || '',
+              quantityPerPackage: detail.quantityPerPackage,
+              packageUnit: detail.packageUnit || '入',
+              totalDelivery: detail.totalDelivery,
+              supplier: detail.supplier || '不明',
+              deliveryDate: batch.deliveryDate,
+            });
+          });
+        }
+      }
+      setPreviewProducts(allProducts);
+    } catch (err) {
+      console.error('Failed to fetch preview:', err);
+      setPreviewProducts([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [user?.uid, batches]);
+
+  /**
+   * GlassCalendarの日付範囲選択ハンドラー
+   */
+  const handleDateRangeSelect = useCallback(async (start: Date, end: Date) => {
+    if (!user?.uid) return;
+
+    const startDate = format(start, 'yyyy-MM-dd');
+    const endDate = format(end, 'yyyy-MM-dd');
 
     console.log('📅 Date range selected:', { startDate, endDate });
 
@@ -1084,59 +1130,64 @@ export const AllocationHistoryPage: React.FC = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* ヘッダー */}
-      <Box sx={{
-        mb: 3,
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: 2
-      }}>
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: 'primary.main',
-              mb: 1,
-              fontSize: { xs: '1.5rem', sm: '2rem' }
-            }}
-          >
-            配分履歴
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-            過去90日間の配分履歴を表示しています
-          </Typography>
+      {/* ヘッダー（リスト表示時のみ） - モダンデザイン */}
+      {viewMode === 'table' && (
+        <Box
+          sx={{
+            mb: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            minHeight: 36,
+          }}
+        >
+          {/* 左側: タイトル + ナビ */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              sx={{
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: 'text.primary',
+              }}
+            >
+              配分履歴
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                color: 'grey.500',
+                bgcolor: 'grey.100',
+                px: 0.75,
+                py: 0.25,
+                borderRadius: 1,
+              }}
+            >
+              {batches.length}件
+            </Typography>
+          </Box>
+
+          {/* 右側: コントロール */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton
+              size="small"
+              onClick={fetchHistory}
+              disabled={loading}
+              sx={{ p: 0.5, color: 'grey.600' }}
+            >
+              {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setViewMode('calendar')}
+              sx={{ p: 0.5, color: 'grey.600' }}
+            >
+              <CalendarToday sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </Box>
-
-        <Stack direction="row" spacing={2}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
-            <ToggleButton value="calendar">
-              <CalendarToday fontSize="small" sx={{ mr: 0.5 }} />
-              カレンダー
-            </ToggleButton>
-            <ToggleButton value="table">
-              <ViewList fontSize="small" sx={{ mr: 0.5 }} />
-              リスト
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
-            onClick={fetchHistory}
-            disabled={loading}
-          >
-            更新
-          </Button>
-        </Stack>
-      </Box>
+      )}
 
       {/* エラー表示 */}
       {error && (
@@ -1151,355 +1202,589 @@ export const AllocationHistoryPage: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : batches.length === 0 ? (
-        <Paper sx={{ p: 8, textAlign: 'center' }}>
-          <CalendarMonth sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
+        <Box
+          sx={{
+            py: 6,
+            px: 3,
+            textAlign: 'center',
+            borderRadius: 2,
+            border: '1px dashed',
+            borderColor: 'grey.300',
+            bgcolor: 'grey.50',
+          }}
+        >
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              bgcolor: 'grey.200',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+            }}
+          >
+            <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
+          </Box>
+          <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'grey.600', mb: 0.5 }}>
             配分履歴がありません
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography sx={{ fontSize: '0.75rem', color: 'grey.500' }}>
             配分表を生成して「履歴を保存」すると、ここに表示されます
           </Typography>
-        </Paper>
+        </Box>
       ) : viewMode === 'calendar' ? (
-        /* カレンダー表示 (FullCalendar) */
-        <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  '& .fc': {
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  },
-                  '& .fc .fc-toolbar-title': {
-                    fontSize: { xs: '1rem', sm: '1.5rem' },
-                    fontWeight: 600,
-                  },
-                  '& .fc-button': {
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  },
-                  '& .fc-daygrid-day-number': {
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  },
-                  '& .fc-event': {
-                    cursor: 'pointer',
-                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                  },
-                  '& .fc-col-header-cell': {
-                    backgroundColor: 'grey.100',
-                    fontWeight: 600,
-                  },
-                  '& .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number': {
-                    color: 'error.main',
-                  },
-                  '& .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number': {
-                    color: 'info.main',
-                  },
-                }}
-              >
-                <FullCalendar
-                  plugins={[dayGridPlugin, interactionPlugin]}
-                  initialView="dayGridMonth"
-                  locale="ja"
-                  events={calendarEvents}
-                  eventClick={handleEventClick}
-                  selectable={true}
-                  select={handleDateSelect}
-                  selectMirror={true}
-                  unselectAuto={true}
-                  headerToolbar={{
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: '',
-                  }}
-                  buttonText={{
-                    today: '今日',
-                    month: '月',
-                    week: '週',
-                    day: '日',
-                  }}
-                  height="auto"
-                  dayMaxEvents={3}
-                  moreLinkText="他"
-                  eventTimeFormat={{
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  }}
-                />
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+        /* カレンダー表示 (GlassCalendar) */
+        <GlassCalendar
+          events={calendarEvents}
+          onSelectedDatesChange={handleSelectedDatesChange}
+          onEventClick={handleEventClick}
+          onDateRangeSelect={handleDateRangeSelect}
+          viewMode={viewMode}
+          onViewModeChange={(mode) => setViewMode(mode)}
+          onRefresh={fetchHistory}
+          loading={loading}
+          supplierPresets={calendarSupplierPresets}
+          previewProducts={previewProducts}
+          previewLoading={previewLoading}
+        />
       ) : (
-        /* テーブル表示（週単位） */
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>納品日</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>帳合先</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="right">
-                  商品数
-                </TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="right">
-                  合計数量
-                </TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }}>保存日時</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="center">
-                  操作
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedWeeks.map((week, weekIdx) => (
-                <React.Fragment key={weekIdx}>
-                  {/* 週ヘッダー */}
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      sx={{
-                        backgroundColor: 'grey.100',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        py: 1.5,
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CalendarToday fontSize="small" color="primary" />
-                        <Typography variant="subtitle2" fontWeight={700}>
-                          {format(week.weekStart, 'M月d日', { locale: ja })} 〜{' '}
-                          {format(week.weekEnd, 'M月d日(E)', { locale: ja })}
-                        </Typography>
-                        <Chip
-                          label={`${week.batches.length}件`}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                  {/* 週内のバッチ */}
-                  {week.batches.map((batch) => (
-                    <TableRow
-                      key={batch.id}
-                      hover
-                      sx={{
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <TableCell>
-                        <Chip
-                          icon={<CalendarMonth />}
-                          label={format(new Date(batch.deliveryDate), 'M月d日(E)', { locale: ja })}
-                          color="primary"
-                          variant="outlined"
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                          {batch.suppliers.map((supplier, idx) => (
-                            <Chip key={idx} label={supplier} size="small" />
-                          ))}
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight={600}>
-                          {batch.productCount}品
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight={600} color="primary">
-                          {batch.totalQuantity.toLocaleString()}個
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" color="text.secondary">
-                          {batch.createdAt
-                            ? format(batch.createdAt, 'yyyy/MM/dd HH:mm')
-                            : '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          color="primary"
-                          size="small"
-                          onClick={() => fetchBatchDetails(batch)}
-                          title="詳細を表示"
-                        >
-                          <Visibility />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => handleOpenDeleteDialog(batch)}
-                          title="削除"
-                        >
-                          <Delete />
-                        </IconButton>
+        /* テーブル表示（週単位） - モダンデザイン */
+        <Box
+          sx={{
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'grey.200',
+            bgcolor: 'background.paper',
+            overflow: 'hidden',
+          }}
+        >
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor: 'grey.50',
+                    borderBottom: '1px solid',
+                    borderColor: 'grey.200',
+                  }}
+                >
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    納品日
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    帳合先
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    商品数
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                    }}
+                  >
+                    合計
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                      display: { xs: 'none', sm: 'table-cell' },
+                    }}
+                  >
+                    保存日時
+                  </TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      color: 'grey.600',
+                      py: 1.5,
+                      borderBottom: 'none',
+                      width: 80,
+                    }}
+                  >
+                    操作
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedWeeks.map((week, weekIdx) => (
+                  <React.Fragment key={weekIdx}>
+                    {/* 週ヘッダー */}
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        sx={{
+                          background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+                          py: 1,
+                          px: 2,
+                          borderBottom: '1px solid',
+                          borderColor: 'grey.200',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: 'primary.main',
+                            }}
+                          />
+                          <Typography
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              color: 'grey.700',
+                            }}
+                          >
+                            {format(week.weekStart, 'M/d', { locale: ja })} - {format(week.weekEnd, 'M/d(E)', { locale: ja })}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              color: 'primary.main',
+                              bgcolor: 'primary.50',
+                              px: 0.75,
+                              py: 0.25,
+                              borderRadius: 1,
+                            }}
+                          >
+                            {week.batches.length}件
+                          </Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    {/* 週内のバッチ */}
+                    {week.batches.map((batch) => (
+                      <TableRow
+                        key={batch.id}
+                        sx={{
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': {
+                            bgcolor: 'rgba(99, 102, 241, 0.04)',
+                          },
+                          '&:last-child td': {
+                            borderBottom: weekIdx < sortedWeeks.length - 1 ? '1px solid' : 'none',
+                            borderColor: 'grey.100',
+                          },
+                        }}
+                      >
+                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 1,
+                                bgcolor: 'grey.100',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'grey.700' }}>
+                                {format(new Date(batch.deliveryDate), 'd')}
+                              </Typography>
+                            </Box>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'grey.600' }}>
+                              {format(new Date(batch.deliveryDate), 'E', { locale: ja })}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {batch.suppliers.map((supplier, idx) => {
+                              const supplierColor = getSupplierColorByName(supplier, supplierPresets);
+                              return (
+                                <Box
+                                  key={idx}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    px: 1,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
+                                    borderLeft: `3px solid ${supplierColor}`,
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: supplierColor,
+                                    }}
+                                  >
+                                    {supplier}
+                                  </Typography>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'grey.700' }}>
+                            {batch.productCount}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main' }}>
+                            {batch.totalQuantity.toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            py: 1.25,
+                            borderBottom: '1px solid',
+                            borderColor: 'grey.100',
+                            display: { xs: 'none', sm: 'table-cell' },
+                          }}
+                        >
+                          <Typography sx={{ fontSize: '0.7rem', color: 'grey.500' }}>
+                            {batch.createdAt
+                              ? format(batch.createdAt, 'M/d HH:mm')
+                              : '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => fetchBatchDetails(batch)}
+                              sx={{
+                                p: 0.5,
+                                color: 'grey.500',
+                                '&:hover': {
+                                  bgcolor: 'primary.50',
+                                  color: 'primary.main',
+                                },
+                              }}
+                            >
+                              <Visibility sx={{ fontSize: 18 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenDeleteDialog(batch)}
+                              sx={{
+                                p: 0.5,
+                                color: 'grey.400',
+                                '&:hover': {
+                                  bgcolor: 'error.50',
+                                  color: 'error.main',
+                                },
+                              }}
+                            >
+                              <Delete sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       )}
 
-      {/* 詳細モーダル */}
+      {/* 詳細モーダル - モダンデザイン */}
       <Dialog
         open={Boolean(selectedBatch) || Boolean(selectedDateRange)}
         onClose={handleCloseDetails}
         maxWidth="xl"
         fullWidth
         fullScreen={isFullScreen || window.innerWidth < 600}
-        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
+        sx={{
+          zIndex: MODAL_Z_INDEX.NESTED_DIALOG,
+          '& .MuiDialog-paper': {
+            borderRadius: isFullScreen ? 0 : 3,
+            overflow: 'hidden',
+          },
+        }}
       >
-        <DialogTitle
+        {/* ヘッダー */}
+        <Box
           sx={{
-            fontWeight: 600,
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            py: { xs: 1, sm: 2 },
-            px: { xs: 1.5, sm: 3 },
+            px: { xs: 1.5, sm: 2 },
+            py: 1.25,
+            borderBottom: '1px solid',
+            borderColor: 'grey.200',
+            bgcolor: 'white',
           }}
         >
-          <Box sx={{ flex: 1 }}>
-            <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
+          {/* 左側: タイトル */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              sx={{
+                fontSize: { xs: '0.9rem', sm: '1rem' },
+                fontWeight: 700,
+                color: 'text.primary',
+              }}
+            >
               {selectedDateRange ? '配分履歴' : '配分詳細'}
             </Typography>
             {selectedBatch && (
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                {format(new Date(selectedBatch.deliveryDate), 'M月d日(E)', { locale: ja })}
+              <Typography
+                sx={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'grey.500',
+                  bgcolor: 'grey.100',
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                }}
+              >
+                {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
               </Typography>
             )}
             {selectedDateRange && (
-              <Typography
-                variant="caption"
-                color="primary.main"
+              <Box
+                onClick={() => setDatePickerOpen(true)}
                 sx={{
-                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  cursor: 'pointer',
-                  '&:hover': { textDecoration: 'underline' },
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: 'primary.50',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'primary.100' },
                 }}
-                onClick={() => setDatePickerOpen(true)}
               >
-                <DateRange fontSize="small" />
-                {format(parseISO(selectedDateRange.start), 'M月d日(E)', { locale: ja })}〜
-                {format(parseISO(selectedDateRange.end), 'M月d日(E)', { locale: ja })}
+                <DateRange sx={{ fontSize: 14, color: 'primary.main' }} />
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'primary.main' }}>
+                  {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} - {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
+                </Typography>
+              </Box>
+            )}
+            {details.length > 0 && (
+              <Typography
+                sx={{
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: 'grey.500',
+                }}
+              >
+                {details.length}品
               </Typography>
             )}
           </Box>
 
-          {/* アクションボタン */}
-          <Stack direction="row" spacing={0.5}>
-            {/* 非表示行の復元ボタン */}
+          {/* 右側: コントロール */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
             {hiddenRowIds.size > 0 && (
-              <Chip
-                label={`${hiddenRowIds.size}件非表示`}
-                size="small"
-                color="warning"
-                onDelete={() => setHiddenRowIds(new Set())}
-                deleteIcon={<Visibility fontSize="small" />}
-                sx={{ height: 24, fontSize: '0.7rem' }}
-              />
+              <Box
+                onClick={() => setHiddenRowIds(new Set())}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: 'warning.50',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'warning.100' },
+                }}
+              >
+                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'warning.main' }}>
+                  {hiddenRowIds.size}件非表示
+                </Typography>
+                <Visibility sx={{ fontSize: 14, color: 'warning.main' }} />
+              </Box>
             )}
-            <IconButton onClick={() => setIsFullScreen(!isFullScreen)} size="small">
-              {isFullScreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+            <IconButton
+              size="small"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              sx={{ p: 0.5, color: 'grey.500' }}
+            >
+              {isFullScreen ? <FullscreenExit sx={{ fontSize: 18 }} /> : <Fullscreen sx={{ fontSize: 18 }} />}
             </IconButton>
             {selectedDateRange && (
               <IconButton
+                size="small"
                 onClick={() => setSettingsOpen(true)}
-                size="small"
-                color={settingsOpen ? 'primary' : 'default'}
-              >
-                <Settings fontSize="small" />
-              </IconButton>
-            )}
-          </Stack>
-        </DialogTitle>
-
-        {/* コンパクトなグループ化コントロール（モバイル用） */}
-        {selectedDateRange && !settingsOpen && (
-          <Box sx={{
-            px: { xs: 1, sm: 2 },
-            py: 0.5,
-            borderBottom: 1,
-            borderColor: 'divider',
-            backgroundColor: 'grey.50',
-          }}>
-            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                グループ:
-              </Typography>
-              <ToggleButtonGroup
-                value={groupMode}
-                exclusive
-                onChange={(_, newMode) => newMode && setGroupMode(newMode)}
-                size="small"
                 sx={{
-                  '& .MuiToggleButton-root': {
-                    py: { xs: 0.25, sm: 0.5 },
-                    px: { xs: 0.75, sm: 1 },
-                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                    minWidth: { xs: 40, sm: 60 },
-                  },
+                  p: 0.5,
+                  color: settingsOpen ? 'primary.main' : 'grey.500',
                 }}
               >
-                <ToggleButton value="date">日付</ToggleButton>
-                <ToggleButton value="product">商品</ToggleButton>
-                <ToggleButton value="composite">複合</ToggleButton>
-              </ToggleButtonGroup>
+                <Settings sx={{ fontSize: 18 }} />
+              </IconButton>
+            )}
+            <IconButton
+              size="small"
+              onClick={handleCloseDetails}
+              sx={{ p: 0.5, color: 'grey.500' }}
+            >
+              <Close sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* グループ化コントロール */}
+        {selectedDateRange && !settingsOpen && (
+          <Box
+            sx={{
+              px: { xs: 1.5, sm: 2 },
+              py: 0.75,
+              borderBottom: '1px solid',
+              borderColor: 'grey.100',
+              background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'grey.600' }}>
+                グループ:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {[
+                  { value: 'date', label: '日付' },
+                  { value: 'product', label: '商品' },
+                  { value: 'composite', label: '複合' },
+                ].map((option) => (
+                  <Box
+                    key={option.value}
+                    onClick={() => setGroupMode(option.value as typeof groupMode)}
+                    sx={{
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      bgcolor: groupMode === option.value ? 'primary.main' : 'white',
+                      color: groupMode === option.value ? 'white' : 'grey.600',
+                      border: '1px solid',
+                      borderColor: groupMode === option.value ? 'primary.main' : 'grey.300',
+                      '&:hover': {
+                        bgcolor: groupMode === option.value ? 'primary.dark' : 'grey.50',
+                      },
+                    }}
+                  >
+                    {option.label}
+                  </Box>
+                ))}
+              </Box>
 
               {(filters.productNames.length > 0 || filters.origins.length > 0 ||
                 filters.specifications.length > 0 || filters.dates.length > 0) && (
-                <Chip
-                  label={`フィルター ${filters.productNames.length + filters.origins.length +
-                    filters.specifications.length + filters.dates.length}`}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem' }}
-                />
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    bgcolor: 'primary.50',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                  }}
+                >
+                  フィルター {filters.productNames.length + filters.origins.length + filters.specifications.length + filters.dates.length}
+                </Typography>
               )}
 
               {(hiddenRowIds.size > 0 || hiddenColumns.size > 0) && (
-                <Chip
-                  label={`非表示 ${hiddenRowIds.size + hiddenColumns.size}`}
-                  size="small"
-                  color="warning"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem' }}
-                />
+                <Typography
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: 'warning.main',
+                    bgcolor: 'warning.50',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                  }}
+                >
+                  非表示 {hiddenRowIds.size + hiddenColumns.size}
+                </Typography>
               )}
-            </Stack>
+            </Box>
           </Box>
         )}
 
-        <DialogContent dividers sx={{ p: 0 }}>
+        <DialogContent sx={{ p: 0 }}>
           {detailsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={28} />
             </Box>
           ) : details.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography color="text.secondary">詳細データがありません</Typography>
+            <Box
+              sx={{
+                py: 6,
+                px: 3,
+                textAlign: 'center',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  bgcolor: 'grey.100',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 2,
+                }}
+              >
+                <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
+              </Box>
+              <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'grey.600' }}>
+                詳細データがありません
+              </Typography>
             </Box>
           ) : (
-            /* データグリッド表示 */
-            <Box sx={{ height: isFullScreen ? 'calc(100vh - 250px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
+            /* データグリッド表示 - モダンスタイル */
+            <Box sx={{ height: isFullScreen ? 'calc(100vh - 140px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
               <DataGrid
                 rows={detailRows.filter(row => !hiddenRowIds.has(row.id))}
                 columns={detailColumns}
@@ -1517,56 +1802,61 @@ export const AllocationHistoryPage: React.FC = () => {
                 sx={{
                   border: 'none',
                   '& .MuiDataGrid-main': {
-                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // モバイルでより小さく
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   },
                   '& .MuiDataGrid-cell': {
-                    borderColor: '#e0e0e0',
-                    fontSize: { xs: '0.65rem', sm: '0.875rem' }, // さらに小さく
-                    padding: { xs: '2px 3px', sm: '8px' }, // パディングを削減
-                    lineHeight: { xs: 1.2, sm: 1.43 }, // 行間を狭く
+                    borderColor: 'grey.100',
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
+                    padding: { xs: '4px 6px', sm: '8px 12px' },
+                    lineHeight: 1.4,
                   },
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
-                    fontWeight: 600,
-                    minHeight: { xs: '36px !important', sm: '56px !important' }, // ヘッダー高さを削減
+                    bgcolor: 'grey.50',
+                    borderBottom: '1px solid',
+                    borderColor: 'grey.200',
+                    minHeight: { xs: '40px !important', sm: '48px !important' },
                   },
                   '& .MuiDataGrid-columnHeader': {
-                    padding: { xs: '2px 4px', sm: '8px' },
+                    padding: { xs: '4px 6px', sm: '8px 12px' },
                   },
                   '& .MuiDataGrid-columnHeaderTitle': {
-                    fontWeight: 600,
+                    fontWeight: 700,
                     whiteSpace: 'pre-wrap',
-                    lineHeight: 1.1,
-                    fontSize: { xs: '0.6rem', sm: '0.875rem' }, // ヘッダーも小さく
+                    lineHeight: 1.2,
+                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                    color: 'grey.600',
                   },
                   '& .MuiDataGrid-row': {
-                    minHeight: { xs: '28px !important', sm: '52px !important' }, // 行高を削減
+                    minHeight: { xs: '36px !important', sm: '44px !important' },
+                    transition: 'background-color 0.15s ease',
+                    '&:hover': {
+                      bgcolor: 'rgba(99, 102, 241, 0.04)',
+                    },
                   },
                   '& .MuiDataGrid-virtualScroller': {
-                    // 横スクロールをスムーズに
                     overflowX: 'auto',
                     WebkitOverflowScrolling: 'touch',
                   },
-                  // 小計行のスタイル
+                  // 小計行のスタイル - モダン
                   '& .row-subtotal': {
-                    backgroundColor: '#e3f2fd !important',
-                    fontWeight: 600,
+                    background: 'linear-gradient(to right, #eff6ff, #dbeafe) !important',
                     '& .MuiDataGrid-cell': {
-                      color: '#1565c0',
-                      borderTop: '2px solid #1976d2',
-                      borderBottom: '1px solid #1976d2',
-                      fontSize: { xs: '0.7rem', sm: '0.9rem' },
+                      color: '#3b82f6',
+                      fontWeight: 600,
+                      borderTop: '1px solid #93c5fd',
+                      borderBottom: '1px solid #93c5fd',
+                      fontSize: { xs: '0.7rem', sm: '0.8rem' },
                     },
                   },
-                  // 総合計行のスタイル
+                  // 総合計行のスタイル - モダン
                   '& .row-grandtotal': {
-                    backgroundColor: '#1976d2 !important',
-                    fontWeight: 700,
+                    background: 'linear-gradient(to right, #6366f1, #8b5cf6) !important',
                     '& .MuiDataGrid-cell': {
                       color: '#ffffff',
-                      fontSize: { xs: '0.75rem', sm: '0.95rem' },
-                      borderTop: '3px solid #0d47a1',
-                      borderBottom: '3px solid #0d47a1',
+                      fontWeight: 700,
+                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                      borderTop: 'none',
+                      borderBottom: 'none',
                     },
                   },
                 }}
@@ -1574,12 +1864,6 @@ export const AllocationHistoryPage: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCloseDetails} variant="contained" color="primary">
-            閉じる
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* 削除確認ダイアログ */}
@@ -2183,11 +2467,10 @@ export const AllocationHistoryPage: React.FC = () => {
               disabled={!tempDateRange}
               onClick={() => {
                 if (tempDateRange) {
-                  handleDateSelect({
-                    start: parseISO(tempDateRange.start),
-                    end: addMonths(parseISO(tempDateRange.end), 0), // Use actual end date
-                    allDay: true,
-                  } as any);
+                  handleDateRangeSelect(
+                    parseISO(tempDateRange.start),
+                    parseISO(tempDateRange.end)
+                  );
                   setDatePickerOpen(false);
                   setTempDateRange(null);
                 }

@@ -22,7 +22,7 @@ import { useStoreSettings } from '@/hooks/useStoreSettings';
  *
  * 注文フォームの5つのステップを管理するコンポーネント
  *
- * Step 0: 店着日・帳合先入力
+ * Step 0: 店着日入力
  * Step 1: 商品基本情報入力
  * Step 2: 商品価格・総納品数入力
  * Step 3: 店舗配分入力
@@ -55,8 +55,7 @@ interface OrderFormStepsProps {
   removeProduct: UseFieldArrayRemove;
   moveProduct: UseFieldArrayMove;
 
-  // Step 0: 店着日・帳合先
-  supplierOptions: string[];
+  // Step 1: 帳合先変更
   onSuppliersChange: (newValue: string[]) => string[];
 
   // Step 1: 商品基本情報
@@ -88,7 +87,6 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
   appendProduct,
   removeProduct,
   moveProduct,
-  supplierOptions,
   onSuppliersChange,
   productNameOptions,
   originOptions,
@@ -129,19 +127,17 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
 
   return (
     <>
-      {/* Step 0: 店着日・帳合先 */}
+      {/* Step 0: 店着日 */}
       {activeStep === 0 && (
         <Box sx={{ py: 2 }}>
           <DeliveryDateForm
             control={control}
             errors={errors}
-            supplierOptions={supplierOptions}
-            onSuppliersChange={onSuppliersChange}
           />
         </Box>
       )}
 
-      {/* Step 1: 商品情報（基本） */}
+      {/* Step 1: 帳合先・商品情報（基本） */}
       {activeStep === 1 && (
         <Box sx={{ py: 2 }}>
           <ProductBasicInfoForm
@@ -157,6 +153,7 @@ export const OrderFormSteps: React.FC<OrderFormStepsProps> = ({
             onNavigateToStep={setActiveStep}
             activeProductIndex={activeProductIndex}
             onProductIndexChange={setActiveProductIndex}
+            onSuppliersChange={onSuppliersChange}
           />
         </Box>
       )}

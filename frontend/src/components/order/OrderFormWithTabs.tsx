@@ -40,7 +40,6 @@ interface OrderFormWithTabsProps {
   handleSubmit: UseFormHandleSubmit<OrderFormData>;
 
   // Autocomplete options
-  supplierOptions: string[];
   productNameOptions: string[];
   originOptions: string[];
 
@@ -96,7 +95,6 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
   removeProduct,
   moveProduct,
   handleSubmit,
-  supplierOptions,
   productNameOptions,
   originOptions,
   suppliers,
@@ -160,7 +158,7 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
             scrollButtons="auto"
             sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
           >
-            <Tab label="店着日・帳合先" />
+            <Tab label="店着日" />
             <Tab label="商品情報" />
             <Tab label="価格・数量" />
             <Tab label="店舗配分" />
@@ -196,7 +194,6 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
             appendProduct={appendProduct}
             removeProduct={removeProduct}
             moveProduct={moveProduct}
-            supplierOptions={supplierOptions}
             onSuppliersChange={handleSuppliersChange}
             productNameOptions={productNameOptions}
             originOptions={originOptions}

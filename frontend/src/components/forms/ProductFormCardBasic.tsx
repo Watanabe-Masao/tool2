@@ -26,8 +26,10 @@ import {
   ListItemText,
   Grow,
 } from '@mui/material';
-import { Category as CategoryIcon, Inventory2, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
+import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
 import type { DeleteDialogState } from '@/types/ui';
 import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
@@ -84,7 +86,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   originOptions = [],
   onEnterPress,
   suppliers,
-  onNavigateToStep,
+  onNavigateToStep: _onNavigateToStep,
   onAddProductFromPreset,
 }) => {
   const productErrors = errors.products?.[index];
@@ -92,6 +94,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const { setValue } = useFormContext<OrderFormData>();
   const { user } = useAuthContext();
   const firestoreService = useFirestoreService();
+  const { presets: supplierPresets } = useSupplierPresets();
 
   // 現在の値を監視
   const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
@@ -279,31 +282,16 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * 帳合先チップをクリック
    */
   const handleSupplierClick = () => {
-    if (!suppliers || suppliers.length === 0) {
-      showError('ステップ1で帳合先を選択してください');
-      // ステップ1に戻る
-      if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 300);
-      }
+    // suppliersがない場合はプリセット全体を使用
+    const availableSuppliers = suppliers && suppliers.length > 0
+      ? suppliers
+      : supplierPresets.map(p => p.supplier);
+
+    if (availableSuppliers.length === 0) {
+      showError('帳合先が登録されていません。設定から追加してください。');
       return;
     }
     setSupplierSelectOpen(true);
-  };
-
-  /**
-   * プリセット選択ボタンをクリック
-   */
-  const handlePresetButtonClick = () => {
-    // ステップ1で帳合先が選択されていればモーダルを開く
-    if (!suppliers || suppliers.length === 0) {
-      showError('ステップ1で帳合先を選択してください');
-      // ステップ1に戻る
-      if (onNavigateToStep) {
-        setTimeout(() => onNavigateToStep(0), 300);
-      }
-      return;
-    }
-    setPresetModalOpen(true);
   };
 
   /**
@@ -629,24 +617,32 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 </Typography>
                 <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
               </ButtonBase>
-              <Chip
-                icon={<Inventory2 />}
-                label="PL"
-                onClick={handlePresetButtonClick}
-                variant="outlined"
-                size="small"
-                color="secondary"
-                sx={{ fontSize: '0.75rem' }}
-              />
-              <Chip
-                icon={<Business />}
-                label={currentSupplier || '帳合先'}
-                onClick={handleSupplierClick}
-                variant="outlined"
-                size="small"
-                color={currentSupplier ? 'primary' : 'default'}
-                sx={{ fontSize: '0.75rem' }}
-              />
+              {(() => {
+                const supplierColor = currentSupplier ? getSupplierColorByName(currentSupplier, supplierPresets) : undefined;
+                return (
+                  <Chip
+                    icon={<Business sx={{ color: supplierColor ? `${supplierColor} !important` : undefined }} />}
+                    label={currentSupplier || '帳合先'}
+                    onClick={handleSupplierClick}
+                    variant={currentSupplier ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{
+                      fontSize: '0.75rem',
+                      ...(supplierColor && {
+                        bgcolor: getSupplierColorWithOpacity(supplierColor, 0.15),
+                        color: supplierColor,
+                        borderColor: supplierColor,
+                        '& .MuiChip-icon': {
+                          color: supplierColor,
+                        },
+                        '&:hover': {
+                          bgcolor: getSupplierColorWithOpacity(supplierColor, 0.25),
+                        },
+                      }),
+                    }}
+                  />
+                );
+              })()}
             </Box>
           </Box>
 
@@ -812,6 +808,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         helperText={productErrors?.specification?.message}
                         value={field.value || ''}
                         fullWidth
+                        required
                       />
                       {/* 規格履歴チップ */}
                       {specs.length > 0 && (
@@ -885,6 +882,35 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                         helperText={productErrors?.unit?.message}
                         value={field.value || ''}
                         fullWidth
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Box
+                                onClick={() => {
+                                  field.onChange('gあたり');
+                                  // 規格が未入力の場合は「100」を自動設定
+                                  if (!currentSpecification) {
+                                    setValue(`products.${index}.specification`, '100');
+                                  }
+                                }}
+                                sx={{
+                                  px: 0.75,
+                                  py: 0.25,
+                                  bgcolor: field.value === 'gあたり' ? 'primary.main' : 'grey.100',
+                                  color: field.value === 'gあたり' ? 'white' : 'text.secondary',
+                                  borderRadius: 1,
+                                  fontSize: '0.7rem',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    bgcolor: field.value === 'gあたり' ? 'primary.dark' : 'grey.200',
+                                  },
+                                }}
+                              >
+                                gあたり
+                              </Box>
+                            </InputAdornment>
+                          ),
+                        }}
                       />
                       {/* 単位履歴チップ */}
                       {units.length > 0 && (
@@ -967,6 +993,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                           field.onChange(value ? parseInt(value, 10) : null);
                         }}
                         fullWidth
+                        required
                       />
                       {/* 入数履歴チップ */}
                       {quantities.length > 0 && (
@@ -1037,6 +1064,34 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     helperText={productErrors?.packageUnit?.message}
                     value={field.value || ''}
                     fullWidth
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Stack direction="row" spacing={0.5}>
+                            {['kg', 'g'].map((unit) => (
+                              <Box
+                                key={unit}
+                                onClick={() => field.onChange(unit)}
+                                sx={{
+                                  px: 0.75,
+                                  py: 0.25,
+                                  bgcolor: field.value === unit ? 'primary.main' : 'grey.100',
+                                  color: field.value === unit ? 'white' : 'text.secondary',
+                                  borderRadius: 1,
+                                  fontSize: '0.7rem',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    bgcolor: field.value === unit ? 'primary.dark' : 'grey.200',
+                                  },
+                                }}
+                              >
+                                {unit}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 )}
               />
@@ -1147,24 +1202,65 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       <Dialog open={supplierSelectOpen} onClose={() => setSupplierSelectOpen(false)}>
         <DialogTitle>帳合先を選択</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+          <DialogContentText sx={{ mb: 2, fontSize: '0.85rem' }}>
             この商品の帳合先を選択してください
           </DialogContentText>
-          <Stack spacing={1}>
-            {suppliers?.map((supplier) => (
-              <Button
-                key={supplier}
-                variant={currentSupplier === supplier ? 'contained' : 'outlined'}
-                onClick={() => handleSelectSupplier(supplier)}
-                fullWidth
-              >
-                {supplier}
-              </Button>
-            ))}
+          <Stack spacing={0.75}>
+            {(() => {
+              // suppliersがない場合はプリセット全体を使用
+              const availableSuppliers = suppliers && suppliers.length > 0
+                ? suppliers
+                : supplierPresets.map(p => p.supplier);
+              return availableSuppliers.map((supplier) => {
+                const supplierColor = getSupplierColorByName(supplier, supplierPresets);
+                const isSelected = currentSupplier === supplier;
+                return (
+                  <Box
+                    key={supplier}
+                    onClick={() => handleSelectSupplier(supplier)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1.5,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.50',
+                      border: '1px solid',
+                      borderColor: isSelected ? supplierColor : 'grey.200',
+                      '&:hover': {
+                        bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
+                        borderColor: supplierColor,
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: supplierColor,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: '0.9rem',
+                        fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? supplierColor : 'text.primary',
+                      }}
+                    >
+                      {supplier}
+                    </Typography>
+                  </Box>
+                );
+              });
+            })()}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit">
+          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit" size="small">
             閉じる
           </Button>
         </DialogActions>

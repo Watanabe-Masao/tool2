@@ -156,7 +156,6 @@ const OrderFormContent: React.FC = () => {
           removeProduct={removeProductFromArray}
           moveProduct={moveProduct}
           handleSubmit={handleSubmit}
-          supplierOptions={autocomplete.supplierOptions}
           productNameOptions={autocomplete.productNameOptions}
           originOptions={autocomplete.originOptions}
           suppliers={suppliers || []}
