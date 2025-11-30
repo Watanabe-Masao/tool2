@@ -12,15 +12,6 @@ import { EmptyState } from '@/components/ui';
 import { useMemo } from 'react';
 import { AllocationDetailModalHeader } from './AllocationDetailModalHeader';
 import { GroupModeSelector } from './GroupModeSelector';
-import {
-  FONT_SIZE,
-  ICON_SIZE,
-  PADDING,
-  MIN_HEIGHT,
-  LINE_HEIGHT,
-  TRANSITION,
-  HEIGHT,
-} from '../styles';
 
 /**
  * AllocationDetailModal Props
@@ -157,17 +148,17 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
           </Box>
         ) : details.length === 0 ? (
           <EmptyState
-            icon={<CalendarMonth sx={{ fontSize: ICON_SIZE.XL, color: 'grey.400' }} />}
+            icon={<CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />}
             title="詳細データがありません"
             iconBgColor="grey.100"
           />
         ) : (
-          /* データグリッド表示 - モダンスタイル（Phase D: 定数化） */
+          /* データグリッド表示 - グローバルテーマを使用 */
           <Box
             sx={{
               height: isFullScreen
-                ? HEIGHT.FULLSCREEN_OFFSET
-                : { xs: HEIGHT.GRID_MOBILE, sm: HEIGHT.GRID_TABLET, md: HEIGHT.GRID_DESKTOP },
+                ? 'calc(100vh - 140px)'
+                : { xs: 400, sm: 500, md: 600 },
               width: '100%',
             }}
           >
@@ -188,33 +179,33 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-main': {
-                  fontSize: { xs: FONT_SIZE.SM, sm: FONT_SIZE.BASE },
+                  fontSize: { xs: '0.7rem', sm: '0.8rem' },
                 },
                 '& .MuiDataGrid-cell': {
                   borderColor: 'grey.100',
-                  fontSize: { xs: FONT_SIZE.SM, sm: FONT_SIZE.BASE },
-                  padding: PADDING.CELL_XS,
-                  lineHeight: LINE_HEIGHT.NORMAL,
+                  fontSize: { xs: '0.7rem', sm: '0.8rem' },
+                  padding: { xs: '4px 6px', sm: '8px 12px' },
+                  lineHeight: 1.4,
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   bgcolor: 'grey.50',
                   borderBottom: '1px solid',
                   borderColor: 'grey.200',
-                  minHeight: { xs: MIN_HEIGHT.HEADER_XS, sm: MIN_HEIGHT.HEADER_SM },
+                  minHeight: { xs: '40px !important', sm: '48px !important' },
                 },
                 '& .MuiDataGrid-columnHeader': {
-                  padding: PADDING.CELL_XS,
+                  padding: { xs: '4px 6px', sm: '8px 12px' },
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
                   fontWeight: 700,
                   whiteSpace: 'pre-wrap',
-                  lineHeight: LINE_HEIGHT.COMPACT,
-                  fontSize: { xs: FONT_SIZE.XS, sm: FONT_SIZE.MD },
+                  lineHeight: 1.2,
+                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   color: 'grey.600',
                 },
                 '& .MuiDataGrid-row': {
-                  minHeight: { xs: MIN_HEIGHT.ROW_XS, sm: MIN_HEIGHT.ROW_SM },
-                  transition: `background-color ${TRANSITION.FAST}`,
+                  minHeight: { xs: '36px !important', sm: '44px !important' },
+                  transition: 'background-color 0.15s ease',
                   '&:hover': {
                     bgcolor: 'rgba(99, 102, 241, 0.04)',
                   },
@@ -231,7 +222,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                     fontWeight: 600,
                     borderTop: '1px solid #93c5fd',
                     borderBottom: '1px solid #93c5fd',
-                    fontSize: { xs: FONT_SIZE.SM, sm: FONT_SIZE.BASE },
+                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   },
                 },
                 // 総合計行のスタイル - モダン
@@ -240,7 +231,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                   '& .MuiDataGrid-cell': {
                     color: '#ffffff',
                     fontWeight: 700,
-                    fontSize: { xs: FONT_SIZE.MD, sm: FONT_SIZE.LG },
+                    fontSize: { xs: '0.75rem', sm: '0.85rem' },
                     borderTop: 'none',
                     borderBottom: 'none',
                   },
