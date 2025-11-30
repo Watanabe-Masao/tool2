@@ -1,7 +1,6 @@
 import { Box, Typography } from '@mui/material';
 import { StatusBadge } from '@/components/ui';
 import { useCallback } from 'react';
-import { FONT_SIZE, SPACING, BORDER_RADIUS, TRANSITION } from '../styles';
 
 /**
  * GroupMode type

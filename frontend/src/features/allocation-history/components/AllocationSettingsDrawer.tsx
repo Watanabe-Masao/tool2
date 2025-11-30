@@ -1,6 +1,5 @@
 import { Drawer, Box, Stack, Typography, IconButton, Divider, Button } from '@mui/material';
 import { Close, Visibility } from '@mui/icons-material';
-import { MODAL_Z_INDEX } from '@/utils/constants';
 import type {
   AllocationHistoryFilters,
   AllocationHistoryView,
@@ -71,7 +70,6 @@ export const AllocationSettingsDrawer: React.FC<AllocationSettingsDrawerProps> =
       anchor="bottom"
       open={open}
       onClose={onClose}
-      sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
       PaperProps={{
         sx: {
           borderRadius: '16px 16px 0 0',

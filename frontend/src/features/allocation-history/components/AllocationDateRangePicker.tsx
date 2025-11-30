@@ -1,7 +1,5 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Stack } from '@mui/material';
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { MODAL_Z_INDEX } from '@/utils/constants';
 
 /**
  * AllocationDateRangePicker Props
@@ -57,7 +55,7 @@ export const AllocationDateRangePicker: React.FC<AllocationDateRangePickerProps>
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>日付範囲を選択</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>

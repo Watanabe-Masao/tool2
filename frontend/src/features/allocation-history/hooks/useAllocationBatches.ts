@@ -208,12 +208,20 @@ export const useAllocationBatches = (userId: string | undefined) => {
       }
 
       // PreviewProduct形式に変換
-      const previewData: PreviewProduct[] = allDetails.map((detail) => ({
-        productName: detail.productName,
-        origin: detail.origin || '',
-        specification: detail.specification || '',
-        supplier: selectedBatches.find(b => b.id === detail.batchId)?.suppliers[0] || '',
-      }));
+      const previewData: PreviewProduct[] = allDetails.map((detail) => {
+        const batch = selectedBatches.find(b => b.id === detail.batchId);
+        return {
+          productName: detail.productName,
+          origin: detail.origin || '',
+          specification: detail.specification || '',
+          unit: detail.unit || '',
+          quantityPerPackage: detail.quantityPerPackage,
+          packageUnit: detail.packageUnit || '',
+          totalDelivery: detail.totalDelivery || 0,
+          supplier: batch?.suppliers[0] || '',
+          deliveryDate: batch?.deliveryDate || '',
+        };
+      });
 
       setPreviewProducts(previewData);
     } catch (err) {

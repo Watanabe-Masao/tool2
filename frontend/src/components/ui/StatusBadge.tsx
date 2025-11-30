@@ -50,7 +50,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   sx = {},
 }) => {
   // バリアントごとの色設定
-  const variantStyles: Record<StatusBadgeVariant, { color: string; bgcolor: string }> = {
+  const variantStyles = {
     default: {
       color: 'grey.500',
       bgcolor: 'grey.100',
@@ -78,7 +78,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   };
 
   // サイズごとのスタイル設定
-  const sizeStyles: Record<StatusBadgeSize, SxProps<Theme>> = {
+  const sizeStyles = {
     small: {
       fontSize: '0.65rem',
       px: 0.75,
@@ -91,18 +91,17 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     },
   };
 
+  const combinedSx: SxProps<Theme> = {
+    fontWeight: 600,
+    borderRadius: 1,
+    display: 'inline-block',
+    ...variantStyles[variant],
+    ...sizeStyles[size],
+    ...sx,
+  };
+
   return (
-    <Typography
-      component="span"
-      sx={{
-        fontWeight: 600,
-        borderRadius: 1,
-        display: 'inline-block',
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        ...sx,
-      }}
-    >
+    <Typography component="span" sx={combinedSx}>
       {children}
     </Typography>
   );

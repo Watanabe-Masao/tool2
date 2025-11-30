@@ -3,7 +3,6 @@ import { Delete } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { AllocationBatch } from '@/types/allocationHistory';
-import { MODAL_Z_INDEX } from '@/utils/constants';
 
 /**
  * AllocationDeleteDialog Props
@@ -56,7 +55,6 @@ export const AllocationDeleteDialog: React.FC<AllocationDeleteDialogProps> = ({
       onClose={deleting ? undefined : onClose}
       maxWidth="sm"
       fullWidth
-      sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
     >
       <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>
         配分履歴を削除しますか？

@@ -12,7 +12,6 @@ import {
   Button,
 } from '@mui/material';
 import { FilterList } from '@mui/icons-material';
-import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/utils/constants';
 import type { AllocationHistoryFilters, AllocationHistoryTableData } from '../hooks';
 import { formatAllocationDate } from '../utils';
 
@@ -83,9 +82,6 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
                 ))}
               </Box>
             )}
-            MenuProps={{
-              sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-            }}
           >
             {availableFilterValues.productNames.map((name) => (
               <MenuItem key={name} value={name}>
@@ -110,9 +106,6 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
                 ))}
               </Box>
             )}
-            MenuProps={{
-              sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-            }}
           >
             {availableFilterValues.origins.map((origin) => (
               <MenuItem key={origin} value={origin}>
@@ -137,9 +130,6 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
                 ))}
               </Box>
             )}
-            MenuProps={{
-              sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-            }}
           >
             {availableFilterValues.specifications.map((spec) => (
               <MenuItem key={spec} value={spec}>
@@ -164,9 +154,6 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
                 ))}
               </Box>
             )}
-            MenuProps={{
-              sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-            }}
           >
             {availableFilterValues.dates.map((date) => (
               <MenuItem key={date} value={date}>

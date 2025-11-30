@@ -1,6 +1,5 @@
 import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { AllocationDetail } from '@/types/allocationHistory';
 import type { DetailGridRow, AllocationDetailWithDate } from '../types';
 import type { CompositeKeyField, SortOrder } from '../hooks/useAllocationFilters';
 import {

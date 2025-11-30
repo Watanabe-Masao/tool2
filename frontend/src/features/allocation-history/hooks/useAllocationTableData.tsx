@@ -97,7 +97,7 @@ export const useAllocationTableData = (params: UseAllocationTableDataParams) => 
     compositeKeyFields,
     filters,
     hiddenColumns,
-    hiddenRowIds,
+    hiddenRowIds: _hiddenRowIds,
     onHideRow,
   } = params;
 

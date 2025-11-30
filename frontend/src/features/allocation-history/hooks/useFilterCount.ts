@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AllocationHistoryFilters } from './useAllocationFilters';
+import type { UseAllocationFiltersReturn } from './useAllocationFilters';
 
 /**
  * useFilterCount Hook
@@ -26,10 +26,10 @@ import type { AllocationHistoryFilters } from './useAllocationFilters';
  * )}
  * ```
  *
- * @param filters - AllocationHistoryFilters オブジェクト
+ * @param filters - UseAllocationFiltersReturn オブジェクト
  * @returns アクティブなフィルター数
  */
-export const useFilterCount = (filters: AllocationHistoryFilters): number => {
+export const useFilterCount = (filters: UseAllocationFiltersReturn): number => {
   const { filters: filterState } = filters;
 
   return useMemo(

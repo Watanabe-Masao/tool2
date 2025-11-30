@@ -1,7 +1,6 @@
 import { Box, Typography, FormGroup, FormControlLabel, Checkbox, Chip, Button, Divider } from '@mui/material';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationHistoryView } from '../hooks';
-import { useToggleSetItem } from '../hooks';
 
 /**
  * StoreCategory type
@@ -43,10 +42,7 @@ export interface ColumnVisibilitySectionProps {
  * ```
  */
 export const ColumnVisibilitySection: React.FC<ColumnVisibilitySectionProps> = ({ view }) => {
-  const { hiddenColumns, setHiddenColumns, showAllColumns } = view;
-
-  // Phase C: useToggleSetItem フックを使用してSet操作を簡素化
-  const toggleColumn = useToggleSetItem(hiddenColumns, setHiddenColumns);
+  const { hiddenColumns, toggleColumn, showColumn, hideColumn, showAllColumns } = view;
 
   // 店舗カテゴリー（実際のプロジェクトではマスタから取得）
   const storeCategories: StoreCategory[] = [];
@@ -103,13 +99,11 @@ export const ColumnVisibilitySection: React.FC<ColumnVisibilitySectionProps> = (
                   color={allVisible ? 'secondary' : someVisible ? 'default' : 'default'}
                   variant={allVisible ? 'filled' : someVisible ? 'outlined' : 'outlined'}
                   onClick={() => {
-                    const newHidden = new Set(hiddenColumns);
                     if (allVisible) {
-                      categoryStoreFields.forEach((field) => newHidden.add(field));
+                      categoryStoreFields.forEach((field) => hideColumn(field));
                     } else {
-                      categoryStoreFields.forEach((field) => newHidden.delete(field));
+                      categoryStoreFields.forEach((field) => showColumn(field));
                     }
-                    setHiddenColumns(newHidden);
                   }}
                   sx={{
                     cursor: 'pointer',

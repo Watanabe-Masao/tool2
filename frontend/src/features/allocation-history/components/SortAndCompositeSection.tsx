@@ -1,7 +1,6 @@
 import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip, Button } from '@mui/material';
 import type { AllocationHistoryFilters } from '../hooks';
 import type { CompositeKeyField } from '../hooks/useAllocationFilters';
-import type { GroupMode } from './GroupModeSelector';
 
 /**
  * SortAndCompositeSection Props

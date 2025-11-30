@@ -8,7 +8,6 @@ import type {
   AllocationHistoryTableData,
 } from '../hooks';
 import { useFilterCount } from '../hooks';
-import { MODAL_Z_INDEX } from '@/utils/constants';
 import { EmptyState } from '@/components/ui';
 import { useMemo } from 'react';
 import { AllocationDetailModalHeader } from './AllocationDetailModalHeader';
@@ -118,7 +117,6 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
       fullWidth
       fullScreen={isFullScreen || window.innerWidth < 600}
       sx={{
-        zIndex: MODAL_Z_INDEX.NESTED_DIALOG,
         '& .MuiDialog-paper': {
           borderRadius: isFullScreen ? 0 : 3,
           overflow: 'hidden',
