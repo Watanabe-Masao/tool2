@@ -14,6 +14,7 @@ import { useProductHistory } from '@/hooks/useProductHistory';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { useAuthContext } from '@/context/AuthContext';
 import { useFirestoreService } from '@/context/ServiceContext';
+import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
  * ProductBasicInfoFormのProps
@@ -673,90 +674,25 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         })}
 
         {/* ページネーションドット（長押しで空ページクリーンアップ） */}
-        {fields.length > 1 && (
-          <Box
-            onTouchStart={handlePaginationLongPressStart}
-            onTouchEnd={handlePaginationLongPressEnd}
-            onMouseDown={handlePaginationLongPressStart}
-            onMouseUp={handlePaginationLongPressEnd}
-            onMouseLeave={handlePaginationLongPressEnd}
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 0.5,
-              mt: 2.5,
-              py: 1.5,
-              px: 2,
-              mx: 'auto',
-              maxWidth: 'fit-content',
-              borderRadius: 3,
-              bgcolor: 'rgba(0, 0, 0, 0.02)',
-              userSelect: 'none',
-            }}
-          >
-            {fields.map((_, index) => {
-              const isActive = activeTabIndex === index;
-              const product = products?.[index];
-              // 必須項目: 品名、産地、規格、入数
-              const isComplete = product &&
-                product.name &&
-                product.origin &&
-                product.specification &&
-                product.quantityPerPackage;
-              const isEmpty = product && !product.name && !product.origin && !product.specification;
-
-              // 非アクティブ時の色: 完了→青、不完全→黄色、空→赤(破線)
-              const inactiveDotColor = isEmpty
-                ? 'rgba(239, 83, 80, 0.4)'
-                : isComplete
-                  ? 'rgba(25, 118, 210, 0.6)'
-                  : 'rgba(255, 193, 7, 0.7)';
-
-              const inactiveHoverColor = isEmpty
-                ? 'rgba(239, 83, 80, 0.5)'
-                : isComplete
-                  ? 'rgba(25, 118, 210, 0.8)'
-                  : 'rgba(255, 193, 7, 0.9)';
-
-              // アクティブ時のボーダー色: 完了→青、不完全→黄色、空→赤
-              const activeBorderColor = isEmpty
-                ? 'rgba(239, 83, 80, 0.8)'
-                : isComplete
-                  ? 'rgba(25, 118, 210, 0.8)'
-                  : 'rgba(255, 193, 7, 0.9)';
-
-              return (
-                <Box
-                  key={index}
-                  onClick={() => setActiveTabIndex(index)}
-                  sx={{
-                    width: isActive ? 24 : 10,
-                    height: 10,
-                    borderRadius: isActive ? '5px' : '50%',
-                    bgcolor: isActive ? 'grey.800' : inactiveDotColor,
-                    border: isActive
-                      ? `2px solid ${activeBorderColor}`
-                      : isEmpty
-                        ? '1px dashed rgba(239, 83, 80, 0.6)'
-                        : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isActive
-                      ? '0 2px 8px rgba(0, 0, 0, 0.25)'
-                      : isComplete && !isEmpty
-                        ? '0 1px 4px rgba(25, 118, 210, 0.25)'
-                        : 'none',
-                    '&:hover': {
-                      bgcolor: isActive ? 'grey.700' : inactiveHoverColor,
-                      transform: 'scale(1.2)',
-                    },
-                  }}
-                />
-              );
-            })}
-          </Box>
-        )}
+        <PaginationDots
+          count={fields.length}
+          activeIndex={activeTabIndex}
+          onIndexChange={setActiveTabIndex}
+          getStatus={(index) => {
+            const product = products?.[index];
+            const isEmpty = product && !product.name && !product.origin && !product.specification;
+            const isComplete = product &&
+              product.name &&
+              product.origin &&
+              product.specification &&
+              product.quantityPerPackage;
+            if (isEmpty) return 'empty';
+            if (isComplete) return 'complete';
+            return 'incomplete';
+          }}
+          onLongPressStart={handlePaginationLongPressStart}
+          onLongPressEnd={handlePaginationLongPressEnd}
+        />
       </Box>
 
       {/* 商品一括追加モーダル（PL複数選択モード） */}
