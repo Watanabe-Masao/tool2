@@ -223,6 +223,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   // 増減モード（'add' | 'subtract'）と選択数量
   const [adjustMode, setAdjustMode] = useState<'add' | 'subtract'>('add');
   const [selectedAmount, setSelectedAmount] = useState<number>(1);
+  // 自動配分の配分率（50%, 80%, 100%）
+  const [allocationRate, setAllocationRate] = useState<number>(100);
 
   // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
@@ -335,8 +337,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
-    const perStore = Math.floor(remainingDelivery / unlockedSelectedStores.length);
-    const remainder = remainingDelivery % unlockedSelectedStores.length;
+    // 配分率を適用（50%, 80%, 100%）
+    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
+
+    const perStore = Math.floor(adjustedDelivery / unlockedSelectedStores.length);
+    const remainder = adjustedDelivery % unlockedSelectedStores.length;
     let remainderDistributed = 0;
 
     STORE_DATA.forEach((store, index) => {
@@ -391,6 +396,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
+    // 配分率を適用（50%, 80%, 100%）
+    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
+
     const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
     let totalRatio = 0;
 
@@ -411,12 +419,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     const distributionPlan: Array<{ code: string; quantity: number }> = [];
     selectedStoresWithRatio.forEach(({ code, ratio }) => {
       const normalizedRatio = ratio / totalRatio;
-      const quantity = Math.floor(remainingDelivery * normalizedRatio);
+      const quantity = Math.floor(adjustedDelivery * normalizedRatio);
       distributionPlan.push({ code, quantity });
       allocated += quantity;
     });
 
-    const remainingQty = remainingDelivery - allocated;
+    const remainingQty = adjustedDelivery - allocated;
     if (remainingQty > 0) {
       const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
       for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
@@ -1211,6 +1219,31 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 />
               </MenuItem>
             </Menu>
+            {/* 配分率選択 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                配分率:
+              </Typography>
+              <ToggleButtonGroup
+                value={allocationRate}
+                exclusive
+                onChange={(_, newRate) => {
+                  if (newRate !== null) setAllocationRate(newRate);
+                }}
+                size="small"
+                sx={{ height: 28 }}
+              >
+                <ToggleButton value={50} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  50%
+                </ToggleButton>
+                <ToggleButton value={80} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  80%
+                </ToggleButton>
+                <ToggleButton value={100} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  100%
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
           </CardContent>
         </Card>
 
