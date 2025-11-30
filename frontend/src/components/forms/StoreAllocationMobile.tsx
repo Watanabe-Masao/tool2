@@ -217,15 +217,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [distributionMode] = useState<DistributionMode>('ratio');
   const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // 長押し+スワイプ検出用の状態
+  // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
-  const touchStartY = React.useRef<number | null>(null);
-  const touchStartX = React.useRef<number | null>(null);
-  const touchStartTime = React.useRef<number | null>(null);
   const currentTouchStore = React.useRef<string | null>(null);
-  const isLongPressActivated = React.useRef<boolean>(false);
   const isInputFieldTouch = React.useRef<boolean>(false);
-  const [swipePreview, setSwipePreview] = React.useState<{ storeCode: string; direction: 'up' | 'down' } | null>(null);
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
   useEffect(() => {
@@ -493,7 +488,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * タッチ開始（長押し+スワイプ用）
+   * タッチ開始（長押しトグル用 - 縦スクロール競合回避）
    */
   const handleTouchStart = (storeCode: string, event: React.TouchEvent) => {
     // 入力フィールド内でのタッチは完全に無視
@@ -504,66 +499,31 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     }
 
     isInputFieldTouch.current = false;
-    isLongPressActivated.current = false;
-
-    const touch = event.touches[0];
-    touchStartY.current = touch.clientY;
-    touchStartX.current = touch.clientX;
-    touchStartTime.current = Date.now();
     currentTouchStore.current = storeCode;
 
-    // 長押し判定を600msに延長（誤操作防止）
+    // 長押し判定（600ms）でトグル実行
     longPressTimer.current = window.setTimeout(() => {
-      // 長押しが成立
-      isLongPressActivated.current = true;
+      // 長押しでロック/ロック解除をトグル
+      handleToggleLock(storeCode);
     }, 600);
   };
 
   /**
-   * タッチ移動（スワイプ検出）
+   * タッチ移動（長押しキャンセル - 縦スクロールを妨げない）
    */
-  const handleTouchMove = (event: React.TouchEvent) => {
+  const handleTouchMove = () => {
     // 入力フィールド内のタッチは無視
     if (isInputFieldTouch.current) return;
 
-    if (!touchStartY.current || !touchStartX.current || !currentTouchStore.current || !touchStartTime.current) return;
-
-    const touch = event.touches[0];
-    const deltaY = touch.clientY - touchStartY.current;
-    const deltaX = touch.clientX - touchStartX.current;
-
-    // 長押しが成立している場合のみスワイプ検出
-    if (isLongPressActivated.current) {
-      // 横方向の移動が大きい場合は、横スクロールとみなして無視
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 20) {
-        // 横スワイプを検出したらロック操作をキャンセル
-        if (longPressTimer.current) {
-          window.clearTimeout(longPressTimer.current);
-          longPressTimer.current = null;
-        }
-        isLongPressActivated.current = false;
-        setSwipePreview(null);
-        return;
-      }
-
-      // 縦方向のスワイプを検出（70px以上）
-      if (Math.abs(deltaY) > 70) {
-        // スクロールを防ぐ（縦スワイプが検出されたら）
-        event.preventDefault();
-
-        if (deltaY < -70) {
-          // 上スワイプ
-          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'up' });
-        } else if (deltaY > 70) {
-          // 下スワイプ
-          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'down' });
-        }
-      }
+    // タッチ移動があったら長押しをキャンセル（縦スクロール優先）
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
   };
 
   /**
-   * タッチ終了（スワイプ実行）
+   * タッチ終了（クリーンアップ）
    */
   const handleTouchEnd = () => {
     // 入力フィールド内のタッチは無視
@@ -572,36 +532,15 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
+    // 長押しタイマーをクリア
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
 
-    // 長押し+スワイプが成立した場合のみロック操作を実行
-    if (isLongPressActivated.current && swipePreview && currentTouchStore.current) {
-      const storeCode = currentTouchStore.current;
-
-      if (swipePreview.direction === 'up') {
-        // 上スワイプ: ロック
-        const newLockedStores = new Set(lockedStores);
-        newLockedStores.add(storeCode);
-        setLockedStores(newLockedStores);
-      } else if (swipePreview.direction === 'down') {
-        // 下スワイプ: ロック解除
-        const newLockedStores = new Set(lockedStores);
-        newLockedStores.delete(storeCode);
-        setLockedStores(newLockedStores);
-      }
-    }
-
     // リセット
-    touchStartY.current = null;
-    touchStartX.current = null;
-    touchStartTime.current = null;
     currentTouchStore.current = null;
-    isLongPressActivated.current = false;
     isInputFieldTouch.current = false;
-    setSwipePreview(null);
   };
 
   /**
@@ -1085,7 +1024,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         ? {
                             // 固定サイズ（グリッドに合わせる）
                             width: '100%',
-                            height: 44, // Appleタッチ最小サイズ
+                            height: 36, // 36px: タッチ可能だがコンパクト（縦幅削減）
                             // UX重視: カテゴリ色を控えめに使用、未選択でも所属が明確
                             bgcolor: isSelected ? color.light : 'rgba(255, 255, 255, 0.9)',
                             color: isSelected ? color.main : color.main,
@@ -1098,30 +1037,28 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             boxShadow: isSelected
                               ? `0 2px 6px ${color.main}30`
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            // トランジション（細部にこだわる）
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            // トランジション
+                            transition: 'all 0.15s ease-out',
                             // ラベルパディング最小化
                             '& .MuiChip-label': {
                               px: 0.5,
                               width: '100%',
                             },
-                            // ホバー: 浮き上がる効果
+                            // ホバー: 軽微な浮き（複数選択に適した控えめな表現）
                             '&:hover': {
-                              bgcolor: isSelected ? color.light : `${color.main}10`,
-                              transform: 'scale(1.08) translateY(-2px)',
+                              transform: 'translateY(-1px)',
                               boxShadow: `0 3px 8px ${color.main}25`,
                             },
-                            // アクティブ: 押し込む効果
+                            // アクティブ: 軽微な押し込み（タップフィードバック）
                             '&:active': {
-                              transform: 'scale(0.96)',
-                              transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: 'scale(0.98)',
+                              transition: 'all 0.1s ease-out',
                             },
                           }
                         : {
                             // 固定サイズ（グリッドに合わせる）
                             width: '100%',
-                            height: 44, // Appleタッチ最小サイズ（操作性重視）
+                            height: 36, // 36px: タッチ可能だがコンパクト（縦幅削減）
                             // UX重視: 未分類店舗もグレー系で統一（控えめ）
                             bgcolor: isSelected ? 'grey.300' : 'rgba(255, 255, 255, 0.9)',
                             color: isSelected ? 'grey.800' : 'grey.600',
@@ -1129,29 +1066,27 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             borderColor: 'grey.500',
                             borderWidth: isSelected ? 2 : 1.5,
                             borderStyle: 'solid',
-                            borderRadius: 2, // 8px - タッチしやすい角丸
+                            borderRadius: 2, // 8px
                             // 影（控えめに）
                             boxShadow: isSelected
                               ? '0 2px 6px rgba(0, 0, 0, 0.12)'
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            // トランジション（スムーズな状態変化）
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                            // ラベルパディング最小化（情報密度向上）
+                            // トランジション
+                            transition: 'all 0.15s ease-out',
+                            // ラベルパディング最小化
                             '& .MuiChip-label': {
                               px: 0.5,
                               width: '100%',
                             },
-                            // ホバー: 浮き上がる効果（操作のフィードバック）
+                            // ホバー: 軽微な浮き（複数選択に適した控えめな表現）
                             '&:hover': {
-                              bgcolor: isSelected ? 'grey.300' : 'grey.100',
-                              transform: 'scale(1.08) translateY(-2px)',
+                              transform: 'translateY(-1px)',
                               boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
                             },
-                            // アクティブ: 押し込む効果（タッチフィードバック）
+                            // アクティブ: 軽微な押し込み（タップフィードバック）
                             '&:active': {
-                              transform: 'scale(0.96)',
-                              transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: 'scale(0.98)',
+                              transition: 'all 0.1s ease-out',
                             },
                           }
                     }
@@ -1316,42 +1251,26 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                         // グリッド幅に合わせる
                         width: '100%',
                         height: 'fit-content',
-                        bgcolor:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'warning.100'
-                              : 'info.100'
-                            : isLocked
-                            ? 'warning.50'
-                            : quantity > 0
-                            ? 'success.50'
-                            : 'background.paper',
-                        borderColor:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'warning.main'
-                              : 'info.main'
-                            : isLocked
-                            ? 'warning.main'
-                            : quantity > 0
-                            ? 'success.main'
-                            : 'divider',
-                        borderWidth: isLocked || quantity > 0 || swipePreview?.storeCode === store.code ? 2 : 1,
+                        bgcolor: isLocked
+                          ? 'warning.50'
+                          : quantity > 0
+                          ? 'success.50'
+                          : 'background.paper',
+                        borderColor: isLocked
+                          ? 'warning.main'
+                          : quantity > 0
+                          ? 'success.main'
+                          : 'divider',
+                        borderWidth: isLocked || quantity > 0 ? 2 : 1,
                         transition: 'all 0.15s ease',
                         boxShadow: quantity > 0 ? 1 : 0,
-                        transform:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'translateY(-4px)'
-                              : 'translateY(4px)'
-                            : 'none',
                         '&:hover': {
                           boxShadow: 2,
                         },
                       }}
                     >
                       <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                        {/* ヘッダー部分（長押し+スワイプ操作エリア） */}
+                        {/* ヘッダー部分（長押しトグル操作エリア） */}
                         <Box
                           onTouchStart={(e) => handleTouchStart(store.code, e)}
                           onTouchMove={handleTouchMove}
@@ -1364,21 +1283,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            p: 0.75,
-                            pb: 0.5,
+                            p: 0.5,
+                            pb: 0.25,
                             cursor: 'pointer',
                             userSelect: 'none',
-                            // このエリアでは長押し+縦スワイプを検出
-                            touchAction: 'none',
+                            // 長押しのみ（スワイプ不要、縦スクロールと競合回避）
                           }}
                         >
                           <Typography variant="caption" fontWeight="medium" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
                             {store.code}店
                           </Typography>
-                          {isLocked && <Lock sx={{ fontSize: '0.8rem', color: 'warning.main' }} />}
+                          {isLocked && <Lock sx={{ fontSize: '0.75rem', color: 'warning.main' }} />}
                         </Box>
                         {/* 入力フィールドエリア */}
-                        <Box sx={{ px: 0.75, pb: 0.75 }}>
+                        <Box sx={{ px: 0.5, pb: 0.5 }}>
                           <TextField
                             type="number"
                             size="small"
@@ -1392,19 +1310,18 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                               min: 0,
                               style: {
                                 textAlign: 'center',
-                                fontSize: '0.85rem',
+                                fontSize: '0.8rem',
                                 fontWeight: quantity > 0 ? 'bold' : 'normal',
-                                padding: '6px 4px'
+                                padding: '4px 4px'
                               },
                             }}
                             sx={{
-                              // 入力フィールド内では通常のタッチ操作を許可
                               touchAction: 'manipulation',
                               '& .MuiOutlinedInput-root': {
                                 fontSize: '0.75rem',
                               },
                               '& .MuiInputBase-input': {
-                                padding: '6px 4px',
+                                padding: '4px 4px',
                                 '&::placeholder': {
                                   color: 'grey.400',
                                   opacity: 0.7,
