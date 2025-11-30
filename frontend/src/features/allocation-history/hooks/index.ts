@@ -8,3 +8,4 @@ export { useAllocationBatches, type UseAllocationBatchesReturn } from './useAllo
 export { useAllocationFilters, type UseAllocationFiltersReturn, type GroupMode, type SortOrder, type CompositeKeyField, type FilterState } from './useAllocationFilters';
 export { useAllocationModals, type UseAllocationModalsReturn } from './useAllocationModals';
 export { useAllocationView, type UseAllocationViewReturn, type ViewMode } from './useAllocationView';
+export { useAllocationTableData, type UseAllocationTableDataReturn, type UseAllocationTableDataParams } from './useAllocationTableData';
