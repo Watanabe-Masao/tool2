@@ -32,6 +32,16 @@ export type { AllocationDeleteDialogProps } from './AllocationDeleteDialog';
 export { AllocationSettingsDrawer } from './AllocationSettingsDrawer';
 export type { AllocationSettingsDrawerProps } from './AllocationSettingsDrawer';
 
+// 設定ドロワー - サブコンポーネント（Phase B）
+export { AllocationFiltersSection } from './AllocationFiltersSection';
+export type { AllocationFiltersSectionProps } from './AllocationFiltersSection';
+
+export { ColumnVisibilitySection } from './ColumnVisibilitySection';
+export type { ColumnVisibilitySectionProps } from './ColumnVisibilitySection';
+
+export { SortAndCompositeSection } from './SortAndCompositeSection';
+export type { SortAndCompositeSectionProps } from './SortAndCompositeSection';
+
 // 日付範囲選択ダイアログ
 export { AllocationDateRangePicker } from './AllocationDateRangePicker';
 export type { AllocationDateRangePickerProps } from './AllocationDateRangePicker';
