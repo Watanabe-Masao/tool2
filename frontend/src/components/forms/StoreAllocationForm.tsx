@@ -283,6 +283,96 @@ export const StoreAllocationForm: React.FC<StoreAllocationFormProps> = ({
           );
         })}
       </Box>
+
+      {/* ページネーションドット */}
+      {fields.length > 1 && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 0.5,
+            mt: 2.5,
+            py: 1.5,
+            px: 2,
+            mx: 'auto',
+            maxWidth: 'fit-content',
+            borderRadius: 3,
+            bgcolor: 'rgba(0, 0, 0, 0.02)',
+            userSelect: 'none',
+          }}
+        >
+          {fields.map((_, index) => {
+            const isActive = activeTabIndex === index;
+            const product = products?.[index];
+            const totalDelivery = product?.totalDelivery || 0;
+
+            // 配分合計を計算
+            const storeAllocations = product?.storeAllocations || [];
+            const totalAllocated = storeAllocations.reduce((sum: number, val: number) => sum + (val || 0), 0);
+
+            // 状態判定: 青=過不足なし、黄色=過不足あり、赤=未入力
+            const isEmpty = totalAllocated === 0;
+            const isComplete = totalAllocated === totalDelivery && totalDelivery > 0;
+            const hasDiscrepancy = totalAllocated !== totalDelivery && totalAllocated > 0;
+
+            // 非アクティブ時の色
+            const inactiveDotColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.4)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.6)'
+                : 'rgba(255, 193, 7, 0.7)';
+
+            const inactiveHoverColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.5)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.8)'
+                : 'rgba(255, 193, 7, 0.9)';
+
+            // アクティブ時のボーダー色
+            const activeBorderColor = isEmpty
+              ? 'rgba(239, 83, 80, 0.8)'
+              : isComplete
+                ? 'rgba(25, 118, 210, 0.8)'
+                : 'rgba(255, 193, 7, 0.9)';
+
+            return (
+              <Box
+                key={index}
+                onClick={() => setActiveTabIndex(index)}
+                sx={{
+                  width: isActive ? 24 : 10,
+                  height: 10,
+                  borderRadius: isActive ? '5px' : '50%',
+                  bgcolor: isActive ? 'grey.800' : inactiveDotColor,
+                  border: isActive
+                    ? `2px solid ${activeBorderColor}`
+                    : isEmpty
+                      ? '1px dashed rgba(239, 83, 80, 0.6)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isActive
+                    ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+                    : isComplete
+                      ? '0 1px 4px rgba(25, 118, 210, 0.25)'
+                      : hasDiscrepancy
+                        ? '0 1px 4px rgba(255, 193, 7, 0.25)'
+                        : 'none',
+                  '&:hover': {
+                    bgcolor: isActive ? 'grey.900' : inactiveHoverColor,
+                    transform: 'scale(1.15)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                  },
+                }}
+              />
+            );
+          })}
+        </Box>
+      )}
     </Box>
   );
 };
