@@ -940,12 +940,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 </Button>
               </Box>
             </Box>
+            {/* 店舗選択エリア: CSS Grid レイアウト（モバイルで1行5-6個） */}
             <Box sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 0.5,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+              gap: 0.75,
               maxHeight: 200,
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch', // スムーズスクロール（iOS）
               '&::-webkit-scrollbar': {
                 width: 6,
               },
@@ -965,8 +967,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
                 const quantity = allocations[storeIndex] || 0;
                 const isSelected = selectedStores.has(store.code);
-                const setting = storeSettings[store.code];
-                const ratio = setting?.salesRatio || 0;
+                // モバイル最適化: 情報階層を簡潔に（店舗コード + 数量のみ）
                 const storeCategory = getStoreCategory(store.code);
                 const categoryIndex = storeCategory ? categories.findIndex((c) => c.id === storeCategory.id) : -1;
                 const color = categoryIndex >= 0 ? getCategoryColor(categoryIndex) : null;
@@ -975,18 +976,33 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   <Chip
                     key={store.code}
                     label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: isSelected ? 600 : 500 }}>
+                      /* 情報の階層化: 店舗コード（大）+ 数量（小）を縦並び */
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 0.25,
+                        py: 0.5,
+                      }}>
+                        {/* 店舗コード - メイン情報 */}
+                        <Typography variant="caption" sx={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          letterSpacing: '0.01em',
+                        }}>
                           {store.code}
                         </Typography>
+
+                        {/* 数量 - サブ情報（存在する場合のみ） */}
                         {quantity > 0 && (
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                            ({quantity})
-                          </Typography>
-                        )}
-                        {distributionMode === 'ratio' && ratio > 0 && (
-                          <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.7 }}>
-                            [{ratio}%]
+                          <Typography variant="caption" sx={{
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}>
+                            {quantity}
                           </Typography>
                         )}
                       </Box>
@@ -996,57 +1012,79 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     sx={
                       color
                         ? {
-                            bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
+                            // 固定サイズ（グリッドに合わせる）
+                            width: '100%',
+                            height: 44, // Appleタッチ最小サイズ
+                            // カラー（カテゴリ色）
+                            bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.9)',
                             color: isSelected ? 'white' : color.main,
+                            // 境界線（選択時は太く）
                             borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: 1,
+                            borderWidth: isSelected ? 2 : 1,
                             borderStyle: 'solid',
-                            height: 28,
-                            minWidth: 58,
+                            borderRadius: 2, // 8px
+                            // 影
                             boxShadow: isSelected
-                              ? `0 2px 6px ${color.main}40`
+                              ? `0 2px 8px ${color.main}50`
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            // トランジション（細部にこだわる）
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            // ラベルパディング最小化
                             '& .MuiChip-label': {
-                              px: 1,
+                              px: 0.5,
+                              width: '100%',
                             },
+                            // ホバー: 浮き上がる効果
                             '&:hover': {
                               bgcolor: isSelected ? color.main : color.light,
-                              transform: 'scale(1.05) translateY(-1px)',
+                              transform: 'scale(1.08) translateY(-2px)',
                               boxShadow: isSelected
-                                ? `0 3px 10px ${color.main}50`
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                                ? `0 4px 12px ${color.main}60`
+                                : `0 3px 8px ${color.main}30`,
                             },
+                            // アクティブ: 押し込む効果
                             '&:active': {
-                              transform: 'scale(0.98)',
+                              transform: 'scale(0.96)',
+                              transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
                             },
                           }
                         : {
-                            bgcolor: isSelected ? 'primary.main' : 'rgba(255, 255, 255, 0.8)',
-                            color: isSelected ? 'white' : 'text.primary',
+                            // 固定サイズ（グリッドに合わせる）
+                            width: '100%',
+                            height: 44, // Appleタッチ最小サイズ（操作性重視）
+                            // カラー（プライマリ色）
+                            bgcolor: isSelected ? 'primary.main' : 'rgba(255, 255, 255, 0.9)',
+                            color: isSelected ? 'white' : 'primary.main',
+                            // 境界線（選択時は太く - 視覚的フィードバック）
                             borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: 1,
+                            borderWidth: isSelected ? 2 : 1,
                             borderStyle: 'solid',
-                            height: 28,
-                            minWidth: 58,
+                            borderRadius: 2, // 8px - タッチしやすい角丸
+                            // 影（奥行き感）
                             boxShadow: isSelected
-                              ? '0 2px 6px rgba(25, 118, 210, 0.3)'
+                              ? '0 2px 8px rgba(25, 118, 210, 0.3)'
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            // トランジション（スムーズな状態変化）
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            // ラベルパディング最小化（情報密度向上）
                             '& .MuiChip-label': {
-                              px: 1,
+                              px: 0.5,
+                              width: '100%',
                             },
+                            // ホバー: 浮き上がる効果（操作のフィードバック）
                             '&:hover': {
-                              bgcolor: isSelected ? 'primary.main' : 'grey.100',
-                              transform: 'scale(1.05) translateY(-1px)',
+                              bgcolor: isSelected ? 'primary.dark' : 'primary.50',
+                              transform: 'scale(1.08) translateY(-2px)',
                               boxShadow: isSelected
-                                ? '0 3px 10px rgba(25, 118, 210, 0.4)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                                ? '0 4px 12px rgba(25, 118, 210, 0.4)'
+                                : '0 3px 8px rgba(25, 118, 210, 0.2)',
                             },
+                            // アクティブ: 押し込む効果（タッチフィードバック）
                             '&:active': {
-                              transform: 'scale(0.98)',
+                              transform: 'scale(0.96)',
+                              transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
                             },
                           }
                     }
