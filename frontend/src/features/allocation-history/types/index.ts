@@ -1,3 +1,14 @@
+import type { AllocationDetail } from '@/types/allocationHistory';
+
+/**
+ * AllocationDetailWithDate type
+ *
+ * 日付範囲選択時に使用する、deliveryDateを含む配分明細
+ */
+export interface AllocationDetailWithDate extends AllocationDetail {
+  deliveryDate: string;
+}
+
 /**
  * DetailGridRow type
  *
@@ -28,4 +39,14 @@ export interface AvailableFilterValues {
   origins: string[];
   specifications: string[];
   dates: string[];
+}
+
+/**
+ * StoreAggregation type
+ *
+ * 店舗別集計データ
+ */
+export interface StoreAggregation {
+  byStore: number[]; // 各店舗の配分数量
+  total: number; // 合計数量
 }
