@@ -25,3 +25,7 @@ export { useAllocationFilters, type UseAllocationFiltersReturn, type GroupMode, 
 export { useAllocationModals, type UseAllocationModalsReturn } from './useAllocationModals';
 export { useAllocationView, type UseAllocationViewReturn, type ViewMode } from './useAllocationView';
 export { useAllocationTableData, type UseAllocationTableDataReturn, type UseAllocationTableDataParams } from './useAllocationTableData';
+
+// ヘルパーフック（Phase C）
+export { useToggleSetItem } from './useToggleSetItem';
+export { useFilterCount } from './useFilterCount';

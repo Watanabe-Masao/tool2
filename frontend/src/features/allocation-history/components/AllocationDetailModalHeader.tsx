@@ -1,9 +1,8 @@
 import { Box, Typography, IconButton } from '@mui/material';
 import { Close, Fullscreen, FullscreenExit, Settings, DateRange, Visibility } from '@mui/icons-material';
-import { format, parseISO } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import type { AllocationBatch } from '@/types/allocationHistory';
 import { StatusBadge, ClickableBox } from '@/components/ui';
+import { formatAllocationDate } from '../utils';
 import { useCallback } from 'react';
 
 /**
@@ -39,8 +38,11 @@ export interface AllocationDetailModalHeaderProps {
 /**
  * AllocationDetailModalHeader Component
  *
- * 配分履歴詳細モーダルのヘッダー部分。
+ * 配分履歴詳細モーダルのヘッダー部分（Phase C最適化済み）。
  * タイトル、バッジ、コントロールボタンを表示します。
+ *
+ * **Phase C 最適化:**
+ * - formatAllocationDate 関数導入（~10行削減）
  *
  * **機能:**
  * - タイトル表示
@@ -115,7 +117,7 @@ export const AllocationDetailModalHeader: React.FC<AllocationDetailModalHeaderPr
         {/* 単一バッチ: 日付バッジ */}
         {selectedBatch && (
           <StatusBadge variant="default" size="medium">
-            {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
+            {formatAllocationDate(selectedBatch.deliveryDate, 'short')}
           </StatusBadge>
         )}
 
@@ -137,8 +139,8 @@ export const AllocationDetailModalHeader: React.FC<AllocationDetailModalHeaderPr
           >
             <DateRange sx={{ fontSize: 14, color: 'primary.main' }} />
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'primary.main' }}>
-              {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} -{' '}
-              {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
+              {formatAllocationDate(selectedDateRange.start, 'short').replace(/\(.\)$/, '')} -{' '}
+              {formatAllocationDate(selectedDateRange.end, 'short').replace(/\(.\)$/, '')}
             </Typography>
           </ClickableBox>
         )}

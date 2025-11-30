@@ -7,6 +7,7 @@ import type {
   AllocationHistoryView,
   AllocationHistoryTableData,
 } from '../hooks';
+import { useFilterCount } from '../hooks';
 import { MODAL_Z_INDEX } from '@/utils/constants';
 import { EmptyState } from '@/components/ui';
 import { useMemo } from 'react';
@@ -36,13 +37,16 @@ export interface AllocationDetailModalProps {
 /**
  * AllocationDetailModal Component
  *
- * 配分履歴の詳細モーダル（Phase B最適化済み）。
+ * 配分履歴の詳細モーダル（Phase B+C最適化済み）。
  * 単一バッチまたは日付範囲の配分詳細をDataGridで表示します。
  *
  * **Phase B 最適化:**
  * - AllocationDetailModalHeader コンポーネント抽出（~110行削減）
  * - GroupModeSelector コンポーネント抽出（~60行削減）
  * - 薄いラッパーコンポーネントに（392 → ~170行）
+ *
+ * **Phase C 最適化:**
+ * - useFilterCount フック導入（~10行削減）
  *
  * **機能:**
  * - 単一バッチ詳細表示
@@ -75,7 +79,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
   onDatePickerOpen,
 }) => {
   const { selectedBatch, selectedDateRange, details, detailsLoading, closeDetails } = batches;
-  const { groupMode, setGroupMode, filters: filterState } = filters;
+  const { groupMode, setGroupMode } = filters;
   const { isFullScreen, toggleFullScreen, hiddenRowIds, showAllRows, hiddenColumns } = view;
   const { rows, columns } = tableData;
 
@@ -85,15 +89,8 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
   // タイトル
   const title = selectedDateRange ? '配分履歴' : '配分詳細';
 
-  // フィルター数（useMemoで最適化）
-  const filterCount = useMemo(
-    () =>
-      filterState.productNames.length +
-      filterState.origins.length +
-      filterState.specifications.length +
-      filterState.dates.length,
-    [filterState.productNames, filterState.origins, filterState.specifications, filterState.dates]
-  );
+  // Phase C: useFilterCount フックを使用してフィルター数を計算
+  const filterCount = useFilterCount(filters);
 
   // 非表示数（useMemoで最適化）
   const hiddenCount = useMemo(

@@ -26,3 +26,10 @@ export {
   renderStoreCell,
   createStoreColumns,
 } from './columnHelpers';
+
+// Date Formatters (Phase C)
+export {
+  formatAllocationDate,
+  formatDateRange,
+  type DateFormatType,
+} from './dateFormatters';

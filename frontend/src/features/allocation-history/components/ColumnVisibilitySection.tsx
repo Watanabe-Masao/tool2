@@ -1,6 +1,7 @@
 import { Box, Typography, FormGroup, FormControlLabel, Checkbox, Chip, Button, Divider } from '@mui/material';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationHistoryView } from '../hooks';
+import { useToggleSetItem } from '../hooks';
 
 /**
  * StoreCategory type
@@ -22,8 +23,11 @@ export interface ColumnVisibilitySectionProps {
 /**
  * ColumnVisibilitySection Component
  *
- * 配分履歴の列表示/非表示設定セクション。
+ * 配分履歴の列表示/非表示設定セクション（Phase C最適化済み）。
  * 基本項目、店舗カテゴリー、個別店舗の表示/非表示を制御します。
+ *
+ * **Phase C 最適化:**
+ * - useToggleSetItem フック導入（~20行削減）
  *
  * **機能:**
  * - 基本項目の列表示/非表示（6項目）
@@ -40,6 +44,9 @@ export interface ColumnVisibilitySectionProps {
  */
 export const ColumnVisibilitySection: React.FC<ColumnVisibilitySectionProps> = ({ view }) => {
   const { hiddenColumns, setHiddenColumns, showAllColumns } = view;
+
+  // Phase C: useToggleSetItem フックを使用してSet操作を簡素化
+  const toggleColumn = useToggleSetItem(hiddenColumns, setHiddenColumns);
 
   // 店舗カテゴリー（実際のプロジェクトではマスタから取得）
   const storeCategories: StoreCategory[] = [];
@@ -68,17 +75,7 @@ export const ColumnVisibilitySection: React.FC<ColumnVisibilitySectionProps> = (
             control={
               <Checkbox
                 checked={!hiddenColumns.has(field)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    const newHidden = new Set(hiddenColumns);
-                    newHidden.delete(field);
-                    setHiddenColumns(newHidden);
-                  } else {
-                    const newHidden = new Set(hiddenColumns);
-                    newHidden.add(field);
-                    setHiddenColumns(newHidden);
-                  }
-                }}
+                onChange={() => toggleColumn(field)}
               />
             }
             label={label}
@@ -142,15 +139,7 @@ export const ColumnVisibilitySection: React.FC<ColumnVisibilitySectionProps> = (
               size="small"
               color={isVisible ? 'primary' : 'default'}
               variant={isVisible ? 'filled' : 'outlined'}
-              onClick={() => {
-                const newHidden = new Set(hiddenColumns);
-                if (isVisible) {
-                  newHidden.add(fieldName);
-                } else {
-                  newHidden.delete(fieldName);
-                }
-                setHiddenColumns(newHidden);
-              }}
+              onClick={() => toggleColumn(fieldName)}
               sx={{
                 cursor: 'pointer',
                 '&:hover': { opacity: 0.8 },

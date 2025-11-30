@@ -12,10 +12,9 @@ import {
   Button,
 } from '@mui/material';
 import { FilterList } from '@mui/icons-material';
-import { format, parseISO } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/utils/constants';
 import type { AllocationHistoryFilters, AllocationHistoryTableData } from '../hooks';
+import { formatAllocationDate } from '../utils';
 
 /**
  * AllocationFiltersSection Props
@@ -30,8 +29,11 @@ export interface AllocationFiltersSectionProps {
 /**
  * AllocationFiltersSection Component
  *
- * 配分履歴のフィルター設定セクション。
+ * 配分履歴のフィルター設定セクション（Phase C最適化済み）。
  * 商品名/産地/規格/日付の4つのフィルターを提供します。
+ *
+ * **Phase C 最適化:**
+ * - formatAllocationDate 関数導入（~10行削減）
  *
  * **機能:**
  * - 商品名フィルター（複数選択）
@@ -158,7 +160,7 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
             renderValue={(selected) => (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {selected.map((value) => (
-                  <Chip key={value} label={format(parseISO(value), 'M/d(E)', { locale: ja })} size="small" />
+                  <Chip key={value} label={formatAllocationDate(value, 'short')} size="small" />
                 ))}
               </Box>
             )}
@@ -169,7 +171,7 @@ export const AllocationFiltersSection: React.FC<AllocationFiltersSectionProps> =
             {availableFilterValues.dates.map((date) => (
               <MenuItem key={date} value={date}>
                 <Checkbox checked={filterState.dates.includes(date)} />
-                <ListItemText primary={format(parseISO(date), 'M月d日(E)', { locale: ja })} />
+                <ListItemText primary={formatAllocationDate(date, 'medium')} />
               </MenuItem>
             ))}
           </Select>
