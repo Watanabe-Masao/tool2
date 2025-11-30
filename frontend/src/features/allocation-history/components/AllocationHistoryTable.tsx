@@ -5,6 +5,7 @@ import { ja } from 'date-fns/locale';
 import type { AllocationBatch } from '@/types/allocationHistory';
 import type { SupplierPreset } from '@/components/calendar/GlassCalendar';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
+import { StatusBadge, TableHeaderCell } from '@/components/ui';
 
 /**
  * 週ごとのバッチグループ
@@ -77,77 +78,12 @@ export const AllocationHistoryTable: React.FC<AllocationHistoryTableProps> = ({
                 borderColor: 'grey.200',
               }}
             >
-              <TableCell
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                }}
-              >
-                納品日
-              </TableCell>
-              <TableCell
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                }}
-              >
-                帳合先
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                }}
-              >
-                商品数
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                }}
-              >
-                合計
-              </TableCell>
-              <TableCell
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                  display: { xs: 'none', sm: 'table-cell' },
-                }}
-              >
-                保存日時
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'grey.600',
-                  py: 1.5,
-                  borderBottom: 'none',
-                  width: 80,
-                }}
-              >
-                操作
-              </TableCell>
+              <TableHeaderCell>納品日</TableHeaderCell>
+              <TableHeaderCell>帳合先</TableHeaderCell>
+              <TableHeaderCell align="right">商品数</TableHeaderCell>
+              <TableHeaderCell align="right">合計</TableHeaderCell>
+              <TableHeaderCell display={{ xs: 'none', sm: 'table-cell' }}>保存日時</TableHeaderCell>
+              <TableHeaderCell align="center" width={80}>操作</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -183,19 +119,9 @@ export const AllocationHistoryTable: React.FC<AllocationHistoryTableProps> = ({
                       >
                         {format(week.weekStart, 'M/d', { locale: ja })} - {format(week.weekEnd, 'M/d(E)', { locale: ja })}
                       </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          color: 'primary.main',
-                          bgcolor: 'primary.50',
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: 1,
-                        }}
-                      >
+                      <StatusBadge variant="primary">
                         {week.batches.length}件
-                      </Typography>
+                      </StatusBadge>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -297,6 +223,7 @@ export const AllocationHistoryTable: React.FC<AllocationHistoryTableProps> = ({
                         <IconButton
                           size="small"
                           onClick={() => onViewDetails(batch)}
+                          aria-label="配分詳細を表示"
                           sx={{
                             p: 0.5,
                             color: 'grey.500',
@@ -311,6 +238,7 @@ export const AllocationHistoryTable: React.FC<AllocationHistoryTableProps> = ({
                         <IconButton
                           size="small"
                           onClick={() => onDelete(batch)}
+                          aria-label="配分履歴を削除"
                           sx={{
                             p: 0.5,
                             color: 'grey.400',

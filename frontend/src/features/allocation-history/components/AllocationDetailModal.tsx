@@ -19,6 +19,8 @@ import type {
   AllocationHistoryTableData,
 } from '../hooks';
 import { MODAL_Z_INDEX } from '@/utils/constants';
+import { StatusBadge, ClickableBox, EmptyState } from '@/components/ui';
+import { useMemo } from 'react';
 
 /**
  * AllocationDetailModal Props
@@ -87,15 +89,21 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
   // タイトル
   const title = selectedDateRange ? '配分履歴' : '配分詳細';
 
-  // フィルター数
-  const filterCount =
-    filterState.productNames.length +
-    filterState.origins.length +
-    filterState.specifications.length +
-    filterState.dates.length;
+  // フィルター数（useMemoで最適化）
+  const filterCount = useMemo(
+    () =>
+      filterState.productNames.length +
+      filterState.origins.length +
+      filterState.specifications.length +
+      filterState.dates.length,
+    [filterState.productNames, filterState.origins, filterState.specifications, filterState.dates]
+  );
 
-  // 非表示数
-  const hiddenCount = hiddenRowIds.size + hiddenColumns.size;
+  // 非表示数（useMemoで最適化）
+  const hiddenCount = useMemo(
+    () => hiddenRowIds.size + hiddenColumns.size,
+    [hiddenRowIds.size, hiddenColumns.size]
+  );
 
   return (
     <Dialog
@@ -137,23 +145,14 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
             {title}
           </Typography>
           {selectedBatch && (
-            <Typography
-              sx={{
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                color: 'grey.500',
-                bgcolor: 'grey.100',
-                px: 0.75,
-                py: 0.25,
-                borderRadius: 1,
-              }}
-            >
+            <StatusBadge variant="default" size="medium">
               {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
-            </Typography>
+            </StatusBadge>
           )}
           {selectedDateRange && (
-            <Box
+            <ClickableBox
               onClick={onDatePickerOpen}
+              ariaLabel="日付範囲を変更"
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -162,7 +161,6 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                 py: 0.25,
                 borderRadius: 1,
                 bgcolor: 'primary.50',
-                cursor: 'pointer',
                 '&:hover': { bgcolor: 'primary.100' },
               }}
             >
@@ -171,26 +169,21 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                 {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} -{' '}
                 {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
               </Typography>
-            </Box>
+            </ClickableBox>
           )}
           {details.length > 0 && (
-            <Typography
-              sx={{
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                color: 'grey.500',
-              }}
-            >
+            <StatusBadge variant="default">
               {details.length}品
-            </Typography>
+            </StatusBadge>
           )}
         </Box>
 
         {/* 右側: コントロール */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
           {hiddenRowIds.size > 0 && (
-            <Box
+            <ClickableBox
               onClick={showAllRows}
+              ariaLabel="非表示の行を再表示"
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -199,7 +192,6 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                 py: 0.25,
                 borderRadius: 1,
                 bgcolor: 'warning.50',
-                cursor: 'pointer',
                 '&:hover': { bgcolor: 'warning.100' },
               }}
             >
@@ -207,11 +199,12 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                 {hiddenRowIds.size}件非表示
               </Typography>
               <Visibility sx={{ fontSize: 14, color: 'warning.main' }} />
-            </Box>
+            </ClickableBox>
           )}
           <IconButton
             size="small"
             onClick={toggleFullScreen}
+            aria-label={isFullScreen ? 'フルスクリーンを解除' : 'フルスクリーンにする'}
             sx={{ p: 0.5, color: 'grey.500' }}
           >
             {isFullScreen ? <FullscreenExit sx={{ fontSize: 18 }} /> : <Fullscreen sx={{ fontSize: 18 }} />}
@@ -220,6 +213,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
             <IconButton
               size="small"
               onClick={onSettingsOpen}
+              aria-label="詳細設定を開く"
               sx={{
                 p: 0.5,
                 color: settingsOpen ? 'primary.main' : 'grey.500',
@@ -228,7 +222,12 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
               <Settings sx={{ fontSize: 18 }} />
             </IconButton>
           )}
-          <IconButton size="small" onClick={closeDetails} sx={{ p: 0.5, color: 'grey.500' }}>
+          <IconButton
+            size="small"
+            onClick={closeDetails}
+            aria-label="閉じる"
+            sx={{ p: 0.5, color: 'grey.500' }}
+          >
             <Close sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
@@ -281,35 +280,15 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
             </Box>
 
             {filterCount > 0 && (
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  color: 'primary.main',
-                  bgcolor: 'primary.50',
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 1,
-                }}
-              >
+              <StatusBadge variant="primary">
                 フィルター {filterCount}
-              </Typography>
+              </StatusBadge>
             )}
 
             {hiddenCount > 0 && (
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  color: 'warning.main',
-                  bgcolor: 'warning.50',
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 1,
-                }}
-              >
+              <StatusBadge variant="warning">
                 非表示 {hiddenCount}
-              </Typography>
+              </StatusBadge>
             )}
           </Box>
         </Box>
@@ -321,32 +300,11 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
             <CircularProgress size={28} />
           </Box>
         ) : details.length === 0 ? (
-          <Box
-            sx={{
-              py: 6,
-              px: 3,
-              textAlign: 'center',
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: '50%',
-                bgcolor: 'grey.100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mx: 'auto',
-                mb: 2,
-              }}
-            >
-              <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
-            </Box>
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'grey.600' }}>
-              詳細データがありません
-            </Typography>
-          </Box>
+          <EmptyState
+            icon={<CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />}
+            title="詳細データがありません"
+            iconBgColor="grey.100"
+          />
         ) : (
           /* データグリッド表示 - モダンスタイル */
           <Box sx={{ height: isFullScreen ? 'calc(100vh - 140px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>

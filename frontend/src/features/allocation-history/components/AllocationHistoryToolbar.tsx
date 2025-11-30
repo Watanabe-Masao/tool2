@@ -1,5 +1,6 @@
 import { Box, Typography, IconButton, CircularProgress } from '@mui/material';
 import { Refresh, CalendarToday } from '@mui/icons-material';
+import { StatusBadge } from '@/components/ui';
 
 /**
  * AllocationHistoryToolbar Props
@@ -59,19 +60,9 @@ export const AllocationHistoryToolbar: React.FC<AllocationHistoryToolbarProps> =
         >
           配分履歴
         </Typography>
-        <Typography
-          sx={{
-            fontSize: '0.7rem',
-            fontWeight: 600,
-            color: 'grey.500',
-            bgcolor: 'grey.100',
-            px: 0.75,
-            py: 0.25,
-            borderRadius: 1,
-          }}
-        >
+        <StatusBadge variant="default" size="medium">
           {batchCount}件
-        </Typography>
+        </StatusBadge>
       </Box>
 
       {/* 右側: コントロール */}
@@ -80,6 +71,7 @@ export const AllocationHistoryToolbar: React.FC<AllocationHistoryToolbarProps> =
           size="small"
           onClick={onRefresh}
           disabled={loading}
+          aria-label="配分履歴を更新"
           sx={{ p: 0.5, color: 'grey.600' }}
         >
           {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
@@ -87,6 +79,7 @@ export const AllocationHistoryToolbar: React.FC<AllocationHistoryToolbarProps> =
         <IconButton
           size="small"
           onClick={onViewModeChange}
+          aria-label="カレンダー表示に切り替え"
           sx={{ p: 0.5, color: 'grey.600' }}
         >
           <CalendarToday sx={{ fontSize: 18 }} />
