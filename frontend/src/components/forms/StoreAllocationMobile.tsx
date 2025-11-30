@@ -12,10 +12,13 @@ import {
   CardContent,
   Alert,
   LinearProgress,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Lock,
-  Functions,
   AutoFixHigh,
   DeleteSweep,
   CheckCircle,
@@ -23,6 +26,7 @@ import {
   Error as ErrorIcon,
   LockOutlined,
   LockOpenOutlined,
+  Balance,
 } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -209,7 +213,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   setSelectedCategories,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [distributionMode, setDistributionMode] = useState<DistributionMode>('ratio');
+  // distributionModeは内部的にのみ使用（UI非表示）
+  const [distributionMode] = useState<DistributionMode>('ratio');
+  const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
 
   // 長押し+スワイプ検出用の状態
   const longPressTimer = React.useRef<number | null>(null);
@@ -419,10 +425,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 配分実行
+   * 自動配分メニューから配分を実行
    */
-  const handleDistribute = () => {
-    if (distributionMode === 'equal') {
+  const handleAutoAllocate = (method: 'equal' | 'ratio') => {
+    setAutoAllocateMenuAnchor(null);
+
+    if (method === 'equal') {
       handleEqualDistribution();
     } else {
       handleRatioDistribution();
@@ -1154,75 +1162,57 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </CardContent>
         </Card>
 
-        {/* 4. 配分方法選択 + 実行ボタン（1行に統合） */}
+        {/* 4. 自動配分（プレビュー画面から移動） */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
           <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {/* 構成比ボタン */}
-              <Button
-                variant={distributionMode === 'ratio' ? 'contained' : 'outlined'}
-                size="small"
-                onClick={() => setDistributionMode('ratio')}
-                sx={{
-                  flex: 1,
-                  py: 0.75,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  bgcolor: distributionMode === 'ratio' ? 'primary.main' : 'transparent',
-                  color: distributionMode === 'ratio' ? 'white' : 'primary.main',
-                  borderColor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: distributionMode === 'ratio' ? 'primary.dark' : 'primary.50',
-                  },
-                }}
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              fullWidth
+              startIcon={<AutoFixHigh />}
+              onClick={(e) => setAutoAllocateMenuAnchor(e.currentTarget)}
+              disabled={selectedStores.size === 0}
+              sx={{
+                py: 0.75,
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                boxShadow: 2,
+                '&:hover': {
+                  boxShadow: 4,
+                },
+              }}
+            >
+              自動配分
+            </Button>
+            <Menu
+              anchorEl={autoAllocateMenuAnchor}
+              open={Boolean(autoAllocateMenuAnchor)}
+              onClose={() => setAutoAllocateMenuAnchor(null)}
+            >
+              <MenuItem onClick={() => handleAutoAllocate('equal')}>
+                <ListItemIcon>
+                  <Balance fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="均等配分" secondary="全店舗に均等に配分" />
+              </MenuItem>
+              <MenuItem
+                onClick={() => handleAutoAllocate('ratio')}
+                disabled={!storeSettings || Object.keys(storeSettings).length === 0}
               >
-                <AutoFixHigh sx={{ mr: 0.5, fontSize: '0.9rem' }} />
-                構成比
-              </Button>
-
-              {/* 実行ボタン */}
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleDistribute}
-                disabled={selectedStores.size === 0}
-                color="success"
-                sx={{
-                  flex: 1.2,
-                  py: 0.75,
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  boxShadow: 2,
-                  '&:hover': {
-                    boxShadow: 4,
-                  },
-                }}
-              >
-                実行
-              </Button>
-
-              {/* 均等ボタン */}
-              <Button
-                variant={distributionMode === 'equal' ? 'contained' : 'outlined'}
-                size="small"
-                onClick={() => setDistributionMode('equal')}
-                sx={{
-                  flex: 1,
-                  py: 0.75,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  bgcolor: distributionMode === 'equal' ? 'primary.main' : 'transparent',
-                  color: distributionMode === 'equal' ? 'white' : 'primary.main',
-                  borderColor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: distributionMode === 'equal' ? 'primary.dark' : 'primary.50',
-                  },
-                }}
-              >
-                <Functions sx={{ mr: 0.5, fontSize: '0.9rem' }} />
-                均等
-              </Button>
-            </Box>
+                <ListItemIcon>
+                  <AutoFixHigh fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="販売構成比で配分"
+                  secondary={
+                    storeSettings && Object.keys(storeSettings).length > 0
+                      ? '店舗の販売構成比に基づいて配分'
+                      : '販売構成比が未設定です'
+                  }
+                />
+              </MenuItem>
+            </Menu>
           </CardContent>
         </Card>
 
