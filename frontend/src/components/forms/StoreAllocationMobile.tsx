@@ -16,6 +16,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
   Lock,
@@ -27,6 +29,8 @@ import {
   LockOutlined,
   LockOpenOutlined,
   Balance,
+  Add,
+  Remove,
 } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -216,6 +220,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   // distributionModeは内部的にのみ使用（UI非表示）
   const [distributionMode] = useState<DistributionMode>('ratio');
   const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
+  // 増減モード（'add' | 'subtract'）と選択数量
+  const [adjustMode, setAdjustMode] = useState<'add' | 'subtract'>('add');
+  const [selectedAmount, setSelectedAmount] = useState<number>(1);
 
   // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
@@ -274,16 +281,19 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     const newSelected = new Set(selectedStores);
 
     if (newSelected.has(storeCode)) {
-      // 選択済みの場合: 残数があれば+1配分
-      if (remaining > 0) {
-        const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
-        if (storeIndex !== -1) {
-          const newAllocations = [...allocations];
-          newAllocations[storeIndex] = (newAllocations[storeIndex] || 0) + 1;
-          onChange(newAllocations);
+      // 選択済みの場合: ヘッダで選択された数量とモードで増減
+      const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+      if (storeIndex !== -1) {
+        const currentValue = allocations[storeIndex] || 0;
+        const newAllocations = [...allocations];
+
+        if (adjustMode === 'add') {
+          newAllocations[storeIndex] = currentValue + selectedAmount;
+        } else {
+          newAllocations[storeIndex] = Math.max(0, currentValue - selectedAmount);
         }
+        onChange(newAllocations);
       }
-      // 残数がない場合は何もしない（タップしても反応なし）
     } else {
       // 未選択の場合: 選択状態にする
       newSelected.add(storeCode);
@@ -982,7 +992,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             )}
             {remaining > 0 && (
               <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                💡 選択済み店舗チップをタップで+1配分
+                💡 配分ヘッダでモード・数量を選択 → 店舗チップをタップ
               </Typography>
             )}
           </CardContent>
@@ -1261,6 +1271,69 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}
             >
+              {/* 増減モード & 数値選択ヘッダ */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 1,
+                  pb: 1,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                    モード:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={adjustMode}
+                    exclusive
+                    onChange={(_, newMode) => {
+                      if (newMode !== null) setAdjustMode(newMode);
+                    }}
+                    size="small"
+                    sx={{ height: 28 }}
+                  >
+                    <ToggleButton value="subtract" sx={{ px: 1, py: 0.25, fontSize: '0.7rem' }}>
+                      <Remove sx={{ fontSize: '0.9rem', mr: 0.25 }} />
+                      減
+                    </ToggleButton>
+                    <ToggleButton value="add" sx={{ px: 1, py: 0.25, fontSize: '0.7rem' }}>
+                      <Add sx={{ fontSize: '0.9rem', mr: 0.25 }} />
+                      増
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                    数量:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={selectedAmount}
+                    exclusive
+                    onChange={(_, newAmount) => {
+                      if (newAmount !== null) setSelectedAmount(newAmount);
+                    }}
+                    size="small"
+                    sx={{ height: 28 }}
+                  >
+                    <ToggleButton value={1} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      1
+                    </ToggleButton>
+                    <ToggleButton value={3} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      3
+                    </ToggleButton>
+                    <ToggleButton value={5} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      5
+                    </ToggleButton>
+                    <ToggleButton value={10} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      10
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              </Box>
               {/* グリッド形式（4列） - 2列は贅沢すぎ、4列が適切 */}
               <Box
                 sx={{
