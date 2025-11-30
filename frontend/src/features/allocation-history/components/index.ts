@@ -6,11 +6,23 @@
  *
  * Phase A 最適化: 共通UIコンポーネント（StatusBadge, EmptyState, ClickableBox, TableHeaderCell）を導入し、
  * コード重複を削減（~330行削減）、アクセシビリティ向上、パフォーマンス最適化（useMemo）を実施。
+ *
+ * Phase B 最適化: 大きなコンポーネントを分割し、単一責任の原則を強化。
+ * - AllocationDetailModal: 392 → 241行（-39%）
+ *   - AllocationDetailModalHeader: ヘッダー部分を抽出（216行）
+ *   - GroupModeSelector: グループモード選択を抽出（141行）
  */
 
 // 詳細モーダル
 export { AllocationDetailModal } from './AllocationDetailModal';
 export type { AllocationDetailModalProps } from './AllocationDetailModal';
+
+// 詳細モーダル - サブコンポーネント（Phase B）
+export { AllocationDetailModalHeader } from './AllocationDetailModalHeader';
+export type { AllocationDetailModalHeaderProps } from './AllocationDetailModalHeader';
+
+export { GroupModeSelector } from './GroupModeSelector';
+export type { GroupModeSelectorProps, GroupMode } from './GroupModeSelector';
 
 // 削除確認ダイアログ
 export { AllocationDeleteDialog } from './AllocationDeleteDialog';

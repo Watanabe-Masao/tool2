@@ -1,17 +1,6 @@
-import { Box, Dialog, DialogContent, Typography, IconButton, CircularProgress } from '@mui/material';
-import {
-  Close,
-  Fullscreen,
-  FullscreenExit,
-  Settings,
-  DateRange,
-  Visibility,
-  CalendarMonth,
-} from '@mui/icons-material';
-import { format, parseISO } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { Box, Dialog, DialogContent, CircularProgress } from '@mui/material';
+import { CalendarMonth } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { AllocationBatch } from '@/types/allocationHistory';
 import type {
   AllocationHistoryBatches,
   AllocationHistoryFilters,
@@ -19,8 +8,10 @@ import type {
   AllocationHistoryTableData,
 } from '../hooks';
 import { MODAL_Z_INDEX } from '@/utils/constants';
-import { StatusBadge, ClickableBox, EmptyState } from '@/components/ui';
+import { EmptyState } from '@/components/ui';
 import { useMemo } from 'react';
+import { AllocationDetailModalHeader } from './AllocationDetailModalHeader';
+import { GroupModeSelector } from './GroupModeSelector';
 
 /**
  * AllocationDetailModal Props
@@ -45,8 +36,13 @@ export interface AllocationDetailModalProps {
 /**
  * AllocationDetailModal Component
  *
- * 配分履歴の詳細モーダル。
+ * 配分履歴の詳細モーダル（Phase B最適化済み）。
  * 単一バッチまたは日付範囲の配分詳細をDataGridで表示します。
+ *
+ * **Phase B 最適化:**
+ * - AllocationDetailModalHeader コンポーネント抽出（~110行削減）
+ * - GroupModeSelector コンポーネント抽出（~60行削減）
+ * - 薄いラッパーコンポーネントに（392 → ~170行）
  *
  * **機能:**
  * - 単一バッチ詳細表示
@@ -120,180 +116,33 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
         },
       }}
     >
-      {/* ヘッダー */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: { xs: 1.5, sm: 2 },
-          py: 1.25,
-          borderBottom: '1px solid',
-          borderColor: 'grey.200',
-          bgcolor: 'white',
-        }}
-      >
-        {/* 左側: タイトル */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography
-            sx={{
-              fontSize: { xs: '0.9rem', sm: '1rem' },
-              fontWeight: 700,
-              color: 'text.primary',
-            }}
-          >
-            {title}
-          </Typography>
-          {selectedBatch && (
-            <StatusBadge variant="default" size="medium">
-              {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
-            </StatusBadge>
-          )}
-          {selectedDateRange && (
-            <ClickableBox
-              onClick={onDatePickerOpen}
-              ariaLabel="日付範囲を変更"
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 0.75,
-                py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'primary.50',
-                '&:hover': { bgcolor: 'primary.100' },
-              }}
-            >
-              <DateRange sx={{ fontSize: 14, color: 'primary.main' }} />
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'primary.main' }}>
-                {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} -{' '}
-                {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
-              </Typography>
-            </ClickableBox>
-          )}
-          {details.length > 0 && (
-            <StatusBadge variant="default">
-              {details.length}品
-            </StatusBadge>
-          )}
-        </Box>
+      {/* ヘッダー（抽出済みコンポーネント） */}
+      <AllocationDetailModalHeader
+        title={title}
+        selectedBatch={selectedBatch}
+        selectedDateRange={selectedDateRange}
+        detailsCount={details.length}
+        isFullScreen={isFullScreen}
+        hiddenRowsCount={hiddenRowIds.size}
+        settingsOpen={settingsOpen}
+        onToggleFullScreen={toggleFullScreen}
+        onSettingsOpen={onSettingsOpen}
+        onDatePickerOpen={onDatePickerOpen}
+        onShowAllRows={showAllRows}
+        onClose={closeDetails}
+      />
 
-        {/* 右側: コントロール */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          {hiddenRowIds.size > 0 && (
-            <ClickableBox
-              onClick={showAllRows}
-              ariaLabel="非表示の行を再表示"
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 0.75,
-                py: 0.25,
-                borderRadius: 1,
-                bgcolor: 'warning.50',
-                '&:hover': { bgcolor: 'warning.100' },
-              }}
-            >
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'warning.main' }}>
-                {hiddenRowIds.size}件非表示
-              </Typography>
-              <Visibility sx={{ fontSize: 14, color: 'warning.main' }} />
-            </ClickableBox>
-          )}
-          <IconButton
-            size="small"
-            onClick={toggleFullScreen}
-            aria-label={isFullScreen ? 'フルスクリーンを解除' : 'フルスクリーンにする'}
-            sx={{ p: 0.5, color: 'grey.500' }}
-          >
-            {isFullScreen ? <FullscreenExit sx={{ fontSize: 18 }} /> : <Fullscreen sx={{ fontSize: 18 }} />}
-          </IconButton>
-          {selectedDateRange && (
-            <IconButton
-              size="small"
-              onClick={onSettingsOpen}
-              aria-label="詳細設定を開く"
-              sx={{
-                p: 0.5,
-                color: settingsOpen ? 'primary.main' : 'grey.500',
-              }}
-            >
-              <Settings sx={{ fontSize: 18 }} />
-            </IconButton>
-          )}
-          <IconButton
-            size="small"
-            onClick={closeDetails}
-            aria-label="閉じる"
-            sx={{ p: 0.5, color: 'grey.500' }}
-          >
-            <Close sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      </Box>
-
-      {/* グループ化コントロール */}
+      {/* グループ化コントロール（抽出済みコンポーネント） */}
       {selectedDateRange && !settingsOpen && (
-        <Box
-          sx={{
-            px: { xs: 1.5, sm: 2 },
-            py: 0.75,
-            borderBottom: '1px solid',
-            borderColor: 'grey.100',
-            background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'grey.600' }}>
-              グループ:
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {[
-                { value: 'date' as const, label: '日付' },
-                { value: 'product' as const, label: '商品' },
-                { value: 'composite' as const, label: '複合' },
-              ].map((option) => (
-                <Box
-                  key={option.value}
-                  onClick={() => setGroupMode(option.value)}
-                  sx={{
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: 1,
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    bgcolor: groupMode === option.value ? 'primary.main' : 'white',
-                    color: groupMode === option.value ? 'white' : 'grey.600',
-                    border: '1px solid',
-                    borderColor: groupMode === option.value ? 'primary.main' : 'grey.300',
-                    '&:hover': {
-                      bgcolor: groupMode === option.value ? 'primary.dark' : 'grey.50',
-                    },
-                  }}
-                >
-                  {option.label}
-                </Box>
-              ))}
-            </Box>
-
-            {filterCount > 0 && (
-              <StatusBadge variant="primary">
-                フィルター {filterCount}
-              </StatusBadge>
-            )}
-
-            {hiddenCount > 0 && (
-              <StatusBadge variant="warning">
-                非表示 {hiddenCount}
-              </StatusBadge>
-            )}
-          </Box>
-        </Box>
+        <GroupModeSelector
+          groupMode={groupMode}
+          onGroupModeChange={setGroupMode}
+          filterCount={filterCount}
+          hiddenCount={hiddenCount}
+        />
       )}
 
+      {/* コンテンツ */}
       <DialogContent sx={{ p: 0 }}>
         {detailsLoading ? (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
