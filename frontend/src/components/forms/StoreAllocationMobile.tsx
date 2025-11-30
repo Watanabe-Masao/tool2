@@ -834,77 +834,140 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
                   const isSelected = selectedCategories.has(category.id);
+                  const storeCount = getCategoryStores(category.id).length;
                   return (
                     <Chip
                       key={category.id}
-                      label={`${category.name} (${getCategoryStores(category.id).length})`}
+                      label={
+                        /* バッジスタイル: カテゴリ名 + 円形カウンター */
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            lineHeight: 1,
+                          }}>
+                            {category.name}
+                          </Typography>
+                          {/* 店舗数バッジ（円形） */}
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 18,
+                            height: 18,
+                            px: 0.25,
+                            borderRadius: '9px',
+                            bgcolor: isSelected
+                              ? 'rgba(255, 255, 255, 0.3)'
+                              : `${color.main}20`,
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              color: isSelected ? 'white' : color.main,
+                            }}>
+                              {storeCount}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
                       onClick={() => handleToggleCategory(category.id)}
                       size="small"
                       sx={{
-                        bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
-                        color: isSelected ? 'white' : color.main,
-                        borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
-                        borderWidth: 1,
+                        // UX重視: 控えめな色使いで、カテゴリ所属を明確に
+                        bgcolor: isSelected ? `${color.light}` : 'rgba(255, 255, 255, 0.9)',
+                        color: isSelected ? color.main : color.main,
+                        borderColor: color.main, // 常にカテゴリ色の境界線
+                        borderWidth: isSelected ? 2 : 1.5,
                         borderStyle: 'solid',
-                        fontSize: '0.7rem',
-                        fontWeight: isSelected ? 600 : 500,
-                        height: 28,
-                        minWidth: 75,
+                        height: 32,
+                        borderRadius: 16,
                         boxShadow: isSelected
-                          ? `0 2px 8px ${color.main}40`
+                          ? `0 2px 6px ${color.main}30`
                           : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                         '& .MuiChip-label': {
-                          px: 1.5,
+                          px: 1.25,
                         },
                         '&:hover': {
-                          bgcolor: isSelected ? color.main : color.light,
-                          transform: 'scale(1.05) translateY(-1px)',
-                          boxShadow: isSelected
-                            ? `0 4px 12px ${color.main}50`
-                            : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                          bgcolor: isSelected ? color.light : `${color.main}10`,
+                          transform: 'scale(1.08) translateY(-1px)',
+                          boxShadow: `0 3px 8px ${color.main}25`,
                         },
                         '&:active': {
-                          transform: 'scale(0.98)',
+                          transform: 'scale(0.96)',
+                          transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
                         },
                       }}
                     />
                   );
                 })}
                 <Chip
-                  label={`未分類 (${getUncategorizedStores().length})`}
+                  label={
+                    /* バッジスタイル: 未分類 + 円形カウンター */
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="caption" sx={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        lineHeight: 1,
+                      }}>
+                        未分類
+                      </Typography>
+                      {/* 店舗数バッジ（円形） */}
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 18,
+                        height: 18,
+                        px: 0.25,
+                        borderRadius: '9px',
+                        bgcolor: selectedCategories.has('uncategorized')
+                          ? 'rgba(255, 255, 255, 0.3)'
+                          : 'rgba(97, 97, 97, 0.15)',
+                      }}>
+                        <Typography variant="caption" sx={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          color: selectedCategories.has('uncategorized') ? 'white' : 'grey.700',
+                        }}>
+                          {getUncategorizedStores().length}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  }
                   onClick={() => handleToggleCategory('uncategorized')}
                   size="small"
-                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
                   sx={{
-                    fontSize: '0.7rem',
-                    fontWeight: selectedCategories.has('uncategorized') ? 600 : 500,
-                    height: 28,
-                    minWidth: 75,
+                    // UX重視: 控えめな色使い
                     bgcolor: selectedCategories.has('uncategorized')
-                      ? 'grey.700'
-                      : 'rgba(255, 255, 255, 0.8)',
-                    color: selectedCategories.has('uncategorized') ? 'white' : 'grey.700',
-                    borderColor: selectedCategories.has('uncategorized')
-                      ? 'grey.700'
-                      : 'rgba(0, 0, 0, 0.08)',
+                      ? 'grey.300'
+                      : 'rgba(255, 255, 255, 0.9)',
+                    color: selectedCategories.has('uncategorized') ? 'grey.800' : 'grey.600',
+                    borderColor: 'grey.500', // 常にグレー系の境界線
+                    borderWidth: selectedCategories.has('uncategorized') ? 2 : 1.5,
+                    borderStyle: 'solid',
+                    height: 32,
+                    borderRadius: 16,
                     boxShadow: selectedCategories.has('uncategorized')
-                      ? '0 2px 8px rgba(0, 0, 0, 0.15)'
+                      ? '0 2px 6px rgba(0, 0, 0, 0.12)'
                       : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     transform: selectedCategories.has('uncategorized') ? 'scale(1.02)' : 'scale(1)',
                     '& .MuiChip-label': {
-                      px: 1.5,
+                      px: 1.25,
                     },
                     '&:hover': {
-                      transform: 'scale(1.05) translateY(-1px)',
-                      boxShadow: selectedCategories.has('uncategorized')
-                        ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                        : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                      bgcolor: selectedCategories.has('uncategorized') ? 'grey.300' : 'grey.100',
+                      transform: 'scale(1.08) translateY(-1px)',
+                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
                     },
                     '&:active': {
-                      transform: 'scale(0.98)',
+                      transform: 'scale(0.96)',
+                      transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
                     },
                   }}
                 />
@@ -1015,17 +1078,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             // 固定サイズ（グリッドに合わせる）
                             width: '100%',
                             height: 44, // Appleタッチ最小サイズ
-                            // カラー（カテゴリ色）
-                            bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.9)',
-                            color: isSelected ? 'white' : color.main,
-                            // 境界線（選択時は太く）
-                            borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: isSelected ? 2 : 1,
+                            // UX重視: カテゴリ色を控えめに使用、未選択でも所属が明確
+                            bgcolor: isSelected ? color.light : 'rgba(255, 255, 255, 0.9)',
+                            color: isSelected ? color.main : color.main,
+                            // 境界線: 常にカテゴリ色（未選択でも所属を示す）
+                            borderColor: color.main,
+                            borderWidth: isSelected ? 2 : 1.5,
                             borderStyle: 'solid',
                             borderRadius: 2, // 8px
-                            // 影
+                            // 影（控えめに）
                             boxShadow: isSelected
-                              ? `0 2px 8px ${color.main}50`
+                              ? `0 2px 6px ${color.main}30`
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
                             // トランジション（細部にこだわる）
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1037,11 +1100,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             },
                             // ホバー: 浮き上がる効果
                             '&:hover': {
-                              bgcolor: isSelected ? color.main : color.light,
+                              bgcolor: isSelected ? color.light : `${color.main}10`,
                               transform: 'scale(1.08) translateY(-2px)',
-                              boxShadow: isSelected
-                                ? `0 4px 12px ${color.main}60`
-                                : `0 3px 8px ${color.main}30`,
+                              boxShadow: `0 3px 8px ${color.main}25`,
                             },
                             // アクティブ: 押し込む効果
                             '&:active': {
@@ -1053,17 +1114,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             // 固定サイズ（グリッドに合わせる）
                             width: '100%',
                             height: 44, // Appleタッチ最小サイズ（操作性重視）
-                            // カラー（プライマリ色）
-                            bgcolor: isSelected ? 'primary.main' : 'rgba(255, 255, 255, 0.9)',
-                            color: isSelected ? 'white' : 'primary.main',
-                            // 境界線（選択時は太く - 視覚的フィードバック）
-                            borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: isSelected ? 2 : 1,
+                            // UX重視: 未分類店舗もグレー系で統一（控えめ）
+                            bgcolor: isSelected ? 'grey.300' : 'rgba(255, 255, 255, 0.9)',
+                            color: isSelected ? 'grey.800' : 'grey.600',
+                            // 境界線: 常にグレー系（未選択でも分かる）
+                            borderColor: 'grey.500',
+                            borderWidth: isSelected ? 2 : 1.5,
                             borderStyle: 'solid',
                             borderRadius: 2, // 8px - タッチしやすい角丸
-                            // 影（奥行き感）
+                            // 影（控えめに）
                             boxShadow: isSelected
-                              ? '0 2px 8px rgba(25, 118, 210, 0.3)'
+                              ? '0 2px 6px rgba(0, 0, 0, 0.12)'
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
                             // トランジション（スムーズな状態変化）
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1075,11 +1136,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             },
                             // ホバー: 浮き上がる効果（操作のフィードバック）
                             '&:hover': {
-                              bgcolor: isSelected ? 'primary.dark' : 'primary.50',
+                              bgcolor: isSelected ? 'grey.300' : 'grey.100',
                               transform: 'scale(1.08) translateY(-2px)',
-                              boxShadow: isSelected
-                                ? '0 4px 12px rgba(25, 118, 210, 0.4)'
-                                : '0 3px 8px rgba(25, 118, 210, 0.2)',
+                              boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
                             },
                             // アクティブ: 押し込む効果（タッチフィードバック）
                             '&:active': {
@@ -1224,24 +1283,20 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}
             >
+              {/* グリッド形式（2列） - 横スクロール削減 */}
               <Box
                 sx={{
-                  display: 'flex',
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  gap: 1.5,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 1,
+                  maxHeight: 300,
+                  overflowY: 'auto',
                   px: 0.5,
                   py: 1,
                   WebkitOverflowScrolling: 'touch',
-                  scrollBehavior: 'smooth',
-                  scrollSnapType: 'x proximity',
                   scrollbarWidth: 'thin',
-                  // 横スクロールを許可（カード内のジェスチャーは個別に制御）
-                  touchAction: 'pan-x pan-y',
-                  overscrollBehaviorX: 'contain',
-                  overscrollBehaviorY: 'none',
                   '&::-webkit-scrollbar': {
-                    height: 8,
+                    width: 8,
                   },
                   '&::-webkit-scrollbar-track': {
                     backgroundColor: 'rgba(0,0,0,0.05)',
@@ -1268,10 +1323,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       key={store.code}
                       variant="outlined"
                       sx={{
-                        minWidth: 70,
-                        maxWidth: 70,
-                        flexShrink: 0,
-                        scrollSnapAlign: 'start',
+                        // グリッド幅に合わせる
+                        width: '100%',
+                        height: 'fit-content',
                         bgcolor:
                           swipePreview?.storeCode === store.code
                             ? swipePreview.direction === 'up'
@@ -1375,33 +1429,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   );
                 })}
               </Box>
-              {/* 右側のグラデーションインジケーター（スクロール可能を示す） */}
-              {selectedStoresList.length > 4 && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    right: 8,
-                    top: 8,
-                    bottom: 8,
-                    width: 60,
-                    background: 'linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0) 100%)',
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    pr: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'primary.main', fontWeight: 'bold', lineHeight: 1 }}>
-                      スワイプ
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '0.8rem', color: 'primary.main', fontWeight: 'bold' }}>
-                      →
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
             </Box>
           ) : (
             <Alert severity="info" sx={{ fontSize: '0.8rem', py: 0.5 }}>
