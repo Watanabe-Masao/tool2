@@ -40,6 +40,7 @@ import {
 } from 'recharts';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
+import { calculateEffectiveQuantity } from '@/utils/unitConversion';
 
 /**
  * StoreStatisticsModalのProps
@@ -136,15 +137,26 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const storeCost = product.storeCost || 0;
       const priceExcludingTax = product.priceExcludingTax || 0;
 
+      // 実効数量を計算（入数を考慮）
+      const fullUnit = product.specification && product.unit
+        ? `${product.specification}${product.unit}`
+        : product.unit || '';
+      const unitConversionResult = calculateEffectiveQuantity({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: fullUnit,
+      });
+      const effectiveQuantity = unitConversionResult.effectiveQuantity;
+
       product.storeAllocations.forEach((quantity, index) => {
         if (quantity > 0) {
           const storeCode = STORE_DATA[index].code;
           const stat = stats[storeCode];
 
           stat.allocationQuantity += quantity;
-          stat.allocationAmount += storeCost * quantity;
-          stat.salesAmount += priceExcludingTax * quantity;
-          stat.grossProfit += (priceExcludingTax - storeCost) * quantity;
+          stat.allocationAmount += storeCost * quantity * effectiveQuantity;
+          stat.salesAmount += priceExcludingTax * quantity * effectiveQuantity;
+          stat.grossProfit += (priceExcludingTax - storeCost) * quantity * effectiveQuantity;
         }
       });
     });
@@ -223,8 +235,20 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const totalQuantity = product.storeAllocations.reduce((sum, qty) => sum + qty, 0);
       const storeCost = product.storeCost || 0;
       const priceExcludingTax = product.priceExcludingTax || 0;
-      const costAmount = storeCost * totalQuantity;
-      const salesAmount = priceExcludingTax * totalQuantity;
+
+      // 実効数量を計算（入数を考慮）
+      const fullUnit = product.specification && product.unit
+        ? `${product.specification}${product.unit}`
+        : product.unit || '';
+      const unitConversionResult = calculateEffectiveQuantity({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: fullUnit,
+      });
+      const effectiveQuantity = unitConversionResult.effectiveQuantity;
+
+      const costAmount = storeCost * totalQuantity * effectiveQuantity;
+      const salesAmount = priceExcludingTax * totalQuantity * effectiveQuantity;
       const grossProfit = salesAmount - costAmount;
       const grossProfitMargin = salesAmount > 0 ? (grossProfit / salesAmount) * 100 : 0;
 
