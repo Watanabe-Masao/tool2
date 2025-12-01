@@ -49,7 +49,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
-  const [centerFeeRate, setCenterFeeRate] = useState<number>(13);
+  const [centerFeeRate, setCenterFeeRate] = useState<number | ''>(13);
   const [error, setError] = useState('');
   const [editingSupplier, setEditingSupplier] = useState<SupplierPresetEntity | null>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<SupplierPresetEntity | null>(null);
@@ -99,13 +99,16 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       return;
     }
 
-    if (centerFeeRate < 0 || centerFeeRate > 100) {
+    // 空文字列の場合はデフォルト値13を使用
+    const feeRate = centerFeeRate === '' ? 13 : centerFeeRate;
+
+    if (feeRate < 0 || feeRate > 100) {
       setError('センターフィー率は0〜100の範囲で入力してください');
       return;
     }
 
-    console.log('[SupplierPresetTab] Adding preset:', { supplier: newSupplierName.trim(), centerFeeRate });
-    const success = await onAddPreset(newSupplierName.trim(), centerFeeRate);
+    console.log('[SupplierPresetTab] Adding preset:', { supplier: newSupplierName.trim(), centerFeeRate: feeRate });
+    const success = await onAddPreset(newSupplierName.trim(), feeRate);
     if (success) {
       setNewSupplierName('');
       setCenterFeeRate(13);
@@ -122,14 +125,17 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       return;
     }
 
-    if (centerFeeRate < 0 || centerFeeRate > 100) {
+    // 空文字列の場合はデフォルト値13を使用
+    const feeRate = centerFeeRate === '' ? 13 : centerFeeRate;
+
+    if (feeRate < 0 || feeRate > 100) {
       setError('センターフィー率は0〜100の範囲で入力してください');
       return;
     }
 
     if (editingSupplier) {
-      console.log('[SupplierPresetTab] Updating preset:', { id: editingSupplier.id, supplier: newSupplierName.trim(), centerFeeRate });
-      const success = await onEditPreset(editingSupplier.id, newSupplierName.trim(), centerFeeRate);
+      console.log('[SupplierPresetTab] Updating preset:', { id: editingSupplier.id, supplier: newSupplierName.trim(), centerFeeRate: feeRate });
+      const success = await onEditPreset(editingSupplier.id, newSupplierName.trim(), feeRate);
       if (success) {
         setNewSupplierName('');
         setCenterFeeRate(13);
@@ -410,7 +416,10 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             type="number"
             fullWidth
             value={centerFeeRate}
-            onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCenterFeeRate(value === '' ? '' : Number(value));
+            }}
             placeholder="例: 13"
             inputProps={{ min: 0, max: 100, step: 0.1 }}
           />
@@ -478,7 +487,10 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             type="number"
             fullWidth
             value={centerFeeRate}
-            onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCenterFeeRate(value === '' ? '' : Number(value));
+            }}
             placeholder="例: 13"
             inputProps={{ min: 0, max: 100, step: 0.1 }}
           />
