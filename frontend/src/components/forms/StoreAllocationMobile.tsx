@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Box,
@@ -11,7 +11,6 @@ import {
   Card,
   CardContent,
   Alert,
-  LinearProgress,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -23,9 +22,6 @@ import {
   Lock,
   AutoFixHigh,
   DeleteSweep,
-  CheckCircle,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
   LockOutlined,
   LockOpenOutlined,
   Balance,
@@ -101,6 +97,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 商品の価格情報を取得
+  const storeCost = useWatch({ control, name: `products.${productIndex}.storeCost` }) || 0;
+  const priceExcludingTax = useWatch({ control, name: `products.${productIndex}.priceExcludingTax` }) || 0;
+
   // 店舗設定とカテゴリを読み込み
   useEffect(() => {
     const loadData = async () => {
@@ -166,6 +166,8 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             setLockedStores={setLockedStores}
             selectedCategories={selectedCategories}
             setSelectedCategories={setSelectedCategories}
+            storeCost={storeCost}
+            priceExcludingTax={priceExcludingTax}
           />
         );
       }}
@@ -193,6 +195,10 @@ interface StoreAllocationMobileContentProps {
   selectedCategories: Set<string>;
   /** カテゴリ選択更新関数 */
   setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 店原（原価） */
+  storeCost: number;
+  /** 本体価格（税抜売価） */
+  priceExcludingTax: number;
 }
 
 /**
@@ -215,6 +221,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   setLockedStores,
   selectedCategories,
   setSelectedCategories,
+  storeCost,
+  priceExcludingTax,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   // distributionModeは内部的にのみ使用（UI非表示）
@@ -256,6 +264,23 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * 残りの配分数を計算
    */
   const remaining = totalDelivery - totalAllocated;
+
+  /**
+   * 店舗ごとの統計情報を計算
+   */
+  const statistics = useMemo(() => {
+    const totalCost = allocations.reduce((sum, qty) => sum + (qty * storeCost), 0);
+    const totalPrice = allocations.reduce((sum, qty) => sum + (qty * priceExcludingTax), 0);
+    const totalProfit = totalPrice - totalCost;
+    const profitRate = totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0;
+
+    return {
+      totalCost,
+      totalPrice,
+      totalProfit,
+      profitRate,
+    };
+  }, [allocations, storeCost, priceExcludingTax]);
 
   /**
    * 選択した店舗のリスト（店番でソート）
@@ -519,11 +544,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const handleUnlockAll = () => {
     setLockedStores(new Set());
   };
-
-  /**
-   * 配分進捗率を計算
-   */
-  const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
 
   /**
    * 店舗の固定/解除をトグル
@@ -1501,117 +1521,58 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Alert>
           )}
         </Box>
-        {/* 統計表示（画面最下部） */}
+        {/* 統計表示（原価・売価・粗利） */}
         <Card
           variant="outlined"
           sx={{
             mt: 2,
             borderWidth: 2,
-            borderColor:
-              remaining === 0
-                ? 'success.main'
-                : remaining < 0
-                ? 'error.main'
-                : 'primary.main',
+            borderColor: 'primary.main',
+            bgcolor: 'background.paper',
           }}
         >
-          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            {/* 統計数値（3列グリッド） */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1 }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  総納品数
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                  {totalDelivery}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  配分済み
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main', fontSize: '1.1rem' }}>
-                  {totalAllocated}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  残り
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 700,
-                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
-                    fontSize: '1.1rem',
-                  }}
-                >
-                  {remaining}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* プログレスバー */}
-            <Box sx={{ mb: 1 }}>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(progressPercentage, 100)}
-                sx={{
-                  height: 8,
-                  borderRadius: 1,
-                  bgcolor: 'grey.200',
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor:
-                      remaining === 0
-                        ? 'success.main'
-                        : remaining < 0
-                        ? 'error.main'
-                        : 'primary.main',
-                    borderRadius: 1,
-                  },
-                }}
-              />
-              <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.25, fontSize: '0.65rem', color: 'text.secondary' }}>
-                {progressPercentage.toFixed(1)}%
+          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary' }}>
+                配分統計
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                配分数: {totalAllocated} / {totalDelivery} ({remaining < 0 ? `超過${Math.abs(remaining)}` : `残${remaining}`})
               </Typography>
             </Box>
-
-            {/* ステータス表示 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                {remaining === 0 ? (
-                  <>
-                    <CheckCircle sx={{ fontSize: '1rem', color: 'success.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', fontSize: '0.75rem' }}>
-                      完了
-                    </Typography>
-                  </>
-                ) : remaining < 0 ? (
-                  <>
-                    <ErrorIcon sx={{ fontSize: '1rem', color: 'error.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.main', fontSize: '0.75rem' }}>
-                      超過: {Math.abs(remaining)}個
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <WarningIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.main', fontSize: '0.75rem' }}>
-                      残り: {remaining}個
-                    </Typography>
-                  </>
-                )}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  原価合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.primary' }}>
+                  ¥{statistics.totalCost.toLocaleString()}
+                </Typography>
               </Box>
-
-              {/* 固定店舗数表示 */}
-              {lockedStores.size > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Lock sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-                    固定: {lockedStores.size}店舗
-                  </Typography>
-                </Box>
-              )}
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  売価合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'primary.main' }}>
+                  ¥{statistics.totalPrice.toLocaleString()}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  粗利合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.totalProfit >= 0 ? 'success.main' : 'error.main' }}>
+                  ¥{statistics.totalProfit.toLocaleString()}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  粗利率
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.profitRate >= 0 ? 'success.main' : 'error.main' }}>
+                  {statistics.profitRate.toFixed(1)}%
+                </Typography>
+              </Box>
             </Box>
           </CardContent>
         </Card>
