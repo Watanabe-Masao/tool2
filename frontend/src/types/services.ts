@@ -44,7 +44,7 @@ export interface IFirestoreService {
   ): Promise<string[]>;
 
   // 帳合先プリセット
-  saveSupplierPreset(userId: string, supplier: string): Promise<string>;
+  saveSupplierPreset(userId: string, supplier: string, centerFeeRate?: number): Promise<string>;
   getSupplierPresets(userId: string): Promise<SupplierPresetEntity[]>;
   subscribeToSupplierPresets(
     userId: string,
@@ -52,7 +52,7 @@ export interface IFirestoreService {
     onError: (error: Error) => void
   ): Unsubscribe;
   deleteSupplierPreset(presetId: string): Promise<void>;
-  updateSupplierPreset(presetId: string, supplier: string): Promise<void>;
+  updateSupplierPreset(presetId: string, supplier: string, centerFeeRate?: number): Promise<void>;
   reorderSupplierPresets(
     reorderedItems: Array<{ id: string; displayOrder: number }>
   ): Promise<void>;

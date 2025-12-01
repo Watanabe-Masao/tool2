@@ -17,6 +17,7 @@ import type { SupplierPresetEntity } from '@/types/entities';
 interface FirestoreSupplierPreset {
   userId: string;
   supplier: string;
+  centerFeeRate?: number;
   displayOrder?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -73,6 +74,7 @@ export class PresetRepository extends FirestoreBaseService<
     return {
       userId: preset.userId,
       supplier: preset.supplier,
+      centerFeeRate: preset.centerFeeRate,
       displayOrder: preset.displayOrder,
       createdAt: preset.createdAt ? Timestamp.fromDate(preset.createdAt) : Timestamp.now(),
       updatedAt: preset.updatedAt ? Timestamp.fromDate(preset.updatedAt) : Timestamp.now(),
@@ -87,6 +89,7 @@ export class PresetRepository extends FirestoreBaseService<
       id,
       userId: data.userId,
       supplier: data.supplier,
+      centerFeeRate: data.centerFeeRate,
       displayOrder: data.displayOrder,
       createdAt: data.createdAt?.toDate(),
       updatedAt: data.updatedAt?.toDate(),
@@ -104,6 +107,7 @@ export class PresetRepository extends FirestoreBaseService<
     return {
       id: preset.id,
       supplier: preset.supplier,
+      centerFeeRate: preset.centerFeeRate,
       displayOrder: preset.displayOrder,
       createdAt: preset.createdAt || new Date(),
       updatedAt: preset.updatedAt || new Date(),
@@ -247,16 +251,24 @@ export class PresetRepository extends FirestoreBaseService<
    *
    * @param presetId - プリセットID
    * @param supplier - 帳合先の値
+   * @param centerFeeRate - センターフィー率（オプション）
    */
-  async updateSupplier(presetId: string, supplier: string): Promise<void> {
+  async updateSupplier(presetId: string, supplier: string, centerFeeRate?: number): Promise<void> {
     const docRef = this.getDocRef(presetId);
 
-    await updateDoc(docRef, {
+    const updateData: Partial<FirestoreSupplierPreset> = {
       supplier,
       updatedAt: Timestamp.now(),
-    });
+    };
 
-    console.log(`[${this.collectionName}] Updated preset ${presetId}: ${supplier}`);
+    // centerFeeRateが指定されている場合のみ更新
+    if (centerFeeRate !== undefined) {
+      updateData.centerFeeRate = centerFeeRate;
+    }
+
+    await updateDoc(docRef, updateData);
+
+    console.log(`[${this.collectionName}] Updated preset ${presetId}: ${supplier}, centerFeeRate: ${centerFeeRate}`);
   }
 }
 

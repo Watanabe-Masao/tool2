@@ -21,6 +21,7 @@ import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
 import { calculateEffectiveQuantity, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 
 /**
  * ProductFormCardPricingのProps
@@ -60,6 +61,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     savePricingHistory,
   } = usePricingHistory();
 
+  // 帳合先プリセットの取得
+  const { presets } = useSupplierPresets();
+
   // 価格履歴モーダルの開閉状態
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
@@ -69,6 +73,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const isCalcOpen = Boolean(calcAnchorEl);
 
   // 各フィールドを監視
+  const supplier = useWatch({ control, name: `products.${index}.supplier` });
   const productName = useWatch({ control, name: `products.${index}.name` });
   const origin = useWatch({ control, name: `products.${index}.origin` });
   const specification = useWatch({ control, name: `products.${index}.specification` });
@@ -83,6 +88,25 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
   // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
   const lastAutoLoadedKey = useRef<string | null>(null);
+  // センターフィーが手動で変更されたかどうかを追跡
+  const isCenterFeeManuallyChanged = useRef<boolean>(false);
+
+  /**
+   * 帳合先変更時にプリセットからセンターフィー率を自動設定
+   */
+  useEffect(() => {
+    if (!supplier) return;
+
+    // センターフィーが手動で変更されている場合はスキップ
+    if (isCenterFeeManuallyChanged.current) return;
+
+    // 一致するプリセットを検索
+    const preset = presets.find((p) => p.supplier === supplier);
+    if (preset && preset.centerFeeRate !== undefined) {
+      // プリセットからセンターフィー率を設定
+      setValue(`products.${index}.centerFeeRate`, preset.centerFeeRate, { shouldValidate: true });
+    }
+  }, [supplier, presets, setValue, index]);
 
   /**
    * 履歴がある場合、最新のものを自動読み込み

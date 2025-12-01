@@ -42,6 +42,8 @@ export interface SupplierPreset {
   id?: string;
   userId: string;
   supplier: string;
+  /** センターフィー率（%）（デフォルト値として使用） */
+  centerFeeRate?: number;
   displayOrder?: number;
   createdAt?: Date;
   updatedAt?: Date;

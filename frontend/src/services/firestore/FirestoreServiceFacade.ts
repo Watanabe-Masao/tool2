@@ -128,10 +128,11 @@ export class FirestoreServiceFacade {
   /**
    * プリセットを保存
    */
-  async saveSupplierPreset(userId: string, supplier: string): Promise<string> {
+  async saveSupplierPreset(userId: string, supplier: string, centerFeeRate?: number): Promise<string> {
     return this.presetRepo.save({
       userId,
       supplier,
+      centerFeeRate,
     });
   }
 
@@ -142,6 +143,7 @@ export class FirestoreServiceFacade {
     Array<{
       id: string;
       supplier: string;
+      centerFeeRate?: number;
       displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
@@ -151,6 +153,7 @@ export class FirestoreServiceFacade {
     return presets.map((preset) => ({
       id: preset.id!,
       supplier: preset.supplier,
+      centerFeeRate: preset.centerFeeRate,
       displayOrder: preset.displayOrder,
       createdAt: preset.createdAt!,
       updatedAt: preset.updatedAt!,
@@ -165,6 +168,7 @@ export class FirestoreServiceFacade {
     onSuccess: (presets: Array<{
       id: string;
       supplier: string;
+      centerFeeRate?: number;
       displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
@@ -178,6 +182,7 @@ export class FirestoreServiceFacade {
           presets.map((preset) => ({
             id: preset.id!,
             supplier: preset.supplier,
+            centerFeeRate: preset.centerFeeRate,
             displayOrder: preset.displayOrder,
             createdAt: preset.createdAt!,
             updatedAt: preset.updatedAt!,
@@ -198,8 +203,8 @@ export class FirestoreServiceFacade {
   /**
    * プリセットを更新
    */
-  async updateSupplierPreset(presetId: string, supplier: string): Promise<void> {
-    return this.presetRepo.updateSupplier(presetId, supplier);
+  async updateSupplierPreset(presetId: string, supplier: string, centerFeeRate?: number): Promise<void> {
+    return this.presetRepo.updateSupplier(presetId, supplier, centerFeeRate);
   }
 
   /**

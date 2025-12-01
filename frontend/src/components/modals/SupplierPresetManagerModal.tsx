@@ -164,6 +164,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [presetValue, setPresetValue] = useState('');
+  const [centerFeeRate, setCenterFeeRate] = useState<number>(13);
   const [error, setError] = useState('');
 
   // 削除確認ダイアログの状態
@@ -220,9 +221,15 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
       return;
     }
 
-    const success = await addPreset(presetValue.trim());
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
+    const success = await addPreset(presetValue.trim(), centerFeeRate);
     if (success) {
       setPresetValue('');
+      setCenterFeeRate(13);
       setEditingId(null);
       setError('');
     } else {
@@ -255,10 +262,16 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
       return;
     }
 
-    const success = await updatePreset(editingId, presetValue.trim());
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
+    const success = await updatePreset(editingId, presetValue.trim(), centerFeeRate);
     if (success) {
       setEditingId(null);
       setPresetValue('');
+      setCenterFeeRate(13);
       setError('');
     } else {
       setError('プリセットの更新に失敗しました');
@@ -271,6 +284,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const handleCancelEdit = () => {
     setEditingId(null);
     setPresetValue('');
+    setCenterFeeRate(13);
     setError('');
   };
 
@@ -433,6 +447,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
     if (!isLongPressCompleted.current) {
       setEditingId('new');
       setPresetValue('');
+      setCenterFeeRate(13);
     }
   };
 
@@ -442,6 +457,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const handleSelectPresetForEdit = (preset: SupplierPresetEntity) => {
     setEditingId(preset.id);
     setPresetValue(preset.supplier);
+    setCenterFeeRate(preset.centerFeeRate ?? 13);
     setEditMenuAnchor(null);
   };
 
@@ -496,6 +512,17 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
                 sx={{ mb: 1 }}
                 placeholder="例: ○○商事"
                 autoFocus
+              />
+              <TextField
+                label="センターフィー率（%）"
+                type="number"
+                value={centerFeeRate}
+                onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+                fullWidth
+                size="small"
+                sx={{ mb: 1 }}
+                placeholder="例: 13"
+                inputProps={{ min: 0, max: 100, step: 0.1 }}
               />
               <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                 <Button size="small" onClick={handleCancelEdit}>

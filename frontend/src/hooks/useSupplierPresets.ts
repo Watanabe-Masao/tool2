@@ -47,11 +47,11 @@ export const useSupplierPresets = () => {
   /**
    * プリセットを追加
    */
-  const addPreset = useCallback(async (supplier: string): Promise<boolean> => {
+  const addPreset = useCallback(async (supplier: string, centerFeeRate?: number): Promise<boolean> => {
     if (!userRef.current) return false;
 
     try {
-      await firestoreServiceRef.current.saveSupplierPreset(userRef.current.uid, supplier);
+      await firestoreServiceRef.current.saveSupplierPreset(userRef.current.uid, supplier, centerFeeRate);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
@@ -79,9 +79,9 @@ export const useSupplierPresets = () => {
   /**
    * プリセットを更新
    */
-  const updatePreset = useCallback(async (presetId: string, supplier: string): Promise<boolean> => {
+  const updatePreset = useCallback(async (presetId: string, supplier: string, centerFeeRate?: number): Promise<boolean> => {
     try {
-      await firestoreServiceRef.current.updateSupplierPreset(presetId, supplier);
+      await firestoreServiceRef.current.updateSupplierPreset(presetId, supplier, centerFeeRate);
       await loadPresets(); // 再読み込み
       return true;
     } catch (error) {
