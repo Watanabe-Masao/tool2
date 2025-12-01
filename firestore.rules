@@ -143,12 +143,23 @@ service cloud.firestore {
       // 読み取り: 認証済みユーザーのみ（自分のプリセットのみ）
       allow read: if isAuthenticated() &&
                      resource.data.userId == request.auth.uid;
-      // 作成: 認証済みユーザーのみ
+      // 作成: 認証済みユーザーのみ + 必須フィールドチェック
       allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid;
-      // 更新: 自分のプリセットのみ
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['supplier', 'userId']) &&
+                       request.resource.data.supplier is string &&
+                       request.resource.data.supplier.size() > 0 &&
+                       (!request.resource.data.keys().hasAny(['centerFeeRate']) ||
+                        (request.resource.data.centerFeeRate is number &&
+                         request.resource.data.centerFeeRate >= 0 &&
+                         request.resource.data.centerFeeRate <= 100));
+      // 更新: 自分のプリセットのみ + フィールドバリデーション
       allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+                       resource.data.userId == request.auth.uid &&
+                       (!request.resource.data.keys().hasAny(['centerFeeRate']) ||
+                        (request.resource.data.centerFeeRate is number &&
+                         request.resource.data.centerFeeRate >= 0 &&
+                         request.resource.data.centerFeeRate <= 100));
       // 削除: 自分のプリセットのみ
       allow delete: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid;
