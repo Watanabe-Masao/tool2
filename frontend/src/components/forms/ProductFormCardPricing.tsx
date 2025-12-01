@@ -297,7 +297,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -312,7 +312,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -327,7 +327,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -342,7 +342,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -436,31 +436,21 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             />
           </Grid>
           <Grid item xs={6}>
-            <Controller
-              name={`products.${index}.centerFeeRate`}
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  type="number"
-                  label="センターフィー（%）"
-                  placeholder="例: 13"
-                  size="small"
-                  fullWidth
-                  error={!!productErrors?.centerFeeRate}
-                  helperText={productErrors?.centerFeeRate?.message}
-                  required
-                  inputProps={{ min: 0, max: 100, step: 0.1 }}
-                  value={field.value ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // 空文字列の場合はデフォルト値13、それ以外は入力値（0を含む）
-                    field.onChange(value === '' ? 13 : parseFloat(value));
-                    // 手動変更フラグを立てる
-                    isCenterFeeManuallyChanged.current = true;
-                  }}
-                />
-              )}
+            <TextField
+              label="センターフィー（%）"
+              value={centerFeeRate ? `${centerFeeRate}%` : '-'}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={{
+                '& .MuiInputBase-input': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
+                  fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
+                },
+              }}
             />
           </Grid>
         </Grid>
@@ -518,8 +508,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
                   fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                 },
               }}
             />
@@ -564,8 +555,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
-                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
+                  color: profitAmount < 0
+                    ? 'error.main'
+                    : (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                   fontWeight: 'medium',
                 },
               }}
@@ -611,8 +604,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
                   fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                 },
               }}
             />
@@ -747,7 +741,16 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Typography>
 
           {/* 商品情報表示 */}
-          <Box sx={{ mb: 1.5, p: 1, bgcolor: unitCompatibility.isCompatible ? 'grey.100' : 'error.light', borderRadius: 1 }}>
+          <Box
+            sx={{
+              mb: 1.5,
+              p: 1,
+              bgcolor: unitCompatibility.isCompatible
+                ? (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100'
+                : 'error.light',
+              borderRadius: 1
+            }}
+          >
             <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
               規格: {unit || '未設定'}
             </Typography>
