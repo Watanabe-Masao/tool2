@@ -84,7 +84,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
   const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
-  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
+  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) ?? 13;
 
   // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
   const lastAutoLoadedKey = useRef<string | null>(null);
@@ -451,10 +451,13 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.centerFeeRate?.message}
                   required
                   inputProps={{ min: 0, max: 100, step: 0.1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 13);
+                    // 空文字列の場合はデフォルト値13、それ以外は入力値（0を含む）
+                    field.onChange(value === '' ? 13 : parseFloat(value));
+                    // 手動変更フラグを立てる
+                    isCenterFeeManuallyChanged.current = true;
                   }}
                 />
               )}
