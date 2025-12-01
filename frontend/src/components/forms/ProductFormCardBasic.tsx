@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -26,7 +26,7 @@ import {
   ListItemText,
   Grow,
 } from '@mui/material';
-import { Category as CategoryIcon, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
@@ -145,6 +145,28 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     history: presetHistory,
     loadHistory: reloadPresetHistory,
   } = useProductHistory(suppliers, undefined);
+
+  // 現在の商品情報がプリセットと一致しているかをチェック
+  const isMatchingPreset = useMemo(() => {
+    if (!currentName || !currentOrigin) return false;
+
+    return presetHistory.some(preset =>
+      preset.name === currentName &&
+      preset.origin === currentOrigin &&
+      preset.specification === (currentSpecification || '') &&
+      preset.quantityPerPackage === currentQuantityPerPackage &&
+      preset.unit === (currentUnit || '') &&
+      preset.packageUnit === (currentPackageUnit || '')
+    );
+  }, [
+    presetHistory,
+    currentName,
+    currentOrigin,
+    currentSpecification,
+    currentQuantityPerPackage,
+    currentUnit,
+    currentPackageUnit,
+  ]);
 
   // オートコンプリート用の商品履歴フック（現在の商品の帳合先とカテゴリーでフィルタ）
   const {
@@ -615,7 +637,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 <Typography variant="subtitle1" fontWeight="medium">
                   商品 {index + 1}
                 </Typography>
-                <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
+                {isMatchingPreset ? (
+                  <Bookmark sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+                ) : (
+                  <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
+                )}
               </ButtonBase>
               {(() => {
                 const supplierColor = currentSupplier ? getSupplierColorByName(currentSupplier, supplierPresets) : undefined;
