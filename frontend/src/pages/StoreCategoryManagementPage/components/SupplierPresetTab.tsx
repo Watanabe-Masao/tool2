@@ -50,6 +50,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
   const [centerFeeRate, setCenterFeeRate] = useState<number>(13);
+  const [error, setError] = useState('');
   const [editingSupplier, setEditingSupplier] = useState<SupplierPresetEntity | null>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<SupplierPresetEntity | null>(null);
 
@@ -79,6 +80,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
         setEditingSupplier(supplier);
         setNewSupplierName(supplier.supplier);
         setCenterFeeRate(supplier.centerFeeRate ?? 13);
+        setError('');
         setShowEditDialog(true);
       }
     },
@@ -92,22 +94,50 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
   });
 
   const handleAddSubmit = async () => {
+    if (!newSupplierName.trim()) {
+      setError('帳合先を入力してください');
+      return;
+    }
+
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
+    console.log('[SupplierPresetTab] Adding preset:', { supplier: newSupplierName.trim(), centerFeeRate });
     const success = await onAddPreset(newSupplierName.trim(), centerFeeRate);
     if (success) {
       setNewSupplierName('');
       setCenterFeeRate(13);
+      setError('');
       setShowAddDialog(false);
+    } else {
+      setError('帳合先の追加に失敗しました');
     }
   };
 
   const handleEditSubmit = async () => {
+    if (!newSupplierName.trim()) {
+      setError('帳合先を入力してください');
+      return;
+    }
+
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
     if (editingSupplier) {
+      console.log('[SupplierPresetTab] Updating preset:', { id: editingSupplier.id, supplier: newSupplierName.trim(), centerFeeRate });
       const success = await onEditPreset(editingSupplier.id, newSupplierName.trim(), centerFeeRate);
       if (success) {
         setNewSupplierName('');
         setCenterFeeRate(13);
+        setError('');
         setEditingSupplier(null);
         setShowEditDialog(false);
+      } else {
+        setError('帳合先の更新に失敗しました');
       }
     }
   };
@@ -140,7 +170,12 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
               variant="contained"
               size="small"
               startIcon={<AddIcon />}
-              onClick={() => setShowAddDialog(true)}
+              onClick={() => {
+                setNewSupplierName('');
+                setCenterFeeRate(13);
+                setError('');
+                setShowAddDialog(true);
+              }}
             >
               追加
             </Button>
@@ -345,9 +380,21 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       </Card>
 
       {/* 帳合先追加ダイアログ */}
-      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
+      <Dialog
+        open={showAddDialog}
+        onClose={() => {
+          setShowAddDialog(false);
+          setError('');
+        }}
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
+      >
         <DialogTitle>帳合先を追加</DialogTitle>
         <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"
@@ -387,7 +434,14 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowAddDialog(false)}>キャンセル</Button>
+          <Button
+            onClick={() => {
+              setShowAddDialog(false);
+              setError('');
+            }}
+          >
+            キャンセル
+          </Button>
           <Button onClick={handleAddSubmit} variant="contained">
             追加
           </Button>
@@ -395,9 +449,21 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       </Dialog>
 
       {/* 帳合先編集ダイアログ */}
-      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}>
+      <Dialog
+        open={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setError('');
+        }}
+        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
+      >
         <DialogTitle>帳合先を編集</DialogTitle>
         <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"
@@ -418,7 +484,14 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowEditDialog(false)}>キャンセル</Button>
+          <Button
+            onClick={() => {
+              setShowEditDialog(false);
+              setError('');
+            }}
+          >
+            キャンセル
+          </Button>
           <Button onClick={handleEditSubmit} variant="contained">
             更新
           </Button>
