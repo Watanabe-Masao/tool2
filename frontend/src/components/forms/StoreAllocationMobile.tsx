@@ -225,6 +225,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   const [selectedAmount, setSelectedAmount] = useState<number>(1);
   // 自動配分の配分率（50%, 80%, 100%）
   const [allocationRate, setAllocationRate] = useState<number>(100);
+  // バリデーションエラー状態
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
@@ -281,26 +283,47 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    */
   const handleToggleStore = (storeCode: string) => {
     const newSelected = new Set(selectedStores);
-
     if (newSelected.has(storeCode)) {
-      // 選択済みの場合: ヘッダで選択された数量とモードで増減
-      const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
-      if (storeIndex !== -1) {
-        const currentValue = allocations[storeIndex] || 0;
-        const newAllocations = [...allocations];
-
-        if (adjustMode === 'add') {
-          newAllocations[storeIndex] = currentValue + selectedAmount;
-        } else {
-          newAllocations[storeIndex] = Math.max(0, currentValue - selectedAmount);
-        }
-        onChange(newAllocations);
-      }
+      newSelected.delete(storeCode);
+      handleChangeAllocation(storeCode, 0);
     } else {
-      // 未選択の場合: 選択状態にする
       newSelected.add(storeCode);
-      setSelectedStores(newSelected);
     }
+    setSelectedStores(newSelected);
+  };
+
+  /**
+   * 配分カードのヘッダータップで増減
+   */
+  const handleCardHeaderTap = (storeCode: string) => {
+    const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+    if (storeIndex === -1 || lockedStores.has(storeCode)) return;
+
+    const currentValue = allocations[storeIndex] || 0;
+    const newAllocations = [...allocations];
+
+    if (adjustMode === 'add') {
+      // 増加時: 残数チェック
+      const newTotal = totalAllocated + selectedAmount;
+      if (newTotal > totalDelivery) {
+        // バリデーションエラー: 上限超過
+        const excess = newTotal - totalDelivery;
+        setValidationError(`配分数が総数量を${excess}個超過します`);
+        setTimeout(() => setValidationError(null), 3000);
+        return;
+      }
+      newAllocations[storeIndex] = currentValue + selectedAmount;
+    } else {
+      // 減少時: 0未満にならないようにチェック
+      const newValue = currentValue - selectedAmount;
+      if (newValue < 0) {
+        setValidationError(`これ以上減らせません（現在: ${currentValue}個）`);
+        setTimeout(() => setValidationError(null), 3000);
+        return;
+      }
+      newAllocations[storeIndex] = newValue;
+    }
+    onChange(newAllocations);
   };
 
   /**
@@ -529,10 +552,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     isInputFieldTouch.current = false;
     currentTouchStore.current = storeCode;
 
-    // 長押し判定（600ms）でトグル実行
+    // 長押し判定（600ms）でロック/解除トグル実行
     longPressTimer.current = window.setTimeout(() => {
-      // 長押しでロック/ロック解除をトグル
       handleToggleLock(storeCode);
+      longPressTimer.current = -1; // 長押し完了フラグ
     }, 600);
   };
 
@@ -560,13 +583,21 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
-    // 長押しタイマーをクリア
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
+    // 長押し完了済み（-1）なら何もしない
+    if (longPressTimer.current === -1) {
       longPressTimer.current = null;
+      currentTouchStore.current = null;
+      return;
+    }
+
+    // タイマーがまだ実行中（通常のタップ）の場合、増減処理を実行
+    if (longPressTimer.current && currentTouchStore.current) {
+      window.clearTimeout(longPressTimer.current);
+      handleCardHeaderTap(currentTouchStore.current);
     }
 
     // リセット
+    longPressTimer.current = null;
     currentTouchStore.current = null;
     isInputFieldTouch.current = false;
   };
@@ -953,59 +984,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </Card>
         )}
 
-        {/* 残数表示 */}
-        <Card
-          variant="outlined"
-          sx={{
-            borderColor: remaining < 0 ? 'error.main' : remaining === 0 ? 'success.main' : 'warning.main',
-            borderWidth: 2,
-            bgcolor: remaining < 0 ? 'error.50' : remaining === 0 ? 'success.50' : 'background.paper',
-          }}
-        >
-          <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 600 }}>
-                  残り配分可能数
-                </Typography>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    color: remaining < 0 ? 'error.main' : remaining === 0 ? 'success.main' : 'warning.main',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {remaining}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                  総数量: {totalDelivery}
-                </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
-                  配分済: {totalAllocated}
-                </Typography>
-              </Box>
-            </Box>
-            {remaining < 0 && (
-              <Alert severity="error" sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>
-                配分数が総数量を超えています
-              </Alert>
-            )}
-            {remaining === 0 && totalDelivery > 0 && (
-              <Alert severity="success" icon={<CheckCircle fontSize="small" />} sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>
-                全て配分完了
-              </Alert>
-            )}
-            {remaining > 0 && (
-              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                💡 配分ヘッダでモード・数量を選択 → 店舗チップをタップ
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
-
         {/* 店舗選択 */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -1367,6 +1345,26 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   </ToggleButtonGroup>
                 </Box>
               </Box>
+              {/* バリデーションエラー表示 */}
+              {validationError && (
+                <Alert
+                  severity="error"
+                  onClose={() => setValidationError(null)}
+                  sx={{
+                    mt: 1,
+                    py: 0.5,
+                    fontSize: '0.7rem',
+                    animation: 'shake 0.5s',
+                    '@keyframes shake': {
+                      '0%, 100%': { transform: 'translateX(0)' },
+                      '25%': { transform: 'translateX(-5px)' },
+                      '75%': { transform: 'translateX(5px)' },
+                    },
+                  }}
+                >
+                  {validationError}
+                </Alert>
+              )}
               {/* グリッド形式（4列） - 2列は贅沢すぎ、4列が適切 */}
               <Box
                 sx={{
