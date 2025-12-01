@@ -71,14 +71,22 @@ export class PresetRepository extends FirestoreBaseService<
    * SupplierPreset → Firestore形式に変換
    */
   toFirestoreFormat(preset: SupplierPreset): FirestoreSupplierPreset {
-    return {
+    const data: FirestoreSupplierPreset = {
       userId: preset.userId,
       supplier: preset.supplier,
-      centerFeeRate: preset.centerFeeRate,
-      displayOrder: preset.displayOrder,
       createdAt: preset.createdAt ? Timestamp.fromDate(preset.createdAt) : Timestamp.now(),
       updatedAt: preset.updatedAt ? Timestamp.fromDate(preset.updatedAt) : Timestamp.now(),
     };
+
+    // undefinedを除外してオプショナルフィールドを追加
+    if (preset.centerFeeRate !== undefined) {
+      data.centerFeeRate = preset.centerFeeRate;
+    }
+    if (preset.displayOrder !== undefined) {
+      data.displayOrder = preset.displayOrder;
+    }
+
+    return data;
   }
 
   /**

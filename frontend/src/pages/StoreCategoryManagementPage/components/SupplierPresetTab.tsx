@@ -32,8 +32,8 @@ import { getSupplierColor, SUPPLIER_COLORS } from '@/constants/supplierColors';
 
 interface SupplierPresetTabProps {
   presets: SupplierPresetEntity[];
-  onAddPreset: (name: string) => Promise<boolean>;
-  onEditPreset: (id: string, name: string) => Promise<boolean>;
+  onAddPreset: (name: string, centerFeeRate?: number) => Promise<boolean>;
+  onEditPreset: (id: string, name: string, centerFeeRate?: number) => Promise<boolean>;
   onDeletePreset: (id: string) => Promise<boolean>;
   loadPresets: () => Promise<void>;
 }
@@ -49,6 +49,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
+  const [centerFeeRate, setCenterFeeRate] = useState<number>(13);
   const [editingSupplier, setEditingSupplier] = useState<SupplierPresetEntity | null>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<SupplierPresetEntity | null>(null);
 
@@ -77,6 +78,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       if (supplier) {
         setEditingSupplier(supplier);
         setNewSupplierName(supplier.supplier);
+        setCenterFeeRate(supplier.centerFeeRate ?? 13);
         setShowEditDialog(true);
       }
     },
@@ -90,18 +92,20 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
   });
 
   const handleAddSubmit = async () => {
-    const success = await onAddPreset(newSupplierName.trim());
+    const success = await onAddPreset(newSupplierName.trim(), centerFeeRate);
     if (success) {
       setNewSupplierName('');
+      setCenterFeeRate(13);
       setShowAddDialog(false);
     }
   };
 
   const handleEditSubmit = async () => {
     if (editingSupplier) {
-      const success = await onEditPreset(editingSupplier.id, newSupplierName.trim());
+      const success = await onEditPreset(editingSupplier.id, newSupplierName.trim(), centerFeeRate);
       if (success) {
         setNewSupplierName('');
+        setCenterFeeRate(13);
         setEditingSupplier(null);
         setShowEditDialog(false);
       }
@@ -353,6 +357,16 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             value={newSupplierName}
             onChange={(e) => setNewSupplierName(e.target.value)}
           />
+          <TextField
+            margin="dense"
+            label="センターフィー率（%）"
+            type="number"
+            fullWidth
+            value={centerFeeRate}
+            onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+            placeholder="例: 13"
+            inputProps={{ min: 0, max: 100, step: 0.1 }}
+          />
           {/* 割り当てカラーのプレビュー */}
           <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="caption" color="text.secondary">
@@ -391,6 +405,16 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
             fullWidth
             value={newSupplierName}
             onChange={(e) => setNewSupplierName(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="センターフィー率（%）"
+            type="number"
+            fullWidth
+            value={centerFeeRate}
+            onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+            placeholder="例: 13"
+            inputProps={{ min: 0, max: 100, step: 0.1 }}
           />
         </DialogContent>
         <DialogActions>

@@ -51,8 +51,8 @@ export const StoreCategoryManagementPage: React.FC = () => {
   }, [tabValue]);
 
   // 帳合先操作のラッパー
-  const handleAddPreset = async (name: string): Promise<boolean> => {
-    const success = await addPreset(name);
+  const handleAddPreset = async (name: string, centerFeeRate?: number): Promise<boolean> => {
+    const success = await addPreset(name, centerFeeRate);
     if (success) {
       showSuccess('帳合先を追加しました');
     } else {
@@ -61,8 +61,8 @@ export const StoreCategoryManagementPage: React.FC = () => {
     return success;
   };
 
-  const handleEditPreset = async (id: string, name: string): Promise<boolean> => {
-    const success = await updatePreset(id, name);
+  const handleEditPreset = async (id: string, name: string, centerFeeRate?: number): Promise<boolean> => {
+    const success = await updatePreset(id, name, centerFeeRate);
     if (success) {
       showSuccess('帳合先を更新しました');
     } else {
