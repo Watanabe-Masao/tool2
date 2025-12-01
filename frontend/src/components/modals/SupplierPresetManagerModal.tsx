@@ -205,6 +205,8 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
 
   // 長押し検出用のタイマー（+ボタン長押し用）
   const longPressTimer = useRef<number | null>(null);
+  // 長押しが完了したかどうかのフラグ
+  const isLongPressCompleted = useRef<boolean>(false);
 
   // 編集メニューのアンカー
   const [editMenuAnchor, setEditMenuAnchor] = useState<null | HTMLElement>(null);
@@ -355,12 +357,17 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    */
   const handleDndDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    // ドラッグ中はスクロール無効化
+    document.body.style.overflow = 'hidden';
   };
 
   /**
    * ドラッグ終了 (dnd-kit)
    */
   const handleDndDragEnd = async (event: DragEndEvent) => {
+    // スクロールを元に戻す
+    document.body.style.overflow = '';
+
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
@@ -400,8 +407,10 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    * +ボタン長押し開始
    */
   const handleAddButtonLongPressStart = (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    isLongPressCompleted.current = false;
     longPressTimer.current = window.setTimeout(() => {
       // 編集メニューを開く
+      isLongPressCompleted.current = true;
       setEditMenuAnchor(e.currentTarget);
     }, 500);
   };
@@ -420,8 +429,8 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    * +ボタンクリック（長押しされていない場合は新規追加）
    */
   const handleAddButtonClick = () => {
-    // 長押しタイマーがまだ残っていたら、通常のクリック（新規追加）
-    if (longPressTimer.current) {
+    // 長押しが完了していない場合のみ新規追加（短押し）
+    if (!isLongPressCompleted.current) {
       setEditingId('new');
       setPresetValue('');
     }
