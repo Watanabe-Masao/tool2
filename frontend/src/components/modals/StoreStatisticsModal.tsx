@@ -40,6 +40,7 @@ import {
 } from 'recharts';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
+import { calculateEffectiveQuantity } from '@/utils/unitConversion';
 
 /**
  * StoreStatisticsModalのProps
@@ -136,15 +137,27 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const storeCost = product.storeCost || 0;
       const priceExcludingTax = product.priceExcludingTax || 0;
 
+      // 1箱あたりの実効数量を計算（規格と入数から）
+      const conversionResult = calculateEffectiveQuantity({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: product.unit || '',
+      });
+      const effectiveQuantity = conversionResult.effectiveQuantity;
+
+      // 1箱あたりの価格を計算
+      const boxStoreCost = storeCost * effectiveQuantity;
+      const boxPriceExcludingTax = priceExcludingTax * effectiveQuantity;
+
       product.storeAllocations.forEach((quantity, index) => {
         if (quantity > 0) {
           const storeCode = STORE_DATA[index].code;
           const stat = stats[storeCode];
 
           stat.allocationQuantity += quantity;
-          stat.allocationAmount += storeCost * quantity;
-          stat.salesAmount += priceExcludingTax * quantity;
-          stat.grossProfit += (priceExcludingTax - storeCost) * quantity;
+          stat.allocationAmount += boxStoreCost * quantity;
+          stat.salesAmount += boxPriceExcludingTax * quantity;
+          stat.grossProfit += (boxPriceExcludingTax - boxStoreCost) * quantity;
         }
       });
     });
