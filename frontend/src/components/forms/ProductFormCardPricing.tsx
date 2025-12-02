@@ -20,7 +20,7 @@ import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
-import { calculateEffectiveQuantity, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
+import { calculateEffectiveQuantityWithMigration, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 
 /**
@@ -162,12 +162,11 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     : '0.0';
 
   // 単位変換を適用（例: 5kg入り + 100gあたり → 50単位）
-  // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
-  const fullUnit = specification && unit ? `${specification}${unit}` : unit || '';
-  const unitConversionResult = calculateEffectiveQuantity({
+  // V1形式のデータ（unit: "100gあたり"）を自動的にV2で処理
+  const unitConversionResult = calculateEffectiveQuantityWithMigration({
     quantityPerPackage,
     packageUnit: packageUnit || '',
-    unit: fullUnit,
+    unit: unit || '',
   });
   const effectiveQuantity = unitConversionResult.effectiveQuantity;
 

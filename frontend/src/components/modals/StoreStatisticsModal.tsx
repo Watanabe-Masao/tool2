@@ -40,7 +40,7 @@ import {
 } from 'recharts';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
-import { calculateEffectiveQuantity } from '@/utils/unitConversion';
+import { calculateEffectiveQuantityWithMigration } from '@/utils/unitConversion';
 
 /**
  * StoreStatisticsModalのProps
@@ -138,7 +138,8 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const priceExcludingTax = product.priceExcludingTax || 0;
 
       // 1箱あたりの実効数量を計算（規格と入数から）
-      const conversionResult = calculateEffectiveQuantity({
+      // V1形式のデータ（unit: "100gあたり"）を自動的にV2で処理
+      const conversionResult = calculateEffectiveQuantityWithMigration({
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
         unit: product.unit || '',
@@ -236,8 +237,22 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const totalQuantity = product.storeAllocations.reduce((sum, qty) => sum + qty, 0);
       const storeCost = product.storeCost || 0;
       const priceExcludingTax = product.priceExcludingTax || 0;
-      const costAmount = storeCost * totalQuantity;
-      const salesAmount = priceExcludingTax * totalQuantity;
+
+      // 1箱あたりの実効数量を計算（規格と入数から）
+      // V1形式のデータ（unit: "100gあたり"）を自動的にV2で処理
+      const conversionResult = calculateEffectiveQuantityWithMigration({
+        quantityPerPackage: product.quantityPerPackage,
+        packageUnit: product.packageUnit || '',
+        unit: product.unit || '',
+      });
+      const effectiveQuantity = conversionResult.effectiveQuantity;
+
+      // 1箱あたりの価格を計算
+      const boxStoreCost = storeCost * effectiveQuantity;
+      const boxPriceExcludingTax = priceExcludingTax * effectiveQuantity;
+
+      const costAmount = boxStoreCost * totalQuantity;
+      const salesAmount = boxPriceExcludingTax * totalQuantity;
       const grossProfit = salesAmount - costAmount;
       const grossProfitMargin = salesAmount > 0 ? (grossProfit / salesAmount) * 100 : 0;
 
