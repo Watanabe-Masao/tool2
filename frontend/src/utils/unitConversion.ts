@@ -399,3 +399,209 @@ export function calculateUnitPriceFromBoxPrice(
     conversionDescription,
   };
 }
+
+/**
+ * ========================================
+ * V2: 完全分離型 - specification と unit を独立管理
+ * ========================================
+ */
+
+/**
+ * 単位変換入力パラメータ V2
+ *
+ * specification と unit を完全に分離して管理する新しいインターフェース
+ */
+export interface UnitConversionInputV2 {
+  /** 規格の数値または文字列（例: "100", "2L", "M"） */
+  specification: string | number;
+  /** 単位の基本形式（例: "gあたり", "kgあたり", "個", "本"） */
+  unit: string;
+  /** 入数（パッケージあたりの数量） */
+  quantityPerPackage: number | null;
+  /** 入数の単位（kg、g、個など） */
+  packageUnit: string;
+}
+
+/**
+ * 基本単位のパターン（数値を含まない形式）
+ * 例: "gあたり" -> { unit: 'g' }
+ *     "kgあたり" -> { unit: 'kg' }
+ */
+const BASE_WEIGHT_UNIT_PATTERN = /^(g|kg)あたり$/;
+
+/**
+ * 規格と単位を組み合わせてパース（V2）
+ *
+ * specification と unit を分離したデータ構造に対応。
+ * 規格の数値部分と単位の基本形式を組み合わせて解釈します。
+ *
+ * @example
+ * ```typescript
+ * parseUnitValueV2("100", "gあたり")  // → {value: 100, unit: 'g'}
+ * parseUnitValueV2("", "kgあたり")    // → {value: 1, unit: 'kg'}
+ * parseUnitValueV2("1", "個")         // → null（個数ベース）
+ * ```
+ *
+ * @param specification - 規格の数値部分（"100", "50" など）
+ * @param unit - 単位の基本形式（"gあたり", "kgあたり", "個" など）
+ * @returns パース結果、または非重量単位の場合はnull
+ */
+export function parseUnitValueV2(
+  specification: string | number,
+  unit: string
+): ParsedUnit | null {
+  if (!unit) {
+    return null;
+  }
+
+  // 基本単位パターンのマッチング
+  const match = unit.match(BASE_WEIGHT_UNIT_PATTERN);
+  if (!match) {
+    return null; // 個数ベース（"個", "本" など）
+  }
+
+  // specification から数値を取得
+  let value: number;
+  if (typeof specification === 'number') {
+    value = specification;
+  } else if (specification === '' || specification === null || specification === undefined) {
+    value = 1; // 規格が空の場合は1として扱う（"gあたり" → "1gあたり"）
+  } else {
+    const parsed = parseInt(String(specification), 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      // 数値でない規格（"L", "M" など）は重量ベースとして扱わない
+      return null;
+    }
+    value = parsed;
+  }
+
+  const unitType = match[1] as 'g' | 'kg';
+
+  return { value, unit: unitType };
+}
+
+/**
+ * 実効数量を計算（V2）
+ *
+ * specification と unit を分離したデータ構造に対応した新しい計算関数。
+ * 重量ベースの単位変換を行い、実際の販売単位数を計算します。
+ *
+ * @example
+ * ```typescript
+ * // 重量ベース: 100gあたり + 5kg
+ * calculateEffectiveQuantityV2({
+ *   specification: "100",
+ *   unit: "gあたり",
+ *   quantityPerPackage: 5,
+ *   packageUnit: "kg",
+ * });
+ * // → { effectiveQuantity: 50, isConverted: true }
+ *
+ * // 個数ベース: 1個 + 10入り
+ * calculateEffectiveQuantityV2({
+ *   specification: "1",
+ *   unit: "個",
+ *   quantityPerPackage: 10,
+ *   packageUnit: "入り",
+ * });
+ * // → { effectiveQuantity: 10, isConverted: false }
+ * ```
+ *
+ * @param input - 変換入力パラメータ（V2形式）
+ * @returns 変換結果
+ */
+export function calculateEffectiveQuantityV2(
+  input: UnitConversionInputV2
+): UnitConversionResult {
+  const { specification, unit, quantityPerPackage, packageUnit } = input;
+
+  // 入数が無効な場合は0を返す
+  if (quantityPerPackage === null || quantityPerPackage === 0) {
+    return {
+      effectiveQuantity: 0,
+      isConverted: false,
+    };
+  }
+
+  // 規格と単位を組み合わせてパース
+  const parsedUnit = parseUnitValueV2(specification, unit);
+
+  // 規格単位が重量ベースでない場合は変換しない（個数ベース）
+  if (!parsedUnit) {
+    return {
+      effectiveQuantity: quantityPerPackage,
+      isConverted: false,
+    };
+  }
+
+  // パッケージ単位が重量単位でない場合は変換しない
+  if (!isWeightBasedPackageUnit(packageUnit)) {
+    return {
+      effectiveQuantity: quantityPerPackage,
+      isConverted: false,
+    };
+  }
+
+  // パッケージの総グラム数を計算
+  const totalGrams = convertToGrams(quantityPerPackage, packageUnit);
+  if (totalGrams === null) {
+    return {
+      effectiveQuantity: quantityPerPackage,
+      isConverted: false,
+    };
+  }
+
+  // 規格単位をグラムに統一
+  let unitInGrams: number;
+  if (parsedUnit.unit === 'kg') {
+    unitInGrams = parsedUnit.value * 1000;
+  } else {
+    unitInGrams = parsedUnit.value;
+  }
+
+  // 実効数量を計算（切り捨て）
+  const effectiveQuantity = Math.floor(totalGrams / unitInGrams);
+
+  // 変換の説明を生成
+  const packageDescription = `${quantityPerPackage}${packageUnit}`;
+  const unitDescription = `${parsedUnit.value}${parsedUnit.unit}`;
+  const conversionDescription = `${packageDescription} ÷ ${unitDescription} = ${effectiveQuantity}単位`;
+
+  return {
+    effectiveQuantity,
+    isConverted: true,
+    conversionDescription,
+  };
+}
+
+/**
+ * V1からV2への移行ヘルパー関数
+ *
+ * 既存のV1形式（unit に完全形式を含む）のデータを受け取り、
+ * V2形式に変換してから計算を行います。
+ *
+ * @deprecated 移行期間中のみ使用。最終的にはcalculateEffectiveQuantityV2に統一
+ */
+export function calculateEffectiveQuantityWithMigration(
+  input: UnitConversionInput
+): UnitConversionResult {
+  const { quantityPerPackage, packageUnit, unit } = input;
+
+  // V1形式のunitから数値部分を抽出してspecificationとunitに分離
+  const match = unit.match(/^(\d+)?(.+)$/);
+
+  if (match) {
+    const specification = match[1] || '';
+    const baseUnit = match[2];
+
+    return calculateEffectiveQuantityV2({
+      specification,
+      unit: baseUnit,
+      quantityPerPackage,
+      packageUnit,
+    });
+  }
+
+  // マッチしない場合は従来通りの処理
+  return calculateEffectiveQuantity(input);
+}

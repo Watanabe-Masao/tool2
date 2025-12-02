@@ -7,6 +7,8 @@ import {
   isWeightBasedPackageUnit,
   checkUnitCompatibility,
   calculateUnitPriceFromBoxPrice,
+  parseUnitValueV2,
+  calculateEffectiveQuantityV2,
 } from '@/utils/unitConversion';
 
 describe('unitConversion', () => {
@@ -594,6 +596,293 @@ describe('unitConversion', () => {
         expect(result.unitPrice).toBe(200);
         expect(result.effectiveQuantity).toBe(20);
         expect(result.isValid).toBe(true);
+      });
+    });
+  });
+
+  /**
+   * ========================================
+   * V2: 完全分離型のテスト
+   * ========================================
+   */
+  describe('parseUnitValueV2', () => {
+    describe('重量ベース - 規格と単位を分離', () => {
+      it('規格"100" + 単位"gあたり" → {value: 100, unit: "g"}', () => {
+        const result = parseUnitValueV2('100', 'gあたり');
+        expect(result).toEqual({ value: 100, unit: 'g' });
+      });
+
+      it('規格"50" + 単位"gあたり" → {value: 50, unit: "g"}', () => {
+        const result = parseUnitValueV2('50', 'gあたり');
+        expect(result).toEqual({ value: 50, unit: 'g' });
+      });
+
+      it('規格"" + 単位"gあたり" → {value: 1, unit: "g"} (デフォルト1)', () => {
+        const result = parseUnitValueV2('', 'gあたり');
+        expect(result).toEqual({ value: 1, unit: 'g' });
+      });
+
+      it('規格100 (数値) + 単位"kgあたり" → {value: 100, unit: "kg"}', () => {
+        const result = parseUnitValueV2(100, 'kgあたり');
+        expect(result).toEqual({ value: 100, unit: 'kg' });
+      });
+
+      it('規格"1" + 単位"kgあたり" → {value: 1, unit: "kg"}', () => {
+        const result = parseUnitValueV2('1', 'kgあたり');
+        expect(result).toEqual({ value: 1, unit: 'kg' });
+      });
+
+      it('規格"" + 単位"kgあたり" → {value: 1, unit: "kg"} (デフォルト1)', () => {
+        const result = parseUnitValueV2('', 'kgあたり');
+        expect(result).toEqual({ value: 1, unit: 'kg' });
+      });
+    });
+
+    describe('個数ベース - 変換不要', () => {
+      it('規格"1" + 単位"個" → null（個数ベース）', () => {
+        const result = parseUnitValueV2('1', '個');
+        expect(result).toBeNull();
+      });
+
+      it('規格"5" + 単位"本" → null（個数ベース）', () => {
+        const result = parseUnitValueV2('5', '本');
+        expect(result).toBeNull();
+      });
+
+      it('規格"10" + 単位"玉" → null（個数ベース）', () => {
+        const result = parseUnitValueV2('10', '玉');
+        expect(result).toBeNull();
+      });
+
+      it('規格"" + 単位"個" → null（個数ベース）', () => {
+        const result = parseUnitValueV2('', '個');
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('エッジケース', () => {
+      it('規格"0" + 単位"gあたり" → null（0以下は無効）', () => {
+        const result = parseUnitValueV2('0', 'gあたり');
+        expect(result).toBeNull();
+      });
+
+      it('規格"-10" + 単位"gあたり" → null（負数は無効）', () => {
+        const result = parseUnitValueV2('-10', 'gあたり');
+        expect(result).toBeNull();
+      });
+
+      it('規格"abc" + 単位"gあたり" → null（数値でない）', () => {
+        const result = parseUnitValueV2('abc', 'gあたり');
+        expect(result).toBeNull();
+      });
+
+      it('規格"L" + 単位"gあたり" → null（数値でないサイズ表記）', () => {
+        const result = parseUnitValueV2('L', 'gあたり');
+        expect(result).toBeNull();
+      });
+
+      it('規格"100" + 単位"" → null（単位なし）', () => {
+        const result = parseUnitValueV2('100', '');
+        expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe('calculateEffectiveQuantityV2', () => {
+    describe('重量ベースの変換', () => {
+      it('規格"100" + "gあたり" + 5kg → 50単位', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '100',
+          unit: 'gあたり',
+          quantityPerPackage: 5,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(50);
+        expect(result.isConverted).toBe(true);
+        expect(result.conversionDescription).toBe('5kg ÷ 100g = 50単位');
+      });
+
+      it('規格"" + "gあたり" + 3kg → 3000単位（デフォルト1g）', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '',
+          unit: 'gあたり',
+          quantityPerPackage: 3,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(3000);
+        expect(result.isConverted).toBe(true);
+        expect(result.conversionDescription).toBe('3kg ÷ 1g = 3000単位');
+      });
+
+      it('規格"50" + "gあたり" + 2kg → 40単位', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '50',
+          unit: 'gあたり',
+          quantityPerPackage: 2,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(40);
+        expect(result.isConverted).toBe(true);
+      });
+
+      it('規格"1" + "kgあたり" + 5000g → 5単位', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '1',
+          unit: 'kgあたり',
+          quantityPerPackage: 5000,
+          packageUnit: 'g',
+        });
+        expect(result.effectiveQuantity).toBe(5);
+        expect(result.isConverted).toBe(true);
+      });
+
+      it('規格"200" + "gあたり" + 3kg → 15単位', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '200',
+          unit: 'gあたり',
+          quantityPerPackage: 3,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(15);
+        expect(result.isConverted).toBe(true);
+        expect(result.conversionDescription).toBe('3kg ÷ 200g = 15単位');
+      });
+    });
+
+    describe('個数ベース - 変換なし', () => {
+      it('規格"1" + "個" + 30入り → 30単位（変換なし）', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '1',
+          unit: '個',
+          quantityPerPackage: 30,
+          packageUnit: '入り',
+        });
+        expect(result.effectiveQuantity).toBe(30);
+        expect(result.isConverted).toBe(false);
+      });
+
+      it('規格"" + "本" + 10本 → 10単位（変換なし）', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '',
+          unit: '本',
+          quantityPerPackage: 10,
+          packageUnit: '本',
+        });
+        expect(result.effectiveQuantity).toBe(10);
+        expect(result.isConverted).toBe(false);
+      });
+
+      it('規格"5" + "玉" + 20玉 → 20単位（変換なし）', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '5',
+          unit: '玉',
+          quantityPerPackage: 20,
+          packageUnit: '玉',
+        });
+        expect(result.effectiveQuantity).toBe(20);
+        expect(result.isConverted).toBe(false);
+      });
+    });
+
+    describe('V1とV2の互換性確認', () => {
+      it('V1: "100gあたり" + 5kg = V2: "100" + "gあたり" + 5kg', () => {
+        const resultV1 = calculateEffectiveQuantity({
+          quantityPerPackage: 5,
+          packageUnit: 'kg',
+          unit: '100gあたり',
+        });
+
+        const resultV2 = calculateEffectiveQuantityV2({
+          specification: '100',
+          unit: 'gあたり',
+          quantityPerPackage: 5,
+          packageUnit: 'kg',
+        });
+
+        expect(resultV2.effectiveQuantity).toBe(resultV1.effectiveQuantity);
+        expect(resultV2.isConverted).toBe(resultV1.isConverted);
+      });
+
+      it('V1: "個" + 10入り = V2: "1" + "個" + 10入り', () => {
+        const resultV1 = calculateEffectiveQuantity({
+          quantityPerPackage: 10,
+          packageUnit: '入り',
+          unit: '個',
+        });
+
+        const resultV2 = calculateEffectiveQuantityV2({
+          specification: '1',
+          unit: '個',
+          quantityPerPackage: 10,
+          packageUnit: '入り',
+        });
+
+        expect(resultV2.effectiveQuantity).toBe(resultV1.effectiveQuantity);
+        expect(resultV2.isConverted).toBe(resultV1.isConverted);
+      });
+
+      it('V1: "gあたり" + 3kg = V2: "" + "gあたり" + 3kg', () => {
+        const resultV1 = calculateEffectiveQuantity({
+          quantityPerPackage: 3,
+          packageUnit: 'kg',
+          unit: 'gあたり',
+        });
+
+        const resultV2 = calculateEffectiveQuantityV2({
+          specification: '',
+          unit: 'gあたり',
+          quantityPerPackage: 3,
+          packageUnit: 'kg',
+        });
+
+        expect(resultV2.effectiveQuantity).toBe(resultV1.effectiveQuantity);
+        expect(resultV2.isConverted).toBe(resultV1.isConverted);
+      });
+    });
+
+    describe('エッジケース', () => {
+      it('入数がnull → effectiveQuantity: 0', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '100',
+          unit: 'gあたり',
+          quantityPerPackage: null,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(0);
+        expect(result.isConverted).toBe(false);
+      });
+
+      it('入数が0 → effectiveQuantity: 0', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '100',
+          unit: 'gあたり',
+          quantityPerPackage: 0,
+          packageUnit: 'kg',
+        });
+        expect(result.effectiveQuantity).toBe(0);
+        expect(result.isConverted).toBe(false);
+      });
+
+      it('重量ベース単位 + 個数ベース入数 → 変換なし', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '100',
+          unit: 'gあたり',
+          quantityPerPackage: 10,
+          packageUnit: '入り',
+        });
+        expect(result.effectiveQuantity).toBe(10);
+        expect(result.isConverted).toBe(false);
+      });
+
+      it('切り捨て確認: 5.9kg ÷ 1kg → 5単位', () => {
+        const result = calculateEffectiveQuantityV2({
+          specification: '1',
+          unit: 'kgあたり',
+          quantityPerPackage: 5900,
+          packageUnit: 'g',
+        });
+        expect(result.effectiveQuantity).toBe(5);
+        expect(result.isConverted).toBe(true);
       });
     });
   });
