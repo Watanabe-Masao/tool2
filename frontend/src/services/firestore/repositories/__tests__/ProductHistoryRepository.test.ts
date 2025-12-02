@@ -91,12 +91,25 @@ describe('ProductHistoryRepository', () => {
         specification: '規格A',
         quantityPerPackage: 10,
         unit: '個',
+        packageUnit: '',
         usageCount: 1,
         pinned: false,
         pinOrder: 9999,
         createdAt: expect.any(Object),
         updatedAt: expect.any(Object),
       });
+    });
+
+    it('should preserve unit and packageUnit when saving', () => {
+      const history = createMockHistory({
+        unit: '100gあたり',
+        packageUnit: 'kg',
+      });
+
+      const result = repository.toFirestoreFormat(history);
+
+      expect(result.unit).toBe('100gあたり');
+      expect(result.packageUnit).toBe('kg');
     });
 
     it('should handle optional fields', () => {
