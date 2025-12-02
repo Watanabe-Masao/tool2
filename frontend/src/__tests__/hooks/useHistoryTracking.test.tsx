@@ -38,6 +38,7 @@ describe('useHistoryTracking', () => {
         specification: 'Spec A',
         quantityPerPackage: 10,
         unit: '個',
+        packageUnit: 'パック',
         categoryCode: 'CAT001',
         centerCost: 100,
         storeCost: 120,
@@ -51,6 +52,7 @@ describe('useHistoryTracking', () => {
         specification: '',
         quantityPerPackage: null,
         unit: '',
+        packageUnit: '',
         categoryCode: undefined,
         centerCost: null,
         storeCost: null,
@@ -131,6 +133,7 @@ describe('useHistoryTracking', () => {
         'Spec A',
         10,
         '個',
+        'パック',
         'CAT001'
       );
     });
@@ -148,6 +151,7 @@ describe('useHistoryTracking', () => {
         'Spec A',
         10,
         '個',
+        'パック',
         100,
         120,
         150,
@@ -255,7 +259,8 @@ describe('useHistoryTracking', () => {
         'Origin B',
         '', // specification
         null,
-        '',
+        '', // unit
+        '', // packageUnit
         undefined
       );
     });
