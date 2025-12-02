@@ -256,13 +256,13 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
               </Typography>
               {preset.specification && (
                 <Typography variant="caption" color="text.secondary">
-                  規格: {preset.specification}
+                  規格: {preset.specification}{preset.unit && `${preset.unit}`}
                 </Typography>
               )}
               {preset.quantityPerPackage && (
                 <Typography variant="caption" color="text.secondary">
                   入数: {preset.quantityPerPackage}
-                  {preset.unit && ` ${preset.unit}`}
+                  {preset.packageUnit && `${preset.packageUnit}`}
                 </Typography>
               )}
             </Box>
@@ -1155,13 +1155,13 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                           </Typography>
                                           {activePreset.specification && (
                                             <Typography variant="caption" color="text.secondary">
-                                              規格: {activePreset.specification}
+                                              規格: {activePreset.specification}{activePreset.unit && `${activePreset.unit}`}
                                             </Typography>
                                           )}
                                           {activePreset.quantityPerPackage && (
                                             <Typography variant="caption" color="text.secondary">
                                               入数: {activePreset.quantityPerPackage}
-                                              {activePreset.unit && ` ${activePreset.unit}`}
+                                              {activePreset.packageUnit && `${activePreset.packageUnit}`}
                                             </Typography>
                                           )}
                                         </Box>
