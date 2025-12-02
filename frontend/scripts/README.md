@@ -14,9 +14,36 @@ Firestoreデータ移行スクリプト。
 
 ### 前提条件
 
-- Firebase Admin SDK が利用可能
-- 適切な権限を持つサービスアカウント
-- Firestoreへのアクセス権限
+#### 1. パッケージインストール
+
+```bash
+cd frontend
+npm install
+```
+
+#### 2. Firebase認証設定
+
+**Option A: サービスアカウントキー（推奨）**
+
+```bash
+# 1. Firebase Console → Project Settings → Service Accounts
+# 2. "Generate new private key" をクリックしてJSONファイルをダウンロード
+# 3. 環境変数に設定
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+```
+
+**Option B: gcloud CLI（ローカル開発）**
+
+```bash
+gcloud auth application-default login
+gcloud config set project haibun-distribution
+```
+
+#### 3. 必要な権限
+
+サービスアカウントに以下のいずれかのロールが必要:
+- `roles/datastore.user` - Firestore読み書き権限
+- `roles/owner` - プロジェクトオーナー権限
 
 ### 使用方法
 

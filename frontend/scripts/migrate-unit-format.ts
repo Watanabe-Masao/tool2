@@ -28,7 +28,7 @@
  * - 本番実行は低負荷時間帯に実施してください
  */
 
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import * as readline from 'readline';
 
 // Firebase Admin SDK初期化
