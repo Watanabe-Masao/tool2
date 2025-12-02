@@ -1166,12 +1166,12 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Typography>
             {currentSpecification && (
               <Typography variant="body2">
-                規格: {currentSpecification}
+                規格: {currentSpecification}{currentUnit && ` ${currentUnit}`}
               </Typography>
             )}
             {currentQuantityPerPackage && (
               <Typography variant="body2">
-                入数: {currentQuantityPerPackage}{currentUnit && ` ${currentUnit}`}
+                入数: {currentQuantityPerPackage}{currentPackageUnit && ` ${currentPackageUnit}`}
               </Typography>
             )}
           </Box>
