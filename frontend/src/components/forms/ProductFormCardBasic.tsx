@@ -1060,6 +1060,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     origin: currentOrigin,
                                     specification: currentSpecification,
                                     quantityPerPackage: qty,
+                                    unit: currentUnit,
+                                    packageUnit: currentPackageUnit,
                                   },
                                 });
                               }}
