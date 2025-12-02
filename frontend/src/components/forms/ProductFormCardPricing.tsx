@@ -141,6 +141,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     setValue(`products.${index}.centerCost`, latestHistory.centerCost);
     setValue(`products.${index}.storeCost`, latestHistory.storeCost);
     setValue(`products.${index}.priceExcludingTax`, latestHistory.priceExcludingTax);
+    setValue(`products.${index}.unit`, latestHistory.unit);
+    setValue(`products.${index}.packageUnit`, latestHistory.packageUnit);
     if (latestHistory.centerFeeRate !== undefined) {
       setValue(`products.${index}.centerFeeRate`, latestHistory.centerFeeRate);
     }
