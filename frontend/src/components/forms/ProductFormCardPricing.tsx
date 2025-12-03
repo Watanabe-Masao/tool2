@@ -179,6 +179,16 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '-';
 
+  // 未入力項目をチェック
+  const missingFields: string[] = [];
+  if (centerCost === null) missingFields.push('センター着原価');
+  if (centerFeeRate === null) missingFields.push('センターフィー率');
+  if (storeCost === null) missingFields.push('店着原価');
+  if (priceExcludingTax === null) missingFields.push('本体価格');
+  if (totalDelivery === null) missingFields.push('総納品数');
+
+  const hasMissingFields = missingFields.length > 0;
+
   /**
    * 価格履歴を選択
    */
@@ -292,6 +302,15 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   return (
     <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+        {/* 未入力項目の警告バナー */}
+        {hasMissingFields && (
+          <Alert severity="warning" sx={{ mb: 1.5, py: 0.5 }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+              <strong>未入力項目があります:</strong> {missingFields.join('、')}
+            </Typography>
+          </Alert>
+        )}
+
         {/* 1. 商品名のチップ表示: （産地）（商品名）（規格）（入数＋単位） */}
         <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
           <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 0.5 }}>

@@ -108,6 +108,25 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
     return calculateProductsSummary(products);
   }, [products]);
 
+  // 未入力項目がある商品をチェック
+  const productsWithMissingFields = React.useMemo(() => {
+    return products
+      .map((product, index) => {
+        const missingFields: string[] = [];
+        if (product.centerCost === null) missingFields.push('センター着原価');
+        if (product.centerFeeRate === null) missingFields.push('センターフィー率');
+        if (product.storeCost === null) missingFields.push('店着原価');
+        if (product.priceExcludingTax === null) missingFields.push('本体価格');
+        if (product.totalDelivery === null) missingFields.push('総納品数');
+
+        if (missingFields.length > 0) {
+          return { index: index + 1, fields: missingFields };
+        }
+        return null;
+      })
+      .filter((item): item is { index: number; fields: string[] } => item !== null);
+  }, [products]);
+
   return (
     <Box>
       {/* ヘッダーセクション */}
@@ -116,6 +135,20 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           商品情報2
         </Typography>
       </Box>
+
+      {/* 未入力項目の警告 */}
+      {productsWithMissingFields.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            以下の商品に未入力項目があります:
+          </Typography>
+          {productsWithMissingFields.map((item) => (
+            <Typography key={item.index} variant="caption" sx={{ display: 'block', fontSize: '0.75rem' }}>
+              • 商品{item.index}: {item.fields.join('、')}
+            </Typography>
+          ))}
+        </Alert>
+      )}
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (
