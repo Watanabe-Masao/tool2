@@ -585,7 +585,7 @@ export class FirestoreService {
       where('origin', '==', origin),
       where('specification', '==', specification),
       where('quantityPerPackage', '==', quantityPerPackage),
-      where('specificationUnit', '==', unit)
+      where('specificationUnit', '==', specificationUnit)
     );
 
     const snapshot = await getDocs(q);
@@ -611,7 +611,7 @@ export class FirestoreService {
       origin,
       specification,
       quantityPerPackage,
-      unit,
+      specificationUnit,
       packageUnit,
       ...(categoryCode && { categoryCode }),
       createdAt: Timestamp.now(),
@@ -703,7 +703,7 @@ export class FirestoreService {
       origin?: string;
       specification?: string;
       quantityPerPackage?: number | null;
-      unit?: string;
+      specificationUnit?: string;
     }
   ): Promise<number> {
     const db = getFirebaseFirestore();
@@ -898,7 +898,7 @@ export class FirestoreService {
         existingData.storeCost === storeCost &&
         existingData.priceExcludingTax === priceExcludingTax &&
         existingData.centerFeeRate === normalizedCenterFeeRate &&
-        existingData.specificationUnit === unit
+        existingData.specificationUnit === specificationUnit
       ) {
         console.log(`[Firestore] Pricing history unchanged, skipping update for ${productName} (${specification})`);
         return;
@@ -910,7 +910,7 @@ export class FirestoreService {
         storeCost,
         priceExcludingTax,
         centerFeeRate: normalizedCenterFeeRate,
-        unit,
+        specificationUnit,
         usageCount: increment(1),
         lastUsedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -923,7 +923,7 @@ export class FirestoreService {
         productName,
         specification,
         quantityPerPackage,
-        unit,
+        specificationUnit,
         centerCost,
         storeCost,
         priceExcludingTax,

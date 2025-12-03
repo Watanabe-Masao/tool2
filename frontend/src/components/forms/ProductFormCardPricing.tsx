@@ -80,7 +80,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const origin = useWatch({ control, name: `products.${index}.origin` });
   const specification = useWatch({ control, name: `products.${index}.specification` });
   const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const unit = useWatch({ control, name: `products.${index}.specificationUnit` });
+  const specificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const packageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
@@ -166,10 +166,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
       specification,
       quantityPerPackage,
       packageUnit,
-      unit,
+      specificationUnit,
     } as any; // OrderFormData['products'][number]型にキャスト
     return calculateProductMetrics(product);
-  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, specification, quantityPerPackage, packageUnit, unit]);
+  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, specification, quantityPerPackage, packageUnit, specificationUnit]);
 
   // 個別の値を取り出す
   const centerCostWithFee = metrics.centerCostWithFee;
@@ -180,11 +180,11 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const unitConversionResult = React.useMemo(() => {
     return calculateEffectiveQuantityV2({
       specification: specification || '',
-      specificationUnit: unit || '',
+      specificationUnit: specificationUnit || '',
       quantityPerPackage,
       packageUnit: packageUnit || '',
     });
-  }, [specification, unit, quantityPerPackage, packageUnit]);
+  }, [specification, specificationUnit, quantityPerPackage, packageUnit]);
 
   // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
   const profitMargin = priceExcludingTax !== null && storeCost !== null && priceExcludingTax > 0
@@ -220,7 +220,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
    * 現在の価格情報を手動で保存
    */
   const handleSaveHistory = async () => {
-    if (!productName || !specification || !quantityPerPackage || !unit) {
+    if (!productName || !specification || !quantityPerPackage || !specificationUnit) {
       showSuccess('商品名、規格、入数を入力してください');
       return;
     }
@@ -235,7 +235,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         productName,
         specification,
         quantityPerPackage,
-        unit,
+        specificationUnit,
         packageUnit || '',
         centerCost,
         storeCost,
@@ -291,7 +291,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const calculationResult = calculateUnitPriceFromBoxPriceV2({
     boxPrice: boxPriceValue,
     specification: specification || '',
-    specificationUnit: unit || '',
+    specificationUnit: specificationUnit || '',
     quantityPerPackage,
     packageUnit: packageUnit || '',
   });
@@ -374,7 +374,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 fontSize: '0.75rem',
               }}
             >
-              {specification}{unit ? ` ${specificationUnit}` : ''}
+              {specification}{specificationUnit ? ` ${specificationUnit}` : ''}
             </Box>
           )}
           {quantityPerPackage && (
@@ -660,7 +660,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
             {/* 単位あたりの情報 */}
             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
-              {unit ? `${specificationUnit}の情報` : '1単位あたりの情報'}
+              {specificationUnit ? `${specificationUnit}の情報` : '1単位あたりの情報'}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
               {centerCostWithFee !== null && centerCostWithFee > 0 && (
@@ -794,7 +794,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             }}
           >
             <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
-              規格: {unit || '未設定'}
+              規格: {specificationUnit || '未設定'}
             </Typography>
             <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
               入数: {quantityPerPackage ? `${quantityPerPackage}${packageUnit || ''}` : '未設定'}

@@ -100,7 +100,7 @@ export interface DeleteProductHistoryConditions {
   origin?: string;
   specification?: string;
   quantityPerPackage?: number | null;
-  unit?: string;
+  specificationUnit?: string;
   packageUnit?: string;
   exceptPinned?: boolean;
 }

@@ -145,7 +145,7 @@ describe('OrderRepository', () => {
       const result = repository.toFirestoreFormat(orderData);
 
       expect(result.products[0].specification).toBe('');
-      expect(result.products[0].specificationUnit).toBe('');
+      expect(result.products[0].specification_unit).toBe('');
     });
   });
 

@@ -77,7 +77,7 @@ export const usePricingHistory = () => {
         productName,
         specification,
         quantityPerPackage,
-        unit,
+        specificationUnit,
         packageUnit,
         centerCost,
         storeCost,
