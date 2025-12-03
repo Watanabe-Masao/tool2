@@ -77,7 +77,7 @@ interface DetailGridRow {
   productName: string;
   origin: string;
   specification: string;
-  unit: string; // 規格の単位
+  specificationUnit: string; // 規格の単位
   quantityPerPackage: number | null; // 入数
   packageUnit: string; // 入数の単位
   totalDelivery: number | null;
@@ -317,7 +317,7 @@ export const AllocationHistoryPage: React.FC = () => {
               productName: detail.productName,
               origin: detail.origin,
               specification: detail.specification,
-              unit: detail.unit || '',
+              specificationUnit: detail.specificationUnit || '',
               quantityPerPackage: detail.quantityPerPackage,
               packageUnit: detail.packageUnit || '入',
               totalDelivery: detail.totalDelivery,
@@ -565,7 +565,7 @@ export const AllocationHistoryPage: React.FC = () => {
         if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
           return row.specification || '';
         }
-        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
       },
     },
     {
@@ -670,7 +670,7 @@ export const AllocationHistoryPage: React.FC = () => {
       disableColumnMenu: true,
       renderCell: (params) => {
         const row = params.row as DetailGridRow;
-        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
       },
     },
     {
@@ -769,7 +769,7 @@ export const AllocationHistoryPage: React.FC = () => {
             productName: detail.productName,
             origin: detail.origin,
             specification: detail.specification,
-            unit: detail.unit,
+            specificationUnit: detail.specificationUnit,
             quantityPerPackage: detail.quantityPerPackage,
             packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
@@ -796,7 +796,7 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: `${format(parseISO(dateStr), 'M月d日(E)', { locale: ja })} 小計`,
           origin: '',
           specification: '',
-          unit: '',
+          specificationUnit: '',
           quantityPerPackage: null,
           packageUnit: '',
           totalDelivery: subtotalQuantity,
@@ -853,7 +853,7 @@ export const AllocationHistoryPage: React.FC = () => {
               productName,
               origin,
               specification,
-              unit: detailForDate.unit,
+              specificationUnit: detailForDate.specificationUnit,
               quantityPerPackage: detailForDate.quantityPerPackage,
               packageUnit: detailForDate.packageUnit,
               totalDelivery: detailForDate.totalDelivery,
@@ -881,7 +881,7 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: `${productName} 小計`,
           origin,
           specification,
-          unit: '',
+          specificationUnit: '',
           quantityPerPackage: null,
           packageUnit: '',
           totalDelivery: subtotalQuantity,
@@ -950,7 +950,7 @@ export const AllocationHistoryPage: React.FC = () => {
             productName: detail.productName,
             origin: detail.origin,
             specification: detail.specification,
-            unit: detail.unit,
+            specificationUnit: detail.specificationUnit,
             quantityPerPackage: detail.quantityPerPackage,
             packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
@@ -987,7 +987,7 @@ export const AllocationHistoryPage: React.FC = () => {
           productName: subtotalLabel,
           origin: '',
           specification: '',
-          unit: '',
+          specificationUnit: '',
           quantityPerPackage: null,
           packageUnit: '',
           totalDelivery: groupSubtotalQuantity,
@@ -1012,7 +1012,7 @@ export const AllocationHistoryPage: React.FC = () => {
       productName: '総合計',
       origin: '',
       specification: '',
-      unit: '',
+      specificationUnit: '',
       quantityPerPackage: null,
       packageUnit: '',
       totalDelivery: grandTotalQuantity,
@@ -1042,7 +1042,7 @@ export const AllocationHistoryPage: React.FC = () => {
         productName: detail.productName,
         origin: detail.origin,
         specification: detail.specification,
-        unit: detail.unit,
+        specificationUnit: detail.specificationUnit,
         quantityPerPackage: detail.quantityPerPackage,
         packageUnit: detail.packageUnit,
         totalDelivery: detail.totalDelivery,

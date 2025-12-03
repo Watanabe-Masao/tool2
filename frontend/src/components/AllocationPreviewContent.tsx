@@ -86,7 +86,7 @@ interface GridRowData {
   deliveryDate: string;
   origin: string;
   specification: string;
-  unit: string;
+  specificationUnit: string;
   productName: string;
   storeCost: number;
   priceExcludingTax: number;
@@ -281,7 +281,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         deliveryDate: format(formData.deliveryDate, 'M/d(E)', { locale: ja }),
         origin: product.origin || '',
         specification: product.specification || '',
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         productName: product.name || '',
         storeCost: product.storeCost || 0,
         priceExcludingTax: product.priceExcludingTax || 0,
@@ -334,7 +334,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         disableColumnMenu: true,
         valueGetter: (_value, row) => {
           const spec = row.specification;
-          const unit = row.unit;
+          const unit = row.specificationUnit;
           if (spec && unit) {
             return `${spec} ${unit}`;
           }

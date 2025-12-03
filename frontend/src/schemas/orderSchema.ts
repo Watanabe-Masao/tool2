@@ -47,9 +47,9 @@ export const productSchema = z.object({
     .nullable(),
 
   /** 規格の単位（商品自体の単位: 玉、本、束など） */
-  unit: z
+  specificationUnit: z
     .string()
-    .max(MAX_LENGTH.SPECIFICATION, `単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
+    .max(MAX_LENGTH.SPECIFICATION, `規格の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
     .optional()
     .default(''),
 

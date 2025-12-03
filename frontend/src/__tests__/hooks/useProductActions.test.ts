@@ -129,7 +129,7 @@ describe('useProductActions', () => {
       expect(mockSetValue).toHaveBeenCalledWith('products.1.origin', '');
       expect(mockSetValue).toHaveBeenCalledWith('products.1.specification', '');
       expect(mockSetValue).toHaveBeenCalledWith('products.1.quantityPerPackage', null);
-      expect(mockSetValue).toHaveBeenCalledWith('products.1.unit', '');
+      expect(mockSetValue).toHaveBeenCalledWith('products.1.specificationUnit', '');
     });
 
     it('帳合先がない場合は空文字をセットする', () => {

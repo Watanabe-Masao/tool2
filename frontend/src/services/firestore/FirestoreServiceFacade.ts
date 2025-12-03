@@ -327,7 +327,7 @@ export class FirestoreServiceFacade {
     origin: string,
     specification: string,
     quantityPerPackage: number | null,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     categoryCode?: string
   ): Promise<string> {
@@ -362,7 +362,7 @@ export class FirestoreServiceFacade {
       origin: string;
       specification: string;
       quantityPerPackage: number | null;
-      unit: string;
+      specificationUnit: string;
       packageUnit: string;
       usageCount: number;
       pinned?: boolean;
@@ -381,7 +381,7 @@ export class FirestoreServiceFacade {
       origin: history.origin,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit,
       usageCount: history.usageCount,
       pinned: history.pinned,
@@ -449,7 +449,7 @@ export class FirestoreServiceFacade {
       productName: history.productName,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit,
       centerCost: history.centerCost,
       storeCost: history.storeCost,
@@ -470,7 +470,7 @@ export class FirestoreServiceFacade {
     productName: string,
     specification: string,
     quantityPerPackage: number,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     centerCost: number,
     storeCost: number,

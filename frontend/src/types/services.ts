@@ -79,7 +79,7 @@ export interface IFirestoreService {
     origin: string,
     specification: string,
     quantityPerPackage: number | null,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     categoryCode?: string
   ): Promise<string>;
@@ -95,7 +95,7 @@ export interface IFirestoreService {
       origin: string;
       specification: string;
       quantityPerPackage: number | null;
-      unit: string;
+      specificationUnit: string;
       packageUnit: string;
       usageCount: number;
       pinned?: boolean;
@@ -131,7 +131,7 @@ export interface IFirestoreService {
     productName: string,
     specification: string,
     quantityPerPackage: number,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     centerCost: number,
     storeCost: number,

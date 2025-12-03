@@ -47,7 +47,7 @@ interface FirestoreAllocationDetail {
   supplier: string;
   category_code: string | null;
   quantity_per_package: number | null;
-  unit: string;
+  specification_unit: string;
   package_unit: string;
   center_cost: number | null;
   center_fee_rate: number | null;
@@ -124,7 +124,7 @@ export class AllocationHistoryRepository {
         supplier: product.supplier,
         category_code: product.categoryCode || null,
         quantity_per_package: product.quantityPerPackage,
-        unit: product.unit,
+        specification_unit: product.specificationUnit,
         package_unit: product.packageUnit || '',
         center_cost: product.centerCost,
         center_fee_rate: product.centerFeeRate,
@@ -249,9 +249,9 @@ export class AllocationHistoryRepository {
       const data = doc.data() as FirestoreAllocationDetail;
 
       // V1形式のunitをV2形式（specification + unit分離）に変換
-      const { specification, unit } = this.migrateUnitToV2(
+      const { specification, specificationUnit } = this.migrateUnitToV2(
         data.specification || '',
-        data.unit || ''
+        data.specification_unit || ''
       );
 
       return {
@@ -264,7 +264,7 @@ export class AllocationHistoryRepository {
         supplier: data.supplier,
         categoryCode: data.category_code,
         quantityPerPackage: data.quantity_per_package,
-        unit,
+        specificationUnit,
         packageUnit: data.package_unit || '',
         centerCost: data.center_cost,
         centerFeeRate: data.center_fee_rate,
@@ -283,18 +283,18 @@ export class AllocationHistoryRepository {
    * V1形式のunit（"100gあたり"など）をV2形式に変換
    *
    * @param specification - 規格（既にV2形式の場合）
-   * @param unit - 単位
-   * @returns V2形式の specification と unit
+   * @param specificationUnit - 単位
+   * @returns V2形式の specification と specificationUnit
    */
-  private migrateUnitToV2(specification: string, unit: string): { specification: string; unit: string } {
+  private migrateUnitToV2(specification: string, specificationUnit: string): { specification: string; specificationUnit: string } {
     // V2形式として既にspecificationが設定されている場合はそのまま返す
     if (specification) {
-      return { specification, unit };
+      return { specification, specificationUnit };
     }
 
     // V1形式のパターン: "100gあたり", "50kgあたり" など
     const v1Pattern = /^(\d+)(g|kg)あたり$/;
-    const match = unit.match(v1Pattern);
+    const match = specificationUnit.match(v1Pattern);
 
     if (match) {
       // V1形式を検出 → V2形式に変換
@@ -302,21 +302,21 @@ export class AllocationHistoryRepository {
       const baseUnit = match[2]; // "g" または "kg"
       return {
         specification: value,
-        unit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
+        specificationUnit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
       };
     }
 
     // "gあたり", "kgあたり" のように数値なしの場合も処理
     const baseUnitPattern = /^(g|kg)あたり$/;
-    if (baseUnitPattern.test(unit)) {
+    if (baseUnitPattern.test(specificationUnit)) {
       return {
         specification: '', // 数値なし → 空文字列（1として扱われる）
-        unit,
+        specificationUnit,
       };
     }
 
     // その他（個数ベースなど）はそのまま
-    return { specification, unit };
+    return { specification, specificationUnit };
   }
 
   /**

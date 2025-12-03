@@ -92,7 +92,7 @@ export const useOrderDataSubmit = ({
         if (!product.specification?.trim()) {
           productErrors.push('規格');
         }
-        if (!product.unit?.trim()) {
+        if (!product.specificationUnit?.trim()) {
           productErrors.push('規格の単位');
         }
         if (!product.quantityPerPackage || product.quantityPerPackage <= 0) {

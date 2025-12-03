@@ -80,7 +80,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const origin = useWatch({ control, name: `products.${index}.origin` });
   const specification = useWatch({ control, name: `products.${index}.specification` });
   const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const unit = useWatch({ control, name: `products.${index}.unit` });
+  const unit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const packageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
@@ -143,7 +143,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     setValue(`products.${index}.centerCost`, latestHistory.centerCost);
     setValue(`products.${index}.storeCost`, latestHistory.storeCost);
     setValue(`products.${index}.priceExcludingTax`, latestHistory.priceExcludingTax);
-    setValue(`products.${index}.unit`, latestHistory.unit);
+    setValue(`products.${index}.specificationUnit`, latestHistory.specificationUnit);
     setValue(`products.${index}.packageUnit`, latestHistory.packageUnit);
     if (latestHistory.centerFeeRate !== undefined) {
       setValue(`products.${index}.centerFeeRate`, latestHistory.centerFeeRate);
@@ -180,7 +180,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const unitConversionResult = React.useMemo(() => {
     return calculateEffectiveQuantityV2({
       specification: specification || '',
-      unit: unit || '',
+      specificationUnit: unit || '',
       quantityPerPackage,
       packageUnit: packageUnit || '',
     });
@@ -208,7 +208,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     setValue(`products.${index}.centerCost`, history.centerCost);
     setValue(`products.${index}.storeCost`, history.storeCost);
     setValue(`products.${index}.priceExcludingTax`, history.priceExcludingTax);
-    setValue(`products.${index}.unit`, history.unit);
+    setValue(`products.${index}.specificationUnit`, history.specificationUnit);
     setValue(`products.${index}.packageUnit`, history.packageUnit);
     if (history.centerFeeRate !== undefined) {
       setValue(`products.${index}.centerFeeRate`, history.centerFeeRate);
@@ -291,7 +291,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const calculationResult = calculateUnitPriceFromBoxPriceV2({
     boxPrice: boxPriceValue,
     specification: specification || '',
-    unit: unit || '',
+    specificationUnit: unit || '',
     quantityPerPackage,
     packageUnit: packageUnit || '',
   });
@@ -374,7 +374,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 fontSize: '0.75rem',
               }}
             >
-              {specification}{unit ? ` ${unit}` : ''}
+              {specification}{unit ? ` ${specificationUnit}` : ''}
             </Box>
           )}
           {quantityPerPackage && (
@@ -660,7 +660,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
             {/* 単位あたりの情報 */}
             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
-              {unit ? `${unit}の情報` : '1単位あたりの情報'}
+              {unit ? `${specificationUnit}の情報` : '1単位あたりの情報'}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
               {centerCostWithFee !== null && centerCostWithFee > 0 && (

@@ -60,7 +60,7 @@ export const usePricingHistory = () => {
     productName: string,
     specification: string,
     quantityPerPackage: number,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     centerCost: number,
     storeCost: number,

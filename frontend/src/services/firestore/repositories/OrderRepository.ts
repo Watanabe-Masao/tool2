@@ -27,7 +27,7 @@ interface FirestoreOrder {
     specification?: string;
     quantity_per_package: number | null;
     package_unit?: string;
-    unit?: string;
+    specification_unit?: string;
     store_cost: number | null;
     price_excluding_tax: number | null;
     total_delivery: number | null;
@@ -76,7 +76,7 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
         specification: product.specification || '',
         quantity_per_package: product.quantityPerPackage,
         package_unit: product.packageUnit || '',
-        unit: product.unit || '',
+        specification_unit: product.specificationUnit || '',
         store_cost: product.storeCost,
         price_excluding_tax: product.priceExcludingTax,
         total_delivery: product.totalDelivery,
@@ -98,9 +98,9 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
       suppliers: data.suppliers || [],
       products: data.products.map((product) => {
         // V1形式のunitをV2形式（specification + unit分離）に変換
-        const { specification, unit } = this.migrateUnitToV2(
+        const { specification, specificationUnit } = this.migrateUnitToV2(
           product.specification || '',
-          product.unit || ''
+          product.specification_unit || ''
         );
 
         return {
@@ -110,7 +110,7 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
           specification,
           quantityPerPackage: product.quantity_per_package,
           packageUnit: product.package_unit || '',
-          unit,
+          specificationUnit,
           storeCost: product.store_cost,
           priceExcludingTax: product.price_excluding_tax,
           totalDelivery: product.total_delivery,
@@ -134,22 +134,22 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
    * ```typescript
    * // V1形式データ（古いデータ）
    * migrateUnitToV2('', '100gあたり')
-   * // → { specification: '100', unit: 'gあたり' }
+   * // → { specification: '100', specificationUnit: 'gあたり' }
    *
    * // V2形式データ（新しいデータ）
    * migrateUnitToV2('100', 'gあたり')
-   * // → { specification: '100', unit: 'gあたり' }
+   * // → { specification: '100', specificationUnit: 'gあたり' }
    * ```
    */
-  private migrateUnitToV2(specification: string, unit: string): { specification: string; unit: string } {
+  private migrateUnitToV2(specification: string, specificationUnit: string): { specification: string; specificationUnit: string } {
     // V2形式として既にspecificationが設定されている場合はそのまま返す
     if (specification) {
-      return { specification, unit };
+      return { specification, specificationUnit };
     }
 
     // V1形式のパターン: "100gあたり", "50kgあたり" など
     const v1Pattern = /^(\d+)(g|kg)あたり$/;
-    const match = unit.match(v1Pattern);
+    const match = specificationUnit.match(v1Pattern);
 
     if (match) {
       // V1形式を検出 → V2形式に変換
@@ -157,21 +157,21 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
       const baseUnit = match[2]; // "g" または "kg"
       return {
         specification: value,
-        unit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
+        specificationUnit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
       };
     }
 
     // "gあたり", "kgあたり" のように数値なしの場合も処理
     const baseUnitPattern = /^(g|kg)あたり$/;
-    if (baseUnitPattern.test(unit)) {
+    if (baseUnitPattern.test(specificationUnit)) {
       return {
         specification: '', // 数値なし → 空文字列（1として扱われる）
-        unit,
+        specificationUnit,
       };
     }
 
     // その他（個数ベースなど）はそのまま
-    return { specification, unit };
+    return { specification, specificationUnit };
   }
 
   /**

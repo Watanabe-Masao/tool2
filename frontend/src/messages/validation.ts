@@ -79,7 +79,7 @@ export const FIELD_VALIDATION_MESSAGES = {
       min: (min: number) => createMinValueMessage('入数', min),
       max: (max: number) => createMaxValueMessage('入数', max),
     },
-    unit: {
+    specificationUnit: {
       maxLength: (max: number) => createMaxLengthMessage('単位', max),
     },
     centerCost: {

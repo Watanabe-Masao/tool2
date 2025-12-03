@@ -128,7 +128,7 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   origin: '',
   specification: '',
   quantityPerPackage: null,
-  unit: '',
+  specificationUnit: '',
   packageUnit: '',
   centerCost: null,        // 未入力=null、0円=0として区別
   centerFeeRate: null,     // 未入力=null（帳合先プリセットから自動設定される）

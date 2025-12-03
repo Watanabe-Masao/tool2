@@ -24,7 +24,7 @@ interface FirestoreProductHistory {
   origin: string;
   specification: string;
   quantityPerPackage: number | null;
-  unit: string;
+  specificationUnit: string;
   packageUnit: string;
   usageCount: number;
   pinned: boolean;
@@ -72,7 +72,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       origin: history.origin,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit || '',
       usageCount: history.usageCount || 1,
       pinned: history.pinned || false,
@@ -95,7 +95,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       origin: data.origin,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage ?? null,
-      unit: data.unit || '',
+      specificationUnit: data.specificationUnit || '',
       packageUnit: data.packageUnit || '',
       usageCount: data.usageCount || 1,
       pinned: data.pinned || false,
@@ -127,7 +127,7 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       where('origin', '==', history.origin),
       where('specification', '==', history.specification),
       where('quantityPerPackage', '==', history.quantityPerPackage),
-      where('unit', '==', history.unit),
+      where('specificationUnit', '==', history.specificationUnit),
       where('packageUnit', '==', history.packageUnit || '')
     );
 
@@ -239,8 +239,8 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     if (conditions.quantityPerPackage !== undefined) {
       q = query(q, where('quantityPerPackage', '==', conditions.quantityPerPackage));
     }
-    if (conditions.unit !== undefined) {
-      q = query(q, where('unit', '==', conditions.unit));
+    if (conditions.specificationUnit !== undefined) {
+      q = query(q, where('specificationUnit', '==', conditions.specificationUnit));
     }
     if (conditions.packageUnit !== undefined) {
       q = query(q, where('packageUnit', '==', conditions.packageUnit));

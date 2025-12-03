@@ -58,7 +58,7 @@ export function calculateProductMetrics(
   // V2形式のデータを直接V2計算関数に渡す（無駄な変換を避ける）
   const conversionResult = calculateEffectiveQuantityV2({
     specification: product.specification || '',
-    unit: product.unit || '',
+    specificationUnit: product.specificationUnit || '',
     quantityPerPackage: product.quantityPerPackage,
     packageUnit: product.packageUnit || '',
   });

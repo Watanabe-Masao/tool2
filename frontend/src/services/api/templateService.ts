@@ -27,7 +27,7 @@ export class TemplateService {
         origin: product.origin,
         standard: product.specification || '',
         quantity: product.quantityPerPackage,
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         package_unit: product.packageUnit || '',
         store_cost: product.storeCost,
         price: product.priceExcludingTax,

@@ -18,7 +18,7 @@ export interface FirestoreOrderData {
     origin: string;
     specification: string;
     quantity_per_package: number | null;
-    unit: string;
+    specificationUnit: string;
     /** 店原 - 未入力時null、0円の場合0として区別 */
     store_cost: number | null;
     /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */

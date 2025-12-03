@@ -26,7 +26,7 @@ export interface TemplateRequest {
     /** 入数 */
     quantity: number | null;
     /** 単位 */
-    unit: string;
+    specificationUnit: string;
     /** 店着原価 - フロントエンド側ではnull許容、バックエンドに送る前に必ずバリデーション済み */
     store_cost: number | null;
     /** 税抜売価 - フロントエンド側ではnull許容、バックエンドに送る前に必ずバリデーション済み */

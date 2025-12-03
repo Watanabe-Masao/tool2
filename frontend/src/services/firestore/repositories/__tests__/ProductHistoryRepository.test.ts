@@ -64,7 +64,7 @@ describe('ProductHistoryRepository', () => {
     origin: '産地A',
     specification: '規格A',
     quantityPerPackage: 10,
-    unit: '個',
+    specificationUnit: '個',
     packageUnit: '',
     usageCount: 1,
     pinned: false,
@@ -90,7 +90,7 @@ describe('ProductHistoryRepository', () => {
         origin: '産地A',
         specification: '規格A',
         quantityPerPackage: 10,
-        unit: '個',
+        specificationUnit: '個',
         packageUnit: '',
         usageCount: 1,
         pinned: false,
@@ -102,13 +102,13 @@ describe('ProductHistoryRepository', () => {
 
     it('should preserve unit and packageUnit when saving', () => {
       const history = createMockHistory({
-        unit: '100gあたり',
+        specificationUnit: '100gあたり',
         packageUnit: 'kg',
       });
 
       const result = repository.toFirestoreFormat(history);
 
-      expect(result.unit).toBe('100gあたり');
+      expect(result.specificationUnit).toBe('100gあたり');
       expect(result.packageUnit).toBe('kg');
     });
 
@@ -146,7 +146,7 @@ describe('ProductHistoryRepository', () => {
         origin: '産地A',
         specification: '規格A',
         quantityPerPackage: 10,
-        unit: '個',
+        specificationUnit: '個',
         packageUnit: 'パック',
         usageCount: 5,
         pinned: true,
@@ -170,7 +170,7 @@ describe('ProductHistoryRepository', () => {
         origin: '産地A',
         specification: '規格A',
         quantityPerPackage: 10,
-        unit: '個',
+        specificationUnit: '個',
         packageUnit: 'パック',
         usageCount: 5,
         pinned: true,
@@ -188,7 +188,7 @@ describe('ProductHistoryRepository', () => {
         origin: '産地A',
         specification: '規格A',
         quantityPerPackage: null,
-        unit: '',
+        specificationUnit: '',
         usageCount: undefined,
         pinned: undefined,
         pinOrder: undefined,
@@ -199,7 +199,7 @@ describe('ProductHistoryRepository', () => {
       const result = repository.fromFirestoreFormat(firestoreData as any, 'history-123');
 
       expect(result.quantityPerPackage).toBeNull();
-      expect(result.unit).toBe('');
+      expect(result.specificationUnit).toBe('');
       expect(result.usageCount).toBe(1); // デフォルト値
       expect(result.pinned).toBe(false); // デフォルト値
       expect(result.pinOrder).toBe(9999); // デフォルト値
@@ -378,7 +378,7 @@ describe('ProductHistoryRepository', () => {
         origin: '産地A',
         specification: '規格A',
         quantityPerPackage: 10,
-        unit: '個',
+        specificationUnit: '個',
       };
 
       await repository.deleteByConditions('user-123', conditions);
@@ -388,7 +388,7 @@ describe('ProductHistoryRepository', () => {
       expect(mockWhere).toHaveBeenCalledWith('origin', '==', '産地A');
       expect(mockWhere).toHaveBeenCalledWith('specification', '==', '規格A');
       expect(mockWhere).toHaveBeenCalledWith('quantityPerPackage', '==', 10);
-      expect(mockWhere).toHaveBeenCalledWith('unit', '==', '個');
+      expect(mockWhere).toHaveBeenCalledWith('specificationUnit', '==', '個');
     });
   });
 

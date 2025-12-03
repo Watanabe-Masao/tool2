@@ -147,9 +147,9 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
     );
     const units = new Map<string, number>();
     filtered.forEach((item) => {
-      if (item.unit) {
-        const current = units.get(item.unit) || 0;
-        units.set(item.unit, current + item.usageCount);
+      if (item.specificationUnit) {
+        const current = units.get(item.specificationUnit) || 0;
+        units.set(item.specificationUnit, current + item.usageCount);
       }
     });
     return Array.from(units.entries())

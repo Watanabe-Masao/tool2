@@ -214,7 +214,7 @@ export const useAllocationBatches = (userId: string | undefined) => {
           productName: detail.productName,
           origin: detail.origin || '',
           specification: detail.specification || '',
-          unit: detail.unit || '',
+          specificationUnit: detail.specificationUnit || '',
           quantityPerPackage: detail.quantityPerPackage,
           packageUnit: detail.packageUnit || '',
           totalDelivery: detail.totalDelivery || 0,

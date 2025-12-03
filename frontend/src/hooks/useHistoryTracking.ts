@@ -104,7 +104,7 @@ export const useHistoryTracking = ({
             product.origin,
             product.specification || '',
             product.quantityPerPackage ?? null,
-            product.unit || '',
+            product.specificationUnit || '',
             product.packageUnit || '',
             product.categoryCode
           );
@@ -121,7 +121,7 @@ export const useHistoryTracking = ({
               product.name,
               product.specification || '',
               product.quantityPerPackage,
-              product.unit || '',
+              product.specificationUnit || '',
               product.packageUnit || '',
               product.centerCost,
               product.storeCost,

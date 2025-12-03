@@ -138,34 +138,34 @@ describe('unitConversion', () => {
 
   describe('parseUnitValueV2', () => {
     describe('重量ベース - 規格と単位を分離', () => {
-      it('規格"100" + 単位"gあたり" → {value: 100, unit: "g"}', () => {
+      it('規格"100" + 単位"gあたり" → {value: 100, specificationUnit: "g"}', () => {
         const result = parseUnitValueV2('100', 'gあたり');
-        expect(result).toEqual({ value: 100, unit: 'g' });
+        expect(result).toEqual({ value: 100, specificationUnit: 'g' });
       });
 
-      it('規格"50" + 単位"gあたり" → {value: 50, unit: "g"}', () => {
+      it('規格"50" + 単位"gあたり" → {value: 50, specificationUnit: "g"}', () => {
         const result = parseUnitValueV2('50', 'gあたり');
-        expect(result).toEqual({ value: 50, unit: 'g' });
+        expect(result).toEqual({ value: 50, specificationUnit: 'g' });
       });
 
-      it('規格"" + 単位"gあたり" → {value: 1, unit: "g"} (デフォルト1)', () => {
+      it('規格"" + 単位"gあたり" → {value: 1, specificationUnit: "g"} (デフォルト1)', () => {
         const result = parseUnitValueV2('', 'gあたり');
-        expect(result).toEqual({ value: 1, unit: 'g' });
+        expect(result).toEqual({ value: 1, specificationUnit: 'g' });
       });
 
-      it('規格100 (数値) + 単位"kgあたり" → {value: 100, unit: "kg"}', () => {
+      it('規格100 (数値) + 単位"kgあたり" → {value: 100, specificationUnit: "kg"}', () => {
         const result = parseUnitValueV2(100, 'kgあたり');
-        expect(result).toEqual({ value: 100, unit: 'kg' });
+        expect(result).toEqual({ value: 100, specificationUnit: 'kg' });
       });
 
-      it('規格"1" + 単位"kgあたり" → {value: 1, unit: "kg"}', () => {
+      it('規格"1" + 単位"kgあたり" → {value: 1, specificationUnit: "kg"}', () => {
         const result = parseUnitValueV2('1', 'kgあたり');
-        expect(result).toEqual({ value: 1, unit: 'kg' });
+        expect(result).toEqual({ value: 1, specificationUnit: 'kg' });
       });
 
-      it('規格"" + 単位"kgあたり" → {value: 1, unit: "kg"} (デフォルト1)', () => {
+      it('規格"" + 単位"kgあたり" → {value: 1, specificationUnit: "kg"} (デフォルト1)', () => {
         const result = parseUnitValueV2('', 'kgあたり');
-        expect(result).toEqual({ value: 1, unit: 'kg' });
+        expect(result).toEqual({ value: 1, specificationUnit: 'kg' });
       });
     });
 
@@ -224,7 +224,7 @@ describe('unitConversion', () => {
       it('規格"100" + "gあたり" + 5kg → 50単位', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '100',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 5,
           packageUnit: 'kg',
         });
@@ -236,7 +236,7 @@ describe('unitConversion', () => {
       it('規格"" + "gあたり" + 3kg → 3000単位（デフォルト1g）', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 3,
           packageUnit: 'kg',
         });
@@ -248,7 +248,7 @@ describe('unitConversion', () => {
       it('規格"50" + "gあたり" + 2kg → 40単位', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '50',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 2,
           packageUnit: 'kg',
         });
@@ -259,7 +259,7 @@ describe('unitConversion', () => {
       it('規格"1" + "kgあたり" + 5000g → 5単位', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '1',
-          unit: 'kgあたり',
+          specificationUnit: 'kgあたり',
           quantityPerPackage: 5000,
           packageUnit: 'g',
         });
@@ -270,7 +270,7 @@ describe('unitConversion', () => {
       it('規格"200" + "gあたり" + 3kg → 15単位', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '200',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 3,
           packageUnit: 'kg',
         });
@@ -284,7 +284,7 @@ describe('unitConversion', () => {
       it('規格"1" + "個" + 30入り → 30単位（変換なし）', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '1',
-          unit: '個',
+          specificationUnit: '個',
           quantityPerPackage: 30,
           packageUnit: '入り',
         });
@@ -295,7 +295,7 @@ describe('unitConversion', () => {
       it('規格"" + "本" + 10本 → 10単位（変換なし）', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '',
-          unit: '本',
+          specificationUnit: '本',
           quantityPerPackage: 10,
           packageUnit: '本',
         });
@@ -306,7 +306,7 @@ describe('unitConversion', () => {
       it('規格"5" + "玉" + 20玉 → 20単位（変換なし）', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '5',
-          unit: '玉',
+          specificationUnit: '玉',
           quantityPerPackage: 20,
           packageUnit: '玉',
         });
@@ -320,7 +320,7 @@ describe('unitConversion', () => {
       it('入数がnull → effectiveQuantity: 0', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '100',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: null,
           packageUnit: 'kg',
         });
@@ -331,7 +331,7 @@ describe('unitConversion', () => {
       it('入数が0 → effectiveQuantity: 0', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '100',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 0,
           packageUnit: 'kg',
         });
@@ -342,7 +342,7 @@ describe('unitConversion', () => {
       it('重量ベース単位 + 個数ベース入数 → 変換なし', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '100',
-          unit: 'gあたり',
+          specificationUnit: 'gあたり',
           quantityPerPackage: 10,
           packageUnit: '入り',
         });
@@ -353,7 +353,7 @@ describe('unitConversion', () => {
       it('切り捨て確認: 5.9kg ÷ 1kg → 5単位', () => {
         const result = calculateEffectiveQuantityV2({
           specification: '1',
-          unit: 'kgあたり',
+          specificationUnit: 'kgあたり',
           quantityPerPackage: 5900,
           packageUnit: 'g',
         });

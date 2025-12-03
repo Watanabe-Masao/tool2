@@ -57,7 +57,7 @@ export interface AllocationDetail {
   /** 入数 */
   quantityPerPackage: number | null;
   /** 規格の単位 */
-  unit: string;
+  specificationUnit: string;
   /** 入数の単位 */
   packageUnit: string;
   /** センター着原価 - 未入力時null、0円の場合0として区別 */
@@ -104,7 +104,7 @@ export interface SaveAllocationHistoryInput {
     supplier: string;
     categoryCode?: string;
     quantityPerPackage: number | null;
-    unit: string;
+    specificationUnit: string;
     packageUnit?: string;
     /** センター着原価 - 未入力時null、0円の場合0として区別 */
     centerCost: number | null;

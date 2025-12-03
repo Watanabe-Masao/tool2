@@ -24,7 +24,7 @@ export interface ProductData {
   /** 入数の単位 (kg, g, 個など) */
   packageUnit?: string;
   /** 単位 */
-  unit: string;
+  specificationUnit: string;
   /** 店原 - 未入力時null、0円の場合0として区別 */
   storeCost: number | null;
   /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
@@ -57,7 +57,7 @@ export interface ProductFormData {
   /** 入数の単位 (kg, g, 個など) */
   packageUnit?: string;
   /** 単位 */
-  unit: string;
+  specificationUnit: string;
   /** 店原 - 未入力時null、0円の場合0として区別 */
   storeCost: number | null;
   /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */

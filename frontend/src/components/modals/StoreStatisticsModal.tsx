@@ -140,7 +140,7 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       // 1箱あたりの実効数量を計算（規格と入数から）
       const conversionResult = calculateEffectiveQuantityV2({
         specification: product.specification || '',
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
       });
@@ -241,7 +241,7 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       // 1箱あたりの実効数量を計算（規格と入数から）
       const conversionResult = calculateEffectiveQuantityV2({
         specification: product.specification || '',
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
       });
