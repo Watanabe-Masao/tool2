@@ -54,6 +54,16 @@ export function calculateProductMetrics(
   const sellingPrice = product.priceExcludingTax || 0;
   const totalDelivery = product.totalDelivery || 0;
 
+  // デバッグ用ログ: centerFeeRateの値を確認
+  if (centerCost > 0) {
+    console.log('[calculateProductMetrics] Debug:', {
+      name: product.name,
+      centerCost,
+      centerFeeRateFromProduct: product.centerFeeRate,
+      centerFeeRateUsed: centerFeeRate,
+    });
+  }
+
   // 単位変換を適用して実効数量を計算
   const conversionResult = calculateEffectiveQuantityWithMigration({
     quantityPerPackage: product.quantityPerPackage,
@@ -133,8 +143,19 @@ export function calculateProductsSummary(products: OrderFormData['products']) {
   let totalProfit = 0;
   let grossProfit = 0;
 
-  products.forEach((product) => {
+  console.log('[calculateProductsSummary] 集計開始 - 商品数:', products.length);
+
+  products.forEach((product, index) => {
     const metrics = calculateProductMetrics(product);
+
+    console.log(`[calculateProductsSummary] 商品${index + 1}:`, {
+      name: product.name,
+      totalCenterCost: metrics.totalCenterCost,
+      totalCenterCostWithFee: metrics.totalCenterCostWithFee,
+      centerCostWithFee: metrics.centerCostWithFee,
+      centerFeeRate: metrics.centerFeeRate,
+      quantity: metrics.quantity,
+    });
 
     totalCenterCost += metrics.totalCenterCost;
     totalCenterCostWithFee += metrics.totalCenterCostWithFee;
@@ -142,6 +163,12 @@ export function calculateProductsSummary(products: OrderFormData['products']) {
     totalSellingPrice += metrics.totalSellingPrice;
     totalProfit += metrics.profitAmount;
     grossProfit += metrics.grossProfitAmount;
+  });
+
+  console.log('[calculateProductsSummary] 集計結果:', {
+    totalCenterCost,
+    totalCenterCostWithFee,
+    差分: totalCenterCostWithFee - totalCenterCost,
   });
 
   // 出荷原価率 = 全商品の店着総原価 / 全商品のセンターフィー込総原価 × 100
