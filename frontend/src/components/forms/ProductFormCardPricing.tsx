@@ -329,7 +329,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
         {/* 1. 商品名のチップ表示: （産地）（商品名）（規格）（入数＋単位） */}
         <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
-          <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 0.5 }}>
+          <Typography variant="subtitle1" fontWeight="medium" sx={{ mr: 0.5 }}>
             商品 {index + 1}:
           </Typography>
           {origin && (

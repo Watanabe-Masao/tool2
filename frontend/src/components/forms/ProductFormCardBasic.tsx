@@ -18,15 +18,15 @@ import {
   DialogActions,
   Button,
   DialogContentText,
-  ButtonBase,
   InputAdornment,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Grow,
+  Tooltip,
 } from '@mui/material';
-import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, DeleteOutline, ClearAll, Save } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
@@ -192,8 +192,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 長押し検出用のタイマー（履歴削除用）
   const longPressTimer = useRef<number | null>(null);
-  // 商品ヘッダー長押し検出用のタイマー（商品保存用）
-  const productHeaderLongPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -205,30 +203,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         e.preventDefault();
         onEnterPress();
       }
-    }
-  };
-
-  /**
-   * 商品ヘッダー長押し開始（商品保存）
-   */
-  const handleProductHeaderLongPressStart = () => {
-    productHeaderLongPressTimer.current = window.setTimeout(() => {
-      // 品名と産地が入力されているか確認
-      if (currentName && currentOrigin) {
-        setSaveDialogOpen(true);
-      } else {
-        showError('品名と産地を入力してください');
-      }
-    }, 500);
-  };
-
-  /**
-   * 商品ヘッダー長押し終了
-   */
-  const handleProductHeaderLongPressEnd = () => {
-    if (productHeaderLongPressTimer.current) {
-      window.clearTimeout(productHeaderLongPressTimer.current);
-      productHeaderLongPressTimer.current = null;
     }
   };
 
@@ -608,20 +582,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           {/* ヘッダー: 商品番号 + プリセットボタン + 帳合先ツールチップ + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ButtonBase
-                onTouchStart={handleProductHeaderLongPressStart}
-                onTouchEnd={handleProductHeaderLongPressEnd}
-                onMouseDown={handleProductHeaderLongPressStart}
-                onMouseUp={handleProductHeaderLongPressEnd}
-                onMouseLeave={handleProductHeaderLongPressEnd}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  if (currentName && currentOrigin) {
-                    setSaveDialogOpen(true);
-                  } else {
-                    showError('品名と産地を入力してください');
-                  }
-                }}
+              <Box
                 sx={{
                   px: 1,
                   py: 0.5,
@@ -629,9 +590,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
-                  '&:hover': {
-                    bgcolor: 'action.hover',
-                  },
                 }}
               >
                 <Typography variant="subtitle1" fontWeight="medium">
@@ -642,7 +600,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 ) : (
                   <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
                 )}
-              </ButtonBase>
+              </Box>
               {(() => {
                 const supplierColor = currentSupplier ? getSupplierColorByName(currentSupplier, supplierPresets) : undefined;
                 return (
@@ -694,6 +652,28 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
               />
             )}
+          </Box>
+
+          {/* 履歴保存ボタン */}
+          <Box sx={{ mb: 1.5, display: 'flex', gap: 1 }}>
+            <Tooltip title="現在の商品情報を履歴として保存">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={isMatchingPreset ? <Bookmark /> : <Save />}
+                onClick={() => {
+                  if (currentName && currentOrigin) {
+                    setSaveDialogOpen(true);
+                  } else {
+                    showError('品名と産地を入力してください');
+                  }
+                }}
+                disabled={!currentName || !currentOrigin || isMatchingPreset}
+                sx={{ fontSize: '0.75rem' }}
+              >
+                {isMatchingPreset ? '保存済み' : '履歴に保存'}
+              </Button>
+            </Tooltip>
           </Box>
 
           <Grid container spacing={1.5}>
