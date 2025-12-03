@@ -49,7 +49,7 @@ export function calculateProductMetrics(
 ): ProductMetrics {
   // 基本値の取得（デフォルト値付き）
   const centerCost = product.centerCost || 0;
-  const centerFeeRate = product.centerFeeRate ?? 13;
+  const centerFeeRate = product.centerFeeRate ?? 0; // デフォルトは0%（帳合先プリセットから設定される）
   const storeCost = product.storeCost || 0;
   const sellingPrice = product.priceExcludingTax || 0;
   const totalDelivery = product.totalDelivery || 0;

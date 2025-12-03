@@ -131,7 +131,7 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   unit: '',
   packageUnit: '',
   centerCost: 0,
-  centerFeeRate: 13,
+  centerFeeRate: 0, // 帳合先プリセットから自動設定される（プリセットのデフォルトは13%）
   storeCost: 0,
   priceExcludingTax: 0,
   storeAllocations: [] as number[],

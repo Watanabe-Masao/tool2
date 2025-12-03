@@ -85,7 +85,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
   const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
-  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) ?? 13;
+  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` });
 
   // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
   const lastAutoLoadedKey = useRef<string | null>(null);
