@@ -21,6 +21,8 @@ export interface ProductData {
   specification: string;
   /** 1パックの数量 */
   quantityPerPackage: number | null;
+  /** 入数の単位 (kg, g, 個など) */
+  packageUnit?: string;
   /** 単位 */
   unit: string;
   /** 店原 - 未入力時null、0円の場合0として区別 */
@@ -52,6 +54,8 @@ export interface ProductFormData {
   specification: string;
   /** 1パックの数量 */
   quantityPerPackage: number | null;
+  /** 入数の単位 (kg, g, 個など) */
+  packageUnit?: string;
   /** 単位 */
   unit: string;
   /** 店原 - 未入力時null、0円の場合0として区別 */

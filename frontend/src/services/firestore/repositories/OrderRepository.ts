@@ -26,6 +26,7 @@ interface FirestoreOrder {
     origin: string;
     specification?: string;
     quantity_per_package: number | null;
+    package_unit?: string;
     unit?: string;
     store_cost: number | null;
     price_excluding_tax: number | null;
@@ -74,6 +75,7 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
         origin: product.origin,
         specification: product.specification || '',
         quantity_per_package: product.quantityPerPackage,
+        package_unit: product.packageUnit || '',
         unit: product.unit || '',
         store_cost: product.storeCost,
         price_excluding_tax: product.priceExcludingTax,
@@ -107,6 +109,7 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
           origin: product.origin,
           specification,
           quantityPerPackage: product.quantity_per_package,
+          packageUnit: product.package_unit || '',
           unit,
           storeCost: product.store_cost,
           priceExcludingTax: product.price_excluding_tax,
