@@ -64,32 +64,37 @@ export const productSchema = z.object({
   centerCost: z
     .number()
     .min(NUMBER_RANGE.STORE_COST.min, `センター着原価は${NUMBER_RANGE.STORE_COST.min}以上で入力してください`)
-    .max(NUMBER_RANGE.STORE_COST.max, `センター着原価は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`),
+    .max(NUMBER_RANGE.STORE_COST.max, `センター着原価は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`)
+    .nullable(), // 未入力=null、0円=0として区別
 
   /** センターフィー率（%） */
   centerFeeRate: z
     .number()
     .min(0, 'センターフィー率は0以上で入力してください')
-    .max(100, 'センターフィー率は100以下で入力してください'),
+    .max(100, 'センターフィー率は100以下で入力してください')
+    .nullable(), // 未入力=null、0%=0として区別
 
   /** 店原 */
   storeCost: z
     .number()
     .min(NUMBER_RANGE.STORE_COST.min, `店原は${NUMBER_RANGE.STORE_COST.min}以上で入力してください`)
-    .max(NUMBER_RANGE.STORE_COST.max, `店原は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`),
+    .max(NUMBER_RANGE.STORE_COST.max, `店原は${NUMBER_RANGE.STORE_COST.max}以下で入力してください`)
+    .nullable(), // 未入力=null、0円=0として区別
 
   /** 本体価格（税抜） */
   priceExcludingTax: z
     .number()
     .min(NUMBER_RANGE.PRICE_EXCLUDING_TAX.min, `本体価格は${NUMBER_RANGE.PRICE_EXCLUDING_TAX.min}以上で入力してください`)
-    .max(NUMBER_RANGE.PRICE_EXCLUDING_TAX.max, `本体価格は${NUMBER_RANGE.PRICE_EXCLUDING_TAX.max}以下で入力してください`),
+    .max(NUMBER_RANGE.PRICE_EXCLUDING_TAX.max, `本体価格は${NUMBER_RANGE.PRICE_EXCLUDING_TAX.max}以下で入力してください`)
+    .nullable(), // 未入力=null、0円=0として区別
 
   /** 総納品数（商品ごと） */
   totalDelivery: z
     .number()
     .min(NUMBER_RANGE.TOTAL_DELIVERY.min, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.min}以上で入力してください`)
     .max(NUMBER_RANGE.TOTAL_DELIVERY.max, `総納品数は${NUMBER_RANGE.TOTAL_DELIVERY.max}以下で入力してください`)
-    .int('整数で入力してください'),
+    .int('整数で入力してください')
+    .nullable(), // 未入力=null、0=0として区別
 
   /** 36店舗への配分数 */
   storeAllocations: z

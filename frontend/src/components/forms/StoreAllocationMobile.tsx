@@ -98,8 +98,8 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   const [loading, setLoading] = useState(true);
 
   // 商品の価格情報を取得
-  const storeCost = useWatch({ control, name: `products.${productIndex}.storeCost` }) || 0;
-  const priceExcludingTax = useWatch({ control, name: `products.${productIndex}.priceExcludingTax` }) || 0;
+  const storeCost = useWatch({ control, name: `products.${productIndex}.storeCost` });
+  const priceExcludingTax = useWatch({ control, name: `products.${productIndex}.priceExcludingTax` });
 
   // 店舗設定とカテゴリを読み込み
   useEffect(() => {
