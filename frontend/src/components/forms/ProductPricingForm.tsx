@@ -113,7 +113,7 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
 
     products.forEach((product) => {
       const centerCost = product.centerCost || 0;
-      const centerFeeRate = product.centerFeeRate || 13;
+      const centerFeeRate = product.centerFeeRate ?? 13;
       const storeCost = product.storeCost || 0;
       const sellingPrice = product.priceExcludingTax || 0;
       const totalDelivery = product.totalDelivery || 0;
