@@ -163,12 +163,13 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
       storeCost,
       priceExcludingTax,
       totalDelivery,
+      specification,
       quantityPerPackage,
       packageUnit,
       unit,
     } as any; // OrderFormData['products'][number]型にキャスト
     return calculateProductMetrics(product);
-  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, quantityPerPackage, packageUnit, unit]);
+  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, specification, quantityPerPackage, packageUnit, unit]);
 
   // 個別の値を取り出す
   const centerCostWithFee = metrics.centerCostWithFee;
