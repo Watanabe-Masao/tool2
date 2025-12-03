@@ -90,6 +90,7 @@ export interface DeleteDialogState {
     specification?: string;
     quantityPerPackage?: number | null;
     unit?: string;
+    packageUnit?: string;
   };
 }
 

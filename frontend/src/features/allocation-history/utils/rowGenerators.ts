@@ -20,7 +20,7 @@ export const aggregateStoreAllocations = (
         byStore[storeIdx] += qty;
       }
     });
-    total += detail.totalDelivery;
+    total += (detail.totalDelivery ?? 0);
   });
 
   return { byStore, total };

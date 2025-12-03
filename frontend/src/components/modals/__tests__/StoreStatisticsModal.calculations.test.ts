@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { calculateEffectiveQuantity } from '@/utils/unitConversion';
-import type { OrderFormData, Product } from '@/schemas/orderSchema';
+import type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
  * 配分統計の計算結果
@@ -129,7 +129,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78, // 100gあたり78円
             centerFeeRate: 0,
             storeAllocations: [1, 0, 0], // 店舗1に1箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -168,7 +168,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [3, 0, 0], // 店舗1に3箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -202,7 +202,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [2, 3, 1], // 店舗1に2箱、店舗2に3箱、店舗3に1箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -253,7 +253,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 15, // 1個あたり15円
             centerFeeRate: 0,
             storeAllocations: [1, 0, 0], // 店舗1に1箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -292,7 +292,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 15,
             centerFeeRate: 0,
             storeAllocations: [5, 0, 0], // 店舗1に5箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -329,7 +329,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [2, 0, 0], // 店舗1に2箱
-          } as Product,
+          } as OrderFormData['products'][0],
           // 商品B: 個数ベース
           {
             name: '商品B',
@@ -345,7 +345,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 15,
             centerFeeRate: 0,
             storeAllocations: [3, 0, 0], // 店舗1に3箱
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -390,7 +390,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [2, 1, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
           // 商品B: 店舗1に3箱、店舗2に2箱
           {
             name: '商品B',
@@ -406,7 +406,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 15,
             centerFeeRate: 0,
             storeAllocations: [3, 2, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -450,7 +450,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [1, 0, 0], // 店舗1のみ
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -479,7 +479,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 0,
             centerFeeRate: 0,
             storeAllocations: [1, 0, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -510,7 +510,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             priceExcludingTax: 78,
             centerFeeRate: 0,
             storeAllocations: [1, 0, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -544,7 +544,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             centerFeeRate: 0,
             // 店舗01に2箱、店舗05に3箱、店舗07に1箱
             storeAllocations: [2, 0, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 
@@ -610,7 +610,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             centerFeeRate: 0,
             // 店舗01に2箱、店舗05に1箱、店舗07に3箱
             storeAllocations: [2, 0, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
           // 商品B: 個数ベース（1個 + 30入り）
           {
             name: '商品B',
@@ -627,7 +627,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             centerFeeRate: 0,
             // 店舗01に5箱、店舗05に3箱、店舗07に2箱
             storeAllocations: [5, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          } as Product,
+          } as OrderFormData['products'][0],
         ],
       };
 

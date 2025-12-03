@@ -182,7 +182,7 @@ export const generateRowsByProduct = (
   const sortedGroups = sortGroups(
     productGroups,
     sortOrder,
-    (items) => items.reduce((sum, d) => sum + d.totalDelivery, 0)
+    (items) => items.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0)
   );
 
   // グランドトータル用の集計
@@ -244,7 +244,7 @@ export const generateRowsByComposite = (
   const sortedGroups = sortGroups(
     compositeGroups,
     sortOrder,
-    (items) => items.reduce((sum, d) => sum + d.totalDelivery, 0)
+    (items) => items.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0)
   );
 
   // グランドトータル用の集計

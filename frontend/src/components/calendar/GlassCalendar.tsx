@@ -46,7 +46,7 @@ export interface PreviewProduct {
   unit: string; // 規格の単位
   quantityPerPackage: number | null;
   packageUnit: string; // 入数の単位
-  totalDelivery: number;
+  totalDelivery: number | null; // 総納品数 - 未入力時null、0の場合0として区別
   supplier: string;
   deliveryDate: string; // 日付 (YYYY-MM-DD)
 }
@@ -835,7 +835,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                                   flexShrink: 0,
                                 }}
                               >
-                                {product.totalDelivery.toLocaleString()}
+                                {product.totalDelivery !== null ? product.totalDelivery.toLocaleString() : "-"}
                               </Typography>
                             </Box>
                           </Box>

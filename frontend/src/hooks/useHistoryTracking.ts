@@ -111,10 +111,10 @@ export const useHistoryTracking = ({
 
           // 価格履歴
           if (
-            product.centerCost &&
-            product.storeCost &&
-            product.priceExcludingTax &&
-            product.quantityPerPackage
+            product.centerCost !== null &&
+            product.storeCost !== null &&
+            product.priceExcludingTax !== null &&
+            product.quantityPerPackage !== null
           ) {
             await firestoreServiceRef.current.savePricingHistory(
               userRef.current.uid,
@@ -126,7 +126,7 @@ export const useHistoryTracking = ({
               product.centerCost,
               product.storeCost,
               product.priceExcludingTax,
-              product.centerFeeRate
+              product.centerFeeRate ?? undefined
             );
           }
         }

@@ -153,6 +153,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     if (!onAllocationChange) return;
 
     formData.products.forEach((product, productIndex) => {
+      // 総納品数が未設定の場合はスキップ
+      if (product.totalDelivery === null || product.totalDelivery === 0) {
+        return;
+      }
+
       // ロック済み店舗の現在値を取得
       const productLockedStores = lockedStores.get(productIndex) || new Set();
       const lockedAllocations = new Map<string, number>();
@@ -231,6 +236,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     if (!onAllocationChange) return;
 
     formData.products.forEach((product, productIndex) => {
+      // 総納品数が未設定の場合はスキップ
+      if (product.totalDelivery === null || product.totalDelivery === 0) {
+        return;
+      }
+
       // ロック済み店舗の現在値を取得
       const productLockedStores = lockedStores.get(productIndex) || new Set();
       const lockedAllocations = new Map<string, number>();

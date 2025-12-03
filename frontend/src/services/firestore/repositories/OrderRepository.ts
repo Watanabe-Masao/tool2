@@ -27,9 +27,9 @@ interface FirestoreOrder {
     specification?: string;
     quantity_per_package: number | null;
     unit?: string;
-    store_cost: number;
-    price_excluding_tax: number;
-    total_delivery: number;
+    store_cost: number | null;
+    price_excluding_tax: number | null;
+    total_delivery: number | null;
     store_allocations: number[];
   }>;
   buyer_name: string;

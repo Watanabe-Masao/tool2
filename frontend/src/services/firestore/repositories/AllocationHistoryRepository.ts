@@ -49,11 +49,11 @@ interface FirestoreAllocationDetail {
   quantity_per_package: number | null;
   unit: string;
   package_unit: string;
-  center_cost: number;
-  center_fee_rate: number;
-  store_cost: number;
-  price_excluding_tax: number;
-  total_delivery: number;
+  center_cost: number | null;
+  center_fee_rate: number | null;
+  store_cost: number | null;
+  price_excluding_tax: number | null;
+  total_delivery: number | null;
   store_allocations: number[];
   allocation_method: string;
   has_manual_adjustment: boolean;
@@ -90,7 +90,7 @@ export class AllocationHistoryRepository {
     // 1. バッチドキュメントを作成
     const batchRef = doc(collection(this.db, this.batchesCollection));
     const totalQuantity = input.products.reduce(
-      (sum, p) => sum + p.totalDelivery,
+      (sum, p) => sum + (p.totalDelivery ?? 0),
       0
     );
 

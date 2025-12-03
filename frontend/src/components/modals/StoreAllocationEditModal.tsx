@@ -73,7 +73,7 @@ export const StoreAllocationEditModal: React.FC<StoreAllocationEditModalProps> =
 
   // 合計を計算
   const totalAllocated = Object.values(localAllocations).reduce((sum, val) => sum + val, 0);
-  const difference = product.totalDelivery - totalAllocated;
+  const difference = (product.totalDelivery ?? 0) - totalAllocated;
 
   // 値を変更
   const handleValueChange = (storeCode: string, value: number) => {

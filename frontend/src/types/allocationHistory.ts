@@ -60,16 +60,16 @@ export interface AllocationDetail {
   unit: string;
   /** 入数の単位 */
   packageUnit: string;
-  /** センター着原価 */
-  centerCost: number;
-  /** センターフィー率（%） */
-  centerFeeRate: number;
-  /** 店原 */
-  storeCost: number;
-  /** 本体価格（税抜） */
-  priceExcludingTax: number;
-  /** 総納品数 */
-  totalDelivery: number;
+  /** センター着原価 - 未入力時null、0円の場合0として区別 */
+  centerCost: number | null;
+  /** センターフィー率（%） - 未入力時null、0%の場合0として区別 */
+  centerFeeRate: number | null;
+  /** 店原 - 未入力時null、0円の場合0として区別 */
+  storeCost: number | null;
+  /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
+  priceExcludingTax: number | null;
+  /** 総納品数 - 未入力時null、0の場合0として区別 */
+  totalDelivery: number | null;
   /** 店舗別配分（36店舗） */
   storeAllocations: number[];
   /** 配分方式 */
@@ -106,11 +106,16 @@ export interface SaveAllocationHistoryInput {
     quantityPerPackage: number | null;
     unit: string;
     packageUnit?: string;
-    centerCost: number;
-    centerFeeRate: number;
-    storeCost: number;
-    priceExcludingTax: number;
-    totalDelivery: number;
+    /** センター着原価 - 未入力時null、0円の場合0として区別 */
+    centerCost: number | null;
+    /** センターフィー率 - 未入力時null、0%の場合0として区別 */
+    centerFeeRate: number | null;
+    /** 店原 - 未入力時null、0円の場合0として区別 */
+    storeCost: number | null;
+    /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
+    priceExcludingTax: number | null;
+    /** 総納品数 - 未入力時null、0の場合0として区別 */
+    totalDelivery: number | null;
     storeAllocations: number[];
     allocationMethod?: 'manual' | 'even' | 'salesRatio' | 'history' | 'hybrid';
     hasManualAdjustment?: boolean;

@@ -80,7 +80,7 @@ interface DetailGridRow {
   unit: string; // 規格の単位
   quantityPerPackage: number | null; // 入数
   packageUnit: string; // 入数の単位
-  totalDelivery: number;
+  totalDelivery: number | null;
   deliveryDate?: string; // 日付範囲選択時に使用
   rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
   groupKey?: string; // グループキー
@@ -785,8 +785,8 @@ export const AllocationHistoryPage: React.FC = () => {
             }
           });
 
-          subtotalQuantity += detail.totalDelivery;
-          grandTotalQuantity += detail.totalDelivery;
+          subtotalQuantity += (detail.totalDelivery ?? 0);
+          grandTotalQuantity += (detail.totalDelivery ?? 0);
           rows.push(row);
         });
 
@@ -829,7 +829,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
       // 商品グループをソート
       const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
-        const total = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
+        const total = groupDetails.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0);
         return { key, groupDetails, total };
       });
 
@@ -869,8 +869,8 @@ export const AllocationHistoryPage: React.FC = () => {
               }
             });
 
-            subtotalQuantity += detailForDate.totalDelivery;
-            grandTotalQuantity += detailForDate.totalDelivery;
+            subtotalQuantity += (detailForDate.totalDelivery ?? 0);
+            grandTotalQuantity += (detailForDate.totalDelivery ?? 0);
             rows.push(row);
           }
         });
@@ -929,7 +929,7 @@ export const AllocationHistoryPage: React.FC = () => {
       });
 
       const groupsWithTotals = Array.from(primaryGroups.entries()).map(([key, groupDetails]) => {
-        const total = groupDetails.reduce((sum, d) => sum + d.totalDelivery, 0);
+        const total = groupDetails.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0);
         return { key, groupDetails, total };
       });
 
@@ -966,8 +966,8 @@ export const AllocationHistoryPage: React.FC = () => {
             }
           });
 
-          groupSubtotalQuantity += detail.totalDelivery;
-          grandTotalQuantity += detail.totalDelivery;
+          groupSubtotalQuantity += (detail.totalDelivery ?? 0);
+          grandTotalQuantity += (detail.totalDelivery ?? 0);
           rows.push(row);
         });
 

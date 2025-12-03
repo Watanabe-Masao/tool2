@@ -19,9 +19,12 @@ export interface FirestoreOrderData {
     specification: string;
     quantity_per_package: number | null;
     unit: string;
-    store_cost: number;
-    price_excluding_tax: number;
-    total_delivery: number;
+    /** 店原 - 未入力時null、0円の場合0として区別 */
+    store_cost: number | null;
+    /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
+    price_excluding_tax: number | null;
+    /** 総納品数 - 未入力時null、0の場合0として区別 */
+    total_delivery: number | null;
     store_allocations: number[];
   }>;
   buyer_name: string;

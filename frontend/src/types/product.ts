@@ -23,12 +23,12 @@ export interface ProductData {
   quantityPerPackage: number | null;
   /** 単位 */
   unit: string;
-  /** 店原 */
-  storeCost: number;
-  /** 本体価格（税抜） */
-  priceExcludingTax: number;
-  /** 総納品数 */
-  totalDelivery: number;
+  /** 店原 - 未入力時null、0円の場合0として区別 */
+  storeCost: number | null;
+  /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
+  priceExcludingTax: number | null;
+  /** 総納品数 - 未入力時null、0の場合0として区別 */
+  totalDelivery: number | null;
   /** 36店舗への配分数 (length = 36) */
   storeAllocations: number[];
 }
@@ -54,12 +54,12 @@ export interface ProductFormData {
   quantityPerPackage: number | null;
   /** 単位 */
   unit: string;
-  /** 店原 */
-  storeCost: number;
-  /** 本体価格（税抜） */
-  priceExcludingTax: number;
-  /** 総納品数 */
-  totalDelivery: number;
+  /** 店原 - 未入力時null、0円の場合0として区別 */
+  storeCost: number | null;
+  /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
+  priceExcludingTax: number | null;
+  /** 総納品数 - 未入力時null、0の場合0として区別 */
+  totalDelivery: number | null;
   /** 36店舗への配分数 */
   storeAllocations: number[];
 }

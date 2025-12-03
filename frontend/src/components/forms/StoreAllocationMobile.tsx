@@ -196,9 +196,9 @@ interface StoreAllocationMobileContentProps {
   /** カテゴリ選択更新関数 */
   setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
   /** 店原（原価） */
-  storeCost: number;
+  storeCost: number | null;
   /** 本体価格（税抜売価） */
-  priceExcludingTax: number;
+  priceExcludingTax: number | null;
 }
 
 /**
@@ -269,8 +269,8 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * 店舗ごとの統計情報を計算
    */
   const statistics = useMemo(() => {
-    const totalCost = allocations.reduce((sum, qty) => sum + (qty * storeCost), 0);
-    const totalPrice = allocations.reduce((sum, qty) => sum + (qty * priceExcludingTax), 0);
+    const totalCost = allocations.reduce((sum, qty) => sum + (qty * (storeCost ?? 0)), 0);
+    const totalPrice = allocations.reduce((sum, qty) => sum + (qty * (priceExcludingTax ?? 0)), 0);
     const totalProfit = totalPrice - totalCost;
     const profitRate = totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0;
 
