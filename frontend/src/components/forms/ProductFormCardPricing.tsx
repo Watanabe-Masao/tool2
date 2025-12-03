@@ -175,9 +175,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const profitAmount = metrics.profitAmount;
 
   // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
-  const profitMargin = priceExcludingTax && storeCost
+  const profitMargin = priceExcludingTax !== null && storeCost !== null && priceExcludingTax > 0
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
-    : '0.0';
+    : '-';
 
   /**
    * 価格履歴を選択
@@ -480,10 +480,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.centerCost?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                   InputProps={{
                     endAdornment: (
@@ -507,7 +507,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="センターフィー込原価"
-              value={centerCostWithFee ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
+              value={centerCostWithFee !== null ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
               size="small"
               fullWidth
               InputProps={{
@@ -542,10 +542,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.storeCost?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                 />
               )}
@@ -554,7 +554,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="差益（全体）"
-              value={profitAmount ? `¥${profitAmount.toLocaleString()}` : '-'}
+              value={profitAmount !== null ? `¥${profitAmount.toLocaleString()}` : '-'}
               size="small"
               fullWidth
               InputProps={{
@@ -563,7 +563,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               sx={{
                 '& .MuiInputBase-input': {
                   bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
-                  color: profitAmount < 0
+                  color: profitAmount !== null && profitAmount < 0
                     ? 'error.main'
                     : (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                   fontWeight: 'medium',
@@ -591,10 +591,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.priceExcludingTax?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                 />
               )}
@@ -603,7 +603,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="値入率"
-              value={`${profitMargin}%`}
+              value={profitMargin !== '-' ? `${profitMargin}%` : '-'}
               size="small"
               fullWidth
               InputProps={{
