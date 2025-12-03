@@ -881,7 +881,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     <Box>
                       <TextField
                         {...field}
-                        label="単位"
+                        label="規格の単位"
                         placeholder="例: 玉、g、個"
                         size="small"
                         error={!!productErrors?.unit}
@@ -1300,12 +1300,13 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               {presetConfirmDialog.preset.specification && (
                 <Typography variant="body2">
                   規格: {presetConfirmDialog.preset.specification}
+                  {presetConfirmDialog.preset.unit && ` ${presetConfirmDialog.preset.unit}`}
                 </Typography>
               )}
               {presetConfirmDialog.preset.quantityPerPackage && (
                 <Typography variant="body2">
                   入数: {presetConfirmDialog.preset.quantityPerPackage}
-                  {presetConfirmDialog.preset.unit && ` ${presetConfirmDialog.preset.unit}`}
+                  {presetConfirmDialog.preset.packageUnit && ` ${presetConfirmDialog.preset.packageUnit}`}
                 </Typography>
               )}
             </Box>
