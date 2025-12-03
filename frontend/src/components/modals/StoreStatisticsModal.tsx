@@ -40,7 +40,7 @@ import {
 } from 'recharts';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { STORE_DATA } from '@/utils/constants';
-import { calculateEffectiveQuantityWithMigration } from '@/utils/unitConversion';
+import { calculateEffectiveQuantityV2 } from '@/utils/unitConversion';
 
 /**
  * StoreStatisticsModalのProps
@@ -138,11 +138,12 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const priceExcludingTax = product.priceExcludingTax || 0;
 
       // 1箱あたりの実効数量を計算（規格と入数から）
-      // V1形式のデータ（unit: "100gあたり"）を自動的にV2で処理
-      const conversionResult = calculateEffectiveQuantityWithMigration({
+      // V2形式: specificationとunitが分離されたデータ構造
+      const conversionResult = calculateEffectiveQuantityV2({
+        specification: product.specification || '',
+        unit: product.unit || '',
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
-        unit: product.unit || '',
       });
       const effectiveQuantity = conversionResult.effectiveQuantity;
 
@@ -239,11 +240,12 @@ export const StoreStatisticsModal: React.FC<StoreStatisticsModalProps> = ({
       const priceExcludingTax = product.priceExcludingTax || 0;
 
       // 1箱あたりの実効数量を計算（規格と入数から）
-      // V1形式のデータ（unit: "100gあたり"）を自動的にV2で処理
-      const conversionResult = calculateEffectiveQuantityWithMigration({
+      // V2形式: specificationとunitが分離されたデータ構造
+      const conversionResult = calculateEffectiveQuantityV2({
+        specification: product.specification || '',
+        unit: product.unit || '',
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
-        unit: product.unit || '',
       });
       const effectiveQuantity = conversionResult.effectiveQuantity;
 
