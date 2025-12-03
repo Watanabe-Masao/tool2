@@ -106,6 +106,22 @@ export function calculateProductMetrics(
 /**
  * 全商品の集計を計算
  *
+ * 各商品の計算結果（calculateProductMetrics）を集計し、
+ * 全体の出荷原価率と値入率を計算します。
+ *
+ * 重要: 率の計算は各商品の率を平均するのではなく、
+ * 全商品の合計金額から計算します。これにより、
+ * 金額の大きい商品が適切に重み付けされます。
+ *
+ * @example
+ * 商品A: 店着10,000円 / センターフィー込9,000円 = 111.1%
+ * 商品B: 店着1,000円 / センターフィー込900円 = 111.1%
+ *
+ * ❌ 平均: (111.1% + 111.1%) / 2 = 111.1%
+ * ✅ 正しい: (10,000 + 1,000) / (9,000 + 900) × 100 = 111.1%
+ *
+ * 商品Aの金額比重が10倍なので、正しく計算される。
+ *
  * @param products - 商品データ配列
  * @returns 集計結果
  */
@@ -128,12 +144,14 @@ export function calculateProductsSummary(products: OrderFormData['products']) {
     grossProfit += metrics.grossProfitAmount;
   });
 
-  // 出荷原価率 = 店着総原価 / センターフィー込総原価 × 100
+  // 出荷原価率 = 全商品の店着総原価 / 全商品のセンターフィー込総原価 × 100
+  // 注: 各商品の率を平均するのではなく、合計金額から計算する
   const shippingCostRate = totalCenterCostWithFee > 0
     ? (totalStoreCost / totalCenterCostWithFee * 100).toFixed(1)
     : '0.0';
 
-  // 値入率（粗利率）= 粗利額 / 総売価 × 100
+  // 値入率（粗利率）= 全商品の粗利額 / 全商品の総売価 × 100
+  // 注: 各商品の率を平均するのではなく、合計金額から計算する
   const grossProfitMargin = totalSellingPrice > 0
     ? (grossProfit / totalSellingPrice * 100).toFixed(1)
     : '0.0';
