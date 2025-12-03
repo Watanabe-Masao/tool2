@@ -236,8 +236,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       setSaveDialogOpen(false);
       showSuccess('商品情報を履歴に保存しました');
 
-      // 履歴を再読み込み（次回のレンダリングで反映される）
-      // useProductHistoryフックが自動的に履歴を再取得します
+      // 履歴を再読み込み
+      await reloadPresetHistory();
     } catch (error) {
       console.error('[ProductFormCardBasic] Failed to save product history:', error);
       showError('商品情報の保存に失敗しました');
