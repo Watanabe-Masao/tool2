@@ -558,6 +558,8 @@ export class FirestoreService {
    * @param specification - 規格
    * @param quantityPerPackage - 入数
    * @param unit - 単位
+   * @param packageUnit - 入数の単位
+   * @param categoryCode - カテゴリーコード
    * @returns 履歴ID
    */
   static async saveProductHistory(
@@ -568,6 +570,7 @@ export class FirestoreService {
     specification: string,
     quantityPerPackage: number | null,
     unit: string,
+    packageUnit: string,
     categoryCode?: string
   ): Promise<string> {
     const db = getFirebaseFirestore();
@@ -593,6 +596,7 @@ export class FirestoreService {
       await updateDoc(docRef, {
         updatedAt: Timestamp.now(),
         usageCount: (snapshot.docs[0].data().usageCount || 0) + 1,
+        packageUnit, // packageUnitも更新
         ...(categoryCode && { categoryCode }), // カテゴリーコードがあれば更新
       });
       console.log(`[Firestore] Product history updated: ${name}`);
@@ -608,6 +612,7 @@ export class FirestoreService {
       specification,
       quantityPerPackage,
       unit,
+      packageUnit,
       ...(categoryCode && { categoryCode }),
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -638,6 +643,7 @@ export class FirestoreService {
       specification: string;
       quantityPerPackage: number | null;
       unit: string;
+      packageUnit: string;
       usageCount: number;
       pinned?: boolean;
       pinOrder?: number;
@@ -671,6 +677,7 @@ export class FirestoreService {
         specification: data.specification,
         quantityPerPackage: data.quantityPerPackage ?? null,
         unit: data.unit || '',
+        packageUnit: data.packageUnit || '',
         usageCount: data.usageCount || 1,
         pinned: data.pinned || false,
         pinOrder: data.pinOrder ?? 9999,
