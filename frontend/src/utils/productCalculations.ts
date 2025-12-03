@@ -55,10 +55,15 @@ export function calculateProductMetrics(
   const totalDelivery = product.totalDelivery;
 
   // 単位変換を適用して実効数量を計算
+  // V2形式（specification + unit分離）をV1形式（unit統合）に変換
+  const fullUnit = product.specification && product.unit
+    ? `${product.specification}${product.unit}`
+    : product.unit || '';
+
   const conversionResult = calculateEffectiveQuantityWithMigration({
     quantityPerPackage: product.quantityPerPackage,
     packageUnit: product.packageUnit || '',
-    unit: product.unit || '',
+    unit: fullUnit,
   });
   const effectiveQuantity = conversionResult.effectiveQuantity;
 
