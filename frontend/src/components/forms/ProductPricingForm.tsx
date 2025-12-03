@@ -5,7 +5,7 @@ import { Box, Typography, Alert, Grid, Accordion, AccordionSummary, AccordionDet
 import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { calculateEffectiveQuantityWithMigration } from '@/utils/unitConversion';
+import { calculateProductsSummary } from '@/utils/productCalculations';
 import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
@@ -102,61 +102,10 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
     prevTabIndexRef.current = activeTabIndex;
   }, [activeTabIndex]);
 
-  // 全体の集計を計算
+  // 全体の集計を計算（共通関数を使用）
+  // ProductFormCardPricingと同じ計算ロジックを使用することで、表示のズレを防止
   const summary = React.useMemo(() => {
-    let totalCenterCost = 0;
-    let totalCenterCostWithFee = 0;
-    let totalStoreCost = 0;
-    let totalSellingPrice = 0;
-    let totalProfit = 0;
-    let grossProfit = 0; // 粗利額
-
-    products.forEach((product) => {
-      const centerCost = product.centerCost || 0;
-      const centerFeeRate = product.centerFeeRate ?? 13;
-      const storeCost = product.storeCost || 0;
-      const sellingPrice = product.priceExcludingTax || 0;
-      const totalDelivery = product.totalDelivery || 0;
-
-      // 単位変換を適用して実効数量を計算
-      // V1/V2両対応: 移行ヘルパー関数を使用
-      const conversionResult = calculateEffectiveQuantityWithMigration({
-        quantityPerPackage: product.quantityPerPackage,
-        packageUnit: product.packageUnit || '',
-        unit: product.unit || '',
-      });
-      const effectiveQuantity = conversionResult.effectiveQuantity;
-
-      const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
-      const quantity = totalDelivery * effectiveQuantity;
-
-      totalCenterCost += centerCost * quantity;
-      totalCenterCostWithFee += centerCostWithFee * quantity;
-      totalStoreCost += storeCost * quantity;
-      totalSellingPrice += sellingPrice * quantity;
-      totalProfit += (storeCost - centerCostWithFee) * quantity;
-      grossProfit += (sellingPrice - storeCost) * quantity; // 粗利額 = 売価 - 店着原価
-    });
-
-    // 出荷原価率 = 店着総原価 / センターフィー込総原価 × 100
-    const shippingCostRate = totalCenterCostWithFee > 0
-      ? (totalStoreCost / totalCenterCostWithFee * 100).toFixed(1)
-      : '0.0';
-
-    const grossProfitMargin = totalSellingPrice > 0
-      ? (grossProfit / totalSellingPrice * 100).toFixed(1)
-      : '0.0';
-
-    return {
-      totalCenterCost,
-      totalCenterCostWithFee,
-      totalStoreCost,
-      totalSellingPrice,
-      totalProfit,
-      shippingCostRate,
-      grossProfit,
-      grossProfitMargin,
-    };
+    return calculateProductsSummary(products);
   }, [products]);
 
   return (

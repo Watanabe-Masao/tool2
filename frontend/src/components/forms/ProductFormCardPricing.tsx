@@ -20,7 +20,8 @@ import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
-import { calculateEffectiveQuantityWithMigration, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
+import { calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
+import { calculateProductMetrics } from '@/utils/productCalculations';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 
 /**
@@ -153,27 +154,30 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     console.log(`[ProductFormCardPricing] Auto-loaded latest pricing history for ${productName} (${specification})`);
   }, [productName, specification, quantityPerPackage, findMatchingHistory, centerCost, storeCost, priceExcludingTax, setValue, index]);
 
-  // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
-  const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
+  // 共通の計算関数を使用（ProductPricingFormと同じロジック）
+  const metrics = React.useMemo(() => {
+    const product = {
+      centerCost,
+      centerFeeRate,
+      storeCost,
+      priceExcludingTax,
+      totalDelivery,
+      quantityPerPackage,
+      packageUnit,
+      unit,
+    } as any; // OrderFormData['products'][number]型にキャスト
+    return calculateProductMetrics(product);
+  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, quantityPerPackage, packageUnit, unit]);
+
+  // 個別の値を取り出す
+  const centerCostWithFee = metrics.centerCostWithFee;
+  const effectiveQuantity = metrics.effectiveQuantity;
+  const profitAmount = metrics.profitAmount;
 
   // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
   const profitMargin = priceExcludingTax && storeCost
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '0.0';
-
-  // 単位変換を適用（例: 5kg入り + 100gあたり → 50単位）
-  // V1/V2両対応: 移行ヘルパー関数を使用
-  const unitConversionResult = calculateEffectiveQuantityWithMigration({
-    quantityPerPackage,
-    packageUnit: packageUnit || '',
-    unit: unit || '',
-  });
-  const effectiveQuantity = unitConversionResult.effectiveQuantity;
-
-  // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 実効数量)）
-  const profitAmount = storeCost && centerCostWithFee && totalDelivery && effectiveQuantity
-    ? Math.round((storeCost - centerCostWithFee) * (totalDelivery * effectiveQuantity))
-    : 0;
 
   /**
    * 価格履歴を選択
