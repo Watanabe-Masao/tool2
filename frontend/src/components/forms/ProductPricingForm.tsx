@@ -5,7 +5,7 @@ import { Box, Typography, Alert, Grid, Accordion, AccordionSummary, AccordionDet
 import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { calculateEffectiveQuantityV2 } from '@/utils/unitConversion';
+import { calculateEffectiveQuantityWithMigration } from '@/utils/unitConversion';
 import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
@@ -119,12 +119,11 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
       const totalDelivery = product.totalDelivery || 0;
 
       // 単位変換を適用して実効数量を計算
-      // V2形式: specificationとunitが分離されたデータ構造
-      const conversionResult = calculateEffectiveQuantityV2({
-        specification: product.specification || '',
-        unit: product.unit || '',
+      // V1/V2両対応: 移行ヘルパー関数を使用
+      const conversionResult = calculateEffectiveQuantityWithMigration({
         quantityPerPackage: product.quantityPerPackage,
         packageUnit: product.packageUnit || '',
+        unit: product.unit || '',
       });
       const effectiveQuantity = conversionResult.effectiveQuantity;
 
