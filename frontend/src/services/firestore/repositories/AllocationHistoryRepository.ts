@@ -247,17 +247,24 @@ export class AllocationHistoryRepository {
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => {
       const data = doc.data() as FirestoreAllocationDetail;
+
+      // V1形式のunitをV2形式（specification + unit分離）に変換
+      const { specification, unit } = this.migrateUnitToV2(
+        data.specification || '',
+        data.unit || ''
+      );
+
       return {
         id: doc.id,
         batchId: data.batch_id,
         userId: data.userId,
         productName: data.product_name,
         origin: data.origin,
-        specification: data.specification,
+        specification,
         supplier: data.supplier,
         categoryCode: data.category_code,
         quantityPerPackage: data.quantity_per_package,
-        unit: data.unit,
+        unit,
         packageUnit: data.package_unit || '',
         centerCost: data.center_cost,
         centerFeeRate: data.center_fee_rate,
@@ -270,6 +277,46 @@ export class AllocationHistoryRepository {
         createdAt: data.created_at?.toDate(),
       };
     });
+  }
+
+  /**
+   * V1形式のunit（"100gあたり"など）をV2形式に変換
+   *
+   * @param specification - 規格（既にV2形式の場合）
+   * @param unit - 単位
+   * @returns V2形式の specification と unit
+   */
+  private migrateUnitToV2(specification: string, unit: string): { specification: string; unit: string } {
+    // V2形式として既にspecificationが設定されている場合はそのまま返す
+    if (specification) {
+      return { specification, unit };
+    }
+
+    // V1形式のパターン: "100gあたり", "50kgあたり" など
+    const v1Pattern = /^(\d+)(g|kg)あたり$/;
+    const match = unit.match(v1Pattern);
+
+    if (match) {
+      // V1形式を検出 → V2形式に変換
+      const value = match[1]; // "100"
+      const baseUnit = match[2]; // "g" または "kg"
+      return {
+        specification: value,
+        unit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
+      };
+    }
+
+    // "gあたり", "kgあたり" のように数値なしの場合も処理
+    const baseUnitPattern = /^(g|kg)あたり$/;
+    if (baseUnitPattern.test(unit)) {
+      return {
+        specification: '', // 数値なし → 空文字列（1として扱われる）
+        unit,
+      };
+    }
+
+    // その他（個数ベースなど）はそのまま
+    return { specification, unit };
   }
 
   /**

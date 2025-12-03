@@ -94,22 +94,81 @@ export class OrderRepository extends FirestoreBaseService<OrderData, FirestoreOr
       id,
       deliveryDate: new Date(data.delivery_date),
       suppliers: data.suppliers || [],
-      products: data.products.map((product) => ({
-        supplier: product.supplier || '',
-        name: product.name,
-        origin: product.origin,
-        specification: product.specification || '',
-        quantityPerPackage: product.quantity_per_package,
-        unit: product.unit || '',
-        storeCost: product.store_cost,
-        priceExcludingTax: product.price_excluding_tax,
-        totalDelivery: product.total_delivery,
-        storeAllocations: product.store_allocations,
-      })),
+      products: data.products.map((product) => {
+        // V1形式のunitをV2形式（specification + unit分離）に変換
+        const { specification, unit } = this.migrateUnitToV2(
+          product.specification || '',
+          product.unit || ''
+        );
+
+        return {
+          supplier: product.supplier || '',
+          name: product.name,
+          origin: product.origin,
+          specification,
+          quantityPerPackage: product.quantity_per_package,
+          unit,
+          storeCost: product.store_cost,
+          priceExcludingTax: product.price_excluding_tax,
+          totalDelivery: product.total_delivery,
+          storeAllocations: product.store_allocations,
+        };
+      }),
       buyerName: data.buyer_name,
       timestamp: data.timestamp?.toDate() || new Date(),
       userId: data.userId,
     };
+  }
+
+  /**
+   * V1形式のunit（"100gあたり"など）をV2形式に変換
+   *
+   * @param specification - 規格（既にV2形式の場合）
+   * @param unit - 単位
+   * @returns V2形式の specification と unit
+   *
+   * @example
+   * ```typescript
+   * // V1形式データ（古いデータ）
+   * migrateUnitToV2('', '100gあたり')
+   * // → { specification: '100', unit: 'gあたり' }
+   *
+   * // V2形式データ（新しいデータ）
+   * migrateUnitToV2('100', 'gあたり')
+   * // → { specification: '100', unit: 'gあたり' }
+   * ```
+   */
+  private migrateUnitToV2(specification: string, unit: string): { specification: string; unit: string } {
+    // V2形式として既にspecificationが設定されている場合はそのまま返す
+    if (specification) {
+      return { specification, unit };
+    }
+
+    // V1形式のパターン: "100gあたり", "50kgあたり" など
+    const v1Pattern = /^(\d+)(g|kg)あたり$/;
+    const match = unit.match(v1Pattern);
+
+    if (match) {
+      // V1形式を検出 → V2形式に変換
+      const value = match[1]; // "100"
+      const baseUnit = match[2]; // "g" または "kg"
+      return {
+        specification: value,
+        unit: `${baseUnit}あたり`, // "gあたり" または "kgあたり"
+      };
+    }
+
+    // "gあたり", "kgあたり" のように数値なしの場合も処理
+    const baseUnitPattern = /^(g|kg)あたり$/;
+    if (baseUnitPattern.test(unit)) {
+      return {
+        specification: '', // 数値なし → 空文字列（1として扱われる）
+        unit,
+      };
+    }
+
+    // その他（個数ベースなど）はそのまま
+    return { specification, unit };
   }
 
   /**
