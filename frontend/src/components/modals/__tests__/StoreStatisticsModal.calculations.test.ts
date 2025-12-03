@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { calculateEffectiveQuantity } from '@/utils/unitConversion';
+import { calculateEffectiveQuantityV2 } from '@/utils/unitConversion';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
@@ -73,10 +73,11 @@ function calculateStoreStatistics(formData: OrderFormData): StoreStatistics[] {
     const priceExcludingTax = product.priceExcludingTax || 0;
 
     // 1箱あたりの実効数量を計算（規格と入数から）
-    const conversionResult = calculateEffectiveQuantity({
+    const conversionResult = calculateEffectiveQuantityV2({
+      specification: product.specification || '',
+      unit: product.unit || '',
       quantityPerPackage: product.quantityPerPackage,
       packageUnit: product.packageUnit || '',
-      unit: product.unit || '',
     });
     const effectiveQuantity = conversionResult.effectiveQuantity;
 
@@ -120,7 +121,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -159,7 +160,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -193,7 +194,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -320,7 +321,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -381,7 +382,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -441,7 +442,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -470,7 +471,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -501,7 +502,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: null,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -534,7 +535,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',
@@ -600,7 +601,7 @@ describe('StoreStatisticsModal - 配分統計計算', () => {
             supplier: 'supplier1',
             origin: '産地A',
             specification: '100',
-            unit: '100gあたり',
+            unit: 'gあたり',
             quantityPerPackage: 5,
             packageUnit: 'kg',
             categoryCode: 'CAT001',

@@ -21,7 +21,7 @@ import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
-import { calculateUnitPriceFromBoxPrice, checkUnitCompatibility, calculateEffectiveQuantityWithMigration } from '@/utils/unitConversion';
+import { calculateUnitPriceFromBoxPriceV2, calculateEffectiveQuantityV2 } from '@/utils/unitConversion';
 import { calculateProductMetrics } from '@/utils/productCalculations';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 
@@ -177,15 +177,13 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
   // 単位変換結果を計算（箱単価計算ポップオーバーで使用）
   const unitConversionResult = React.useMemo(() => {
-    return calculateEffectiveQuantityWithMigration({
+    return calculateEffectiveQuantityV2({
+      specification: specification || '',
+      unit: unit || '',
       quantityPerPackage,
       packageUnit: packageUnit || '',
-      unit: unit || '',
     });
-  }, [quantityPerPackage, packageUnit, unit]);
-
-  // 完全な単位文字列（V1形式: "100gあたり"など）
-  const fullUnit = unit || '';
+  }, [specification, unit, quantityPerPackage, packageUnit]);
 
   // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
   const profitMargin = priceExcludingTax !== null && storeCost !== null && priceExcludingTax > 0
@@ -286,20 +284,24 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   };
 
   /**
-   * 単位互換性チェック
-   */
-  const unitCompatibility = checkUnitCompatibility(fullUnit, packageUnit || '');
-
-  /**
-   * 箱単価から単位単価を計算
+   * 箱単価から単位単価を計算（V2形式）
    */
   const boxPriceValue = boxPrice ? parseFloat(boxPrice) : 0;
-  const calculationResult = calculateUnitPriceFromBoxPrice({
+  const calculationResult = calculateUnitPriceFromBoxPriceV2({
     boxPrice: boxPriceValue,
+    specification: specification || '',
+    unit: unit || '',
     quantityPerPackage,
     packageUnit: packageUnit || '',
-    unit: fullUnit,
   });
+
+  /**
+   * 単位互換性チェック（calculationResultから取得）
+   */
+  const unitCompatibility = {
+    isCompatible: calculationResult.isValid || !calculationResult.errorMessage?.includes('組み合わせが不整合'),
+    warningMessage: calculationResult.errorMessage,
+  };
 
   /**
    * 計算結果をセンター着原価に適用
@@ -657,7 +659,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
             {/* 単位あたりの情報 */}
             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
-              {fullUnit ? `${fullUnit}の情報` : '1単位あたりの情報'}
+              {unit ? `${unit}の情報` : '1単位あたりの情報'}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
               {centerCostWithFee !== null && centerCostWithFee > 0 && (

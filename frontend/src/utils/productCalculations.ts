@@ -1,4 +1,4 @@
-import { calculateEffectiveQuantityWithMigration } from './unitConversion';
+import { calculateEffectiveQuantityV2 } from './unitConversion';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
@@ -55,15 +55,12 @@ export function calculateProductMetrics(
   const totalDelivery = product.totalDelivery;
 
   // 単位変換を適用して実効数量を計算
-  // V2形式（specification + unit分離）をV1形式（unit統合）に変換
-  const fullUnit = product.specification && product.unit
-    ? `${product.specification}${product.unit}`
-    : product.unit || '';
-
-  const conversionResult = calculateEffectiveQuantityWithMigration({
+  // V2形式のデータを直接V2計算関数に渡す（無駄な変換を避ける）
+  const conversionResult = calculateEffectiveQuantityV2({
+    specification: product.specification || '',
+    unit: product.unit || '',
     quantityPerPackage: product.quantityPerPackage,
     packageUnit: product.packageUnit || '',
-    unit: fullUnit,
   });
   const effectiveQuantity = conversionResult.effectiveQuantity;
 
