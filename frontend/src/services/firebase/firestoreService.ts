@@ -73,7 +73,7 @@ export class FirestoreService {
         origin: product.origin,
         specification: product.specification || '',
         quantity_per_package: product.quantityPerPackage,
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         store_cost: product.storeCost,
         price_excluding_tax: product.priceExcludingTax,
         total_delivery: product.totalDelivery,
@@ -102,7 +102,7 @@ export class FirestoreService {
         origin: product.origin,
         specification: product.specification || '',
         quantityPerPackage: product.quantity_per_package,
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         storeCost: product.store_cost,
         priceExcludingTax: product.price_excluding_tax,
         totalDelivery: product.total_delivery,
@@ -558,6 +558,8 @@ export class FirestoreService {
    * @param specification - 規格
    * @param quantityPerPackage - 入数
    * @param unit - 単位
+   * @param packageUnit - 入数の単位
+   * @param categoryCode - カテゴリーコード
    * @returns 履歴ID
    */
   static async saveProductHistory(
@@ -567,7 +569,8 @@ export class FirestoreService {
     origin: string,
     specification: string,
     quantityPerPackage: number | null,
-    unit: string,
+    specificationUnit: string,
+    packageUnit: string,
     categoryCode?: string
   ): Promise<string> {
     const db = getFirebaseFirestore();
@@ -582,7 +585,7 @@ export class FirestoreService {
       where('origin', '==', origin),
       where('specification', '==', specification),
       where('quantityPerPackage', '==', quantityPerPackage),
-      where('unit', '==', unit)
+      where('specificationUnit', '==', specificationUnit)
     );
 
     const snapshot = await getDocs(q);
@@ -593,6 +596,7 @@ export class FirestoreService {
       await updateDoc(docRef, {
         updatedAt: Timestamp.now(),
         usageCount: (snapshot.docs[0].data().usageCount || 0) + 1,
+        packageUnit, // packageUnitも更新
         ...(categoryCode && { categoryCode }), // カテゴリーコードがあれば更新
       });
       console.log(`[Firestore] Product history updated: ${name}`);
@@ -607,7 +611,8 @@ export class FirestoreService {
       origin,
       specification,
       quantityPerPackage,
-      unit,
+      specificationUnit,
+      packageUnit,
       ...(categoryCode && { categoryCode }),
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -637,7 +642,8 @@ export class FirestoreService {
       origin: string;
       specification: string;
       quantityPerPackage: number | null;
-      unit: string;
+      specificationUnit: string;
+      packageUnit: string;
       usageCount: number;
       pinned?: boolean;
       pinOrder?: number;
@@ -670,7 +676,8 @@ export class FirestoreService {
         origin: data.origin,
         specification: data.specification,
         quantityPerPackage: data.quantityPerPackage ?? null,
-        unit: data.unit || '',
+        specificationUnit: data.specificationUnit || '',
+        packageUnit: data.packageUnit || '',
         usageCount: data.usageCount || 1,
         pinned: data.pinned || false,
         pinOrder: data.pinOrder ?? 9999,
@@ -696,7 +703,7 @@ export class FirestoreService {
       origin?: string;
       specification?: string;
       quantityPerPackage?: number | null;
-      unit?: string;
+      specificationUnit?: string;
     }
   ): Promise<number> {
     const db = getFirebaseFirestore();
@@ -717,8 +724,8 @@ export class FirestoreService {
     if (conditions.quantityPerPackage !== undefined) {
       q = query(q, where('quantityPerPackage', '==', conditions.quantityPerPackage));
     }
-    if (conditions.unit !== undefined) {
-      q = query(q, where('unit', '==', conditions.unit));
+    if (conditions.specificationUnit !== undefined) {
+      q = query(q, where('specificationUnit', '==', conditions.specificationUnit));
     }
 
     const snapshot = await getDocs(q);
@@ -859,7 +866,7 @@ export class FirestoreService {
     productName: string,
     specification: string,
     quantityPerPackage: number,
-    unit: string,
+    specificationUnit: string,
     centerCost: number,
     storeCost: number,
     priceExcludingTax: number,
@@ -891,7 +898,7 @@ export class FirestoreService {
         existingData.storeCost === storeCost &&
         existingData.priceExcludingTax === priceExcludingTax &&
         existingData.centerFeeRate === normalizedCenterFeeRate &&
-        existingData.unit === unit
+        existingData.specificationUnit === specificationUnit
       ) {
         console.log(`[Firestore] Pricing history unchanged, skipping update for ${productName} (${specification})`);
         return;
@@ -903,7 +910,7 @@ export class FirestoreService {
         storeCost,
         priceExcludingTax,
         centerFeeRate: normalizedCenterFeeRate,
-        unit,
+        specificationUnit,
         usageCount: increment(1),
         lastUsedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -916,7 +923,7 @@ export class FirestoreService {
         productName,
         specification,
         quantityPerPackage,
-        unit,
+        specificationUnit,
         centerCost,
         storeCost,
         priceExcludingTax,

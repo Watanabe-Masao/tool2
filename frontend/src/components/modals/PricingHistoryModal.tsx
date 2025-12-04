@@ -205,7 +205,7 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
                           sx={{ fontSize: '0.65rem', height: 18 }}
                         />
                         <Chip
-                          label={`${history.quantityPerPackage}${history.unit}`}
+                          label={`${history.quantityPerPackage}${history.specificationUnit}`}
                           size="small"
                           color="secondary"
                           sx={{ fontSize: '0.65rem', height: 18 }}
@@ -285,7 +285,7 @@ export const PricingHistoryModal: React.FC<PricingHistoryModalProps> = ({
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 入数: {historyToDelete.quantityPerPackage}
-                {historyToDelete.unit}
+                {historyToDelete.specificationUnit}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 センター着: ¥{historyToDelete.centerCost.toLocaleString()} / 店着: ¥

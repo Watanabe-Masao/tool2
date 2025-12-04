@@ -45,6 +45,8 @@ export interface SupplierPresetEntity {
   id: string;
   /** 帳合先名 */
   supplier: string;
+  /** センターフィー率（%）（デフォルト値として使用） */
+  centerFeeRate?: number;
   /** 表示順序 */
   displayOrder?: number;
   /** 作成日時 */

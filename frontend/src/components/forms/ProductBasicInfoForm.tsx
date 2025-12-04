@@ -210,7 +210,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       setValue(`products.${activeTabIndex}.origin`, firstPreset.origin);
       setValue(`products.${activeTabIndex}.specification`, firstPreset.specification);
       setValue(`products.${activeTabIndex}.quantityPerPackage`, firstPreset.quantityPerPackage);
-      setValue(`products.${activeTabIndex}.unit`, firstPreset.unit);
+      setValue(`products.${activeTabIndex}.specificationUnit`, firstPreset.specificationUnit);
       // 数量が入力されている場合はtotalDeliveryに反映
       setValue(`products.${activeTabIndex}.totalDelivery`, firstPreset.totalDelivery || 0);
       startIndex = 1; // 2番目のプリセットから追加開始
@@ -227,7 +227,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         origin: preset.origin,
         specification: preset.specification,
         quantityPerPackage: preset.quantityPerPackage,
-        unit: preset.unit,
+        specificationUnit: preset.specificationUnit,
         // 数量が入力されている場合はtotalDeliveryに反映
         totalDelivery: preset.totalDelivery || 0,
         storeAllocations: new Array(STORE_COUNT).fill(0),
@@ -260,7 +260,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       origin: preset.origin,
       specification: preset.specification,
       quantityPerPackage: preset.quantityPerPackage,
-      unit: preset.unit,
+      specificationUnit: preset.specificationUnit,
       totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
@@ -818,7 +818,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                           {product.specification && `${product.specification}`}
                           {product.specification && product.quantityPerPackage && ' | '}
-                          {product.quantityPerPackage && `${product.quantityPerPackage}${product.unit || ''}`}
+                          {product.quantityPerPackage && `${product.quantityPerPackage}${product.specificationUnit || ''}`}
                         </Typography>
                       )}
                       {/* 原価 | 売価 */}

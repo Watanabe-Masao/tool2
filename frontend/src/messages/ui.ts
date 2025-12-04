@@ -115,7 +115,7 @@ export const FIELD_LABELS = {
   origin: '産地',
   specification: '規格',
   quantityPerPackage: '入数',
-  unit: '単位',
+  specificationUnit: '単位',
   categoryCode: 'カテゴリコード',
 
   // 価格情報

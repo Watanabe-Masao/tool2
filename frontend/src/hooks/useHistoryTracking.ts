@@ -104,29 +104,29 @@ export const useHistoryTracking = ({
             product.origin,
             product.specification || '',
             product.quantityPerPackage ?? null,
-            product.unit || '',
+            product.specificationUnit || '',
             product.packageUnit || '',
             product.categoryCode
           );
 
           // 価格履歴
           if (
-            product.centerCost &&
-            product.storeCost &&
-            product.priceExcludingTax &&
-            product.quantityPerPackage
+            product.centerCost !== null &&
+            product.storeCost !== null &&
+            product.priceExcludingTax !== null &&
+            product.quantityPerPackage !== null
           ) {
             await firestoreServiceRef.current.savePricingHistory(
               userRef.current.uid,
               product.name,
               product.specification || '',
               product.quantityPerPackage,
-              product.unit || '',
+              product.specificationUnit || '',
               product.packageUnit || '',
               product.centerCost,
               product.storeCost,
               product.priceExcludingTax,
-              product.centerFeeRate
+              product.centerFeeRate ?? undefined
             );
           }
         }

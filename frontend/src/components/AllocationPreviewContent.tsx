@@ -86,7 +86,7 @@ interface GridRowData {
   deliveryDate: string;
   origin: string;
   specification: string;
-  unit: string;
+  specificationUnit: string;
   productName: string;
   storeCost: number;
   priceExcludingTax: number;
@@ -153,6 +153,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     if (!onAllocationChange) return;
 
     formData.products.forEach((product, productIndex) => {
+      // 総納品数が未設定の場合はスキップ
+      if (product.totalDelivery === null || product.totalDelivery === 0) {
+        return;
+      }
+
       // ロック済み店舗の現在値を取得
       const productLockedStores = lockedStores.get(productIndex) || new Set();
       const lockedAllocations = new Map<string, number>();
@@ -231,6 +236,11 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
     if (!onAllocationChange) return;
 
     formData.products.forEach((product, productIndex) => {
+      // 総納品数が未設定の場合はスキップ
+      if (product.totalDelivery === null || product.totalDelivery === 0) {
+        return;
+      }
+
       // ロック済み店舗の現在値を取得
       const productLockedStores = lockedStores.get(productIndex) || new Set();
       const lockedAllocations = new Map<string, number>();
@@ -271,7 +281,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         deliveryDate: format(formData.deliveryDate, 'M/d(E)', { locale: ja }),
         origin: product.origin || '',
         specification: product.specification || '',
-        unit: product.unit || '',
+        specificationUnit: product.specificationUnit || '',
         productName: product.name || '',
         storeCost: product.storeCost || 0,
         priceExcludingTax: product.priceExcludingTax || 0,
@@ -324,7 +334,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
         disableColumnMenu: true,
         valueGetter: (_value, row) => {
           const spec = row.specification;
-          const unit = row.unit;
+          const unit = row.specificationUnit;
           if (spec && unit) {
             return `${spec} ${unit}`;
           }

@@ -29,8 +29,8 @@ describe('constants', () => {
       expect(DEFAULT_PRODUCT_FORM_DATA.origin).toBe('');
       expect(DEFAULT_PRODUCT_FORM_DATA.specification).toBe('');
       expect(DEFAULT_PRODUCT_FORM_DATA.quantityPerPackage).toBeNull();
-      expect(DEFAULT_PRODUCT_FORM_DATA.storeCost).toBe(0);
-      expect(DEFAULT_PRODUCT_FORM_DATA.priceExcludingTax).toBe(0);
+      expect(DEFAULT_PRODUCT_FORM_DATA.storeCost).toBeNull();
+      expect(DEFAULT_PRODUCT_FORM_DATA.priceExcludingTax).toBeNull();
     });
 
     it('should have empty storeAllocations by default', () => {

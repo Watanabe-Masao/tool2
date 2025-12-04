@@ -651,3 +651,103 @@ export const themeHelpers = {
     return `@media (min-width: ${designTokens.breakpoints[breakpoint]})`;
   },
 };
+
+/**
+ * モバイル最適化デザイントークン
+ * Week 3: モバイルファースト設計の一環として追加
+ *
+ * 狭いエリアでの操作性とスクロール範囲の最小化を重視した設計
+ */
+export const mobileOptimizedTokens = {
+  /**
+   * モバイル用グリッドレイアウト
+   * 固定幅グリッドで視覚的統一感を実現
+   */
+  grid: {
+    /** 店舗選択チップのグリッド */
+    storeChip: {
+      columns: 'repeat(auto-fill, minmax(60px, 1fr))', // 5-6個/行（モバイル）
+      gap: 0.75,                                        // 6px（狭い間隔）
+      itemHeight: 44,                                   // Apple/Android推奨タッチサイズ
+    },
+    /** カテゴリ選択チップのグリッド */
+    categoryChip: {
+      columns: 'repeat(auto-fill, minmax(100px, 1fr))', // 可変幅（バッジ対応）
+      gap: 0.75,                                         // 6px
+      itemHeight: 32,                                    // コンパクト高さ
+    },
+    /** 配分入力フィールドのグリッド */
+    allocationInput: {
+      columns: 'repeat(2, 1fr)',                        // 2列固定
+      gap: 1,                                            // 8px
+      itemHeight: 40,                                    // テキストフィールド高さ
+    },
+  },
+
+  /**
+   * コンパクトなフォントサイズ（モバイル）
+   * 情報密度を高めつつ可読性を維持
+   */
+  fontSizeMobile: {
+    primary: '0.75rem',    // 12px - メインテキスト（店舗コード、カテゴリ名）
+    secondary: '0.6rem',   // 9.6px - サブテキスト（数量）
+    tertiary: '0.55rem',   // 8.8px - 補助テキスト（比率等）
+    badge: '0.65rem',      // 10.4px - バッジ内テキスト
+  },
+
+  /**
+   * スクロール可能エリアの最大高さ
+   * 縦スクロールを最小化し、1画面内に収める
+   */
+  maxHeight: {
+    storeSelection: 200,                // 店舗選択エリア
+    categorySelection: 120,             // カテゴリ選択エリア
+    allocationInput: 300,               // 配分入力エリア
+    modalContent: 'calc(100vh - 240px)', // モーダルコンテンツ
+  },
+
+  /**
+   * タッチターゲットサイズ（Apple/Android準拠）
+   * モバイル操作性の基準値
+   */
+  touchTarget: {
+    minimum: 44,        // 最小タッチエリア（Apple HIG/Android Material推奨）
+    comfortable: 48,    // 快適なタッチエリア
+    compact: 32,        // コンパクト（カテゴリチップ等）
+  },
+
+  /**
+   * マイクロインタラクション
+   * 操作フィードバックの標準値
+   */
+  interaction: {
+    /** ホバー効果 */
+    hover: {
+      scale: 1.08,                                      // 拡大率
+      translateY: '-2px',                               // 浮き上がり
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', // スムーズな遷移
+    },
+    /** アクティブ効果（タッチ時） */
+    active: {
+      scale: 0.96,                                      // 押し込み
+      transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)', // 高速フィードバック
+    },
+    /** 選択状態 */
+    selected: {
+      scale: 1.02,                                      // 微妙な拡大
+      borderWidth: 2,                                   // 太い境界線
+    },
+  },
+
+  /**
+   * バッジスタイル（カテゴリチップ用）
+   */
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: '9px',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    padding: '0 2px',
+  },
+};

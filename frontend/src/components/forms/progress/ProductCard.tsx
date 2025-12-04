@@ -162,7 +162,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     variant="caption"
                     sx={{ fontSize: '0.65rem', color: 'text.secondary' }}
                   >
-                    {product.specification}{product.unit ? ` ${product.unit}` : ''}
+                    {product.specification}{product.specificationUnit ? ` ${product.specificationUnit}` : ''}
                   </Typography>
                   {product.quantityPerPackage && (
                     <Typography
@@ -188,7 +188,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* 4行目: 店着原価 | 税込売価 */}
           <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, alignItems: 'center' }}>
-            {product.storeCost ? (
+            {product.storeCost !== null ? (
               <>
                 <Typography
                   variant="caption"
@@ -196,7 +196,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 >
                   原価 ¥{product.storeCost.toLocaleString()}
                 </Typography>
-                {product.priceExcludingTax && (
+                {product.priceExcludingTax !== null && (
                   <Typography
                     variant="caption"
                     sx={{ fontSize: '0.65rem', color: 'text.secondary' }}
@@ -213,7 +213,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 原価 未入力
               </Typography>
             )}
-            {product.priceExcludingTax ? (
+            {product.priceExcludingTax !== null ? (
               <Typography
                 variant="caption"
                 sx={{ fontSize: '0.65rem', color: 'text.secondary' }}
@@ -222,7 +222,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {Math.round(product.priceExcludingTax * 1.08).toLocaleString()}
               </Typography>
             ) : (
-              !product.storeCost && (
+              product.storeCost === null && (
                 <>
                   <Typography
                     variant="caption"

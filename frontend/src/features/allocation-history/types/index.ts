@@ -19,10 +19,10 @@ export interface DetailGridRow {
   productName: string;
   origin: string;
   specification: string;
-  unit: string; // 規格の単位
+  specificationUnit: string; // 規格の単位
   quantityPerPackage: number | null; // 入数
   packageUnit: string; // 入数の単位
-  totalDelivery: number;
+  totalDelivery: number | null; // 総納品数 - 未入力時null、0の場合0として区別
   deliveryDate?: string; // 日付範囲選択時に使用
   rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
   groupKey?: string; // グループキー

@@ -16,17 +16,18 @@ export const useProductStatus = (
   return useMemo(() => {
     const hasBasicInfo = !!(product.name && product.origin);
     const hasPricing = !!(
-      product.storeCost &&
-      product.priceExcludingTax &&
-      product.totalDelivery
+      product.storeCost !== null &&
+      product.priceExcludingTax !== null &&
+      product.totalDelivery !== null
     );
     const totalAllocated = product.storeAllocations.reduce(
       (sum, val) => sum + val,
       0
     );
+    const totalDeliveryValue = product.totalDelivery ?? 0;
     const hasAllocation =
-      totalAllocated === product.totalDelivery && totalAllocated > 0;
-    const hasOverAllocation = totalAllocated > product.totalDelivery;
+      totalAllocated === totalDeliveryValue && totalAllocated > 0;
+    const hasOverAllocation = totalAllocated > totalDeliveryValue;
 
     return {
       hasBasicInfo,
@@ -34,7 +35,7 @@ export const useProductStatus = (
       hasAllocation,
       hasOverAllocation,
       totalAllocated,
-      remaining: product.totalDelivery - totalAllocated,
+      remaining: totalDeliveryValue - totalAllocated,
     };
   }, [
     product.name,
@@ -56,17 +57,18 @@ export const getProductStatus = (
 ): ProductStatus => {
   const hasBasicInfo = !!(product.name && product.origin);
   const hasPricing = !!(
-    product.storeCost &&
-    product.priceExcludingTax &&
-    product.totalDelivery
+    product.storeCost !== null &&
+    product.priceExcludingTax !== null &&
+    product.totalDelivery !== null
   );
   const totalAllocated = product.storeAllocations.reduce(
     (sum, val) => sum + val,
     0
   );
+  const totalDeliveryValue = product.totalDelivery ?? 0;
   const hasAllocation =
-    totalAllocated === product.totalDelivery && totalAllocated > 0;
-  const hasOverAllocation = totalAllocated > product.totalDelivery;
+    totalAllocated === totalDeliveryValue && totalAllocated > 0;
+  const hasOverAllocation = totalAllocated > totalDeliveryValue;
 
   return {
     hasBasicInfo,
@@ -74,6 +76,6 @@ export const getProductStatus = (
     hasAllocation,
     hasOverAllocation,
     totalAllocated,
-    remaining: product.totalDelivery - totalAllocated,
+    remaining: totalDeliveryValue - totalAllocated,
   };
 };

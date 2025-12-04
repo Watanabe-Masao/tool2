@@ -106,7 +106,7 @@ export const useAllocationHistorySave = (): UseAllocationHistorySaveReturn => {
             supplier: product.supplier,
             categoryCode: product.categoryCode,
             quantityPerPackage: product.quantityPerPackage,
-            unit: product.unit || '',
+            specificationUnit: product.specificationUnit || '',
             packageUnit: product.packageUnit || '',
             centerCost: product.centerCost,
             centerFeeRate: product.centerFeeRate,

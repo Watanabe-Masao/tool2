@@ -5,7 +5,7 @@ import { Box, Typography, Alert, Grid, Accordion, AccordionSummary, AccordionDet
 import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
-import { calculateEffectiveQuantity } from '@/utils/unitConversion';
+import { calculateProductsSummary } from '@/utils/productCalculations';
 import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
@@ -102,64 +102,29 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
     prevTabIndexRef.current = activeTabIndex;
   }, [activeTabIndex]);
 
-  // 全体の集計を計算
+  // 全体の集計を計算（共通関数を使用）
+  // ProductFormCardPricingと同じ計算ロジックを使用することで、表示のズレを防止
   const summary = React.useMemo(() => {
-    let totalCenterCost = 0;
-    let totalCenterCostWithFee = 0;
-    let totalStoreCost = 0;
-    let totalSellingPrice = 0;
-    let totalProfit = 0;
-    let grossProfit = 0; // 粗利額
+    return calculateProductsSummary(products);
+  }, [products]);
 
-    products.forEach((product) => {
-      const centerCost = product.centerCost || 0;
-      const centerFeeRate = product.centerFeeRate || 13;
-      const storeCost = product.storeCost || 0;
-      const sellingPrice = product.priceExcludingTax || 0;
-      const totalDelivery = product.totalDelivery || 0;
+  // 未入力項目がある商品をチェック
+  const productsWithMissingFields = React.useMemo(() => {
+    return products
+      .map((product, index) => {
+        const missingFields: string[] = [];
+        if (product.centerCost === null) missingFields.push('センター着原価');
+        if (product.centerFeeRate === null) missingFields.push('センターフィー率');
+        if (product.storeCost === null) missingFields.push('店着原価');
+        if (product.priceExcludingTax === null) missingFields.push('本体価格');
+        if (product.totalDelivery === null) missingFields.push('総納品数');
 
-      // 単位変換を適用して実効数量を計算
-      // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
-      const fullUnit = product.specification && product.unit
-        ? `${product.specification}${product.unit}`
-        : product.unit || '';
-      const conversionResult = calculateEffectiveQuantity({
-        quantityPerPackage: product.quantityPerPackage,
-        packageUnit: product.packageUnit || '',
-        unit: fullUnit,
-      });
-      const effectiveQuantity = conversionResult.effectiveQuantity;
-
-      const centerCostWithFee = Math.round(centerCost * (1 + centerFeeRate / 100));
-      const quantity = totalDelivery * effectiveQuantity;
-
-      totalCenterCost += centerCost * quantity;
-      totalCenterCostWithFee += centerCostWithFee * quantity;
-      totalStoreCost += storeCost * quantity;
-      totalSellingPrice += sellingPrice * quantity;
-      totalProfit += (storeCost - centerCostWithFee) * quantity;
-      grossProfit += (sellingPrice - storeCost) * quantity; // 粗利額 = 売価 - 店着原価
-    });
-
-    // 出荷原価率 = 店着総原価 / センターフィー込総原価 × 100
-    const shippingCostRate = totalCenterCostWithFee > 0
-      ? (totalStoreCost / totalCenterCostWithFee * 100).toFixed(1)
-      : '0.0';
-
-    const grossProfitMargin = totalSellingPrice > 0
-      ? (grossProfit / totalSellingPrice * 100).toFixed(1)
-      : '0.0';
-
-    return {
-      totalCenterCost,
-      totalCenterCostWithFee,
-      totalStoreCost,
-      totalSellingPrice,
-      totalProfit,
-      shippingCostRate,
-      grossProfit,
-      grossProfitMargin,
-    };
+        if (missingFields.length > 0) {
+          return { index: index + 1, fields: missingFields };
+        }
+        return null;
+      })
+      .filter((item): item is { index: number; fields: string[] } => item !== null);
   }, [products]);
 
   return (
@@ -170,6 +135,20 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
           商品情報2
         </Typography>
       </Box>
+
+      {/* 未入力項目の警告 */}
+      {productsWithMissingFields.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            以下の商品に未入力項目があります:
+          </Typography>
+          {productsWithMissingFields.map((item) => (
+            <Typography key={item.index} variant="caption" sx={{ display: 'block', fontSize: '0.75rem' }}>
+              • 商品{item.index}: {item.fields.join('、')}
+            </Typography>
+          ))}
+        </Alert>
+      )}
 
       {/* エラー表示 */}
       {errors.products && typeof errors.products.message === 'string' && (

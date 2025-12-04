@@ -78,7 +78,7 @@ export interface ProductHistoryItem {
   origin: string;
   specification: string;
   quantityPerPackage: number | null;
-  unit: string;
+  specificationUnit: string;
   packageUnit: string;
   usageCount: number;
   pinned?: boolean;
@@ -99,8 +99,8 @@ export interface PricingHistoryItem {
   specification: string;
   /** 入数 */
   quantityPerPackage: number;
-  /** 単位 */
-  unit: string;
+  /** 規格の単位 */
+  specificationUnit: string;
   /** 入数の単位 */
   packageUnit: string;
   /** センター着原価 */

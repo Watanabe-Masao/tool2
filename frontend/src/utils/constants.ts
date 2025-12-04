@@ -128,12 +128,13 @@ export const DEFAULT_PRODUCT_FORM_DATA = {
   origin: '',
   specification: '',
   quantityPerPackage: null,
-  unit: '',
+  specificationUnit: '',
   packageUnit: '',
-  centerCost: 0,
-  centerFeeRate: 13,
-  storeCost: 0,
-  priceExcludingTax: 0,
+  centerCost: null,        // 未入力=null、0円=0として区別
+  centerFeeRate: null,     // 未入力=null（帳合先プリセットから自動設定される）
+  storeCost: null,         // 未入力=null、0円=0として区別
+  priceExcludingTax: null, // 未入力=null、0円=0として区別
+  totalDelivery: null,     // 未入力=null、0=0として区別
   storeAllocations: [] as number[],
 };
 

@@ -92,7 +92,7 @@ export const useOrderDataSubmit = ({
         if (!product.specification?.trim()) {
           productErrors.push('規格');
         }
-        if (!product.unit?.trim()) {
+        if (!product.specificationUnit?.trim()) {
           productErrors.push('規格の単位');
         }
         if (!product.quantityPerPackage || product.quantityPerPackage <= 0) {
@@ -100,6 +100,12 @@ export const useOrderDataSubmit = ({
         }
         if (!product.packageUnit?.trim()) {
           productErrors.push('入数の単位');
+        }
+        if (product.centerCost === undefined || product.centerCost === null) {
+          productErrors.push('センター着原価');
+        }
+        if (product.centerFeeRate === undefined || product.centerFeeRate === null) {
+          productErrors.push('センターフィー率');
         }
         if (product.storeCost === undefined || product.storeCost === null) {
           productErrors.push('店着原価');

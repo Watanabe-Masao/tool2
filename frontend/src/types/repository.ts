@@ -42,6 +42,8 @@ export interface SupplierPreset {
   id?: string;
   userId: string;
   supplier: string;
+  /** センターフィー率（%）（デフォルト値として使用） */
+  centerFeeRate?: number;
   displayOrder?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -56,7 +58,7 @@ export interface PricingHistory {
   productName: string;
   specification: string;
   quantityPerPackage: number;
-  unit: string;
+  specificationUnit: string;
   packageUnit: string;
   centerCost: number;
   storeCost: number;
@@ -80,7 +82,7 @@ export interface ProductHistory {
   origin: string;
   specification: string;
   quantityPerPackage: number | null;
-  unit: string;
+  specificationUnit: string;
   packageUnit: string;
   usageCount: number;
   pinned: boolean;
@@ -98,7 +100,7 @@ export interface DeleteProductHistoryConditions {
   origin?: string;
   specification?: string;
   quantityPerPackage?: number | null;
-  unit?: string;
+  specificationUnit?: string;
   packageUnit?: string;
   exceptPinned?: boolean;
 }

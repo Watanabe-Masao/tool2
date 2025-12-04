@@ -82,7 +82,7 @@ export const useProductActions = ({
       setValue(`products.${index}.origin`, '');
       setValue(`products.${index}.specification`, '');
       setValue(`products.${index}.quantityPerPackage`, null);
-      setValue(`products.${index}.unit`, '');
+      setValue(`products.${index}.specificationUnit`, '');
     },
     [suppliers, setValue]
   );

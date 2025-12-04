@@ -13,6 +13,7 @@ import {
   IconButton,
   Popover,
   InputAdornment,
+  Alert,
 } from '@mui/material';
 import { History, Calculate } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -20,7 +21,9 @@ import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
 import { useNotification } from '@/context/NotificationContext';
-import { calculateEffectiveQuantity, calculateUnitPriceFromBoxPrice, checkUnitCompatibility } from '@/utils/unitConversion';
+import { calculateUnitPriceFromBoxPriceV2, calculateEffectiveQuantityV2 } from '@/utils/unitConversion';
+import { calculateProductMetrics } from '@/utils/productCalculations';
+import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 
 /**
  * ProductFormCardPricingのProps
@@ -60,6 +63,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     savePricingHistory,
   } = usePricingHistory();
 
+  // 帳合先プリセットの取得
+  const { presets } = useSupplierPresets();
+
   // 価格履歴モーダルの開閉状態
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
@@ -69,20 +75,40 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const isCalcOpen = Boolean(calcAnchorEl);
 
   // 各フィールドを監視
+  const supplier = useWatch({ control, name: `products.${index}.supplier` });
   const productName = useWatch({ control, name: `products.${index}.name` });
   const origin = useWatch({ control, name: `products.${index}.origin` });
   const specification = useWatch({ control, name: `products.${index}.specification` });
   const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const unit = useWatch({ control, name: `products.${index}.unit` });
+  const specificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const packageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
   const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
   const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
   const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
-  const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` }) || 0;
-  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` }) || 13;
+  const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` });
+  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` });
 
   // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
   const lastAutoLoadedKey = useRef<string | null>(null);
+  // センターフィーが手動で変更されたかどうかを追跡
+  const isCenterFeeManuallyChanged = useRef<boolean>(false);
+
+  /**
+   * 帳合先変更時にプリセットからセンターフィー率を自動設定
+   */
+  useEffect(() => {
+    if (!supplier) return;
+
+    // センターフィーが手動で変更されている場合はスキップ
+    if (isCenterFeeManuallyChanged.current) return;
+
+    // 一致するプリセットを検索
+    const preset = presets.find((p) => p.supplier === supplier);
+    if (preset && preset.centerFeeRate !== undefined) {
+      // プリセットからセンターフィー率を設定
+      setValue(`products.${index}.centerFeeRate`, preset.centerFeeRate, { shouldValidate: true });
+    }
+  }, [supplier, presets, setValue, index]);
 
   /**
    * 履歴がある場合、最新のものを自動読み込み
@@ -117,6 +143,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     setValue(`products.${index}.centerCost`, latestHistory.centerCost);
     setValue(`products.${index}.storeCost`, latestHistory.storeCost);
     setValue(`products.${index}.priceExcludingTax`, latestHistory.priceExcludingTax);
+    setValue(`products.${index}.specificationUnit`, latestHistory.specificationUnit);
+    setValue(`products.${index}.packageUnit`, latestHistory.packageUnit);
     if (latestHistory.centerFeeRate !== undefined) {
       setValue(`products.${index}.centerFeeRate`, latestHistory.centerFeeRate);
     }
@@ -127,28 +155,51 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     console.log(`[ProductFormCardPricing] Auto-loaded latest pricing history for ${productName} (${specification})`);
   }, [productName, specification, quantityPerPackage, findMatchingHistory, centerCost, storeCost, priceExcludingTax, setValue, index]);
 
-  // センターフィー込原価を計算（センター着原価 × (1 + センターフィー率 / 100)）
-  const centerCostWithFee = centerCost ? Math.round(centerCost * (1 + centerFeeRate / 100)) : 0;
+  // 共通の計算関数を使用（ProductPricingFormと同じロジック）
+  const metrics = React.useMemo(() => {
+    const product = {
+      centerCost,
+      centerFeeRate,
+      storeCost,
+      priceExcludingTax,
+      totalDelivery,
+      specification,
+      quantityPerPackage,
+      packageUnit,
+      specificationUnit,
+    } as any; // OrderFormData['products'][number]型にキャスト
+    return calculateProductMetrics(product);
+  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, specification, quantityPerPackage, packageUnit, specificationUnit]);
+
+  // 個別の値を取り出す
+  const centerCostWithFee = metrics.centerCostWithFee;
+  const effectiveQuantity = metrics.effectiveQuantity;
+  const profitAmount = metrics.profitAmount;
+
+  // 単位変換結果を計算（箱単価計算ポップオーバーで使用）
+  const unitConversionResult = React.useMemo(() => {
+    return calculateEffectiveQuantityV2({
+      specification: specification || '',
+      specificationUnit: specificationUnit || '',
+      quantityPerPackage,
+      packageUnit: packageUnit || '',
+    });
+  }, [specification, specificationUnit, quantityPerPackage, packageUnit]);
 
   // 値入率を計算（(売価 - 店着原価) / 売価 × 100）
-  const profitMargin = priceExcludingTax && storeCost
+  const profitMargin = priceExcludingTax !== null && storeCost !== null && priceExcludingTax > 0
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
-    : '0.0';
+    : '-';
 
-  // 単位変換を適用（例: 5kg入り + 100gあたり → 50単位）
-  // specification（規格の数値）とunit（単位）を組み合わせて完全な単位文字列を作成
-  const fullUnit = specification && unit ? `${specification}${unit}` : unit || '';
-  const unitConversionResult = calculateEffectiveQuantity({
-    quantityPerPackage,
-    packageUnit: packageUnit || '',
-    unit: fullUnit,
-  });
-  const effectiveQuantity = unitConversionResult.effectiveQuantity;
+  // 未入力項目をチェック
+  const missingFields: string[] = [];
+  if (centerCost === null) missingFields.push('センター着原価');
+  if (centerFeeRate === null) missingFields.push('センターフィー率');
+  if (storeCost === null) missingFields.push('店着原価');
+  if (priceExcludingTax === null) missingFields.push('本体価格');
+  if (totalDelivery === null) missingFields.push('総納品数');
 
-  // 差益を計算（(店着原価 - センターフィー込原価) × (総納品数 × 実効数量)）
-  const profitAmount = storeCost && centerCostWithFee && totalDelivery && effectiveQuantity
-    ? Math.round((storeCost - centerCostWithFee) * (totalDelivery * effectiveQuantity))
-    : 0;
+  const hasMissingFields = missingFields.length > 0;
 
   /**
    * 価格履歴を選択
@@ -157,6 +208,8 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
     setValue(`products.${index}.centerCost`, history.centerCost);
     setValue(`products.${index}.storeCost`, history.storeCost);
     setValue(`products.${index}.priceExcludingTax`, history.priceExcludingTax);
+    setValue(`products.${index}.specificationUnit`, history.specificationUnit);
+    setValue(`products.${index}.packageUnit`, history.packageUnit);
     if (history.centerFeeRate !== undefined) {
       setValue(`products.${index}.centerFeeRate`, history.centerFeeRate);
     }
@@ -167,12 +220,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
    * 現在の価格情報を手動で保存
    */
   const handleSaveHistory = async () => {
-    if (!productName || !specification || !quantityPerPackage || !unit) {
+    if (!productName || !specification || !quantityPerPackage || !specificationUnit) {
       showSuccess('商品名、規格、入数を入力してください');
       return;
     }
 
-    if (!centerCost || !storeCost || !priceExcludingTax) {
+    if (centerCost === null || storeCost === null || priceExcludingTax === null) {
       showSuccess('原価と売価を入力してください');
       return;
     }
@@ -182,12 +235,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         productName,
         specification,
         quantityPerPackage,
-        unit,
+        specificationUnit,
         packageUnit || '',
         centerCost,
         storeCost,
         priceExcludingTax,
-        centerFeeRate
+        centerFeeRate ?? undefined
       );
       showSuccess('価格履歴を保存しました');
     } catch (error) {
@@ -232,20 +285,24 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   };
 
   /**
-   * 単位互換性チェック
-   */
-  const unitCompatibility = checkUnitCompatibility(fullUnit, packageUnit || '');
-
-  /**
-   * 箱単価から単位単価を計算
+   * 箱単価から単位単価を計算（V2形式）
    */
   const boxPriceValue = boxPrice ? parseFloat(boxPrice) : 0;
-  const calculationResult = calculateUnitPriceFromBoxPrice({
+  const calculationResult = calculateUnitPriceFromBoxPriceV2({
     boxPrice: boxPriceValue,
+    specification: specification || '',
+    specificationUnit: specificationUnit || '',
     quantityPerPackage,
     packageUnit: packageUnit || '',
-    unit: fullUnit,
   });
+
+  /**
+   * 単位互換性チェック（calculationResultから取得）
+   */
+  const unitCompatibility = {
+    isCompatible: calculationResult.isValid || !calculationResult.errorMessage?.includes('組み合わせが不整合'),
+    warningMessage: calculationResult.errorMessage,
+  };
 
   /**
    * 計算結果をセンター着原価に適用
@@ -261,9 +318,18 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   return (
     <Card variant="outlined" sx={{ mb: 1.5 }} onKeyDown={handleKeyDown}>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+        {/* 未入力項目の警告バナー */}
+        {hasMissingFields && (
+          <Alert severity="warning" sx={{ mb: 1.5, py: 0.5 }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+              <strong>未入力項目があります:</strong> {missingFields.join('、')}
+            </Typography>
+          </Alert>
+        )}
+
         {/* 1. 商品名のチップ表示: （産地）（商品名）（規格）（入数＋単位） */}
         <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', gap: 0.3, alignItems: 'center' }}>
-          <Typography variant="subtitle2" fontWeight="medium" sx={{ mr: 0.5 }}>
+          <Typography variant="subtitle1" fontWeight="medium" sx={{ mr: 0.5 }}>
             商品 {index + 1}:
           </Typography>
           {origin && (
@@ -273,7 +339,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -288,7 +354,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -303,12 +369,12 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
             >
-              {specification}{unit ? ` ${unit}` : ''}
+              {specification}{specificationUnit ? ` ${specificationUnit}` : ''}
             </Box>
           )}
           {quantityPerPackage && (
@@ -318,7 +384,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                 px: 0.75,
                 py: 0.25,
                 borderRadius: 0.5,
-                bgcolor: 'grey.200',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'grey.200',
                 color: 'text.primary',
                 fontSize: '0.75rem',
               }}
@@ -412,28 +478,21 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
             />
           </Grid>
           <Grid item xs={6}>
-            <Controller
-              name={`products.${index}.centerFeeRate`}
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  type="number"
-                  label="センターフィー（%）"
-                  placeholder="例: 13"
-                  size="small"
-                  fullWidth
-                  error={!!productErrors?.centerFeeRate}
-                  helperText={productErrors?.centerFeeRate?.message}
-                  required
-                  inputProps={{ min: 0, max: 100, step: 0.1 }}
-                  value={field.value || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 13);
-                  }}
-                />
-              )}
+            <TextField
+              label="センターフィー（%）"
+              value={centerFeeRate ? `${centerFeeRate}%` : '-'}
+              size="small"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={{
+                '& .MuiInputBase-input': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
+                  fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
+                },
+              }}
             />
           </Grid>
         </Grid>
@@ -456,10 +515,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.centerCost?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                   InputProps={{
                     endAdornment: (
@@ -483,7 +542,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="センターフィー込原価"
-              value={centerCostWithFee ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
+              value={centerCostWithFee !== null ? `¥${centerCostWithFee.toLocaleString()}` : '-'}
               size="small"
               fullWidth
               InputProps={{
@@ -491,8 +550,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
                   fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                 },
               }}
             />
@@ -517,10 +577,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.storeCost?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                 />
               )}
@@ -529,7 +589,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="差益（全体）"
-              value={profitAmount ? `¥${profitAmount.toLocaleString()}` : '-'}
+              value={profitAmount !== null ? `¥${profitAmount.toLocaleString()}` : '-'}
               size="small"
               fullWidth
               InputProps={{
@@ -537,8 +597,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
-                  color: profitAmount < 0 ? 'error.dark' : 'text.primary',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
+                  color: profitAmount !== null && profitAmount < 0
+                    ? 'error.main'
+                    : (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                   fontWeight: 'medium',
                 },
               }}
@@ -564,10 +626,10 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   helperText={productErrors?.priceExcludingTax?.message}
                   required
                   inputProps={{ min: 0, step: 1 }}
-                  value={field.value || ''}
+                  value={field.value ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    field.onChange(value ? parseFloat(value) : 0);
+                    field.onChange(value ? parseFloat(value) : null);
                   }}
                 />
               )}
@@ -576,7 +638,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           <Grid item xs={6}>
             <TextField
               label="値入率"
-              value={`${profitMargin}%`}
+              value={profitMargin !== '-' ? `${profitMargin}%` : '-'}
               size="small"
               fullWidth
               InputProps={{
@@ -584,8 +646,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  bgcolor: 'grey.200',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100',
                   fontWeight: 'medium',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.400' : 'text.secondary',
                 },
               }}
             />
@@ -593,14 +656,14 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
         </Grid>
 
         {/* カード下部：単位あたり・箱あたりの情報 */}
-        {(centerCostWithFee || storeCost) && (
+        {(centerCostWithFee !== null || storeCost !== null) && (
           <Box sx={{ mt: 2, pt: 1.5, borderTop: 1, borderColor: 'grey.300' }}>
             {/* 単位あたりの情報 */}
             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>
-              {fullUnit ? `${fullUnit}の情報` : '1単位あたりの情報'}
+              {specificationUnit ? `${specificationUnit}の情報` : '1単位あたりの情報'}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
-              {centerCostWithFee > 0 && (
+              {centerCostWithFee !== null && centerCostWithFee > 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                     センターフィー込原価
@@ -610,7 +673,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   </Typography>
                 </Box>
               )}
-              {storeCost > 0 && (
+              {storeCost !== null && storeCost > 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                     店着原価
@@ -620,7 +683,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   </Typography>
                 </Box>
               )}
-              {centerCostWithFee > 0 && storeCost > 0 && (
+              {centerCostWithFee !== null && storeCost !== null && centerCostWithFee > 0 && storeCost > 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                     差益
@@ -645,7 +708,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                   1箱あたりの情報（{effectiveQuantity}単位）
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  {centerCostWithFee > 0 && (
+                  {centerCostWithFee !== null && centerCostWithFee > 0 && (
                     <Box>
                       <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                         センターフィー込原価
@@ -655,7 +718,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                       </Typography>
                     </Box>
                   )}
-                  {storeCost > 0 && (
+                  {storeCost !== null && storeCost > 0 && (
                     <Box>
                       <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                         店着原価
@@ -665,7 +728,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
                       </Typography>
                     </Box>
                   )}
-                  {centerCostWithFee > 0 && storeCost > 0 && (
+                  {centerCostWithFee !== null && storeCost !== null && centerCostWithFee > 0 && storeCost > 0 && (
                     <Box>
                       <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', display: 'block' }}>
                         差益
@@ -720,9 +783,18 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
           </Typography>
 
           {/* 商品情報表示 */}
-          <Box sx={{ mb: 1.5, p: 1, bgcolor: unitCompatibility.isCompatible ? 'grey.100' : 'error.light', borderRadius: 1 }}>
+          <Box
+            sx={{
+              mb: 1.5,
+              p: 1,
+              bgcolor: unitCompatibility.isCompatible
+                ? (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100'
+                : 'error.light',
+              borderRadius: 1
+            }}
+          >
             <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
-              規格: {unit || '未設定'}
+              規格: {specificationUnit || '未設定'}
             </Typography>
             <Typography variant="caption" sx={{ color: unitCompatibility.isCompatible ? 'text.secondary' : 'error.dark', display: 'block' }}>
               入数: {quantityPerPackage ? `${quantityPerPackage}${packageUnit || ''}` : '未設定'}

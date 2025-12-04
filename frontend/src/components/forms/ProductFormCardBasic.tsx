@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -18,15 +18,15 @@ import {
   DialogActions,
   Button,
   DialogContentText,
-  ButtonBase,
   InputAdornment,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Grow,
+  Tooltip,
 } from '@mui/material';
-import { Category as CategoryIcon, BookmarkBorder, History, Business, DeleteOutline, ClearAll } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, DeleteOutline, ClearAll, Save } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
@@ -104,7 +104,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
   const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const currentUnit = useWatch({ control, name: `products.${index}.unit` });
+  const currentUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
   // カテゴリー選択モーダルの状態
@@ -146,6 +146,28 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     loadHistory: reloadPresetHistory,
   } = useProductHistory(suppliers, undefined);
 
+  // 現在の商品情報がプリセットと一致しているかをチェック
+  const isMatchingPreset = useMemo(() => {
+    if (!currentName || !currentOrigin) return false;
+
+    return presetHistory.some(preset =>
+      preset.name === currentName &&
+      preset.origin === currentOrigin &&
+      preset.specification === (currentSpecification || '') &&
+      preset.quantityPerPackage === currentQuantityPerPackage &&
+      preset.specificationUnit === (currentUnit || '') &&
+      preset.packageUnit === (currentPackageUnit || '')
+    );
+  }, [
+    presetHistory,
+    currentName,
+    currentOrigin,
+    currentSpecification,
+    currentQuantityPerPackage,
+    currentUnit,
+    currentPackageUnit,
+  ]);
+
   // オートコンプリート用の商品履歴フック（現在の商品の帳合先とカテゴリーでフィルタ）
   const {
     getUniqueNames,
@@ -170,8 +192,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
 
   // 長押し検出用のタイマー（履歴削除用）
   const longPressTimer = useRef<number | null>(null);
-  // 商品ヘッダー長押し検出用のタイマー（商品保存用）
-  const productHeaderLongPressTimer = useRef<number | null>(null);
 
   /**
    * Enterキー押下時のハンドラー
@@ -183,30 +203,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         e.preventDefault();
         onEnterPress();
       }
-    }
-  };
-
-  /**
-   * 商品ヘッダー長押し開始（商品保存）
-   */
-  const handleProductHeaderLongPressStart = () => {
-    productHeaderLongPressTimer.current = window.setTimeout(() => {
-      // 品名と産地が入力されているか確認
-      if (currentName && currentOrigin) {
-        setSaveDialogOpen(true);
-      } else {
-        showError('品名と産地を入力してください');
-      }
-    }, 500);
-  };
-
-  /**
-   * 商品ヘッダー長押し終了
-   */
-  const handleProductHeaderLongPressEnd = () => {
-    if (productHeaderLongPressTimer.current) {
-      window.clearTimeout(productHeaderLongPressTimer.current);
-      productHeaderLongPressTimer.current = null;
     }
   };
 
@@ -240,8 +236,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       setSaveDialogOpen(false);
       showSuccess('商品情報を履歴に保存しました');
 
-      // 履歴を再読み込み（次回のレンダリングで反映される）
-      // useProductHistoryフックが自動的に履歴を再取得します
+      // 履歴を再読み込み
+      await reloadPresetHistory();
     } catch (error) {
       console.error('[ProductFormCardBasic] Failed to save product history:', error);
       showError('商品情報の保存に失敗しました');
@@ -328,7 +324,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.origin`, preset.origin);
     setValue(`products.${index}.specification`, preset.specification);
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
-    setValue(`products.${index}.unit`, preset.unit);
+    setValue(`products.${index}.specificationUnit`, preset.specificationUnit);
     setValue(`products.${index}.packageUnit`, preset.packageUnit);
     showSuccess('プリセットを読み込みました');
   };
@@ -399,7 +395,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * 長押し開始
    */
   const handleLongPressStart = (
-    type: 'name' | 'origin' | 'specification' | 'quantity' | 'unit',
+    type: 'name' | 'origin' | 'specification' | 'quantity' | 'specificationUnit',
     value: string | number,
     conditions: DeleteDialogState['conditions']
   ) => {
@@ -452,7 +448,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.origin`, '');
     setValue(`products.${index}.specification`, '');
     setValue(`products.${index}.quantityPerPackage`, null);
-    setValue(`products.${index}.unit`, '');
+    setValue(`products.${index}.specificationUnit`, '');
     setCardMenuAnchor(null);
     showSuccess('商品情報をクリアしました');
   };
@@ -552,7 +548,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         return `規格「${value}」の履歴を削除しますか？`;
       case 'quantity':
         return `入数「${value}」の履歴を削除しますか？`;
-      case 'unit':
+      case 'specificationUnit':
         return `単位「${value}」の履歴を削除しますか？`;
     }
   };
@@ -586,20 +582,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
           {/* ヘッダー: 商品番号 + プリセットボタン + 帳合先ツールチップ + クリアボタン + 削除ボタン */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ButtonBase
-                onTouchStart={handleProductHeaderLongPressStart}
-                onTouchEnd={handleProductHeaderLongPressEnd}
-                onMouseDown={handleProductHeaderLongPressStart}
-                onMouseUp={handleProductHeaderLongPressEnd}
-                onMouseLeave={handleProductHeaderLongPressEnd}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  if (currentName && currentOrigin) {
-                    setSaveDialogOpen(true);
-                  } else {
-                    showError('品名と産地を入力してください');
-                  }
-                }}
+              <Box
                 sx={{
                   px: 1,
                   py: 0.5,
@@ -607,16 +590,17 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
-                  '&:hover': {
-                    bgcolor: 'action.hover',
-                  },
                 }}
               >
                 <Typography variant="subtitle1" fontWeight="medium">
                   商品 {index + 1}
                 </Typography>
-                <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
-              </ButtonBase>
+                {isMatchingPreset ? (
+                  <Bookmark sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+                ) : (
+                  <BookmarkBorder sx={{ fontSize: '0.9rem', color: 'text.secondary', opacity: 0.5 }} />
+                )}
+              </Box>
               {(() => {
                 const supplierColor = currentSupplier ? getSupplierColorByName(currentSupplier, supplierPresets) : undefined;
                 return (
@@ -668,6 +652,28 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                 sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
               />
             )}
+          </Box>
+
+          {/* 履歴保存ボタン */}
+          <Box sx={{ mb: 1.5, display: 'flex', gap: 1 }}>
+            <Tooltip title="現在の商品情報を履歴として保存">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={isMatchingPreset ? <Bookmark /> : <Save />}
+                onClick={() => {
+                  if (currentName && currentOrigin) {
+                    setSaveDialogOpen(true);
+                  } else {
+                    showError('品名と産地を入力してください');
+                  }
+                }}
+                disabled={!currentName || !currentOrigin || isMatchingPreset}
+                sx={{ fontSize: '0.75rem' }}
+              >
+                {isMatchingPreset ? '保存済み' : '履歴に保存'}
+              </Button>
+            </Tooltip>
           </Box>
 
           <Grid container spacing={1.5}>
@@ -864,7 +870,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             {/* 単位 */}
             <Grid item xs={6}>
               <Controller
-                name={`products.${index}.unit`}
+                name={`products.${index}.specificationUnit`}
                 control={control}
                 render={({ field }) => {
                   const units =
@@ -875,11 +881,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                     <Box>
                       <TextField
                         {...field}
-                        label="単位"
+                        label="規格の単位"
                         placeholder="例: 玉、g、個"
                         size="small"
-                        error={!!productErrors?.unit}
-                        helperText={productErrors?.unit?.message}
+                        error={!!productErrors?.specificationUnit}
+                        helperText={productErrors?.specificationUnit?.message}
                         value={field.value || ''}
                         fullWidth
                         InputProps={{
@@ -915,27 +921,27 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                       {/* 単位履歴チップ */}
                       {units.length > 0 && (
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          {units.slice(0, 10).map((unit) => (
+                          {units.slice(0, 10).map((specificationUnit) => (
                             <Chip
-                              key={unit}
-                              label={unit}
+                              key={specificationUnit}
+                              label={specificationUnit}
                               size="small"
-                              onClick={() => field.onChange(unit)}
+                              onClick={() => field.onChange(specificationUnit)}
                               onTouchStart={() =>
-                                handleLongPressStart('unit', unit, {
+                                handleLongPressStart('specificationUnit', specificationUnit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
-                                  unit,
+                                  specificationUnit,
                                 })
                               }
                               onTouchEnd={handleLongPressEnd}
                               onMouseDown={() =>
-                                handleLongPressStart('unit', unit, {
+                                handleLongPressStart('specificationUnit', specificationUnit, {
                                   name: currentName,
                                   origin: currentOrigin,
                                   specification: currentSpecification,
-                                  unit,
+                                  specificationUnit,
                                 })
                               }
                               onMouseUp={handleLongPressEnd}
@@ -944,17 +950,17 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                 e.preventDefault();
                                 setDeleteDialog({
                                   open: true,
-                                  type: 'unit',
-                                  value: unit,
+                                  type: 'specificationUnit',
+                                  value: specificationUnit,
                                   conditions: {
                                     name: currentName,
                                     origin: currentOrigin,
                                     specification: currentSpecification,
-                                    unit,
+                                    specificationUnit,
                                   },
                                 });
                               }}
-                              color={field.value === unit ? 'primary' : 'default'}
+                              color={field.value === specificationUnit ? 'primary' : 'default'}
                               sx={{ fontSize: '0.75rem' }}
                             />
                           ))}
@@ -1034,6 +1040,8 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     origin: currentOrigin,
                                     specification: currentSpecification,
                                     quantityPerPackage: qty,
+                                    specificationUnit: currentUnit,
+                                    packageUnit: currentPackageUnit,
                                   },
                                 });
                               }}
@@ -1068,24 +1076,24 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                       endAdornment: (
                         <InputAdornment position="end">
                           <Stack direction="row" spacing={0.5}>
-                            {['kg', 'g'].map((unit) => (
+                            {['kg', 'g'].map((unitOption) => (
                               <Box
-                                key={unit}
-                                onClick={() => field.onChange(unit)}
+                                key={unitOption}
+                                onClick={() => field.onChange(unitOption)}
                                 sx={{
                                   px: 0.75,
                                   py: 0.25,
-                                  bgcolor: field.value === unit ? 'primary.main' : 'grey.100',
-                                  color: field.value === unit ? 'white' : 'text.secondary',
+                                  bgcolor: field.value === unitOption ? 'primary.main' : 'grey.100',
+                                  color: field.value === unitOption ? 'white' : 'text.secondary',
                                   borderRadius: 1,
                                   fontSize: '0.7rem',
                                   cursor: 'pointer',
                                   '&:hover': {
-                                    bgcolor: field.value === unit ? 'primary.dark' : 'grey.200',
+                                    bgcolor: field.value === unitOption ? 'primary.dark' : 'grey.200',
                                   },
                                 }}
                               >
-                                {unit}
+                                {unitOption}
                               </Box>
                             ))}
                           </Stack>
@@ -1140,12 +1148,12 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Typography>
             {currentSpecification && (
               <Typography variant="body2">
-                規格: {currentSpecification}
+                規格: {currentSpecification}{currentUnit && ` ${currentUnit}`}
               </Typography>
             )}
             {currentQuantityPerPackage && (
               <Typography variant="body2">
-                入数: {currentQuantityPerPackage}{currentUnit && ` ${currentUnit}`}
+                入数: {currentQuantityPerPackage}{currentPackageUnit && ` ${currentPackageUnit}`}
               </Typography>
             )}
           </Box>
@@ -1292,12 +1300,13 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
               {presetConfirmDialog.preset.specification && (
                 <Typography variant="body2">
                   規格: {presetConfirmDialog.preset.specification}
+                  {presetConfirmDialog.preset.specificationUnit && ` ${presetConfirmDialog.preset.specificationUnit}`}
                 </Typography>
               )}
               {presetConfirmDialog.preset.quantityPerPackage && (
                 <Typography variant="body2">
                   入数: {presetConfirmDialog.preset.quantityPerPackage}
-                  {presetConfirmDialog.preset.unit && ` ${presetConfirmDialog.preset.unit}`}
+                  {presetConfirmDialog.preset.packageUnit && ` ${presetConfirmDialog.preset.packageUnit}`}
                 </Typography>
               )}
             </Box>

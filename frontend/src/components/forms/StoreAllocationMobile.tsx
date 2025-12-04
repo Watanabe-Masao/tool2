@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
   Box,
@@ -11,18 +11,22 @@ import {
   Card,
   CardContent,
   Alert,
-  LinearProgress,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
   Lock,
-  Functions,
   AutoFixHigh,
   DeleteSweep,
-  CheckCircle,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
   LockOutlined,
   LockOpenOutlined,
+  Balance,
+  Add,
+  Remove,
 } from '@mui/icons-material';
 import { STORE_DATA, STORE_COUNT } from '@/utils/constants';
 import type { OrderFormData } from '@/schemas/orderSchema';
@@ -93,6 +97,10 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 商品の価格情報を取得
+  const storeCost = useWatch({ control, name: `products.${productIndex}.storeCost` });
+  const priceExcludingTax = useWatch({ control, name: `products.${productIndex}.priceExcludingTax` });
+
   // 店舗設定とカテゴリを読み込み
   useEffect(() => {
     const loadData = async () => {
@@ -158,6 +166,8 @@ export const StoreAllocationMobile: React.FC<StoreAllocationMobileProps> = ({
             setLockedStores={setLockedStores}
             selectedCategories={selectedCategories}
             setSelectedCategories={setSelectedCategories}
+            storeCost={storeCost}
+            priceExcludingTax={priceExcludingTax}
           />
         );
       }}
@@ -185,6 +195,10 @@ interface StoreAllocationMobileContentProps {
   selectedCategories: Set<string>;
   /** カテゴリ選択更新関数 */
   setSelectedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** 店原（原価） */
+  storeCost: number | null;
+  /** 本体価格（税抜売価） */
+  priceExcludingTax: number | null;
 }
 
 /**
@@ -207,19 +221,25 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   setLockedStores,
   selectedCategories,
   setSelectedCategories,
+  storeCost,
+  priceExcludingTax,
 }) => {
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [distributionMode, setDistributionMode] = useState<DistributionMode>('ratio');
+  // distributionModeは内部的にのみ使用（UI非表示）
+  const [distributionMode] = useState<DistributionMode>('ratio');
+  const [autoAllocateMenuAnchor, setAutoAllocateMenuAnchor] = useState<null | HTMLElement>(null);
+  // 増減モード（'add' | 'subtract'）と選択数量
+  const [adjustMode, setAdjustMode] = useState<'add' | 'subtract'>('add');
+  const [selectedAmount, setSelectedAmount] = useState<number>(1);
+  // 自動配分の配分率（50%, 80%, 100%）
+  const [allocationRate, setAllocationRate] = useState<number>(100);
+  // バリデーションエラー状態
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // 長押し+スワイプ検出用の状態
+  // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
-  const touchStartY = React.useRef<number | null>(null);
-  const touchStartX = React.useRef<number | null>(null);
-  const touchStartTime = React.useRef<number | null>(null);
   const currentTouchStore = React.useRef<string | null>(null);
-  const isLongPressActivated = React.useRef<boolean>(false);
   const isInputFieldTouch = React.useRef<boolean>(false);
-  const [swipePreview, setSwipePreview] = React.useState<{ storeCode: string; direction: 'up' | 'down' } | null>(null);
 
   // 初期選択状態を設定（配分数が0より大きい店舗）
   useEffect(() => {
@@ -244,6 +264,23 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
    * 残りの配分数を計算
    */
   const remaining = totalDelivery - totalAllocated;
+
+  /**
+   * 店舗ごとの統計情報を計算
+   */
+  const statistics = useMemo(() => {
+    const totalCost = allocations.reduce((sum, qty) => sum + (qty * (storeCost ?? 0)), 0);
+    const totalPrice = allocations.reduce((sum, qty) => sum + (qty * (priceExcludingTax ?? 0)), 0);
+    const totalProfit = totalPrice - totalCost;
+    const profitRate = totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0;
+
+    return {
+      totalCost,
+      totalPrice,
+      totalProfit,
+      profitRate,
+    };
+  }, [allocations, storeCost, priceExcludingTax]);
 
   /**
    * 選択した店舗のリスト（店番でソート）
@@ -281,6 +318,40 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
+   * 配分カードのヘッダータップで増減
+   */
+  const handleCardHeaderTap = (storeCode: string) => {
+    const storeIndex = STORE_DATA.findIndex((s) => s.code === storeCode);
+    if (storeIndex === -1 || lockedStores.has(storeCode)) return;
+
+    const currentValue = allocations[storeIndex] || 0;
+    const newAllocations = [...allocations];
+
+    if (adjustMode === 'add') {
+      // 増加時: 残数チェック
+      const newTotal = totalAllocated + selectedAmount;
+      if (newTotal > totalDelivery) {
+        // バリデーションエラー: 上限超過
+        const excess = newTotal - totalDelivery;
+        setValidationError(`配分数が総数量を${excess}個超過します`);
+        setTimeout(() => setValidationError(null), 3000);
+        return;
+      }
+      newAllocations[storeIndex] = currentValue + selectedAmount;
+    } else {
+      // 減少時: 0未満にならないようにチェック
+      const newValue = currentValue - selectedAmount;
+      if (newValue < 0) {
+        setValidationError(`これ以上減らせません（現在: ${currentValue}個）`);
+        setTimeout(() => setValidationError(null), 3000);
+        return;
+      }
+      newAllocations[storeIndex] = newValue;
+    }
+    onChange(newAllocations);
+  };
+
+  /**
    * 均等配分（固定店舗を除外）
    */
   const handleEqualDistribution = () => {
@@ -314,8 +385,11 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
-    const perStore = Math.floor(remainingDelivery / unlockedSelectedStores.length);
-    const remainder = remainingDelivery % unlockedSelectedStores.length;
+    // 配分率を適用（50%, 80%, 100%）
+    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
+
+    const perStore = Math.floor(adjustedDelivery / unlockedSelectedStores.length);
+    const remainder = adjustedDelivery % unlockedSelectedStores.length;
     let remainderDistributed = 0;
 
     STORE_DATA.forEach((store, index) => {
@@ -370,6 +444,9 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
+    // 配分率を適用（50%, 80%, 100%）
+    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
+
     const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
     let totalRatio = 0;
 
@@ -390,12 +467,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     const distributionPlan: Array<{ code: string; quantity: number }> = [];
     selectedStoresWithRatio.forEach(({ code, ratio }) => {
       const normalizedRatio = ratio / totalRatio;
-      const quantity = Math.floor(remainingDelivery * normalizedRatio);
+      const quantity = Math.floor(adjustedDelivery * normalizedRatio);
       distributionPlan.push({ code, quantity });
       allocated += quantity;
     });
 
-    const remainingQty = remainingDelivery - allocated;
+    const remainingQty = adjustedDelivery - allocated;
     if (remainingQty > 0) {
       const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
       for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
@@ -419,10 +496,12 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 配分実行
+   * 自動配分メニューから配分を実行
    */
-  const handleDistribute = () => {
-    if (distributionMode === 'equal') {
+  const handleAutoAllocate = (method: 'equal' | 'ratio') => {
+    setAutoAllocateMenuAnchor(null);
+
+    if (method === 'equal') {
       handleEqualDistribution();
     } else {
       handleRatioDistribution();
@@ -467,11 +546,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 配分進捗率を計算
-   */
-  const progressPercentage = totalDelivery > 0 ? (totalAllocated / totalDelivery) * 100 : 0;
-
-  /**
    * 店舗の固定/解除をトグル
    */
   const handleToggleLock = (storeCode: string) => {
@@ -485,7 +559,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * タッチ開始（長押し+スワイプ用）
+   * タッチ開始（長押しトグル用 - 縦スクロール競合回避）
    */
   const handleTouchStart = (storeCode: string, event: React.TouchEvent) => {
     // 入力フィールド内でのタッチは完全に無視
@@ -496,66 +570,31 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
     }
 
     isInputFieldTouch.current = false;
-    isLongPressActivated.current = false;
-
-    const touch = event.touches[0];
-    touchStartY.current = touch.clientY;
-    touchStartX.current = touch.clientX;
-    touchStartTime.current = Date.now();
     currentTouchStore.current = storeCode;
 
-    // 長押し判定を600msに延長（誤操作防止）
+    // 長押し判定（600ms）でロック/解除トグル実行
     longPressTimer.current = window.setTimeout(() => {
-      // 長押しが成立
-      isLongPressActivated.current = true;
+      handleToggleLock(storeCode);
+      longPressTimer.current = -1; // 長押し完了フラグ
     }, 600);
   };
 
   /**
-   * タッチ移動（スワイプ検出）
+   * タッチ移動（長押しキャンセル - 縦スクロールを妨げない）
    */
-  const handleTouchMove = (event: React.TouchEvent) => {
+  const handleTouchMove = () => {
     // 入力フィールド内のタッチは無視
     if (isInputFieldTouch.current) return;
 
-    if (!touchStartY.current || !touchStartX.current || !currentTouchStore.current || !touchStartTime.current) return;
-
-    const touch = event.touches[0];
-    const deltaY = touch.clientY - touchStartY.current;
-    const deltaX = touch.clientX - touchStartX.current;
-
-    // 長押しが成立している場合のみスワイプ検出
-    if (isLongPressActivated.current) {
-      // 横方向の移動が大きい場合は、横スクロールとみなして無視
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 20) {
-        // 横スワイプを検出したらロック操作をキャンセル
-        if (longPressTimer.current) {
-          window.clearTimeout(longPressTimer.current);
-          longPressTimer.current = null;
-        }
-        isLongPressActivated.current = false;
-        setSwipePreview(null);
-        return;
-      }
-
-      // 縦方向のスワイプを検出（70px以上）
-      if (Math.abs(deltaY) > 70) {
-        // スクロールを防ぐ（縦スワイプが検出されたら）
-        event.preventDefault();
-
-        if (deltaY < -70) {
-          // 上スワイプ
-          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'up' });
-        } else if (deltaY > 70) {
-          // 下スワイプ
-          setSwipePreview({ storeCode: currentTouchStore.current, direction: 'down' });
-        }
-      }
+    // タッチ移動があったら長押しをキャンセル（縦スクロール優先）
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
   };
 
   /**
-   * タッチ終了（スワイプ実行）
+   * タッチ終了（クリーンアップ）
    */
   const handleTouchEnd = () => {
     // 入力フィールド内のタッチは無視
@@ -564,36 +603,23 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
       return;
     }
 
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
+    // 長押し完了済み（-1）なら何もしない
+    if (longPressTimer.current === -1) {
       longPressTimer.current = null;
+      currentTouchStore.current = null;
+      return;
     }
 
-    // 長押し+スワイプが成立した場合のみロック操作を実行
-    if (isLongPressActivated.current && swipePreview && currentTouchStore.current) {
-      const storeCode = currentTouchStore.current;
-
-      if (swipePreview.direction === 'up') {
-        // 上スワイプ: ロック
-        const newLockedStores = new Set(lockedStores);
-        newLockedStores.add(storeCode);
-        setLockedStores(newLockedStores);
-      } else if (swipePreview.direction === 'down') {
-        // 下スワイプ: ロック解除
-        const newLockedStores = new Set(lockedStores);
-        newLockedStores.delete(storeCode);
-        setLockedStores(newLockedStores);
-      }
+    // タイマーがまだ実行中（通常のタップ）の場合、増減処理を実行
+    if (longPressTimer.current && currentTouchStore.current) {
+      window.clearTimeout(longPressTimer.current);
+      handleCardHeaderTap(currentTouchStore.current);
     }
 
     // リセット
-    touchStartY.current = null;
-    touchStartX.current = null;
-    touchStartTime.current = null;
+    longPressTimer.current = null;
     currentTouchStore.current = null;
-    isLongPressActivated.current = false;
     isInputFieldTouch.current = false;
-    setSwipePreview(null);
   };
 
   /**
@@ -830,81 +856,146 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   </Button>
                 )}
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+              {/* 4列固定グリッド（店舗選択チップと統一） */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.75 }}>
                 {categories.map((category, index) => {
                   const color = getCategoryColor(index);
                   const isSelected = selectedCategories.has(category.id);
+                  const storeCount = getCategoryStores(category.id).length;
                   return (
                     <Chip
                       key={category.id}
-                      label={`${category.name} (${getCategoryStores(category.id).length})`}
+                      label={
+                        /* バッジスタイル: カテゴリ名 + 円形カウンター */
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            lineHeight: 1,
+                          }}>
+                            {category.name}
+                          </Typography>
+                          {/* 店舗数バッジ（円形） */}
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 18,
+                            height: 18,
+                            px: 0.25,
+                            borderRadius: '9px',
+                            bgcolor: isSelected
+                              ? 'rgba(255, 255, 255, 0.3)'
+                              : `${color.main}20`,
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              color: isSelected ? 'white' : color.main,
+                            }}>
+                              {storeCount}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
                       onClick={() => handleToggleCategory(category.id)}
                       size="small"
                       sx={{
-                        bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
-                        color: isSelected ? 'white' : color.main,
-                        borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
-                        borderWidth: 1,
+                        // グリッド幅に合わせる（4列固定）
+                        width: '100%',
+                        // 色は2段階のみ: 選択時=薄い色、未選択時=白（即座に）
+                        bgcolor: isSelected ? `${color.main}15` : 'white',
+                        color: color.main,
+                        borderColor: color.main,
+                        borderWidth: isSelected ? 2 : 1.5,
                         borderStyle: 'solid',
-                        fontSize: '0.7rem',
-                        fontWeight: isSelected ? 600 : 500,
-                        height: 28,
-                        minWidth: 75,
+                        height: 32,
+                        borderRadius: 16,
                         boxShadow: isSelected
-                          ? `0 2px 8px ${color.main}40`
+                          ? `0 2px 6px ${color.main}30`
                           : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                        transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                         '& .MuiChip-label': {
-                          px: 1.5,
+                          px: 0.75,
+                          width: '100%',
                         },
                         '&:hover': {
-                          bgcolor: isSelected ? color.main : color.light,
-                          transform: 'scale(1.05) translateY(-1px)',
-                          boxShadow: isSelected
-                            ? `0 4px 12px ${color.main}50`
-                            : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                          transform: 'translateY(-1px)',
+                          boxShadow: `0 3px 8px ${color.main}25`,
                         },
                         '&:active': {
                           transform: 'scale(0.98)',
+                          transition: 'all 0.1s ease-out',
                         },
                       }}
                     />
                   );
                 })}
                 <Chip
-                  label={`未分類 (${getUncategorizedStores().length})`}
+                  label={
+                    /* バッジスタイル: 未分類 + 円形カウンター */
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="caption" sx={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        lineHeight: 1,
+                      }}>
+                        未分類
+                      </Typography>
+                      {/* 店舗数バッジ（円形） */}
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 18,
+                        height: 18,
+                        px: 0.25,
+                        borderRadius: '9px',
+                        bgcolor: selectedCategories.has('uncategorized')
+                          ? 'rgba(255, 255, 255, 0.3)'
+                          : 'rgba(97, 97, 97, 0.15)',
+                      }}>
+                        <Typography variant="caption" sx={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          color: selectedCategories.has('uncategorized') ? 'white' : 'grey.700',
+                        }}>
+                          {getUncategorizedStores().length}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  }
                   onClick={() => handleToggleCategory('uncategorized')}
                   size="small"
-                  variant={selectedCategories.has('uncategorized') ? 'filled' : 'outlined'}
                   sx={{
-                    fontSize: '0.7rem',
-                    fontWeight: selectedCategories.has('uncategorized') ? 600 : 500,
-                    height: 28,
-                    minWidth: 75,
+                    width: '100%', // グリッド幅に合わせる
+                    // 色は2段階のみ: 選択時=薄いグレー、未選択時=白（即座に）
                     bgcolor: selectedCategories.has('uncategorized')
-                      ? 'grey.700'
-                      : 'rgba(255, 255, 255, 0.8)',
-                    color: selectedCategories.has('uncategorized') ? 'white' : 'grey.700',
-                    borderColor: selectedCategories.has('uncategorized')
-                      ? 'grey.700'
-                      : 'rgba(0, 0, 0, 0.08)',
+                      ? 'rgba(117, 117, 117, 0.15)'
+                      : 'white',
+                    color: 'grey.700',
+                    borderColor: 'grey.500',
+                    borderWidth: selectedCategories.has('uncategorized') ? 2 : 1.5,
+                    borderStyle: 'solid',
+                    height: 32,
+                    borderRadius: 16,
                     boxShadow: selectedCategories.has('uncategorized')
-                      ? '0 2px 8px rgba(0, 0, 0, 0.15)'
+                      ? '0 2px 6px rgba(0, 0, 0, 0.12)'
                       : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: selectedCategories.has('uncategorized') ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                     '& .MuiChip-label': {
-                      px: 1.5,
+                      px: 0.75, // コンパクト化
+                      width: '100%',
                     },
                     '&:hover': {
-                      transform: 'scale(1.05) translateY(-1px)',
-                      boxShadow: selectedCategories.has('uncategorized')
-                        ? '0 4px 12px rgba(0, 0, 0, 0.2)'
-                        : '0 2px 6px rgba(0, 0, 0, 0.1)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
                     },
                     '&:active': {
                       transform: 'scale(0.98)',
+                      transition: 'all 0.1s ease-out',
                     },
                   }}
                 />
@@ -940,12 +1031,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 </Button>
               </Box>
             </Box>
+            {/* 店舗選択エリア: CSS Grid レイアウト（モバイルで1行5-6個） */}
             <Box sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 0.5,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+              gap: 0.75,
               maxHeight: 200,
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch', // スムーズスクロール（iOS）
               '&::-webkit-scrollbar': {
                 width: 6,
               },
@@ -965,8 +1058,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 const storeIndex = STORE_DATA.findIndex((s) => s.code === store.code);
                 const quantity = allocations[storeIndex] || 0;
                 const isSelected = selectedStores.has(store.code);
-                const setting = storeSettings[store.code];
-                const ratio = setting?.salesRatio || 0;
+                // モバイル最適化: 情報階層を簡潔に（店舗コード + 数量のみ）
                 const storeCategory = getStoreCategory(store.code);
                 const categoryIndex = storeCategory ? categories.findIndex((c) => c.id === storeCategory.id) : -1;
                 const color = categoryIndex >= 0 ? getCategoryColor(categoryIndex) : null;
@@ -975,18 +1067,33 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   <Chip
                     key={store.code}
                     label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: isSelected ? 600 : 500 }}>
+                      /* 情報の階層化: 店舗コード（大）+ 数量（小）を縦並び */
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 0.25,
+                        py: 0.5,
+                      }}>
+                        {/* 店舗コード - メイン情報 */}
+                        <Typography variant="caption" sx={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          letterSpacing: '0.01em',
+                        }}>
                           {store.code}
                         </Typography>
+
+                        {/* 数量 - サブ情報（存在する場合のみ） */}
                         {quantity > 0 && (
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                            ({quantity})
-                          </Typography>
-                        )}
-                        {distributionMode === 'ratio' && ratio > 0 && (
-                          <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.7 }}>
-                            [{ratio}%]
+                          <Typography variant="caption" sx={{
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}>
+                            {quantity}
                           </Typography>
                         )}
                       </Box>
@@ -996,57 +1103,59 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     sx={
                       color
                         ? {
-                            bgcolor: isSelected ? color.main : 'rgba(255, 255, 255, 0.8)',
-                            color: isSelected ? 'white' : color.main,
-                            borderColor: isSelected ? color.main : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: 1,
+                            // 固定サイズ（グリッドに合わせる）
+                            width: '100%',
+                            height: 36, // 36px: タッチ可能だがコンパクト（縦幅削減）
+                            // 色は2段階のみ: 選択時=薄い色、未選択時=白（即座に）
+                            bgcolor: isSelected ? `${color.main}15` : 'white',
+                            color: color.main,
+                            borderColor: color.main,
+                            borderWidth: isSelected ? 2 : 1.5,
                             borderStyle: 'solid',
-                            height: 28,
-                            minWidth: 58,
+                            borderRadius: 2, // 8px
                             boxShadow: isSelected
-                              ? `0 2px 6px ${color.main}40`
+                              ? `0 2px 6px ${color.main}30`
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                             '& .MuiChip-label': {
-                              px: 1,
+                              px: 0.5,
+                              width: '100%',
                             },
                             '&:hover': {
-                              bgcolor: isSelected ? color.main : color.light,
-                              transform: 'scale(1.05) translateY(-1px)',
-                              boxShadow: isSelected
-                                ? `0 3px 10px ${color.main}50`
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              transform: 'translateY(-1px)',
+                              boxShadow: `0 3px 8px ${color.main}25`,
                             },
                             '&:active': {
                               transform: 'scale(0.98)',
+                              transition: 'all 0.1s ease-out',
                             },
                           }
                         : {
-                            bgcolor: isSelected ? 'primary.main' : 'rgba(255, 255, 255, 0.8)',
-                            color: isSelected ? 'white' : 'text.primary',
-                            borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.08)',
-                            borderWidth: 1,
+                            // 固定サイズ（グリッドに合わせる）
+                            width: '100%',
+                            height: 36, // 36px: タッチ可能だがコンパクト（縦幅削減）
+                            // 色は2段階のみ: 選択時=薄いグレー、未選択時=白（即座に）
+                            bgcolor: isSelected ? 'rgba(117, 117, 117, 0.15)' : 'white',
+                            color: 'grey.700',
+                            borderColor: 'grey.500',
+                            borderWidth: isSelected ? 2 : 1.5,
                             borderStyle: 'solid',
-                            height: 28,
-                            minWidth: 58,
+                            borderRadius: 2, // 8px
                             boxShadow: isSelected
-                              ? '0 2px 6px rgba(25, 118, 210, 0.3)'
+                              ? '0 2px 6px rgba(0, 0, 0, 0.12)'
                               : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            transition: 'background-color 0.15s ease-out, border-width 0.15s ease-out',
                             '& .MuiChip-label': {
-                              px: 1,
+                              px: 0.5,
+                              width: '100%',
                             },
                             '&:hover': {
-                              bgcolor: isSelected ? 'primary.main' : 'grey.100',
-                              transform: 'scale(1.05) translateY(-1px)',
-                              boxShadow: isSelected
-                                ? '0 3px 10px rgba(25, 118, 210, 0.4)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              transform: 'translateY(-1px)',
+                              boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
                             },
                             '&:active': {
                               transform: 'scale(0.98)',
+                              transition: 'all 0.1s ease-out',
                             },
                           }
                     }
@@ -1057,74 +1166,81 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           </CardContent>
         </Card>
 
-        {/* 4. 配分方法選択 + 実行ボタン（1行に統合） */}
+        {/* 4. 自動配分（プレビュー画面から移動） */}
         <Card variant="outlined" sx={{ borderColor: 'grey.300' }}>
           <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {/* 構成比ボタン */}
-              <Button
-                variant={distributionMode === 'ratio' ? 'contained' : 'outlined'}
-                size="small"
-                onClick={() => setDistributionMode('ratio')}
-                sx={{
-                  flex: 1,
-                  py: 0.75,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  bgcolor: distributionMode === 'ratio' ? 'primary.main' : 'transparent',
-                  color: distributionMode === 'ratio' ? 'white' : 'primary.main',
-                  borderColor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: distributionMode === 'ratio' ? 'primary.dark' : 'primary.50',
-                  },
-                }}
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              fullWidth
+              startIcon={<AutoFixHigh />}
+              onClick={(e) => setAutoAllocateMenuAnchor(e.currentTarget)}
+              disabled={selectedStores.size === 0}
+              sx={{
+                py: 0.75,
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                boxShadow: 2,
+                '&:hover': {
+                  boxShadow: 4,
+                },
+              }}
+            >
+              自動配分
+            </Button>
+            <Menu
+              anchorEl={autoAllocateMenuAnchor}
+              open={Boolean(autoAllocateMenuAnchor)}
+              onClose={() => setAutoAllocateMenuAnchor(null)}
+            >
+              <MenuItem onClick={() => handleAutoAllocate('equal')}>
+                <ListItemIcon>
+                  <Balance fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="均等配分" secondary="全店舗に均等に配分" />
+              </MenuItem>
+              <MenuItem
+                onClick={() => handleAutoAllocate('ratio')}
+                disabled={!storeSettings || Object.keys(storeSettings).length === 0}
               >
-                <AutoFixHigh sx={{ mr: 0.5, fontSize: '0.9rem' }} />
-                構成比
-              </Button>
-
-              {/* 実行ボタン */}
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleDistribute}
-                disabled={selectedStores.size === 0}
-                color="success"
-                sx={{
-                  flex: 1.2,
-                  py: 0.75,
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  boxShadow: 2,
-                  '&:hover': {
-                    boxShadow: 4,
-                  },
+                <ListItemIcon>
+                  <AutoFixHigh fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="販売構成比で配分"
+                  secondary={
+                    storeSettings && Object.keys(storeSettings).length > 0
+                      ? '店舗の販売構成比に基づいて配分'
+                      : '販売構成比が未設定です'
+                  }
+                />
+              </MenuItem>
+            </Menu>
+            {/* 配分率選択 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                配分率:
+              </Typography>
+              <ToggleButtonGroup
+                value={allocationRate}
+                exclusive
+                onChange={(_, newRate) => {
+                  if (newRate !== null) setAllocationRate(newRate);
                 }}
-              >
-                実行
-              </Button>
-
-              {/* 均等ボタン */}
-              <Button
-                variant={distributionMode === 'equal' ? 'contained' : 'outlined'}
                 size="small"
-                onClick={() => setDistributionMode('equal')}
-                sx={{
-                  flex: 1,
-                  py: 0.75,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  bgcolor: distributionMode === 'equal' ? 'primary.main' : 'transparent',
-                  color: distributionMode === 'equal' ? 'white' : 'primary.main',
-                  borderColor: 'primary.main',
-                  '&:hover': {
-                    bgcolor: distributionMode === 'equal' ? 'primary.dark' : 'primary.50',
-                  },
-                }}
+                sx={{ height: 28 }}
               >
-                <Functions sx={{ mr: 0.5, fontSize: '0.9rem' }} />
-                均等
-              </Button>
+                <ToggleButton value={50} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  50%
+                </ToggleButton>
+                <ToggleButton value={80} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  80%
+                </ToggleButton>
+                <ToggleButton value={100} sx={{ px: 1, py: 0.25, fontSize: '0.7rem', minWidth: 50 }}>
+                  100%
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Box>
           </CardContent>
         </Card>
@@ -1186,24 +1302,103 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               }}
             >
+              {/* 増減モード & 数値選択ヘッダ */}
               <Box
                 sx={{
                   display: 'flex',
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  gap: 1.5,
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 1,
+                  pb: 1,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                    モード:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={adjustMode}
+                    exclusive
+                    onChange={(_, newMode) => {
+                      if (newMode !== null) setAdjustMode(newMode);
+                    }}
+                    size="small"
+                    sx={{ height: 28 }}
+                  >
+                    <ToggleButton value="subtract" sx={{ px: 1, py: 0.25, fontSize: '0.7rem' }}>
+                      <Remove sx={{ fontSize: '0.9rem', mr: 0.25 }} />
+                      減
+                    </ToggleButton>
+                    <ToggleButton value="add" sx={{ px: 1, py: 0.25, fontSize: '0.7rem' }}>
+                      <Add sx={{ fontSize: '0.9rem', mr: 0.25 }} />
+                      増
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary' }}>
+                    数量:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={selectedAmount}
+                    exclusive
+                    onChange={(_, newAmount) => {
+                      if (newAmount !== null) setSelectedAmount(newAmount);
+                    }}
+                    size="small"
+                    sx={{ height: 28 }}
+                  >
+                    <ToggleButton value={1} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      1
+                    </ToggleButton>
+                    <ToggleButton value={3} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      3
+                    </ToggleButton>
+                    <ToggleButton value={5} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      5
+                    </ToggleButton>
+                    <ToggleButton value={10} sx={{ px: 0.75, py: 0.25, fontSize: '0.65rem', minWidth: 32 }}>
+                      10
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              </Box>
+              {/* バリデーションエラー表示 */}
+              {validationError && (
+                <Alert
+                  severity="error"
+                  onClose={() => setValidationError(null)}
+                  sx={{
+                    mt: 1,
+                    py: 0.5,
+                    fontSize: '0.7rem',
+                    animation: 'shake 0.5s',
+                    '@keyframes shake': {
+                      '0%, 100%': { transform: 'translateX(0)' },
+                      '25%': { transform: 'translateX(-5px)' },
+                      '75%': { transform: 'translateX(5px)' },
+                    },
+                  }}
+                >
+                  {validationError}
+                </Alert>
+              )}
+              {/* グリッド形式（4列） - 2列は贅沢すぎ、4列が適切 */}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: 0.75,
+                  maxHeight: 300,
+                  overflowY: 'auto',
                   px: 0.5,
                   py: 1,
                   WebkitOverflowScrolling: 'touch',
-                  scrollBehavior: 'smooth',
-                  scrollSnapType: 'x proximity',
                   scrollbarWidth: 'thin',
-                  // 横スクロールを許可（カード内のジェスチャーは個別に制御）
-                  touchAction: 'pan-x pan-y',
-                  overscrollBehaviorX: 'contain',
-                  overscrollBehaviorY: 'none',
                   '&::-webkit-scrollbar': {
-                    height: 8,
+                    width: 8,
                   },
                   '&::-webkit-scrollbar-track': {
                     backgroundColor: 'rgba(0,0,0,0.05)',
@@ -1230,46 +1425,29 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                       key={store.code}
                       variant="outlined"
                       sx={{
-                        minWidth: 70,
-                        maxWidth: 70,
-                        flexShrink: 0,
-                        scrollSnapAlign: 'start',
-                        bgcolor:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'warning.100'
-                              : 'info.100'
-                            : isLocked
-                            ? 'warning.50'
-                            : quantity > 0
-                            ? 'success.50'
-                            : 'background.paper',
-                        borderColor:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'warning.main'
-                              : 'info.main'
-                            : isLocked
-                            ? 'warning.main'
-                            : quantity > 0
-                            ? 'success.main'
-                            : 'divider',
-                        borderWidth: isLocked || quantity > 0 || swipePreview?.storeCode === store.code ? 2 : 1,
+                        // グリッド幅に合わせる
+                        width: '100%',
+                        height: 'fit-content',
+                        bgcolor: isLocked
+                          ? 'warning.50'
+                          : quantity > 0
+                          ? 'success.50'
+                          : 'background.paper',
+                        borderColor: isLocked
+                          ? 'warning.main'
+                          : quantity > 0
+                          ? 'success.main'
+                          : 'divider',
+                        borderWidth: isLocked || quantity > 0 ? 2 : 1,
                         transition: 'all 0.15s ease',
                         boxShadow: quantity > 0 ? 1 : 0,
-                        transform:
-                          swipePreview?.storeCode === store.code
-                            ? swipePreview.direction === 'up'
-                              ? 'translateY(-4px)'
-                              : 'translateY(4px)'
-                            : 'none',
                         '&:hover': {
                           boxShadow: 2,
                         },
                       }}
                     >
                       <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                        {/* ヘッダー部分（長押し+スワイプ操作エリア） */}
+                        {/* ヘッダー部分（長押しトグル操作エリア） */}
                         <Box
                           onTouchStart={(e) => handleTouchStart(store.code, e)}
                           onTouchMove={handleTouchMove}
@@ -1282,27 +1460,27 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            p: 0.75,
-                            pb: 0.5,
+                            p: 0.5,
+                            pb: 0.25,
                             cursor: 'pointer',
                             userSelect: 'none',
-                            // このエリアでは長押し+縦スワイプを検出
-                            touchAction: 'none',
+                            // 長押しのみ（スワイプ不要、縦スクロールと競合回避）
                           }}
                         >
                           <Typography variant="caption" fontWeight="medium" display="block" sx={{ fontSize: '0.65rem', lineHeight: 1.2 }}>
                             {store.code}店
                           </Typography>
-                          {isLocked && <Lock sx={{ fontSize: '0.8rem', color: 'warning.main' }} />}
+                          {isLocked && <Lock sx={{ fontSize: '0.75rem', color: 'warning.main' }} />}
                         </Box>
                         {/* 入力フィールドエリア */}
-                        <Box sx={{ px: 0.75, pb: 0.75 }}>
+                        <Box sx={{ px: 0.5, pb: 0.5 }}>
                           <TextField
                             type="number"
                             size="small"
                             value={quantity || ''}
                             placeholder={hasPreview ? String(previewValue) : ''}
                             onChange={(e) => handleChangeAllocation(store.code, parseInt(e.target.value) || 0)}
+                            onFocus={(e) => e.target.select()}
                             fullWidth
                             inputProps={{
                               inputMode: 'numeric',
@@ -1310,19 +1488,18 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                               min: 0,
                               style: {
                                 textAlign: 'center',
-                                fontSize: '0.85rem',
+                                fontSize: '0.8rem',
                                 fontWeight: quantity > 0 ? 'bold' : 'normal',
-                                padding: '6px 4px'
+                                padding: '4px 4px'
                               },
                             }}
                             sx={{
-                              // 入力フィールド内では通常のタッチ操作を許可
                               touchAction: 'manipulation',
                               '& .MuiOutlinedInput-root': {
                                 fontSize: '0.75rem',
                               },
                               '& .MuiInputBase-input': {
-                                padding: '6px 4px',
+                                padding: '4px 4px',
                                 '&::placeholder': {
                                   color: 'grey.400',
                                   opacity: 0.7,
@@ -1337,33 +1514,6 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                   );
                 })}
               </Box>
-              {/* 右側のグラデーションインジケーター（スクロール可能を示す） */}
-              {selectedStoresList.length > 4 && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    right: 8,
-                    top: 8,
-                    bottom: 8,
-                    width: 60,
-                    background: 'linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0) 100%)',
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    pr: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'primary.main', fontWeight: 'bold', lineHeight: 1 }}>
-                      スワイプ
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '0.8rem', color: 'primary.main', fontWeight: 'bold' }}>
-                      →
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
             </Box>
           ) : (
             <Alert severity="info" sx={{ fontSize: '0.8rem', py: 0.5 }}>
@@ -1371,117 +1521,58 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
             </Alert>
           )}
         </Box>
-        {/* 統計表示（画面最下部） */}
+        {/* 統計表示（原価・売価・粗利） */}
         <Card
           variant="outlined"
           sx={{
             mt: 2,
             borderWidth: 2,
-            borderColor:
-              remaining === 0
-                ? 'success.main'
-                : remaining < 0
-                ? 'error.main'
-                : 'primary.main',
+            borderColor: 'primary.main',
+            bgcolor: 'background.paper',
           }}
         >
-          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            {/* 統計数値（3列グリッド） */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 1 }}>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  総納品数
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                  {totalDelivery}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  配分済み
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main', fontSize: '1.1rem' }}>
-                  {totalAllocated}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
-                  残り
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 700,
-                    color: remaining === 0 ? 'success.main' : remaining < 0 ? 'error.main' : 'warning.main',
-                    fontSize: '1.1rem',
-                  }}
-                >
-                  {remaining}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* プログレスバー */}
-            <Box sx={{ mb: 1 }}>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(progressPercentage, 100)}
-                sx={{
-                  height: 8,
-                  borderRadius: 1,
-                  bgcolor: 'grey.200',
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor:
-                      remaining === 0
-                        ? 'success.main'
-                        : remaining < 0
-                        ? 'error.main'
-                        : 'primary.main',
-                    borderRadius: 1,
-                  },
-                }}
-              />
-              <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.25, fontSize: '0.65rem', color: 'text.secondary' }}>
-                {progressPercentage.toFixed(1)}%
+          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary' }}>
+                配分統計
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                配分数: {totalAllocated} / {totalDelivery} ({remaining < 0 ? `超過${Math.abs(remaining)}` : `残${remaining}`})
               </Typography>
             </Box>
-
-            {/* ステータス表示 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                {remaining === 0 ? (
-                  <>
-                    <CheckCircle sx={{ fontSize: '1rem', color: 'success.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', fontSize: '0.75rem' }}>
-                      完了
-                    </Typography>
-                  </>
-                ) : remaining < 0 ? (
-                  <>
-                    <ErrorIcon sx={{ fontSize: '1rem', color: 'error.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.main', fontSize: '0.75rem' }}>
-                      超過: {Math.abs(remaining)}個
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <WarningIcon sx={{ fontSize: '1rem', color: 'warning.main' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.main', fontSize: '0.75rem' }}>
-                      残り: {remaining}個
-                    </Typography>
-                  </>
-                )}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  原価合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.primary' }}>
+                  ¥{statistics.totalCost.toLocaleString()}
+                </Typography>
               </Box>
-
-              {/* 固定店舗数表示 */}
-              {lockedStores.size > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Lock sx={{ fontSize: '0.9rem', color: 'warning.main' }} />
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
-                    固定: {lockedStores.size}店舗
-                  </Typography>
-                </Box>
-              )}
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  売価合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'primary.main' }}>
+                  ¥{statistics.totalPrice.toLocaleString()}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  粗利合計
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.totalProfit >= 0 ? 'success.main' : 'error.main' }}>
+                  ¥{statistics.totalProfit.toLocaleString()}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
+                  粗利率
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.profitRate >= 0 ? 'success.main' : 'error.main' }}>
+                  {statistics.profitRate.toFixed(1)}%
+                </Typography>
+              </Box>
             </Box>
           </CardContent>
         </Card>

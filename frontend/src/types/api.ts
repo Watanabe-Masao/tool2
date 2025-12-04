@@ -26,13 +26,13 @@ export interface TemplateRequest {
     /** 入数 */
     quantity: number | null;
     /** 単位 */
-    unit: string;
-    /** 店着原価 */
-    store_cost: number;
-    /** 税抜売価 */
-    price: number;
-    /** 総納品数 */
-    total_delivery: number;
+    specificationUnit: string;
+    /** 店着原価 - フロントエンド側ではnull許容、バックエンドに送る前に必ずバリデーション済み */
+    store_cost: number | null;
+    /** 税抜売価 - フロントエンド側ではnull許容、バックエンドに送る前に必ずバリデーション済み */
+    price: number | null;
+    /** 総納品数 - フロントエンド側ではnull許容、バックエンドに送る前に必ずバリデーション済み */
+    total_delivery: number | null;
     /** 納品先（帳合先） */
     delivery_dest: string;
     /** 店舗配分数（店舗コード→数量のマップ） */

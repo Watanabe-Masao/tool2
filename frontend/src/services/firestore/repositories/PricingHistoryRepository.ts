@@ -20,7 +20,7 @@ interface FirestorePricingHistory {
   productName: string;
   specification: string;
   quantityPerPackage: number;
-  unit: string;
+  specificationUnit: string;
   packageUnit: string;
   centerCost: number;
   storeCost: number;
@@ -47,7 +47,7 @@ interface FirestorePricingHistory {
  *   productName: '商品1',
  *   specification: '規格A',
  *   quantityPerPackage: 10,
- *   unit: '個',
+ *   specificationUnit: '個',
  *   centerCost: 90,
  *   storeCost: 100,
  *   priceExcludingTax: 150,
@@ -75,7 +75,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       productName: history.productName,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit || '',
       centerCost: history.centerCost,
       storeCost: history.storeCost,
@@ -98,7 +98,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       productName: data.productName,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage,
-      unit: data.unit,
+      specificationUnit: data.specificationUnit,
       packageUnit: data.packageUnit || '',
       centerCost: data.centerCost,
       storeCost: data.storeCost,
@@ -183,7 +183,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         existingData.storeCost === history.storeCost &&
         existingData.priceExcludingTax === history.priceExcludingTax &&
         existingData.centerFeeRate === normalizedCenterFeeRate &&
-        existingData.unit === history.unit &&
+        existingData.specificationUnit === history.specificationUnit &&
         existingData.packageUnit === (history.packageUnit || '')
       ) {
         console.log(
@@ -198,7 +198,7 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         storeCost: history.storeCost,
         priceExcludingTax: history.priceExcludingTax,
         centerFeeRate: normalizedCenterFeeRate,
-        unit: history.unit,
+        specificationUnit: history.specificationUnit,
         packageUnit: history.packageUnit || '',
         usageCount: increment(1),
         lastUsedAt: Timestamp.now(),

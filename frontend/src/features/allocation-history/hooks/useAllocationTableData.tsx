@@ -297,7 +297,7 @@ export const useAllocationTableData = (params: UseAllocationTableDataParams) => 
         if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
           return row.specification || '';
         }
-        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
       },
     },
     {
@@ -374,7 +374,7 @@ export const useAllocationTableData = (params: UseAllocationTableDataParams) => 
       disableColumnMenu: true,
       renderCell: (params) => {
         const row = params.row as DetailGridRow;
-        return row.unit ? `${row.specification} ${row.unit}` : row.specification;
+        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
       },
     },
     {

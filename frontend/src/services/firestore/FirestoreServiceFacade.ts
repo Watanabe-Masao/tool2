@@ -128,10 +128,12 @@ export class FirestoreServiceFacade {
   /**
    * プリセットを保存
    */
-  async saveSupplierPreset(userId: string, supplier: string): Promise<string> {
+  async saveSupplierPreset(userId: string, supplier: string, centerFeeRate?: number): Promise<string> {
+    console.log('[FirestoreServiceFacade] saveSupplierPreset called:', { userId, supplier, centerFeeRate });
     return this.presetRepo.save({
       userId,
       supplier,
+      centerFeeRate,
     });
   }
 
@@ -142,6 +144,7 @@ export class FirestoreServiceFacade {
     Array<{
       id: string;
       supplier: string;
+      centerFeeRate?: number;
       displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
@@ -151,6 +154,7 @@ export class FirestoreServiceFacade {
     return presets.map((preset) => ({
       id: preset.id!,
       supplier: preset.supplier,
+      centerFeeRate: preset.centerFeeRate,
       displayOrder: preset.displayOrder,
       createdAt: preset.createdAt!,
       updatedAt: preset.updatedAt!,
@@ -165,6 +169,7 @@ export class FirestoreServiceFacade {
     onSuccess: (presets: Array<{
       id: string;
       supplier: string;
+      centerFeeRate?: number;
       displayOrder?: number;
       createdAt: Date;
       updatedAt: Date;
@@ -178,6 +183,7 @@ export class FirestoreServiceFacade {
           presets.map((preset) => ({
             id: preset.id!,
             supplier: preset.supplier,
+            centerFeeRate: preset.centerFeeRate,
             displayOrder: preset.displayOrder,
             createdAt: preset.createdAt!,
             updatedAt: preset.updatedAt!,
@@ -198,8 +204,9 @@ export class FirestoreServiceFacade {
   /**
    * プリセットを更新
    */
-  async updateSupplierPreset(presetId: string, supplier: string): Promise<void> {
-    return this.presetRepo.updateSupplier(presetId, supplier);
+  async updateSupplierPreset(presetId: string, supplier: string, centerFeeRate?: number): Promise<void> {
+    console.log('[FirestoreServiceFacade] updateSupplierPreset called:', { presetId, supplier, centerFeeRate });
+    return this.presetRepo.updateSupplier(presetId, supplier, centerFeeRate);
   }
 
   /**
@@ -320,7 +327,7 @@ export class FirestoreServiceFacade {
     origin: string,
     specification: string,
     quantityPerPackage: number | null,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     categoryCode?: string
   ): Promise<string> {
@@ -331,7 +338,7 @@ export class FirestoreServiceFacade {
       origin,
       specification,
       quantityPerPackage,
-      unit,
+      specificationUnit,
       packageUnit,
       categoryCode,
       usageCount: 1,
@@ -355,7 +362,7 @@ export class FirestoreServiceFacade {
       origin: string;
       specification: string;
       quantityPerPackage: number | null;
-      unit: string;
+      specificationUnit: string;
       packageUnit: string;
       usageCount: number;
       pinned?: boolean;
@@ -374,7 +381,7 @@ export class FirestoreServiceFacade {
       origin: history.origin,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit,
       usageCount: history.usageCount,
       pinned: history.pinned,
@@ -442,7 +449,7 @@ export class FirestoreServiceFacade {
       productName: history.productName,
       specification: history.specification,
       quantityPerPackage: history.quantityPerPackage,
-      unit: history.unit,
+      specificationUnit: history.specificationUnit,
       packageUnit: history.packageUnit,
       centerCost: history.centerCost,
       storeCost: history.storeCost,
@@ -463,7 +470,7 @@ export class FirestoreServiceFacade {
     productName: string,
     specification: string,
     quantityPerPackage: number,
-    unit: string,
+    specificationUnit: string,
     packageUnit: string,
     centerCost: number,
     storeCost: number,
@@ -475,7 +482,7 @@ export class FirestoreServiceFacade {
       productName,
       specification,
       quantityPerPackage,
-      unit,
+      specificationUnit,
       packageUnit,
       centerCost,
       storeCost,

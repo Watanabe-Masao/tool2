@@ -80,7 +80,7 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: '規格A',
             quantityPerPackage: 10,
-            unit: '個',
+            specificationUnit: '個',
             storeCost: 100,
             priceExcludingTax: 150,
             totalDelivery: 360,
@@ -104,7 +104,8 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: '規格A',
             quantity_per_package: 10,
-            unit: '個',
+            package_unit: '',
+            specificationUnit: '個',
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
@@ -129,7 +130,7 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: '',
             quantityPerPackage: 10,
-            unit: '',
+            specificationUnit: '',
             storeCost: 100,
             priceExcludingTax: 150,
             totalDelivery: 360,
@@ -144,7 +145,7 @@ describe('OrderRepository', () => {
       const result = repository.toFirestoreFormat(orderData);
 
       expect(result.products[0].specification).toBe('');
-      expect(result.products[0].unit).toBe('');
+      expect(result.products[0].specification_unit).toBe('');
     });
   });
 
@@ -160,7 +161,8 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: '規格A',
             quantity_per_package: 10,
-            unit: '個',
+            package_unit: '',
+            specificationUnit: '個',
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
@@ -187,7 +189,8 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: '規格A',
             quantityPerPackage: 10,
-            unit: '個',
+            packageUnit: '',
+            specificationUnit: '個',
             storeCost: 100,
             priceExcludingTax: 150,
             totalDelivery: 360,
@@ -211,7 +214,7 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: undefined, // missing
             quantity_per_package: 10,
-            unit: undefined, // missing
+            specificationUnit: undefined, // missing
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
@@ -228,7 +231,7 @@ describe('OrderRepository', () => {
       expect(result.suppliers).toEqual([]);
       expect(result.products[0].supplier).toBe('');
       expect(result.products[0].specification).toBe('');
-      expect(result.products[0].unit).toBe('');
+      expect(result.products[0].specificationUnit).toBe('');
       expect(result.timestamp).toBeInstanceOf(Date);
     });
   });

@@ -80,7 +80,7 @@ export interface DeleteDialogState {
   /** ダイアログが開いているか */
   open: boolean;
   /** 削除対象のフィールドタイプ */
-  type: 'name' | 'origin' | 'specification' | 'quantity' | 'unit';
+  type: 'name' | 'origin' | 'specification' | 'quantity' | 'specificationUnit';
   /** 削除対象の値 */
   value: string | number;
   /** 削除条件 */
@@ -89,7 +89,8 @@ export interface DeleteDialogState {
     origin?: string;
     specification?: string;
     quantityPerPackage?: number | null;
-    unit?: string;
+    specificationUnit?: string;
+    packageUnit?: string;
   };
 }
 

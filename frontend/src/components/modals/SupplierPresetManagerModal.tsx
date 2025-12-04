@@ -164,6 +164,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const { presets, addPreset, deletePreset, updatePreset, loadPresets } = useSupplierPresets();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [presetValue, setPresetValue] = useState('');
+  const [centerFeeRate, setCenterFeeRate] = useState<number>(13);
   const [error, setError] = useState('');
 
   // 削除確認ダイアログの状態
@@ -205,6 +206,8 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
 
   // 長押し検出用のタイマー（+ボタン長押し用）
   const longPressTimer = useRef<number | null>(null);
+  // 長押しが完了したかどうかのフラグ
+  const isLongPressCompleted = useRef<boolean>(false);
 
   // 編集メニューのアンカー
   const [editMenuAnchor, setEditMenuAnchor] = useState<null | HTMLElement>(null);
@@ -218,9 +221,15 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
       return;
     }
 
-    const success = await addPreset(presetValue.trim());
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
+    const success = await addPreset(presetValue.trim(), centerFeeRate);
     if (success) {
       setPresetValue('');
+      setCenterFeeRate(13);
       setEditingId(null);
       setError('');
     } else {
@@ -253,10 +262,16 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
       return;
     }
 
-    const success = await updatePreset(editingId, presetValue.trim());
+    if (centerFeeRate < 0 || centerFeeRate > 100) {
+      setError('センターフィー率は0〜100の範囲で入力してください');
+      return;
+    }
+
+    const success = await updatePreset(editingId, presetValue.trim(), centerFeeRate);
     if (success) {
       setEditingId(null);
       setPresetValue('');
+      setCenterFeeRate(13);
       setError('');
     } else {
       setError('プリセットの更新に失敗しました');
@@ -269,6 +284,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const handleCancelEdit = () => {
     setEditingId(null);
     setPresetValue('');
+    setCenterFeeRate(13);
     setError('');
   };
 
@@ -355,12 +371,17 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    */
   const handleDndDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    // ドラッグ中はスクロール無効化
+    document.body.style.overflow = 'hidden';
   };
 
   /**
    * ドラッグ終了 (dnd-kit)
    */
   const handleDndDragEnd = async (event: DragEndEvent) => {
+    // スクロールを元に戻す
+    document.body.style.overflow = '';
+
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
@@ -400,8 +421,10 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    * +ボタン長押し開始
    */
   const handleAddButtonLongPressStart = (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    isLongPressCompleted.current = false;
     longPressTimer.current = window.setTimeout(() => {
       // 編集メニューを開く
+      isLongPressCompleted.current = true;
       setEditMenuAnchor(e.currentTarget);
     }, 500);
   };
@@ -420,10 +443,11 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
    * +ボタンクリック（長押しされていない場合は新規追加）
    */
   const handleAddButtonClick = () => {
-    // 長押しタイマーがまだ残っていたら、通常のクリック（新規追加）
-    if (longPressTimer.current) {
+    // 長押しが完了していない場合のみ新規追加（短押し）
+    if (!isLongPressCompleted.current) {
       setEditingId('new');
       setPresetValue('');
+      setCenterFeeRate(13);
     }
   };
 
@@ -433,6 +457,7 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
   const handleSelectPresetForEdit = (preset: SupplierPresetEntity) => {
     setEditingId(preset.id);
     setPresetValue(preset.supplier);
+    setCenterFeeRate(preset.centerFeeRate ?? 13);
     setEditMenuAnchor(null);
   };
 
@@ -487,6 +512,17 @@ export const SupplierPresetManagerModal: React.FC<SupplierPresetManagerModalProp
                 sx={{ mb: 1 }}
                 placeholder="例: ○○商事"
                 autoFocus
+              />
+              <TextField
+                label="センターフィー率（%）"
+                type="number"
+                value={centerFeeRate}
+                onChange={(e) => setCenterFeeRate(Number(e.target.value))}
+                fullWidth
+                size="small"
+                sx={{ mb: 1 }}
+                placeholder="例: 13"
+                inputProps={{ min: 0, max: 100, step: 0.1 }}
               />
               <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                 <Button size="small" onClick={handleCancelEdit}>
