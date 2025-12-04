@@ -104,7 +104,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
   const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const currentUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
+  const currentSpecificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
   // カテゴリー選択モーダルの状態
@@ -155,7 +155,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       preset.origin === currentOrigin &&
       preset.specification === (currentSpecification || '') &&
       preset.quantityPerPackage === currentQuantityPerPackage &&
-      preset.specificationUnit === (currentUnit || '') &&
+      preset.specificationUnit === (currentSpecificationUnit || '') &&
       preset.packageUnit === (currentPackageUnit || '')
     );
   }, [
@@ -164,7 +164,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     currentOrigin,
     currentSpecification,
     currentQuantityPerPackage,
-    currentUnit,
+    currentSpecificationUnit,
     currentPackageUnit,
   ]);
 
@@ -228,7 +228,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         currentOrigin,
         currentSpecification || '',
         currentQuantityPerPackage ?? null,
-        currentUnit || '',
+        currentSpecificationUnit || '',
         currentPackageUnit || '',
         currentCategoryCode
       );
@@ -300,7 +300,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       currentOrigin ||
       currentSpecification ||
       currentQuantityPerPackage ||
-      currentUnit
+      currentSpecificationUnit
     );
 
     if (hasValues) {
@@ -1040,7 +1040,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     origin: currentOrigin,
                                     specification: currentSpecification,
                                     quantityPerPackage: qty,
-                                    specificationUnit: currentUnit,
+                                    specificationUnit: currentSpecificationUnit,
                                     packageUnit: currentPackageUnit,
                                   },
                                 });
@@ -1148,7 +1148,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Typography>
             {currentSpecification && (
               <Typography variant="body2">
-                規格: {currentSpecification}{currentUnit && ` ${currentUnit}`}
+                規格: {currentSpecification}{currentSpecificationUnit && ` ${currentSpecificationUnit}`}
               </Typography>
             )}
             {currentQuantityPerPackage && (
