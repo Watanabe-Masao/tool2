@@ -107,6 +107,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const currentSpecificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
+  // デバッグ: packageUnitの値を監視
+  useEffect(() => {
+    console.log('[ProductFormCardBasic] currentPackageUnit changed:', currentPackageUnit);
+  }, [currentPackageUnit]);
+
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
