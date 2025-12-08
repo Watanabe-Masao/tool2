@@ -49,16 +49,14 @@ export const productSchema = z.object({
   /** 規格の単位（商品自体の単位: 玉、本、束など） */
   specificationUnit: z
     .string()
-    .max(MAX_LENGTH.SPECIFICATION, `規格の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
-    .optional()
-    .default(''),
+    .min(1, '規格の単位を入力してください')
+    .max(MAX_LENGTH.SPECIFICATION, `規格の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`),
 
   /** 入数の単位（パッケージ内の数量の単位: 個、袋、パックなど） */
   packageUnit: z
     .string()
-    .max(MAX_LENGTH.SPECIFICATION, `入数の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`)
-    .optional()
-    .default(''),
+    .min(1, '入数の単位を入力してください')
+    .max(MAX_LENGTH.SPECIFICATION, `入数の単位は${MAX_LENGTH.SPECIFICATION}文字以内で入力してください`),
 
   /** センター着原価 */
   centerCost: z

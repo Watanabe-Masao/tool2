@@ -26,6 +26,8 @@ interface FirestoreProductHistory {
   quantityPerPackage: number | null;
   specificationUnit: string;
   packageUnit: string;
+  // 後方互換性のため、古いフィールド名も許可
+  unit?: string;
   usageCount: number;
   pinned: boolean;
   pinOrder: number;
@@ -95,8 +97,9 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       origin: data.origin,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage ?? null,
+      // 後方互換性: 古いunitフィールドは入数の単位（packageUnit）だった
       specificationUnit: data.specificationUnit || '',
-      packageUnit: data.packageUnit || '',
+      packageUnit: data.packageUnit || data.unit || '',
       usageCount: data.usageCount || 1,
       pinned: data.pinned || false,
       pinOrder: data.pinOrder ?? 9999,

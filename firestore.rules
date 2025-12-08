@@ -2,21 +2,83 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ヘルパー関数: 配列の全要素が文字列かチェック
+    // ===== 共通ヘルパー関数 =====
+
+    // 配列の全要素が文字列かチェック（先頭要素のみ）
     function isStringArray(arr) {
       return arr is list && arr.size() > 0 && arr[0] is string;
     }
 
-    // ヘルパー関数: 商品データのバリデーション
+    // 非空文字列チェック
+    function isNonEmptyString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    // 0 以上の数値チェック
+    function isNonNegativeNumber(value) {
+      return value is number && value >= 0;
+    }
+
+    // 0 より大きい数値チェック
+    function isPositiveNumber(value) {
+      return value is number && value > 0;
+    }
+
+    // 0〜100 の率チェック
+    function isRate0to100(value) {
+      return value is number && value >= 0 && value <= 100;
+    }
+
+    // 認証済みユーザーかチェック
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 自分のデータかチェック（パスの {userId} と uid を比較）
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // resource.data.userId が本人か
+    function isUserOwnedResource() {
+      return isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // request.resource.data.userId が本人か
+    function isUserOwnedRequest() {
+      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // resource.data.createdBy が本人か
+    function isCreatedByUserResource() {
+      return isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // request.resource.data.createdBy が本人か
+    function isCreatedByUserRequest() {
+      return isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // 商品データのバリデーション
     function isValidProduct(product) {
-      return product.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'packageUnit', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations']) &&
-             product.supplier is string &&
-             product.supplier.size() > 0 &&
+      return product.keys().hasAll([
+               'supplier',
+               'name',
+               'origin',
+               'specification',
+               'specificationUnit',
+               'packageUnit',
+               'store_cost',
+               'price_excluding_tax',
+               'total_delivery',
+               'store_allocations'
+             ]) &&
+             isNonEmptyString(product.supplier) &&
              product.name is string &&
              product.origin is string &&
              product.specification is string &&
-             product.unit is string &&
-             product.packageUnit is string &&
+             isNonEmptyString(product.specificationUnit) &&
+             isNonEmptyString(product.packageUnit) &&
              product.store_cost is number &&
              product.price_excluding_tax is number &&
              product.total_delivery is number &&
@@ -24,9 +86,16 @@ service cloud.firestore {
              product.store_allocations.size() == 36;
     }
 
-    // ヘルパー関数: 注文データのバリデーション
+    // 注文データのバリデーション
     function isValidOrder(data) {
-      return data.keys().hasAll(['delivery_date', 'suppliers', 'products', 'buyer_name', 'timestamp', 'userId']) &&
+      return data.keys().hasAll([
+               'delivery_date',
+               'suppliers',
+               'products',
+               'buyer_name',
+               'timestamp',
+               'userId'
+             ]) &&
              data.delivery_date is string &&
              data.suppliers is list &&
              data.suppliers.size() > 0 &&
@@ -40,7 +109,7 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
-    // ヘルパー関数: 全商品の帳合先がsuppliersリストに含まれているかチェック
+    // 全商品の帳合先が suppliers リストに含まれているかチェック（代表として先頭のみ）
     function allProductSuppliersValid(suppliers, products) {
       return products.size() == 0 ||
              products[0].supplier in suppliers;
@@ -48,22 +117,14 @@ service cloud.firestore {
       // 完全なバリデーションはクライアント側で行う必要があります
     }
 
-    // ヘルパー関数: 認証済みユーザーかチェック
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // ヘルパー関数: 自分のデータかチェック
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
+    // ===== コレクションごとのルール =====
 
     // ユーザープロファイル
     match /user_profiles/{userId} {
       // 読み取り: 本人のみ
       allow read: if isOwner(userId);
       // 作成: 認証済みで、自分のUIDのドキュメントのみ
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isOwner(userId);
       // 更新: 本人のみ
       allow update: if isOwner(userId);
       // 削除: 禁止
@@ -73,139 +134,106 @@ service cloud.firestore {
     // 帳合先マスター
     match /suppliers/{supplierId} {
       // 読み取り: 作成者のみ
-      allow read: if isAuthenticated() &&
-                     resource.data.createdBy == request.auth.uid;
+      allow read, update, delete: if isCreatedByUserResource();
       // 作成: 認証済みユーザーのみ
-      allow create: if isAuthenticated() &&
-                       request.resource.data.createdBy == request.auth.uid;
-      // 更新: 作成者のみ
-      allow update: if isAuthenticated() &&
-                       resource.data.createdBy == request.auth.uid;
-      // 削除: 作成者のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.createdBy == request.auth.uid;
+      allow create: if isCreatedByUserRequest();
     }
 
     // 商品マスター
     match /products/{productId} {
       // 読み取り: 作成者のみ
-      allow read: if isAuthenticated() &&
-                     resource.data.createdBy == request.auth.uid;
+      allow read, update, delete: if isCreatedByUserResource();
       // 作成: 認証済みユーザーのみ
-      allow create: if isAuthenticated() &&
-                       request.resource.data.createdBy == request.auth.uid;
-      // 更新: 作成者のみ（使用回数の更新など）
-      allow update: if isAuthenticated() &&
-                       resource.data.createdBy == request.auth.uid;
-      // 削除: 作成者のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.createdBy == request.auth.uid;
+      allow create: if isCreatedByUserRequest();
     }
 
     // 配分データ（注文）
     match /haibun_orders/{orderId} {
       // 読み取り: 作成者のみ
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read: if isUserOwnedResource();
       // 作成: 認証済みユーザーのみ + データバリデーション
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
+      allow create: if isUserOwnedRequest() &&
                        isValidOrder(request.resource.data) &&
-                       allProductSuppliersValid(request.resource.data.suppliers, request.resource.data.products);
+                       allProductSuppliersValid(
+                         request.resource.data.suppliers,
+                         request.resource.data.products
+                       );
       // 更新: 作成者のみ + データバリデーション
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid &&
+      allow update: if isUserOwnedResource() &&
                        isValidOrder(request.resource.data) &&
-                       allProductSuppliersValid(request.resource.data.suppliers, request.resource.data.products);
+                       allProductSuppliersValid(
+                         request.resource.data.suppliers,
+                         request.resource.data.products
+                       );
       // 削除: 作成者のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+      allow delete: if isUserOwnedResource();
     }
 
     // 入力履歴（オートコンプリート用）
     match /autocomplete_history/{docId} {
       // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
       // 作成: 認証済みユーザーのみ
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid;
-      // 更新: 自分の履歴のみ
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-      // 削除: 自分の履歴のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+      allow create: if isUserOwnedRequest();
     }
 
     // 帳合先プリセット
     match /supplier_presets/{presetId} {
       // 読み取り: 認証済みユーザーのみ（自分のプリセットのみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['supplier', 'userId']) &&
-                       request.resource.data.supplier is string &&
-                       request.resource.data.supplier.size() > 0 &&
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'supplier',
+                         'userId'
+                       ]) &&
+                       isNonEmptyString(request.resource.data.supplier) &&
                        (!request.resource.data.keys().hasAny(['centerFeeRate']) ||
-                        (request.resource.data.centerFeeRate is number &&
-                         request.resource.data.centerFeeRate >= 0 &&
-                         request.resource.data.centerFeeRate <= 100));
+                        isRate0to100(request.resource.data.centerFeeRate));
+
       // 更新: 自分のプリセットのみ + フィールドバリデーション
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid &&
+      allow update: if isUserOwnedResource() &&
                        (!request.resource.data.keys().hasAny(['centerFeeRate']) ||
-                        (request.resource.data.centerFeeRate is number &&
-                         request.resource.data.centerFeeRate >= 0 &&
-                         request.resource.data.centerFeeRate <= 100));
-      // 削除: 自分のプリセットのみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+                        isRate0to100(request.resource.data.centerFeeRate));
     }
 
     // メールアドレス帳
     match /email_addresses/{addressId} {
       // 読み取り: 認証済みユーザーのみ（自分のアドレス帳のみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['name', 'email', 'userId']) &&
-                       request.resource.data.name is string &&
-                       request.resource.data.name.size() > 0 &&
-                       request.resource.data.email is string &&
-                       request.resource.data.email.size() > 0;
-      // 更新: 自分のアドレス帳のみ
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-      // 削除: 自分のアドレス帳のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'name',
+                         'email',
+                         'userId'
+                       ]) &&
+                       isNonEmptyString(request.resource.data.name) &&
+                       isNonEmptyString(request.resource.data.email);
     }
 
     // 商品履歴
     match /product_history/{historyId} {
       // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['supplier', 'name', 'origin', 'specification', 'unit', 'packageUnit', 'userId']) &&
-                       request.resource.data.supplier is string &&
-                       request.resource.data.supplier.size() > 0 &&
-                       request.resource.data.name is string &&
-                       request.resource.data.name.size() > 0 &&
-                       request.resource.data.packageUnit is string;
-      // 更新: 自分の履歴のみ
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-      // 削除: 自分の履歴のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'supplier',
+                         'name',
+                         'origin',
+                         'specification',
+                         'specificationUnit',
+                         'packageUnit',
+                         'userId'
+                       ]) &&
+                       isNonEmptyString(request.resource.data.supplier) &&
+                       isNonEmptyString(request.resource.data.name) &&
+                       isNonEmptyString(request.resource.data.specificationUnit) &&
+                       isNonEmptyString(request.resource.data.packageUnit);
     }
 
     // 価格履歴（ステップ3用）
@@ -213,37 +241,36 @@ service cloud.firestore {
     //       firestoreService.ts の savePricingHistory() を参照
     match /pricing_history/{historyId} {
       // 読み取り: 認証済みユーザーのみ（自分の履歴のみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['productName', 'specification', 'quantityPerPackage', 'unit', 'packageUnit', 'centerCost', 'storeCost', 'priceExcludingTax', 'userId']) &&
-                       request.resource.data.productName is string &&
-                       request.resource.data.productName.size() > 0 &&
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'productName',
+                         'specification',
+                         'quantityPerPackage',
+                         'specificationUnit',
+                         'packageUnit',
+                         'centerCost',
+                         'storeCost',
+                         'priceExcludingTax',
+                         'userId'
+                       ]) &&
+                       isNonEmptyString(request.resource.data.productName) &&
                        request.resource.data.specification is string &&
-                       request.resource.data.quantityPerPackage is number &&
-                       request.resource.data.quantityPerPackage > 0 &&
-                       request.resource.data.unit is string &&
-                       request.resource.data.packageUnit is string &&
-                       request.resource.data.centerCost is number &&
-                       request.resource.data.centerCost >= 0 &&
-                       request.resource.data.storeCost is number &&
-                       request.resource.data.storeCost >= 0 &&
-                       request.resource.data.priceExcludingTax is number &&
-                       request.resource.data.priceExcludingTax >= 0;
+                       isPositiveNumber(request.resource.data.quantityPerPackage) &&
+                       isNonEmptyString(request.resource.data.specificationUnit) &&
+                       isNonEmptyString(request.resource.data.packageUnit) &&
+                       isNonNegativeNumber(request.resource.data.centerCost) &&
+                       isNonNegativeNumber(request.resource.data.storeCost) &&
+                       isNonNegativeNumber(request.resource.data.priceExcludingTax);
+
       // 更新: 自分の履歴のみ + 価格フィールドのバリデーション
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid &&
-                       request.resource.data.centerCost is number &&
-                       request.resource.data.centerCost >= 0 &&
-                       request.resource.data.storeCost is number &&
-                       request.resource.data.storeCost >= 0 &&
-                       request.resource.data.priceExcludingTax is number &&
-                       request.resource.data.priceExcludingTax >= 0;
-      // 削除: 自分の履歴のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+      // （仕様通り、これらのフィールドは常に送られてくる前提）
+      allow update: if isUserOwnedResource() &&
+                       isNonNegativeNumber(request.resource.data.centerCost) &&
+                       isNonNegativeNumber(request.resource.data.storeCost) &&
+                       isNonNegativeNumber(request.resource.data.priceExcludingTax);
     }
 
     // 店舗カテゴリー（ユーザーごとのサブコレクション）
@@ -285,77 +312,85 @@ service cloud.firestore {
     // 配分履歴バッチ（学習データ用）
     match /allocation_batches/{batchId} {
       // 読み取り: 認証済みユーザーのみ（自分のバッチのみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['userId', 'delivery_date', 'center_delivery_date', 'suppliers', 'product_count', 'total_quantity', 'buyer_name', 'book_name', 'sheet_name', 'created_at', 'updated_at']) &&
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'userId',
+                         'delivery_date',
+                         'center_delivery_date',
+                         'suppliers',
+                         'product_count',
+                         'total_quantity',
+                         'buyer_name',
+                         'book_name',
+                         'sheet_name',
+                         'created_at',
+                         'updated_at'
+                       ]) &&
                        request.resource.data.delivery_date is string &&
                        request.resource.data.delivery_date.size() == 10 &&
-                       (request.resource.data.center_delivery_date == null || (request.resource.data.center_delivery_date is string && request.resource.data.center_delivery_date.size() == 10)) &&
+                       (request.resource.data.center_delivery_date == null ||
+                        (request.resource.data.center_delivery_date is string &&
+                         request.resource.data.center_delivery_date.size() == 10)) &&
                        request.resource.data.suppliers is list &&
                        request.resource.data.suppliers.size() > 0 &&
-                       request.resource.data.product_count is number &&
-                       request.resource.data.product_count > 0 &&
-                       request.resource.data.total_quantity is number &&
-                       request.resource.data.total_quantity > 0 &&
-                       request.resource.data.buyer_name is string &&
-                       request.resource.data.buyer_name.size() > 0 &&
-                       request.resource.data.book_name is string &&
-                       request.resource.data.book_name.size() > 0 &&
-                       request.resource.data.sheet_name is string &&
-                       request.resource.data.sheet_name.size() > 0;
-      // 更新: 自分のバッチのみ
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-      // 削除: 自分のバッチのみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
+                       isPositiveNumber(request.resource.data.product_count) &&
+                       isPositiveNumber(request.resource.data.total_quantity) &&
+                       isNonEmptyString(request.resource.data.buyer_name) &&
+                       isNonEmptyString(request.resource.data.book_name) &&
+                       isNonEmptyString(request.resource.data.sheet_name);
     }
 
     // 配分履歴明細（学習データ用）
     match /allocation_details/{detailId} {
       // 読み取り: 認証済みユーザーのみ（自分の明細のみ）
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isUserOwnedResource();
+
       // 作成: 認証済みユーザーのみ + 必須フィールドチェック
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['batch_id', 'userId', 'product_name', 'origin', 'specification', 'supplier', 'category_code', 'quantity_per_package', 'unit', 'package_unit', 'center_cost', 'center_fee_rate', 'store_cost', 'price_excluding_tax', 'total_delivery', 'store_allocations', 'allocation_method', 'has_manual_adjustment', 'created_at']) &&
-                       request.resource.data.batch_id is string &&
-                       request.resource.data.batch_id.size() > 0 &&
-                       request.resource.data.product_name is string &&
-                       request.resource.data.product_name.size() > 0 &&
+      allow create: if isUserOwnedRequest() &&
+                       request.resource.data.keys().hasAll([
+                         'batch_id',
+                         'userId',
+                         'product_name',
+                         'origin',
+                         'specification',
+                         'supplier',
+                         'category_code',
+                         'quantity_per_package',
+                         'specification_unit',
+                         'package_unit',
+                         'center_cost',
+                         'center_fee_rate',
+                         'store_cost',
+                         'price_excluding_tax',
+                         'total_delivery',
+                         'store_allocations',
+                         'allocation_method',
+                         'has_manual_adjustment',
+                         'created_at'
+                       ]) &&
+                       isNonEmptyString(request.resource.data.batch_id) &&
+                       isNonEmptyString(request.resource.data.product_name) &&
                        request.resource.data.origin is string &&
                        request.resource.data.specification is string &&
-                       request.resource.data.supplier is string &&
-                       request.resource.data.supplier.size() > 0 &&
-                       (request.resource.data.category_code == null || request.resource.data.category_code is string) &&
-                       (request.resource.data.quantity_per_package == null || (request.resource.data.quantity_per_package is number && request.resource.data.quantity_per_package > 0)) &&
-                       request.resource.data.unit is string &&
-                       request.resource.data.package_unit is string &&
-                       request.resource.data.center_cost is number &&
-                       request.resource.data.center_cost >= 0 &&
-                       request.resource.data.center_fee_rate is number &&
-                       request.resource.data.center_fee_rate >= 0 &&
-                       request.resource.data.center_fee_rate <= 100 &&
-                       request.resource.data.store_cost is number &&
-                       request.resource.data.store_cost >= 0 &&
-                       request.resource.data.price_excluding_tax is number &&
-                       request.resource.data.price_excluding_tax >= 0 &&
-                       request.resource.data.total_delivery is number &&
-                       request.resource.data.total_delivery > 0 &&
+                       isNonEmptyString(request.resource.data.supplier) &&
+                       (request.resource.data.category_code == null ||
+                        request.resource.data.category_code is string) &&
+                       (request.resource.data.quantity_per_package == null ||
+                        isPositiveNumber(request.resource.data.quantity_per_package)) &&
+                       isNonEmptyString(request.resource.data.specification_unit) &&
+                       isNonEmptyString(request.resource.data.package_unit) &&
+                       isNonNegativeNumber(request.resource.data.center_cost) &&
+                       isRate0to100(request.resource.data.center_fee_rate) &&
+                       isNonNegativeNumber(request.resource.data.store_cost) &&
+                       isNonNegativeNumber(request.resource.data.price_excluding_tax) &&
+                       isPositiveNumber(request.resource.data.total_delivery) &&
                        request.resource.data.store_allocations is list &&
                        request.resource.data.store_allocations.size() == 36 &&
                        request.resource.data.allocation_method is string &&
                        request.resource.data.has_manual_adjustment is bool;
-      // 更新: 自分の明細のみ
-      allow update: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-      // 削除: 自分の明細のみ
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
     }
 
     // デフォルト: すべて拒否

@@ -104,7 +104,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
   const allProducts = useWatch({ control, name: 'products' }) || [];
   const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const currentUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
+  const currentSpecificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
   const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
 
   // カテゴリー選択モーダルの状態
@@ -155,7 +155,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       preset.origin === currentOrigin &&
       preset.specification === (currentSpecification || '') &&
       preset.quantityPerPackage === currentQuantityPerPackage &&
-      preset.specificationUnit === (currentUnit || '') &&
+      preset.specificationUnit === (currentSpecificationUnit || '') &&
       preset.packageUnit === (currentPackageUnit || '')
     );
   }, [
@@ -164,7 +164,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     currentOrigin,
     currentSpecification,
     currentQuantityPerPackage,
-    currentUnit,
+    currentSpecificationUnit,
     currentPackageUnit,
   ]);
 
@@ -220,6 +220,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       return;
     }
 
+    console.log('[ProductFormCardBasic] Saving product history with:', {
+      specificationUnit: currentSpecificationUnit,
+      packageUnit: currentPackageUnit,
+    });
+
     try {
       await firestoreService.saveProductHistory(
         user.uid,
@@ -228,11 +233,12 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         currentOrigin,
         currentSpecification || '',
         currentQuantityPerPackage ?? null,
-        currentUnit || '',
+        currentSpecificationUnit || '',
         currentPackageUnit || '',
         currentCategoryCode
       );
 
+      console.log('[ProductFormCardBasic] Product history saved successfully');
       setSaveDialogOpen(false);
       showSuccess('商品情報を履歴に保存しました');
 
@@ -300,7 +306,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       currentOrigin ||
       currentSpecification ||
       currentQuantityPerPackage ||
-      currentUnit
+      currentSpecificationUnit
     );
 
     if (hasValues) {
@@ -318,6 +324,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * プリセットを現在のカードに適用
    */
   const applyPreset = (preset: ProductHistoryItem) => {
+    console.log('[ProductFormCardBasic] applyPreset called with:', {
+      specificationUnit: preset.specificationUnit,
+      packageUnit: preset.packageUnit,
+      preset,
+    });
     setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
     setValue(`products.${index}.supplier`, preset.supplier);
     setValue(`products.${index}.name`, preset.name);
@@ -326,6 +337,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.specificationUnit`, preset.specificationUnit);
     setValue(`products.${index}.packageUnit`, preset.packageUnit);
+    console.log('[ProductFormCardBasic] setValue completed for packageUnit:', preset.packageUnit);
     showSuccess('プリセットを読み込みました');
   };
 
@@ -1040,7 +1052,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
                                     origin: currentOrigin,
                                     specification: currentSpecification,
                                     quantityPerPackage: qty,
-                                    specificationUnit: currentUnit,
+                                    specificationUnit: currentSpecificationUnit,
                                     packageUnit: currentPackageUnit,
                                   },
                                 });
@@ -1148,7 +1160,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
             </Typography>
             {currentSpecification && (
               <Typography variant="body2">
-                規格: {currentSpecification}{currentUnit && ` ${currentUnit}`}
+                規格: {currentSpecification}{currentSpecificationUnit && ` ${currentSpecificationUnit}`}
               </Typography>
             )}
             {currentQuantityPerPackage && (
