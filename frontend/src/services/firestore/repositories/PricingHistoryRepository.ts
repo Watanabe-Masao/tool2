@@ -100,9 +100,9 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       productName: data.productName,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage,
-      // 後方互換性: 古いunitフィールドが存在する場合はspecificationUnitにフォールバック
-      specificationUnit: data.specificationUnit || data.unit || '',
-      packageUnit: data.packageUnit || '',
+      // 後方互換性: 古いunitフィールドは入数の単位（packageUnit）だった
+      specificationUnit: data.specificationUnit || '',
+      packageUnit: data.packageUnit || data.unit || '',
       centerCost: data.centerCost,
       storeCost: data.storeCost,
       priceExcludingTax: data.priceExcludingTax,

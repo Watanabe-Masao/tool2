@@ -97,9 +97,9 @@ export class ProductHistoryRepository extends FirestoreBaseService<
       origin: data.origin,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage ?? null,
-      // 後方互換性: 古いunitフィールドが存在する場合はspecificationUnitにフォールバック
-      specificationUnit: data.specificationUnit || data.unit || '',
-      packageUnit: data.packageUnit || '',
+      // 後方互換性: 古いunitフィールドは入数の単位（packageUnit）だった
+      specificationUnit: data.specificationUnit || '',
+      packageUnit: data.packageUnit || data.unit || '',
       usageCount: data.usageCount || 1,
       pinned: data.pinned || false,
       pinOrder: data.pinOrder ?? 9999,
