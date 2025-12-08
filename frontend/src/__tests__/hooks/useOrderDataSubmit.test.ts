@@ -20,8 +20,36 @@ describe('useOrderDataSubmit', () => {
     deliveryDate: new Date('2024-01-01'),
     suppliers: ['supplier1', 'supplier2'],
     products: [
-      { name: 'Product A', supplier: 'supplier1' } as any,
-      { name: 'Product B', supplier: 'supplier2' } as any,
+      {
+        name: 'Product A',
+        supplier: 'supplier1',
+        origin: '北海道',
+        specification: '2L',
+        specificationUnit: 'kg',
+        quantityPerPackage: 10,
+        packageUnit: '箱',
+        centerCost: 100,
+        centerFeeRate: 13,
+        storeCost: 113,
+        priceExcludingTax: 150,
+        totalDelivery: 10,
+        storeAllocations: [1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      } as any,
+      {
+        name: 'Product B',
+        supplier: 'supplier2',
+        origin: '青森',
+        specification: 'M',
+        specificationUnit: 'kg',
+        quantityPerPackage: 5,
+        packageUnit: 'ケース',
+        centerCost: 200,
+        centerFeeRate: 13,
+        storeCost: 226,
+        priceExcludingTax: 300,
+        totalDelivery: 5,
+        storeAllocations: [0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      } as any,
     ],
   };
 
@@ -83,8 +111,8 @@ describe('useOrderDataSubmit', () => {
       const invalidData: OrderFormData = {
         ...mockFormData,
         products: [
-          { name: 'Product A', supplier: 'supplier1' } as any,
-          { name: 'Product B', supplier: 'invalid-supplier' } as any, // 無効な帳合先
+          { ...mockFormData.products[0], supplier: 'supplier1' },
+          { ...mockFormData.products[1], supplier: 'invalid-supplier' }, // 無効な帳合先
         ],
       };
 
@@ -103,7 +131,7 @@ describe('useOrderDataSubmit', () => {
       const mockOnBookNameDialogOpen = vi.fn();
       const invalidData: OrderFormData = {
         ...mockFormData,
-        products: [{ name: 'Product A', supplier: 'invalid' } as any],
+        products: [{ ...mockFormData.products[0], supplier: 'invalid' }],
       };
 
       const { result } = renderHook(() =>
@@ -216,17 +244,5 @@ describe('useOrderDataSubmit', () => {
       expect(mockShowError).toHaveBeenCalledWith('テンプレートの生成に失敗しました');
     });
 
-    it('console.logが呼ばれることを確認', async () => {
-      const consoleSpy = vi.spyOn(console, 'log');
-      const mockOnBookNameDialogOpen = vi.fn();
-      const { result } = renderHook(() => useOrderDataSubmit(defaultParams));
-
-      await act(async () => {
-        await result.current.submitOrderData(mockFormData, mockOnBookNameDialogOpen);
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith('Form data:', mockFormData);
-      consoleSpy.mockRestore();
-    });
   });
 });

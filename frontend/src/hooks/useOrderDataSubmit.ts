@@ -151,8 +151,6 @@ export const useOrderDataSubmit = ({
           showLoading();
         }
 
-        console.log('Form data:', data);
-
         // 送信前バリデーション
         const validationError = validateFormData(data);
         if (validationError) {
