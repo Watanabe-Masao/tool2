@@ -220,6 +220,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       return;
     }
 
+    console.log('[ProductFormCardBasic] Saving product history with:', {
+      specificationUnit: currentSpecificationUnit,
+      packageUnit: currentPackageUnit,
+    });
+
     try {
       await firestoreService.saveProductHistory(
         user.uid,
@@ -233,6 +238,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
         currentCategoryCode
       );
 
+      console.log('[ProductFormCardBasic] Product history saved successfully');
       setSaveDialogOpen(false);
       showSuccess('商品情報を履歴に保存しました');
 
@@ -318,6 +324,11 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
    * プリセットを現在のカードに適用
    */
   const applyPreset = (preset: ProductHistoryItem) => {
+    console.log('[ProductFormCardBasic] applyPreset called with:', {
+      specificationUnit: preset.specificationUnit,
+      packageUnit: preset.packageUnit,
+      preset,
+    });
     setValue(`products.${index}.categoryCode`, preset.categoryCode || '');
     setValue(`products.${index}.supplier`, preset.supplier);
     setValue(`products.${index}.name`, preset.name);
@@ -326,6 +337,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
     setValue(`products.${index}.quantityPerPackage`, preset.quantityPerPackage);
     setValue(`products.${index}.specificationUnit`, preset.specificationUnit);
     setValue(`products.${index}.packageUnit`, preset.packageUnit);
+    console.log('[ProductFormCardBasic] setValue completed for packageUnit:', preset.packageUnit);
     showSuccess('プリセットを読み込みました');
   };
 
