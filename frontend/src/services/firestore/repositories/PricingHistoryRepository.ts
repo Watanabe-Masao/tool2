@@ -22,6 +22,8 @@ interface FirestorePricingHistory {
   quantityPerPackage: number;
   specificationUnit: string;
   packageUnit: string;
+  // 後方互換性のため、古いフィールド名も許可
+  unit?: string;
   centerCost: number;
   storeCost: number;
   priceExcludingTax: number;
@@ -98,7 +100,8 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       productName: data.productName,
       specification: data.specification,
       quantityPerPackage: data.quantityPerPackage,
-      specificationUnit: data.specificationUnit,
+      // 後方互換性: 古いunitフィールドが存在する場合はspecificationUnitにフォールバック
+      specificationUnit: data.specificationUnit || data.unit || '',
       packageUnit: data.packageUnit || '',
       centerCost: data.centerCost,
       storeCost: data.storeCost,
