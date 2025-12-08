@@ -211,6 +211,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       setValue(`products.${activeTabIndex}.specification`, firstPreset.specification);
       setValue(`products.${activeTabIndex}.quantityPerPackage`, firstPreset.quantityPerPackage);
       setValue(`products.${activeTabIndex}.specificationUnit`, firstPreset.specificationUnit);
+      setValue(`products.${activeTabIndex}.packageUnit`, firstPreset.packageUnit || '');
       // 数量が入力されている場合はtotalDeliveryに反映
       setValue(`products.${activeTabIndex}.totalDelivery`, firstPreset.totalDelivery || 0);
       startIndex = 1; // 2番目のプリセットから追加開始
@@ -228,6 +229,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
         specification: preset.specification,
         quantityPerPackage: preset.quantityPerPackage,
         specificationUnit: preset.specificationUnit,
+        packageUnit: preset.packageUnit || '',
         // 数量が入力されている場合はtotalDeliveryに反映
         totalDelivery: preset.totalDelivery || 0,
         storeAllocations: new Array(STORE_COUNT).fill(0),
@@ -261,6 +263,7 @@ export const ProductBasicInfoForm: React.FC<ProductBasicInfoFormProps> = ({
       specification: preset.specification,
       quantityPerPackage: preset.quantityPerPackage,
       specificationUnit: preset.specificationUnit,
+      packageUnit: preset.packageUnit || '',
       totalDelivery: 0,
       storeAllocations: new Array(STORE_COUNT).fill(0),
     });
