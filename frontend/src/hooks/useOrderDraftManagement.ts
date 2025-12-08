@@ -111,7 +111,6 @@ export const useOrderDraftManagement = ({
       if (!userRef.current) return;
       const currentFormData = methodsRef.current.getValues();
       SessionStorageService.saveDraft(userRef.current.uid, currentFormData);
-      console.log('Form auto-saved');
     }, 2000);
   }, []);
 

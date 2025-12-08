@@ -176,16 +176,7 @@ export const useTemplateGeneration = ({
         const customName = bookName.trim() || '';
         const customFilename = customName ? `配分表_${customName}_${dateStr}` : `配分表_${dateStr}`;
 
-        // デバッグログ
-        console.log('📝 Custom filename generation:');
-        console.log('  - bookName:', bookName);
-        console.log('  - customName (trimmed):', customName);
-        console.log('  - dateStr:', dateStr);
-        console.log('  - customFilename:', customFilename);
-
         const response = await templateService.generateTemplate(data, buyerName, customFilename);
-
-        console.log('Template generated:', response);
 
         // 生成されたファイル情報を保存
         setGeneratedFiles({
@@ -199,7 +190,6 @@ export const useTemplateGeneration = ({
         try {
           const blob = await fetchExcelAsBlob(response.download_url);
           setExcelBlob(blob);
-          console.log('Excel blob fetched successfully');
         } catch (err) {
           console.error('Failed to fetch Excel blob:', err);
           // Blobの取得に失敗してもテンプレート生成は成功しているので続行

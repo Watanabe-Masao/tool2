@@ -129,7 +129,6 @@ export class FirestoreServiceFacade {
    * プリセットを保存
    */
   async saveSupplierPreset(userId: string, supplier: string, centerFeeRate?: number): Promise<string> {
-    console.log('[FirestoreServiceFacade] saveSupplierPreset called:', { userId, supplier, centerFeeRate });
     return this.presetRepo.save({
       userId,
       supplier,
@@ -205,7 +204,6 @@ export class FirestoreServiceFacade {
    * プリセットを更新
    */
   async updateSupplierPreset(presetId: string, supplier: string, centerFeeRate?: number): Promise<void> {
-    console.log('[FirestoreServiceFacade] updateSupplierPreset called:', { presetId, supplier, centerFeeRate });
     return this.presetRepo.updateSupplier(presetId, supplier, centerFeeRate);
   }
 

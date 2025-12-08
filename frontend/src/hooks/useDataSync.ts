@@ -60,13 +60,11 @@ export const useDataSync = (): UseDataSyncReturn => {
    */
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 オンラインに復帰しました');
       setIsOnline(true);
       showSuccessRef.current('オンラインに復帰しました');
     };
 
     const handleOffline = () => {
-      console.log('📴 オフラインモードです');
       setIsOnline(false);
       showWarningRef.current('オフラインモードです。データはローカルに保存されます。');
     };
@@ -102,12 +100,10 @@ export const useDataSync = (): UseDataSyncReturn => {
    */
   const syncIndexedDBToFirestore = useCallback(async () => {
     if (!userRef.current) {
-      console.log('ユーザーがログインしていないため、同期をスキップします');
       return;
     }
 
     if (!isOnline) {
-      console.log('オフラインのため、同期をスキップします');
       return;
     }
 
@@ -117,12 +113,9 @@ export const useDataSync = (): UseDataSyncReturn => {
       const unsyncedOrders = await getUnsyncedOrders();
 
       if (unsyncedOrders.length === 0) {
-        console.log('未同期データはありません');
         setIsSyncing(false);
         return;
       }
-
-      console.log(`${unsyncedOrders.length}件のデータを同期中...`);
 
       for (const order of unsyncedOrders) {
         try {
@@ -149,8 +142,6 @@ export const useDataSync = (): UseDataSyncReturn => {
               firestoreId: docId,
             });
           }
-
-          console.log(`✅ 同期完了: ${docId}`);
         } catch (error) {
           console.error('同期エラー:', error);
           showErrorRef.current(`データの同期に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
@@ -174,7 +165,6 @@ export const useDataSync = (): UseDataSyncReturn => {
    */
   useEffect(() => {
     if (isOnline && !isSyncing) {
-      console.log('オンライン復帰を検知。2秒後に同期を開始します...');
       // 2秒後に同期を実行（ネットワークが安定するまで待つ）
       const timer = setTimeout(() => {
         syncIndexedDBToFirestore();
@@ -196,7 +186,6 @@ export const useDataSync = (): UseDataSyncReturn => {
 
     if (isOnline) {
       // オンライン時: Firestoreに直接保存
-      console.log('🌐 オンライン: Firestoreに保存');
       const orderData = {
         ...order,
         buyerName,
@@ -206,7 +195,6 @@ export const useDataSync = (): UseDataSyncReturn => {
       await firestoreServiceRef.current.saveOrder(orderData, userRef.current.uid);
     } else {
       // オフライン時: IndexedDBに保存
-      console.log('📴 オフライン: IndexedDBに保存');
       await saveToIndexedDB({
         ...order,
         buyerName,

@@ -72,14 +72,8 @@ export const useFileDownloads = ({
         const baseUrl = env.getBackendBaseUrl();
         const absoluteUrl = new URL(config.url, baseUrl).href;
 
-        console.log(`📥 ${config.fileType} download URL:`, config.url);
-        console.log('📥 Base URL:', baseUrl);
-        console.log('📥 Absolute URL:', absoluteUrl);
-
         // ファイルを取得
         const response = await fetch(absoluteUrl);
-        console.log('Response status:', response.status);
-        console.log('Response Content-Type:', response.headers.get('Content-Type'));
 
         if (!response.ok) {
           const statusText = response.statusText || 'Unknown Error';
@@ -96,7 +90,6 @@ export const useFileDownloads = ({
         }
 
         const blob = await response.blob();
-        console.log('Downloaded blob size:', blob.size, 'bytes');
 
         // Blobからダウンロードリンクを作成
         const blobUrl = window.URL.createObjectURL(blob);

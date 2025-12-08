@@ -16,24 +16,14 @@ const createApiClient = (): AxiosInstance => {
 
   // リクエストインターセプター
   client.interceptors.request.use(
-    (config) => {
-      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
-      return config;
-    },
-    (error) => {
-      console.error('[API] Request error:', error);
-      return Promise.reject(error);
-    }
+    (config) => config,
+    (error) => Promise.reject(error)
   );
 
   // レスポンスインターセプター
   client.interceptors.response.use(
-    (response) => {
-      console.log(`[API] Response from ${response.config.url}:`, response.status);
-      return response;
-    },
+    (response) => response,
     (error: AxiosError) => {
-      console.error('[API] Response error:', error.response?.status, error.message);
 
       // エラーメッセージの標準化
       if (error.response) {

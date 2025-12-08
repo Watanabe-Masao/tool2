@@ -50,7 +50,6 @@ export const useSupplierPresets = () => {
   const addPreset = useCallback(async (supplier: string, centerFeeRate?: number): Promise<boolean> => {
     if (!userRef.current) return false;
 
-    console.log('[useSupplierPresets] addPreset called:', { supplier, centerFeeRate });
     try {
       await firestoreServiceRef.current.saveSupplierPreset(userRef.current.uid, supplier, centerFeeRate);
       await loadPresets(); // 再読み込み
@@ -81,7 +80,6 @@ export const useSupplierPresets = () => {
    * プリセットを更新
    */
   const updatePreset = useCallback(async (presetId: string, supplier: string, centerFeeRate?: number): Promise<boolean> => {
-    console.log('[useSupplierPresets] updatePreset called:', { presetId, supplier, centerFeeRate });
     try {
       await firestoreServiceRef.current.updateSupplierPreset(presetId, supplier, centerFeeRate);
       await loadPresets(); // 再読み込み
@@ -118,7 +116,6 @@ export const useSupplierPresets = () => {
           // リアルタイムリスナーが失敗した場合、通常のクエリにフォールバック
           if (retryCount < maxRetries) {
             retryCount++;
-            console.log(`Retrying supplier presets subscription (${retryCount}/${maxRetries})...`);
             // 既存のリスナーをクリーンアップ
             if (unsubscribe) {
               unsubscribe();
@@ -128,7 +125,6 @@ export const useSupplierPresets = () => {
             setTimeout(setupListener, 1000 * retryCount);
           } else {
             // リトライ上限に達した場合、一度だけ通常クエリを実行
-            console.log('Falling back to one-time query for supplier presets');
             try {
               const data = await firestoreServiceRef.current.getSupplierPresets(userId);
               setPresets(data);

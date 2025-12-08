@@ -188,7 +188,6 @@ export const useProductHistory = (suppliers?: string | string[], categoryCode?: 
         supplier,
         ...conditions,
       });
-      console.log(`[useProductHistory] Deleted ${count} items`);
 
       // 履歴を再読み込み
       await loadHistory();

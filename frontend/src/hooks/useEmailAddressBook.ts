@@ -116,7 +116,6 @@ export const useEmailAddressBook = () => {
           // リアルタイムリスナーが失敗した場合、リトライまたはフォールバック
           if (retryCount < maxRetries) {
             retryCount++;
-            console.log(`Retrying email addresses subscription (${retryCount}/${maxRetries})...`);
             // 既存のリスナーをクリーンアップ
             if (unsubscribe) {
               unsubscribe();
@@ -126,7 +125,6 @@ export const useEmailAddressBook = () => {
             setTimeout(setupListener, 1000 * retryCount);
           } else {
             // リトライ上限に達した場合、一度だけ通常クエリを実行
-            console.log('Falling back to one-time query for email addresses');
             try {
               const data = await firestoreServiceRef.current.getEmailAddresses(userId);
               setEntries(data);

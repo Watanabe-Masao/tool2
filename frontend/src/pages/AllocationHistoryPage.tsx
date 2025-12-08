@@ -207,9 +207,6 @@ export const AllocationHistoryPage: React.FC = () => {
         endDate
       );
 
-      console.log('📦 取得したバッチ数:', fetchedBatches.length);
-      console.log('📦 バッチ一覧:', fetchedBatches.map(b => ({ id: b.id, date: b.deliveryDate })));
-
       setBatches(fetchedBatches);
     } catch (err) {
       console.error('Failed to fetch allocation history:', err);
@@ -345,8 +342,6 @@ export const AllocationHistoryPage: React.FC = () => {
     const startDate = format(start, 'yyyy-MM-dd');
     const endDate = format(end, 'yyyy-MM-dd');
 
-    console.log('📅 Date range selected:', { startDate, endDate });
-
     setSelectedDateRange({ start: startDate, end: endDate });
     setSelectedBatch(null); // 単一バッチ選択をクリア
     setDetailsLoading(true);
@@ -362,8 +357,6 @@ export const AllocationHistoryPage: React.FC = () => {
         endDate
       );
 
-      console.log('📦 Found batches in range:', rangeBatches.length);
-
       // 各バッチの詳細を取得
       const allDetails: AllocationDetail[] = [];
       for (const batch of rangeBatches) {
@@ -377,7 +370,6 @@ export const AllocationHistoryPage: React.FC = () => {
         }
       }
 
-      console.log('📋 Total details fetched:', allDetails.length);
       setDetails(allDetails);
     } catch (err) {
       console.error('Failed to fetch date range details:', err);
@@ -1028,7 +1020,6 @@ export const AllocationHistoryPage: React.FC = () => {
 
     rows.push(grandTotalRow);
 
-    console.log('📋 Generated rows:', rows.length, 'Group mode:', groupMode);
     return rows;
   }, [selectedDateRange, details, groupMode, sortOrder, compositeKeyFields]);
 
