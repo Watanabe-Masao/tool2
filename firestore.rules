@@ -232,6 +232,8 @@ service cloud.firestore {
                        ]) &&
                        isNonEmptyString(request.resource.data.supplier) &&
                        isNonEmptyString(request.resource.data.name) &&
+                       isNonEmptyString(request.resource.data.origin) &&
+                       isNonEmptyString(request.resource.data.specification) &&
                        isNonEmptyString(request.resource.data.specificationUnit) &&
                        isNonEmptyString(request.resource.data.packageUnit);
     }
