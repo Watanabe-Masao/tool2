@@ -146,8 +146,6 @@ export class PresetRepository extends FirestoreBaseService<
       return 0;
     });
 
-    console.log(`[${this.collectionName}] Retrieved ${presets.length} presets for user ${userId}`);
-
     // Entity型に変換
     return presets.map((preset) => this.toEntity(preset));
   }
@@ -250,8 +248,6 @@ export class PresetRepository extends FirestoreBaseService<
     });
 
     await Promise.all(updates);
-
-    console.log(`[${this.collectionName}] Reordered ${reorderedItems.length} presets`);
   }
 
   /**
@@ -275,8 +271,6 @@ export class PresetRepository extends FirestoreBaseService<
     }
 
     await updateDoc(docRef, updateData);
-
-    console.log(`[${this.collectionName}] Updated preset ${presetId}: ${supplier}, centerFeeRate: ${centerFeeRate}`);
   }
 }
 

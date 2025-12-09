@@ -142,10 +142,6 @@ export class EmailAddressRepository extends FirestoreBaseService<
       return 0;
     });
 
-    console.log(
-      `[${this.collectionName}] Retrieved ${addresses.length} addresses for user ${userId}`
-    );
-
     // Entity型に変換
     return addresses.map((addr) => this.toEntity(addr));
   }
@@ -248,8 +244,6 @@ export class EmailAddressRepository extends FirestoreBaseService<
     });
 
     await Promise.all(updates);
-
-    console.log(`[${this.collectionName}] Reordered ${reorderedItems.length} addresses`);
   }
 
   /**
@@ -267,8 +261,6 @@ export class EmailAddressRepository extends FirestoreBaseService<
       email,
       updatedAt: Timestamp.now(),
     });
-
-    console.log(`[${this.collectionName}] Updated address ${addressId}: ${name} (${email})`);
   }
 }
 

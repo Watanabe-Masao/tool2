@@ -189,9 +189,6 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         existingData.specificationUnit === history.specificationUnit &&
         existingData.packageUnit === (history.packageUnit || '')
       ) {
-        console.log(
-          `[${this.collectionName}] Unchanged, skipping update: ${history.productName} (${history.specification})`
-        );
         return existingDoc.id;
       }
 
@@ -208,9 +205,6 @@ export class PricingHistoryRepository extends FirestoreBaseService<
         updatedAt: Timestamp.now(),
       });
 
-      console.log(
-        `[${this.collectionName}] Updated: ${history.productName} (${history.specification})`
-      );
       return existingDoc.id;
     }
 
@@ -221,9 +215,6 @@ export class PricingHistoryRepository extends FirestoreBaseService<
       usageCount: 1,
     });
 
-    console.log(
-      `[${this.collectionName}] Created: ${history.productName} (${history.specification})`
-    );
     return id;
   }
 }

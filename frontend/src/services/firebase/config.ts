@@ -74,27 +74,15 @@ export const initializeFirebase = async (): Promise<void> => {
   // 新しい初期化を開始
   initializePromise = (async () => {
     try {
-      console.log('[Firebase] 初期化を開始...');
-
       // 環境変数からFirebase設定を取得
       const config = getFirebaseConfig();
-      console.log('[Firebase] 設定:', {
-        projectId: config.projectId,
-        authDomain: config.authDomain,
-        apiKeyLength: config.apiKey?.length,
-      });
 
       // Firebaseアプリを初期化
       app = initializeApp(config);
-      console.log('[Firebase] アプリ初期化完了');
 
       auth = getAuth(app);
-      console.log('[Firebase] Auth初期化完了');
 
       db = getFirestore(app);
-      console.log('[Firebase] Firestore初期化完了');
-
-      console.log('[Firebase] 全ての初期化が完了しました');
     } catch (error) {
       console.error('[Firebase] 初期化エラー:', error);
       if (error instanceof Error) {

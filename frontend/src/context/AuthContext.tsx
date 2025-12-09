@@ -59,10 +59,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const init = async () => {
       try {
-        console.log('Firebase初期化開始...');
         await initializeFirebase();
         setFirebaseInitialized(true);
-        console.log('Firebase初期化完了');
       } catch (err) {
         console.error('Firebase初期化エラー:', err);
         setInitError(err as Error);

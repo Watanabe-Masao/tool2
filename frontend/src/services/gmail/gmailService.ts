@@ -66,8 +66,7 @@ export async function sendEmail(options: EmailSendOptions): Promise<void> {
       throw new Error(`メール送信に失敗しました: ${errorData.detail || response.statusText}`);
     }
 
-    const result = await response.json();
-    console.log('メールが正常に送信されました', result);
+    await response.json();
   } catch (error) {
     console.error('sendEmail error:', error);
     throw error;

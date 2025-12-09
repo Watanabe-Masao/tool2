@@ -107,7 +107,6 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
       return;
     }
 
-    console.log('[SupplierPresetTab] Adding preset:', { supplier: newSupplierName.trim(), centerFeeRate: feeRate });
     const success = await onAddPreset(newSupplierName.trim(), feeRate);
     if (success) {
       setNewSupplierName('');
@@ -134,7 +133,6 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
     }
 
     if (editingSupplier) {
-      console.log('[SupplierPresetTab] Updating preset:', { id: editingSupplier.id, supplier: newSupplierName.trim(), centerFeeRate: feeRate });
       const success = await onEditPreset(editingSupplier.id, newSupplierName.trim(), feeRate);
       if (success) {
         setNewSupplierName('');

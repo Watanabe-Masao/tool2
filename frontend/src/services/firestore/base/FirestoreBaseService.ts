@@ -87,7 +87,6 @@ export abstract class FirestoreBaseService<T, F = any> {
       updatedAt: Timestamp.now(),
     });
 
-    console.log(`[${this.collectionName}] Document created: ${docRef.id}`);
     return docRef.id;
   }
 
@@ -102,7 +101,6 @@ export abstract class FirestoreBaseService<T, F = any> {
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.log(`[${this.collectionName}] Document not found: ${id}`);
       return null;
     }
 
@@ -123,8 +121,6 @@ export abstract class FirestoreBaseService<T, F = any> {
       ...data,
       updatedAt: Timestamp.now(),
     });
-
-    console.log(`[${this.collectionName}] Document updated: ${id}`);
   }
 
   /**
@@ -135,8 +131,6 @@ export abstract class FirestoreBaseService<T, F = any> {
   async delete(id: string): Promise<void> {
     const docRef = doc(this.db, this.collectionName, id);
     await deleteDoc(docRef);
-
-    console.log(`[${this.collectionName}] Document deleted: ${id}`);
   }
 
   /**
@@ -161,9 +155,6 @@ export abstract class FirestoreBaseService<T, F = any> {
       }
     });
 
-    console.log(
-      `[${this.collectionName}] Query executed: ${results.length} results`
-    );
     return results;
   }
 

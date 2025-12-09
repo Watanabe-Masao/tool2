@@ -21,19 +21,6 @@ declare const __BUILD_INFO__: {
   gitCommitMessage: string;
 };
 
-// Log build information to console
-console.log('%c🚀 配分表作成ツール', 'font-size: 20px; font-weight: bold; color: #1976d2');
-console.log('%cビルド情報:', 'font-size: 14px; font-weight: bold; color: #666');
-console.table({
-  'ビルド時刻': __BUILD_INFO__.buildTime,
-  'Gitブランチ': __BUILD_INFO__.gitBranch,
-  'コミットハッシュ': __BUILD_INFO__.gitCommitShort,
-  'コミット日時': __BUILD_INFO__.gitCommitDate,
-  'コミットメッセージ': __BUILD_INFO__.gitCommitMessage,
-});
-console.log('%c完全なコミットハッシュ:', 'color: #999', __BUILD_INFO__.gitCommit);
-console.log(`%cGitHub: https://github.com/Watanabe-Masao/tool2/commit/${__BUILD_INFO__.gitCommit}`, 'color: #0366d6');
-
 // Expose build info globally for debugging
 (window as any).__BUILD_INFO__ = __BUILD_INFO__;
 

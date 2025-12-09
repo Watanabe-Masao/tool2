@@ -121,7 +121,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
    */
   async saveValue(userId: string, field: AutocompleteField, value: string): Promise<string> {
     if (!value || value.trim() === '') {
-      console.log(`[${this.collectionName}] Skipping empty value for field: ${field}`);
       return '';
     }
 
@@ -137,7 +136,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
         lastUpdated: new Date(),
       });
 
-      console.log(`[${this.collectionName}] Created new history for ${field}: ${trimmedValue}`);
       return id;
     }
 
@@ -146,9 +144,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
 
     // 重複を除外
     if (existingValues.includes(trimmedValue)) {
-      console.log(
-        `[${this.collectionName}] Value already exists in ${field}, skipping: ${trimmedValue}`
-      );
       return existing.id || '';
     }
 
@@ -163,9 +158,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
       updatedAt: Timestamp.now(),
     });
 
-    console.log(
-      `[${this.collectionName}] Added value to ${field}: ${trimmedValue} (total: ${newValues.length})`
-    );
     return existing.id || '';
   }
 
@@ -181,7 +173,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
     const existing = await this.findByField(userId, field);
 
     if (!existing) {
-      console.log(`[${this.collectionName}] No history found for ${field}`);
       return false;
     }
 
@@ -189,14 +180,12 @@ export class AutocompleteRepository extends FirestoreBaseService<
     const newValues = existingValues.filter((v) => v !== value);
 
     if (newValues.length === existingValues.length) {
-      console.log(`[${this.collectionName}] Value not found in ${field}: ${value}`);
       return false;
     }
 
     // 値が空になった場合はドキュメントごと削除
     if (newValues.length === 0) {
       await this.delete(existing.id!);
-      console.log(`[${this.collectionName}] Deleted empty history for ${field}`);
       return true;
     }
 
@@ -208,9 +197,6 @@ export class AutocompleteRepository extends FirestoreBaseService<
       updatedAt: Timestamp.now(),
     });
 
-    console.log(
-      `[${this.collectionName}] Deleted value from ${field}: ${value} (remaining: ${newValues.length})`
-    );
     return true;
   }
 
@@ -225,12 +211,10 @@ export class AutocompleteRepository extends FirestoreBaseService<
     const existing = await this.findByField(userId, field);
 
     if (!existing) {
-      console.log(`[${this.collectionName}] No history found for ${field}`);
       return false;
     }
 
     await this.delete(existing.id!);
-    console.log(`[${this.collectionName}] Cleared history for ${field}`);
     return true;
   }
 

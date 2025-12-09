@@ -36,8 +36,6 @@ export class SessionStorageService {
 
       sessionStorage.setItem(key, JSON.stringify(data));
       sessionStorage.setItem(timestampKey, new Date().toISOString());
-
-      console.log('Draft saved to session storage');
     } catch (error) {
       console.error('Failed to save draft to session storage:', error);
       // SessionStorage がいっぱいの場合など、エラーを黙って処理
@@ -69,7 +67,6 @@ export class SessionStorageService {
       if (hoursDiff > CACHE_EXPIRY_HOURS) {
         // 期限切れの場合は削除
         this.clearDraft(userId);
-        console.log('Draft expired and cleared');
         return null;
       }
 
@@ -79,7 +76,6 @@ export class SessionStorageService {
         data.deliveryDate = new Date(data.deliveryDate);
       }
 
-      console.log('Draft loaded from session storage');
       return data;
     } catch (error) {
       console.error('Failed to load draft from session storage:', error);
@@ -97,8 +93,6 @@ export class SessionStorageService {
 
       sessionStorage.removeItem(key);
       sessionStorage.removeItem(timestampKey);
-
-      console.log('Draft cleared from session storage');
     } catch (error) {
       console.error('Failed to clear draft from session storage:', error);
     }
@@ -145,7 +139,6 @@ export class SessionStorageService {
           sessionStorage.removeItem(key);
         }
       });
-      console.log('All drafts cleared');
     } catch (error) {
       console.error('Failed to clear all drafts:', error);
     }

@@ -85,9 +85,6 @@ export const useAllocationBatches = (userId: string | undefined) => {
         endDate
       );
 
-      console.log('📦 取得したバッチ数:', fetchedBatches.length);
-      console.log('📦 バッチ一覧:', fetchedBatches.map(b => ({ id: b.id, date: b.deliveryDate })));
-
       setBatches(fetchedBatches);
     } catch (err) {
       console.error('Failed to fetch allocation history:', err);
@@ -130,8 +127,6 @@ export const useAllocationBatches = (userId: string | undefined) => {
     const startDate = format(start, 'yyyy-MM-dd');
     const endDate = format(end, 'yyyy-MM-dd');
 
-    console.log('📅 Date range selected:', { startDate, endDate });
-
     setSelectedDateRange({ start: startDate, end: endDate });
     setSelectedBatch(null); // 単一バッチ選択をクリア
     setDetailsLoading(true);
@@ -147,8 +142,6 @@ export const useAllocationBatches = (userId: string | undefined) => {
         endDate
       );
 
-      console.log('📦 Found batches in range:', rangeBatches.length);
-
       // 各バッチの詳細を取得
       const allDetails: AllocationDetail[] = [];
       for (const batch of rangeBatches) {
@@ -162,7 +155,6 @@ export const useAllocationBatches = (userId: string | undefined) => {
         }
       }
 
-      console.log('📋 Total details fetched:', allDetails.length);
       setDetails(allDetails);
     } catch (err) {
       console.error('Failed to fetch date range details:', err);

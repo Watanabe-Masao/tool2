@@ -147,13 +147,11 @@ export class ProductHistoryRepository extends FirestoreBaseService<
         ...(history.categoryCode && { categoryCode: history.categoryCode }),
       });
 
-      console.log(`[${this.collectionName}] Updated existing history: ${history.name}`);
       return snapshot.docs[0].id;
     }
 
     // 新規作成
     const id = await this.save(history);
-    console.log(`[${this.collectionName}] Created new history: ${history.name}`);
     return id;
   }
 
@@ -255,7 +253,6 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
 
-    console.log(`[${this.collectionName}] Deleted ${snapshot.docs.length} documents by conditions`);
     return snapshot.docs.length;
   }
 
@@ -290,8 +287,6 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     }
 
     await updateDoc(docRef, updateData);
-
-    console.log(`[${this.collectionName}] Toggled pinned status for ${historyId}: ${pinned}`);
   }
 
   /**
@@ -310,8 +305,6 @@ export class ProductHistoryRepository extends FirestoreBaseService<
     });
 
     await Promise.all(updates);
-
-    console.log(`[${this.collectionName}] Reordered ${reorderedItems.length} pinned items`);
   }
 
   /**

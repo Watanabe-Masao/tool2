@@ -151,8 +151,6 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
 
     // 自動読み込み済みとして記録
     lastAutoLoadedKey.current = currentKey;
-
-    console.log(`[ProductFormCardPricing] Auto-loaded latest pricing history for ${productName} (${specification})`);
   }, [productName, specification, quantityPerPackage, findMatchingHistory, centerCost, storeCost, priceExcludingTax, setValue, index]);
 
   // 共通の計算関数を使用（ProductPricingFormと同じロジック）

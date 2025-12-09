@@ -202,18 +202,11 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
         setError(null);
         setPdfData(null);
 
-        console.log('📄 Fetching PDF from URL:', pdfUrl);
-
         // 相対URLを絶対URLに変換
         const baseUrl = env.getBackendBaseUrl();
         const absoluteUrl = new URL(pdfUrl, baseUrl).href;
 
-        console.log('📄 Absolute PDF URL:', absoluteUrl);
-
         const response = await fetch(absoluteUrl);
-
-        console.log('📄 PDF Response status:', response.status);
-        console.log('📄 PDF Response Content-Type:', response.headers.get('Content-Type'));
 
         if (!response.ok) {
           throw new Error(`PDFの取得に失敗しました: ${response.status} ${response.statusText}`);
@@ -226,7 +219,6 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
         }
 
         const arrayBuffer = await response.arrayBuffer();
-        console.log('📄 PDF ArrayBuffer size:', arrayBuffer.byteLength, 'bytes');
 
         setPdfData(arrayBuffer);
         setIsLoading(false);

@@ -71,19 +71,9 @@ export class TemplateService {
   ): Promise<TemplateResponse> {
     const requestData = this.convertToApiRequest(formData, buyerName);
 
-    // デバッグログ: カスタムファイル名の確認
-    console.log('🔍 Template generation debug:');
-    console.log('  - customFilename parameter:', customFilename);
-    console.log('  - formData.deliveryDate:', formData.deliveryDate);
-
     if (customFilename) {
       requestData.output_filename = customFilename;
-      console.log('  - output_filename set to:', requestData.output_filename);
-    } else {
-      console.log('  - ⚠️ customFilename is empty, output_filename not set');
     }
-
-    console.log('  - Full request data:', JSON.stringify(requestData, null, 2));
 
     const response = await apiClient.post<TemplateResponse>(
       API_ENDPOINTS.GENERATE_TEMPLATE,

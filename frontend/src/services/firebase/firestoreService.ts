@@ -132,7 +132,6 @@ export class FirestoreService {
       timestamp: Timestamp.now(),
     });
 
-    console.log('[Firestore] Order saved:', docRef.id);
     return docRef.id;
   }
 
@@ -164,8 +163,6 @@ export class FirestoreService {
         console.error('[Firestore] Error converting document:', doc.id, error);
       }
     });
-
-    console.log(`[Firestore] Retrieved ${orders.length} orders for user ${userId}`);
 
     if (limitCount && orders.length > limitCount) {
       return orders.slice(0, limitCount);
@@ -204,7 +201,6 @@ export class FirestoreService {
       }
     });
 
-    console.log(`[Firestore] Retrieved ${orders.length} orders for date ${deliveryDate}`);
     return orders;
   }
 
@@ -230,7 +226,6 @@ export class FirestoreService {
       updated_at: Timestamp.now(),
     });
 
-    console.log('[Firestore] Order updated:', orderId);
   }
 
   /**
@@ -243,8 +238,6 @@ export class FirestoreService {
     const orderRef = doc(db, FIRESTORE_COLLECTIONS.ORDERS, orderId);
 
     await deleteDoc(orderRef);
-
-    console.log('[Firestore] Order deleted:', orderId);
   }
 
   /**
@@ -296,7 +289,6 @@ export class FirestoreService {
       }
     }
 
-    console.log(`[Firestore] Autocomplete history saved: ${field} = ${value}`);
   }
 
   /**
@@ -326,7 +318,6 @@ export class FirestoreService {
     }
 
     const values = snapshot.docs[0].data().values || [];
-    console.log(`[Firestore] Retrieved ${values.length} autocomplete options for ${field}`);
     return values;
   }
 
@@ -348,7 +339,6 @@ export class FirestoreService {
       updatedAt: Timestamp.now(),
     });
 
-    console.log(`[Firestore] Supplier preset saved: ${supplier}`);
     return docRef.id;
   }
 
@@ -392,8 +382,6 @@ export class FirestoreService {
     const presetRef = doc(db, FIRESTORE_COLLECTIONS.SUPPLIER_PRESETS, presetId);
 
     await deleteDoc(presetRef);
-
-    console.log(`[Firestore] Supplier preset deleted: ${presetId}`);
   }
 
   /**
@@ -410,8 +398,6 @@ export class FirestoreService {
       supplier,
       updatedAt: Timestamp.now(),
     });
-
-    console.log(`[Firestore] Supplier preset updated: ${presetId}`);
   }
 
   /**
@@ -433,8 +419,6 @@ export class FirestoreService {
     });
 
     await Promise.all(updates);
-
-    console.log(`[Firestore] Reordered ${reorderedItems.length} supplier presets`);
   }
 
   /**
@@ -457,7 +441,6 @@ export class FirestoreService {
       updatedAt: Timestamp.now(),
     });
 
-    console.log(`[Firestore] Email address saved: ${name} (${email})`);
     return docRef.id;
   }
 
@@ -501,8 +484,6 @@ export class FirestoreService {
     const addressRef = doc(db, FIRESTORE_COLLECTIONS.EMAIL_ADDRESSES, addressId);
 
     await deleteDoc(addressRef);
-
-    console.log(`[Firestore] Email address deleted: ${addressId}`);
   }
 
   /**
@@ -521,8 +502,6 @@ export class FirestoreService {
       email,
       updatedAt: Timestamp.now(),
     });
-
-    console.log(`[Firestore] Email address updated: ${addressId}`);
   }
 
   /**
@@ -544,8 +523,6 @@ export class FirestoreService {
     });
 
     await Promise.all(updates);
-
-    console.log(`[Firestore] Reordered ${reorderedItems.length} email addresses`);
   }
 
   /**
@@ -599,7 +576,6 @@ export class FirestoreService {
         packageUnit, // packageUnitも更新
         ...(categoryCode && { categoryCode }), // カテゴリーコードがあれば更新
       });
-      console.log(`[Firestore] Product history updated: ${name}`);
       return snapshot.docs[0].id;
     }
 
@@ -619,7 +595,6 @@ export class FirestoreService {
       usageCount: 1,
     });
 
-    console.log(`[Firestore] Product history saved: ${name}`);
     return docRef.id;
   }
 
@@ -684,7 +659,6 @@ export class FirestoreService {
       };
     });
 
-    console.log(`[Firestore] Retrieved ${history.length} product history items`);
     return history;
   }
 
@@ -734,7 +708,6 @@ export class FirestoreService {
     const deletePromises = snapshot.docs.map((docSnapshot) => deleteDoc(docSnapshot.ref));
     await Promise.all(deletePromises);
 
-    console.log(`[Firestore] Deleted ${snapshot.docs.length} product history items`);
     return snapshot.docs.length;
   }
 
@@ -746,8 +719,6 @@ export class FirestoreService {
     const historyRef = doc(db, 'product_history', historyId);
 
     await deleteDoc(historyRef);
-
-    console.log(`[Firestore] Deleted product history item: ${historyId}`);
   }
 
   /**
@@ -794,8 +765,6 @@ export class FirestoreService {
     }
 
     await updateDoc(historyRef, updateData);
-
-    console.log(`[Firestore] Toggled pinned status for ${historyId}: ${pinned}`);
   }
 
   /**
@@ -818,8 +787,6 @@ export class FirestoreService {
     });
 
     await Promise.all(updates);
-
-    console.log(`[Firestore] Reordered ${reorderedItems.length} pinned items`);
   }
 
   /**
@@ -900,7 +867,6 @@ export class FirestoreService {
         existingData.centerFeeRate === normalizedCenterFeeRate &&
         existingData.specificationUnit === specificationUnit
       ) {
-        console.log(`[Firestore] Pricing history unchanged, skipping update for ${productName} (${specification})`);
         return;
       }
 
@@ -915,7 +881,6 @@ export class FirestoreService {
         lastUsedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
-      console.log(`[Firestore] Updated pricing history for ${productName} (${specification})`);
     } else {
       // 新規作成
       await addDoc(collection(db, 'pricing_history'), {
@@ -933,7 +898,6 @@ export class FirestoreService {
         lastUsedAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
-      console.log(`[Firestore] Created pricing history for ${productName} (${specification})`);
     }
   }
 
@@ -945,6 +909,5 @@ export class FirestoreService {
   static async deletePricingHistory(historyId: string): Promise<void> {
     const db = getFirebaseFirestore();
     await deleteDoc(doc(db, 'pricing_history', historyId));
-    console.log(`[Firestore] Deleted pricing history: ${historyId}`);
   }
 }
