@@ -35,6 +35,7 @@ import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { useAuthContext } from '@/context/AuthContext';
 import type { StoreSettings } from '@/types/storeSettings';
 import type { StoreCategory } from '@/types/storeCategory';
+import { useAutoDistribution, AllocationStatistics } from '@/features/store-allocation';
 
 /**
  * カテゴリの色を取得（落ち着いた色合い）
@@ -236,6 +237,17 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   // バリデーションエラー状態
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // 自動配分フック
+  const { distributeEqual, distributeByRatio, clearAll, clearUnlocked } = useAutoDistribution({
+    allocations,
+    selectedStores,
+    lockedStores,
+    storeSettings,
+    totalDelivery,
+    allocationRate,
+    onChange,
+  });
+
   // 長押しトグル用の状態（縦スクロール競合回避）
   const longPressTimer = React.useRef<number | null>(null);
   const currentTouchStore = React.useRef<string | null>(null);
@@ -352,182 +364,26 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
   };
 
   /**
-   * 均等配分（固定店舗を除外）
-   */
-  const handleEqualDistribution = () => {
-    if (selectedStores.size === 0) return;
-
-    const newAllocations = [...allocations];
-
-    // 固定店舗の合計配分数を計算
-    let lockedTotal = 0;
-    STORE_DATA.forEach((store, index) => {
-      if (lockedStores.has(store.code)) {
-        lockedTotal += allocations[index] || 0;
-      }
-    });
-
-    // 固定されていない選択店舗
-    const unlockedSelectedStores = Array.from(selectedStores).filter(
-      (code) => !lockedStores.has(code)
-    );
-
-    if (unlockedSelectedStores.length === 0) {
-      // 全て固定されている場合は何もしない
-      return;
-    }
-
-    // 残りの配分数
-    const remainingDelivery = totalDelivery - lockedTotal;
-
-    if (remainingDelivery < 0) {
-      alert('固定された配分数が総納品数を超えています');
-      return;
-    }
-
-    // 配分率を適用（50%, 80%, 100%）
-    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
-
-    const perStore = Math.floor(adjustedDelivery / unlockedSelectedStores.length);
-    const remainder = adjustedDelivery % unlockedSelectedStores.length;
-    let remainderDistributed = 0;
-
-    STORE_DATA.forEach((store, index) => {
-      if (lockedStores.has(store.code)) {
-        // 固定店舗はそのまま
-        return;
-      } else if (selectedStores.has(store.code)) {
-        newAllocations[index] = perStore;
-        if (remainderDistributed < remainder) {
-          newAllocations[index] += 1;
-          remainderDistributed++;
-        }
-      } else {
-        newAllocations[index] = 0;
-      }
-    });
-
-    onChange(newAllocations);
-  };
-
-  /**
-   * 構成比による配分（固定店舗を除外）
-   */
-  const handleRatioDistribution = () => {
-    if (selectedStores.size === 0) return;
-
-    const newAllocations = [...allocations];
-
-    // 固定店舗の合計配分数を計算
-    let lockedTotal = 0;
-    STORE_DATA.forEach((store, index) => {
-      if (lockedStores.has(store.code)) {
-        lockedTotal += allocations[index] || 0;
-      }
-    });
-
-    // 固定されていない選択店舗
-    const unlockedSelectedStores = Array.from(selectedStores).filter(
-      (code) => !lockedStores.has(code)
-    );
-
-    if (unlockedSelectedStores.length === 0) {
-      // 全て固定されている場合は何もしない
-      return;
-    }
-
-    // 残りの配分数
-    const remainingDelivery = totalDelivery - lockedTotal;
-
-    if (remainingDelivery < 0) {
-      alert('固定された配分数が総納品数を超えています');
-      return;
-    }
-
-    // 配分率を適用（50%, 80%, 100%）
-    const adjustedDelivery = Math.floor(remainingDelivery * (allocationRate / 100));
-
-    const selectedStoresWithRatio: Array<{ code: string; ratio: number }> = [];
-    let totalRatio = 0;
-
-    unlockedSelectedStores.forEach((code) => {
-      const setting = storeSettings[code];
-      const ratio = setting?.salesRatio || 0;
-      selectedStoresWithRatio.push({ code, ratio });
-      totalRatio += ratio;
-    });
-
-    if (totalRatio === 0) {
-      handleEqualDistribution();
-      return;
-    }
-
-    let allocated = 0;
-
-    const distributionPlan: Array<{ code: string; quantity: number }> = [];
-    selectedStoresWithRatio.forEach(({ code, ratio }) => {
-      const normalizedRatio = ratio / totalRatio;
-      const quantity = Math.floor(adjustedDelivery * normalizedRatio);
-      distributionPlan.push({ code, quantity });
-      allocated += quantity;
-    });
-
-    const remainingQty = adjustedDelivery - allocated;
-    if (remainingQty > 0) {
-      const sortedByRatio = [...selectedStoresWithRatio].sort((a, b) => b.ratio - a.ratio);
-      for (let i = 0; i < remainingQty && i < sortedByRatio.length; i++) {
-        const planItem = distributionPlan.find((p) => p.code === sortedByRatio[i].code);
-        if (planItem) {
-          planItem.quantity += 1;
-        }
-      }
-    }
-
-    STORE_DATA.forEach((store, index) => {
-      if (lockedStores.has(store.code)) {
-        // 固定店舗はそのまま
-        return;
-      }
-      const planItem = distributionPlan.find((p) => p.code === store.code);
-      newAllocations[index] = planItem ? planItem.quantity : 0;
-    });
-
-    onChange(newAllocations);
-  };
-
-  /**
    * 自動配分メニューから配分を実行
+   * NOTE: useAutoDistributionフックの関数を使用
    */
   const handleAutoAllocate = (method: 'equal' | 'ratio') => {
     setAutoAllocateMenuAnchor(null);
 
     if (method === 'equal') {
-      handleEqualDistribution();
+      distributeEqual();
     } else {
-      handleRatioDistribution();
+      distributeByRatio();
     }
   };
 
   /**
-   * 全クリア
+   * 全クリア（選択状態もリセット）
    */
   const handleClearAll = () => {
-    onChange(new Array(STORE_COUNT).fill(0));
+    clearAll();
     setSelectedStores(new Set());
     setLockedStores(new Set());
-  };
-
-  /**
-   * 未ロック店舗のみクリア（デスクトップ版互換）
-   */
-  const handleClearUnlocked = () => {
-    const newAllocations = [...allocations];
-    STORE_DATA.forEach((store, index) => {
-      if (!lockedStores.has(store.code)) {
-        newAllocations[index] = 0;
-      }
-    });
-    onChange(newAllocations);
   };
 
   /**
@@ -1262,7 +1118,7 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                 variant="outlined"
                 size="small"
                 startIcon={<DeleteSweep sx={{ fontSize: '0.9rem' }} />}
-                onClick={handleClearUnlocked}
+                onClick={clearUnlocked}
                 sx={{ fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 'auto' }}
               >
                 クリア
@@ -1522,60 +1378,14 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
           )}
         </Box>
         {/* 統計表示（原価・売価・粗利） */}
-        <Card
-          variant="outlined"
-          sx={{
-            mt: 2,
-            borderWidth: 2,
-            borderColor: 'primary.main',
-            bgcolor: 'background.paper',
-          }}
-        >
-          <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-              <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary' }}>
-                配分統計
-              </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
-                配分数: {totalAllocated} / {totalDelivery} ({remaining < 0 ? `超過${Math.abs(remaining)}` : `残${remaining}`})
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
-                  原価合計
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.primary' }}>
-                  ¥{statistics.totalCost.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
-                  売価合計
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'primary.main' }}>
-                  ¥{statistics.totalPrice.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
-                  粗利合計
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.totalProfit >= 0 ? 'success.main' : 'error.main' }}>
-                  ¥{statistics.totalProfit.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.secondary', display: 'block' }}>
-                  粗利率
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: statistics.profitRate >= 0 ? 'success.main' : 'error.main' }}>
-                  {statistics.profitRate.toFixed(1)}%
-                </Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+        <AllocationStatistics
+          totalAllocated={totalAllocated}
+          totalDelivery={totalDelivery}
+          totalCost={statistics.totalCost}
+          totalPrice={statistics.totalPrice}
+          totalProfit={statistics.totalProfit}
+          profitRate={statistics.profitRate}
+        />
       </Stack>
 
       {/* エラー表示 */}
