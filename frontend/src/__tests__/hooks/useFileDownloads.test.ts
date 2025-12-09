@@ -228,24 +228,7 @@ describe('useFileDownloads', () => {
       import.meta.env.VITE_API_BASE_URL = originalEnv;
     });
 
-    it('console.logが呼ばれることを確認', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const { result } = renderHook(() => useFileDownloads(defaultParams));
-
-      await act(async () => {
-        await result.current.downloadExcel();
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '📥 Excel download URL:',
-        '/downloads/test.xlsx'
-      );
-      expect(consoleSpy).toHaveBeenCalledWith('Response status:', 200);
-      expect(consoleSpy).toHaveBeenCalledWith('Downloaded blob size:', expect.any(Number), 'bytes');
-
-      consoleSpy.mockRestore();
-    });
+    // NOTE: console.logテストは削除済み - デバッグログは本番環境から削除された
 
     it('fetchエラー時のconsole.error', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

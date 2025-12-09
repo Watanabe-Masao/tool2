@@ -160,7 +160,7 @@ describe('useOrderDraftManagement', () => {
         'test-user-123',
         mockFormData
       );
-      expect(console.log).toHaveBeenCalledWith('Form auto-saved');
+      // NOTE: console.logは削除済み - デバッグログは本番環境から削除された
     });
 
     it('複数回のtriggerAutoSave呼び出しでdebounceが効く（最後の呼び出しから2秒後に1回だけ保存）', () => {

@@ -181,9 +181,10 @@ describe('useUserSettings', () => {
       // ユーザーをnullに変更
       rerender({ user: null as any });
 
-      // 設定は前回の値が残る（useEffectは実行されるが、早期リターンで何もしない）
-      // これは現在の実装の挙動
-      expect(result.current).not.toBeNull();
+      // ユーザーがnullになると設定もnullにクリアされる（セキュリティのため）
+      await waitFor(() => {
+        expect(result.current).toBeNull();
+      });
     });
   });
 

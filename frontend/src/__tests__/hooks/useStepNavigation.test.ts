@@ -37,16 +37,17 @@ describe('useStepNavigation', () => {
     it('showGeneratedPreview=falseの場合、setStepNavigationがtrueで呼ばれる', () => {
       renderHook(() => useStepNavigation(defaultParams));
 
-      expect(mockSetStepNavigation).toHaveBeenCalledWith(
-        true,
-        0,
-        5,
-        mockFormData,
-        undefined,
-        undefined,
-        mockHandleNextStep,
-        undefined
-      );
+      const calls = mockSetStepNavigation.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toBe(true);
+      expect(lastCall[1]).toBe(0);
+      expect(lastCall[2]).toBe(5);
+      expect(lastCall[3]).toEqual(mockFormData);
+      expect(lastCall[4]).toBeUndefined();
+      expect(lastCall[5]).toBeUndefined();
+      // handleNextStepはラップされた関数として渡される
+      expect(typeof lastCall[6]).toBe('function');
+      expect(lastCall[7]).toBeUndefined();
     });
 
     it('showGeneratedPreview=trueの場合、setStepNavigationがfalseで呼ばれる', () => {
@@ -85,7 +86,11 @@ describe('useStepNavigation', () => {
 
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[6]).toBe(mockHandleNextStep);
+      // handleNextStepはラップされた関数として渡される
+      expect(typeof lastCall[6]).toBe('function');
+      // ラップされた関数を呼び出すと元の関数が実行される
+      lastCall[6]();
+      expect(mockHandleNextStep).toHaveBeenCalled();
     });
 
     it('商品モードではない（activeProductIndexとsetActiveProductIndexはundefined）', () => {
@@ -116,7 +121,10 @@ describe('useStepNavigation', () => {
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[4]).toBe(2); // activeProductIndex
-      expect(lastCall[7]).toBe(mockSetActiveProductIndex);
+      // setActiveProductIndexはラップされた関数として渡される
+      expect(typeof lastCall[7]).toBe('function');
+      lastCall[7](3);
+      expect(mockSetActiveProductIndex).toHaveBeenCalledWith(3);
     });
 
     it('activeStep=2で商品モードが有効になる', () => {
@@ -131,7 +139,9 @@ describe('useStepNavigation', () => {
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[4]).toBe(1);
-      expect(lastCall[7]).toBe(mockSetActiveProductIndex);
+      expect(typeof lastCall[7]).toBe('function');
+      lastCall[7](2);
+      expect(mockSetActiveProductIndex).toHaveBeenCalledWith(2);
     });
 
     it('activeStep=3で商品モードが有効になる', () => {
@@ -146,7 +156,9 @@ describe('useStepNavigation', () => {
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[4]).toBe(0);
-      expect(lastCall[7]).toBe(mockSetActiveProductIndex);
+      expect(typeof lastCall[7]).toBe('function');
+      lastCall[7](1);
+      expect(mockSetActiveProductIndex).toHaveBeenCalledWith(1);
     });
 
     it('handlePrevStepとhandleNextStepの両方が渡される', () => {
@@ -159,8 +171,13 @@ describe('useStepNavigation', () => {
 
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[5]).toBe(mockHandlePrevStep);
-      expect(lastCall[6]).toBe(mockHandleNextStep);
+      // ラップされた関数として渡される
+      expect(typeof lastCall[5]).toBe('function');
+      expect(typeof lastCall[6]).toBe('function');
+      lastCall[5]();
+      lastCall[6]();
+      expect(mockHandlePrevStep).toHaveBeenCalled();
+      expect(mockHandleNextStep).toHaveBeenCalled();
     });
   });
 
@@ -188,7 +205,10 @@ describe('useStepNavigation', () => {
 
       const calls = mockSetStepNavigation.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[5]).toBe(mockHandlePrevStep);
+      // ラップされた関数として渡される
+      expect(typeof lastCall[5]).toBe('function');
+      lastCall[5]();
+      expect(mockHandlePrevStep).toHaveBeenCalled();
     });
 
     it('商品モードではない', () => {
