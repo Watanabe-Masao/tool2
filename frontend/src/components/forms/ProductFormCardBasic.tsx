@@ -10,23 +10,13 @@ import {
   Typography,
   Autocomplete,
   Box,
-  Stack,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
-  DialogContentText,
   InputAdornment,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Grow,
   Tooltip,
+  Stack,
 } from '@mui/material';
-import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, DeleteOutline, ClearAll, Save } from '@mui/icons-material';
+import { Category as CategoryIcon, BookmarkBorder, Bookmark, History, Business, Save } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
@@ -40,6 +30,13 @@ import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { ProductPresetModal } from '@/components/modals/ProductPresetModal';
 import { ProductNameHistoryModal } from '@/components/modals/ProductNameHistoryModal';
 import { getCategoryName } from '@/utils/categories';
+import { CardContextMenu } from '@/components/forms/progress';
+import {
+  SupplierSelectDialog,
+  PresetConfirmDialog,
+  DeleteHistoryDialog,
+  SaveProductDialog,
+} from '@/features/shared-dialogs';
 
 /**
  * ProductFormCardBasicのProps
@@ -141,7 +138,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
 
   // カード長押しメニューの状態
   const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
-  const cardMenuOpen = Boolean(cardMenuAnchor);
 
   // カード長押しタイマー
   const cardLongPressTimer = useRef<number | null>(null);
@@ -279,7 +275,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
    */
   const handleSelectSupplier = (supplier: string) => {
     setValue(`products.${index}.supplier`, supplier);
-    setSupplierSelectOpen(false);
   };
 
   /**
@@ -525,40 +520,6 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
    */
   const handleCardMenuClose = () => {
     setCardMenuAnchor(null);
-  };
-
-  /**
-   * カードメニューから削除
-   */
-  const handleCardMenuDelete = () => {
-    setCardMenuAnchor(null);
-    onRemove();
-  };
-
-  /**
-   * カードメニューからクリア
-   */
-  const handleCardMenuClear = () => {
-    handleClearProduct();
-  };
-
-  /**
-   * 削除メッセージの生成
-   */
-  const getDeleteMessage = () => {
-    const { type, value } = deleteDialog;
-    switch (type) {
-      case 'name':
-        return `品名「${value}」の履歴を削除しますか？`;
-      case 'origin':
-        return `産地「${value}」の履歴を削除しますか？`;
-      case 'specification':
-        return `規格「${value}」の履歴を削除しますか？`;
-      case 'quantity':
-        return `入数「${value}」の履歴を削除しますか？`;
-      case 'specificationUnit':
-        return `単位「${value}」の履歴を削除しますか？`;
-    }
   };
 
   return (
@@ -1117,64 +1078,29 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
       </Card>
 
       {/* 削除確認ダイアログ */}
-      <Dialog open={deleteDialog.open} onClose={handleCloseDialog}>
-        <DialogTitle>履歴の削除</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{getDeleteMessage()}</DialogContentText>
-          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-            この操作は元に戻せません。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleDeleteHistory} color="error" variant="contained">
-            削除
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteHistoryDialog
+        state={deleteDialog}
+        onClose={handleCloseDialog}
+        onDelete={handleDeleteHistory}
+      />
 
       {/* 商品保存確認ダイアログ */}
-      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>商品情報を保存</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            現在入力中の商品情報を履歴として保存しますか？
-          </DialogContentText>
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-            {currentCategoryCode && (
-              <Typography variant="body2" color="text.secondary">
-                カテゴリー: {getCategoryName(currentCategoryCode)}
-              </Typography>
-            )}
-            <Typography variant="body2" fontWeight="medium">
-              品名: {currentName}
-            </Typography>
-            <Typography variant="body2">
-              産地: {currentOrigin}
-            </Typography>
-            {currentSpecification && (
-              <Typography variant="body2">
-                規格: {currentSpecification}{currentSpecificationUnit && ` ${currentSpecificationUnit}`}
-              </Typography>
-            )}
-            {currentQuantityPerPackage && (
-              <Typography variant="body2">
-                入数: {currentQuantityPerPackage}{currentPackageUnit && ` ${currentPackageUnit}`}
-              </Typography>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)} color="inherit">
-            キャンセル
-          </Button>
-          <Button onClick={handleSaveProductToHistory} color="primary" variant="contained">
-            保存
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SaveProductDialog
+        open={saveDialogOpen}
+        product={{
+          categoryCode: currentCategoryCode,
+          name: currentName || '',
+          origin: currentOrigin || '',
+          specification: currentSpecification,
+          specificationUnit: currentSpecificationUnit,
+          quantityPerPackage: currentQuantityPerPackage,
+          packageUnit: currentPackageUnit,
+        }}
+        onClose={() => setSaveDialogOpen(false)}
+        onSave={handleSaveProductToHistory}
+        title="商品情報を保存"
+        description="現在入力中の商品情報を履歴として保存しますか？"
+      />
 
       {/* カテゴリー選択モーダル */}
       <CategorySelectModal
@@ -1215,215 +1141,36 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
       />
 
       {/* 帳合先選択ダイアログ */}
-      <Dialog open={supplierSelectOpen} onClose={() => setSupplierSelectOpen(false)}>
-        <DialogTitle>帳合先を選択</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2, fontSize: '0.85rem' }}>
-            この商品の帳合先を選択してください
-          </DialogContentText>
-          <Stack spacing={0.75}>
-            {(() => {
-              // suppliersがない場合はプリセット全体を使用
-              const availableSuppliers = suppliers && suppliers.length > 0
-                ? suppliers
-                : supplierPresets.map(p => p.supplier);
-              return availableSuppliers.map((supplier) => {
-                const supplierColor = getSupplierColorByName(supplier, supplierPresets);
-                const isSelected = currentSupplier === supplier;
-                return (
-                  <Box
-                    key={supplier}
-                    onClick={() => handleSelectSupplier(supplier)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 1.5,
-                      py: 1,
-                      borderRadius: 1.5,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      bgcolor: isSelected ? getSupplierColorWithOpacity(supplierColor, 0.15) : 'grey.50',
-                      border: '1px solid',
-                      borderColor: isSelected ? supplierColor : 'grey.200',
-                      '&:hover': {
-                        bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
-                        borderColor: supplierColor,
-                      },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        bgcolor: supplierColor,
-                      }}
-                    />
-                    <Typography
-                      sx={{
-                        fontSize: '0.9rem',
-                        fontWeight: isSelected ? 600 : 400,
-                        color: isSelected ? supplierColor : 'text.primary',
-                      }}
-                    >
-                      {supplier}
-                    </Typography>
-                  </Box>
-                );
-              });
-            })()}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSupplierSelectOpen(false)} color="inherit" size="small">
-            閉じる
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SupplierSelectDialog
+        open={supplierSelectOpen}
+        onClose={() => setSupplierSelectOpen(false)}
+        onSelect={handleSelectSupplier}
+        suppliers={
+          suppliers && suppliers.length > 0
+            ? suppliers
+            : supplierPresets.map((p) => p.supplier)
+        }
+        currentSupplier={currentSupplier}
+        supplierPresets={supplierPresets}
+      />
 
       {/* プリセット上書き確認ダイアログ */}
-      <Dialog
+      <PresetConfirmDialog
         open={presetConfirmDialog.open}
+        preset={presetConfirmDialog.preset}
         onClose={() => setPresetConfirmDialog({ open: false, preset: null })}
-      >
-        <DialogTitle>プリセットの読み込み</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            現在のカードにはすでに入力された値があります。どのように読み込みますか？
-          </DialogContentText>
-          {presetConfirmDialog.preset && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              {presetConfirmDialog.preset.categoryCode && (
-                <Typography variant="body2" color="text.secondary">
-                  カテゴリー: {getCategoryName(presetConfirmDialog.preset.categoryCode)}
-                </Typography>
-              )}
-              <Typography variant="body2" fontWeight="medium">
-                品名: {presetConfirmDialog.preset.name}
-              </Typography>
-              <Typography variant="body2">
-                産地: {presetConfirmDialog.preset.origin}
-              </Typography>
-              {presetConfirmDialog.preset.specification && (
-                <Typography variant="body2">
-                  規格: {presetConfirmDialog.preset.specification}
-                  {presetConfirmDialog.preset.specificationUnit && ` ${presetConfirmDialog.preset.specificationUnit}`}
-                </Typography>
-              )}
-              {presetConfirmDialog.preset.quantityPerPackage && (
-                <Typography variant="body2">
-                  入数: {presetConfirmDialog.preset.quantityPerPackage}
-                  {presetConfirmDialog.preset.packageUnit && ` ${presetConfirmDialog.preset.packageUnit}`}
-                </Typography>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ flexDirection: 'column', gap: 1, px: 3, pb: 2 }}>
-          <Button
-            onClick={handleOverwritePreset}
-            color="warning"
-            variant="contained"
-            fullWidth
-          >
-            現在のカードに上書き
-          </Button>
-          {onAddProductFromPreset && (
-            <Button
-              onClick={handleAddAsNewCard}
-              color="primary"
-              variant="contained"
-              fullWidth
-            >
-              新規カードとして追加
-            </Button>
-          )}
-          <Button
-            onClick={() => setPresetConfirmDialog({ open: false, preset: null })}
-            color="inherit"
-            fullWidth
-          >
-            キャンセル
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onOverwrite={handleOverwritePreset}
+        onAddNew={onAddProductFromPreset ? handleAddAsNewCard : undefined}
+      />
 
       {/* カード長押しメニュー */}
-      <Menu
+      <CardContextMenu
         anchorEl={cardMenuAnchor}
-        open={cardMenuOpen}
         onClose={handleCardMenuClose}
-        TransitionComponent={Grow}
-        anchorOrigin={{
-          vertical: 'center',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'center',
-          horizontal: 'center',
-        }}
-        PaperProps={{
-          elevation: 8,
-          sx: {
-            minWidth: 200,
-            borderRadius: 2,
-            overflow: 'visible',
-            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-            mt: 1.5,
-            '& .MuiMenuItem-root': {
-              borderRadius: 1,
-              mx: 1,
-              my: 0.5,
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateX(4px)',
-              },
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={handleCardMenuClear}
-          sx={{
-            color: 'warning.main',
-            '&:hover': {
-              bgcolor: 'warning.lighter',
-            },
-          }}
-        >
-          <ListItemIcon>
-            <ClearAll sx={{ color: 'warning.main' }} />
-          </ListItemIcon>
-          <ListItemText
-            primary="フィールドをクリア"
-            secondary="入力内容を消去"
-            primaryTypographyProps={{ fontWeight: 'medium' }}
-            secondaryTypographyProps={{ variant: 'caption' }}
-          />
-        </MenuItem>
-        {showRemove && (
-          <MenuItem
-            onClick={handleCardMenuDelete}
-            sx={{
-              color: 'error.main',
-              '&:hover': {
-                bgcolor: 'error.lighter',
-              },
-            }}
-          >
-            <ListItemIcon>
-              <DeleteOutline sx={{ color: 'error.main' }} />
-            </ListItemIcon>
-            <ListItemText
-              primary="商品を削除"
-              secondary="この商品カードを削除"
-              primaryTypographyProps={{ fontWeight: 'medium' }}
-              secondaryTypographyProps={{ variant: 'caption' }}
-            />
-          </MenuItem>
-        )}
-      </Menu>
+        onClear={handleClearProduct}
+        onDelete={onRemove}
+        canDelete={showRemove}
+      />
     </>
   );
 });
