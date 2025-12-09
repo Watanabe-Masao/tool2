@@ -13,15 +13,13 @@ import {
   Tab,
   Button,
   DialogActions,
-  Checkbox,
   DialogContentText,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Badge,
-  TextField,
 } from '@mui/material';
-import { Close, Inventory2, Delete, PushPin, PushPinOutlined, ExpandMore } from '@mui/icons-material';
+import { Close, Inventory2, PushPin, ExpandMore } from '@mui/icons-material';
 import { PresetItemSkeleton } from '@/components/common/ProductCardSkeleton';
 import {
   DndContext,
@@ -37,241 +35,18 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import type { ProductHistoryItem } from '@/hooks/useProductHistory';
 import { getCategoryName, MAIN_CATEGORIES } from '@/utils/categories';
 import { CategorySelectModal } from '@/components/modals/CategorySelectModal';
 import { useFirestoreService } from '@/context/ServiceContext';
-
-/**
- * ソート可能なプリセットアイテムのProps
- */
-interface SortablePresetItemProps {
-  preset: ProductHistoryItem;
-  onSelect: (preset: ProductHistoryItem) => void;
-  onSwipeStart: (e: React.TouchEvent | React.MouseEvent, presetId: string) => void;
-  onSwipeMove: (e: React.TouchEvent | React.MouseEvent) => void;
-  onSwipeEnd: (preset: ProductHistoryItem) => void;
-  swipeState: {
-    id: string | null;
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-    isSwiping: boolean;
-  };
-  multiSelect?: boolean;
-  isSelected?: boolean;
-  isDuplicate?: boolean;
-  quantity?: number;
-  onQuantityChange?: (presetId: string, quantity: number) => void;
-}
-
-/**
- * ソート可能なプリセットアイテムコンポーネント
- */
-const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
-  preset,
-  onSelect,
-  onSwipeStart,
-  onSwipeMove,
-  onSwipeEnd,
-  swipeState,
-  multiSelect = false,
-  isSelected = false,
-  isDuplicate = false,
-  quantity = 0,
-  onQuantityChange,
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: preset.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const isCurrentSwiping = swipeState.id === preset.id;
-  const deltaX = isCurrentSwiping ? swipeState.currentX - swipeState.startX : 0;
-  const showDeleteHint = deltaX < -25;
-  const showPinHint = deltaX > 25;
-
-  return (
-    <Box
-      ref={setNodeRef}
-      style={style}
-      sx={{
-        position: 'relative',
-        overflow: 'hidden',
-        bgcolor: showDeleteHint
-          ? 'error.light'
-          : showPinHint
-          ? 'primary.light'
-          : 'transparent',
-        transition: showDeleteHint || showPinHint ? 'none' : 'background-color 0.2s',
-        opacity: isDragging ? 0.5 : 1,
-        cursor: preset.pinned ? 'grab' : 'pointer',
-        '&:active': {
-          cursor: preset.pinned ? 'grabbing' : 'pointer',
-        },
-      }}
-    >
-      {/* 削除ヒント背景 */}
-      {showDeleteHint && (
-        <Box
-          sx={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: 80,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'error.contrastText',
-          }}
-        >
-          <Delete />
-        </Box>
-      )}
-
-      {/* ピン留めヒント背景 */}
-      {showPinHint && (
-        <Box
-          sx={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 80,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'primary.contrastText',
-          }}
-        >
-          {preset.pinned ? <PushPinOutlined /> : <PushPin />}
-        </Box>
-      )}
-
-      <ListItemButton
-        onClick={() => onSelect(preset)}
-        onTouchStart={(e) => onSwipeStart(e, preset.id)}
-        onTouchMove={onSwipeMove}
-        onTouchEnd={() => onSwipeEnd(preset)}
-        onMouseDown={(e) => onSwipeStart(e, preset.id)}
-        onMouseMove={onSwipeMove}
-        onMouseUp={() => onSwipeEnd(preset)}
-        onMouseLeave={() => onSwipeEnd(preset)}
-        {...(preset.pinned && !multiSelect ? listeners : {})}
-        {...(preset.pinned && !multiSelect ? attributes : {})}
-        sx={{
-          py: 1.5,
-          px: 2,
-          transform: isCurrentSwiping ? `translateX(${deltaX}px)` : 'translateX(0)',
-          transition: isCurrentSwiping ? 'none' : 'transform 0.2s',
-          bgcolor: isSelected ? 'primary.50' : 'background.paper',
-          cursor: isCurrentSwiping ? 'grabbing' : (preset.pinned && !multiSelect) ? 'grab' : 'pointer',
-          touchAction: multiSelect ? 'auto' : 'none',
-        }}
-      >
-        {/* 複数選択モードのチェックボックスと数量入力 */}
-        {multiSelect && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
-            <Checkbox
-              edge="start"
-              checked={isSelected}
-              tabIndex={-1}
-              disableRipple
-            />
-            {/* 選択時に数量入力欄を表示 */}
-            {isSelected && onQuantityChange && (
-              <TextField
-                type="number"
-                size="small"
-                value={quantity || ''}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  const val = parseInt(e.target.value) || 0;
-                  onQuantityChange(preset.id, val);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                placeholder="数量"
-                inputProps={{
-                  min: 0,
-                  style: { textAlign: 'center', width: '60px' }
-                }}
-                sx={{
-                  width: '80px',
-                  '& .MuiOutlinedInput-root': {
-                    height: '32px',
-                  },
-                }}
-              />
-            )}
-          </Box>
-        )}
-        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* ピン留めアイコン */}
-          {preset.pinned && !multiSelect && (
-            <PushPin sx={{ fontSize: '1rem', color: 'primary.main' }} />
-          )}
-          <Box sx={{ flex: 1 }}>
-            {/* 1行目: 品名 + カテゴリー */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="body2" fontWeight="medium">
-                {preset.name}
-              </Typography>
-              {preset.categoryCode && (
-                <Chip
-                  label={getCategoryName(preset.categoryCode)}
-                  size="small"
-                  color="primary"
-                  sx={{ fontSize: '0.65rem', height: 18 }}
-                />
-              )}
-              {isDuplicate && (
-                <Chip
-                  label="追加済み"
-                  size="small"
-                  color="warning"
-                  sx={{ fontSize: '0.65rem', height: 18 }}
-                />
-              )}
-            </Box>
-            {/* 2行目: 産地、規格、入り数を横並び */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Typography variant="caption" color="text.secondary">
-                産地: {preset.origin}
-              </Typography>
-              {preset.specification && (
-                <Typography variant="caption" color="text.secondary">
-                  規格: {preset.specification}{preset.specificationUnit && `${preset.specificationUnit}`}
-                </Typography>
-              )}
-              {preset.quantityPerPackage && (
-                <Typography variant="caption" color="text.secondary">
-                  入数: {preset.quantityPerPackage}
-                  {preset.packageUnit && `${preset.packageUnit}`}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        </Box>
-      </ListItemButton>
-    </Box>
-  );
-};
+import {
+  SortablePresetItem,
+  usePresetSwipe,
+  usePresetSelection,
+} from '@/features/preset-modal';
 
 /**
  * ProductPresetModalのProps
@@ -344,23 +119,35 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
-  // 複数選択モード用の選択状態
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 複数選択モード用の状態（usePresetSelectionフック）
+  const {
+    selectedIds,
+    quantities,
+    toggleSelect,
+    selectAll,
+    clearSelection,
+    setQuantity,
+    getSelectedWithQuantities,
+  } = usePresetSelection();
 
-  // 複数選択モード用の数量状態（Map<presetId, quantity>）
-  const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
+  // スワイプ処理（usePresetSwipeフック）
+  const {
+    swipeState,
+    handleSwipeStart,
+    handleSwipeMove,
+    handleSwipeEnd: processSwipeEnd,
+  } = usePresetSwipe();
 
   // モーダルが開いたときに初期帳合先を設定
   useEffect(() => {
     if (open) {
       setSelectedSupplier(supplier || suppliers?.[0] || '');
-      // モーダルを開いたときに選択状態と数量をクリア
+      // モーダルを開いたときに選択状態をクリア
       if (multiSelect) {
-        setSelectedIds(new Set());
-        setQuantities(new Map());
+        clearSelection();
       }
     }
-  }, [open, supplier, suppliers, multiSelect]);
+  }, [open, supplier, suppliers, multiSelect, clearSelection]);
 
   // 削除確認ダイアログの状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -405,23 +192,6 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  // スワイプ状態管理（左右のみのスワイプ用）
-  const [swipeState, setSwipeState] = useState<{
-    id: string | null;
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-    isSwiping: boolean;
-  }>({
-    id: null,
-    startX: 0,
-    startY: 0,
-    currentX: 0,
-    currentY: 0,
-    isSwiping: false,
-  });
 
   /**
    * タブ変更ハンドラー
@@ -567,7 +337,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
 
     if (multiSelect) {
       // 複数選択モード: チェックボックスをトグル
-      handleToggleSelect(preset.id);
+      toggleSelect(preset.id);
     } else {
       // 単一選択モード: 重複チェック
       if (isDuplicate(preset)) {
@@ -603,161 +373,41 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
   };
 
   /**
-   * チェックボックスのトグル（複数選択モード用）
+   * すべて選択/解除ハンドラー（複数選択モード用）
    */
-  const handleToggleSelect = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-      // 選択解除時に数量もクリア
-      const newQuantities = new Map(quantities);
-      newQuantities.delete(id);
-      setQuantities(newQuantities);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  /**
-   * 数量変更ハンドラー（複数選択モード用）
-   */
-  const handleQuantityChange = (presetId: string, quantity: number) => {
-    const newQuantities = new Map(quantities);
-    if (quantity > 0) {
-      newQuantities.set(presetId, quantity);
-    } else {
-      newQuantities.delete(presetId);
-    }
-    setQuantities(newQuantities);
-  };
-
-  /**
-   * すべて選択/解除（複数選択モード用）
-   */
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredPresets.length) {
-      setSelectedIds(new Set());
-      setQuantities(new Map());
-    } else {
-      setSelectedIds(new Set(filteredPresets.map((p) => p.id)));
-    }
-  };
-
-  /**
-   * 選択をクリア（複数選択モード用）
-   */
-  const handleClearSelection = () => {
-    setSelectedIds(new Set());
-    setQuantities(new Map());
-  };
+  const handleSelectAll = () => selectAll(filteredPresets);
 
   /**
    * 選択した商品を追加（複数選択モード用）
    */
   const handleAddSelected = () => {
     if (onSelectMultiple && selectedIds.size > 0) {
-      const selectedPresets = filteredPresets
-        .filter((p) => selectedIds.has(p.id))
-        .map((preset) => ({
-          ...preset,
-          totalDelivery: quantities.get(preset.id) || 0,
-        }));
+      const selectedPresets = getSelectedWithQuantities(filteredPresets);
       onSelectMultiple(selectedPresets);
-      setSelectedIds(new Set());
-      setQuantities(new Map());
+      clearSelection();
       onClose();
     }
   };
 
   /**
-   * スワイプ開始
-   */
-  const handleSwipeStart = (e: React.TouchEvent | React.MouseEvent, presetId: string) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    setSwipeState({
-      id: presetId,
-      startX: clientX,
-      startY: clientY,
-      currentX: clientX,
-      currentY: clientY,
-      isSwiping: false,
-    });
-  };
-
-  /**
-   * スワイプ中（左右のみ、上下は固定）
-   */
-  const handleSwipeMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!swipeState.id) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const deltaX = clientX - swipeState.startX;
-    const deltaY = clientY - swipeState.startY;
-
-    // 上下の動きが大きい場合（20px以上）はスワイプをキャンセル
-    // 許容範囲を広げて斜めスワイプにも対応
-    if (Math.abs(deltaY) > 20) {
-      setSwipeState({
-        id: null,
-        startX: 0,
-        startY: 0,
-        currentX: 0,
-        currentY: 0,
-        isSwiping: false,
-      });
-      return;
-    }
-
-    // 左右に5px以上動いたらスワイプとみなす
-    if (Math.abs(deltaX) > 5) {
-      setSwipeState((prev) => ({
-        ...prev,
-        currentX: clientX,
-        currentY: clientY,
-        isSwiping: true,
-      }));
-    }
-  };
-
-  /**
-   * スワイプ終了
+   * スワイプ終了（フックから返されたアクションを処理）
    */
   const handleSwipeEnd = async (preset: ProductHistoryItem) => {
-    if (!swipeState.id || swipeState.id !== preset.id) return;
+    const action = processSwipeEnd(preset);
 
-    const deltaX = swipeState.currentX - swipeState.startX;
-    const threshold = 60; // スワイプ判定の閾値を60pxに短縮（より反応しやすく）
-
-    // 左スワイプ（削除）
-    if (deltaX < -threshold) {
-      setPresetToDelete(preset);
-      setDeleteDialogOpen(true);
-    }
-
-    // 右スワイプ（ピン留め/ピン留め解除）
-    if (deltaX > threshold) {
-      if (preset.pinned) {
-        // ピン留め済みの場合は解除確認ダイアログを表示
+    switch (action.type) {
+      case 'delete':
+        setPresetToDelete(preset);
+        setDeleteDialogOpen(true);
+        break;
+      case 'pin':
+        await handleTogglePin(preset, true);
+        break;
+      case 'unpin':
         setPresetToUnpin(preset);
         setUnpinDialogOpen(true);
-      } else {
-        // ピン留めしていない場合は直接ピン留め
-        await handleTogglePin(preset, true);
-      }
+        break;
     }
-
-    // スワイプ状態をリセット
-    setSwipeState({
-      id: null,
-      startX: 0,
-      startY: 0,
-      currentX: 0,
-      currentY: 0,
-      isSwiping: false,
-    });
   };
 
   /**
@@ -990,7 +640,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                           isSelected={selectedIds.has(preset.id)}
                           isDuplicate={isDuplicate(preset)}
                           quantity={quantities.get(preset.id) || 0}
-                          onQuantityChange={handleQuantityChange}
+                          onQuantityChange={setQuantity}
                         />
                       </SortableContext>
                     </DndContext>
@@ -1090,7 +740,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                   isSelected={selectedIds.has(preset.id)}
                                   isDuplicate={isDuplicate(preset)}
                                   quantity={quantities.get(preset.id) || 0}
-                                  onQuantityChange={handleQuantityChange}
+                                  onQuantityChange={setQuantity}
                                 />
                               ))}
                           </SortableContext>
@@ -1111,7 +761,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                                 isSelected={selectedIds.has(preset.id)}
                                 isDuplicate={isDuplicate(preset)}
                                 quantity={quantities.get(preset.id) || 0}
-                                onQuantityChange={handleQuantityChange}
+                                onQuantityChange={setQuantity}
                               />
                             ))}
                         </List>
@@ -1193,7 +843,7 @@ export const ProductPresetModal: React.FC<ProductPresetModalProps> = ({
                 {selectedIds.size === filteredPresets.length ? 'すべて解除' : 'すべて選択'}
               </Button>
               {selectedIds.size > 0 && (
-                <Button size="small" onClick={handleClearSelection}>
+                <Button size="small" onClick={clearSelection}>
                   選択をクリア
                 </Button>
               )}
