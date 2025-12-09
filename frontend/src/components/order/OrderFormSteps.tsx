@@ -8,7 +8,7 @@ import type {
   UseFieldArrayRemove,
   UseFieldArrayMove,
 } from 'react-hook-form';
-import type { OrderFormData } from '@/schemas/orderSchema';
+import type { OrderFormData, ProductFormData } from '@/schemas/orderSchema';
 import { DeliveryDateForm } from '@/components/forms/DeliveryDateForm';
 import { ProductBasicInfoForm } from '@/components/forms/ProductBasicInfoForm';
 import { ProductPricingForm } from '@/components/forms/ProductPricingForm';
@@ -65,7 +65,7 @@ interface OrderFormStepsProps {
 
   // Step 4: プレビュー
   deliveryDate: Date | null;
-  products: any[];
+  products: ProductFormData[];
   generatedFiles: GeneratedFiles | null;
   onSubmit: () => void;
   onAllocationChange: (productIndex: number, storeIndex: number, newValue: number) => void;

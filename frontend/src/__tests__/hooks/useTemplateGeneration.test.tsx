@@ -9,6 +9,27 @@ import type { OrderFormData } from '@/schemas/orderSchema';
 
 describe('useTemplateGeneration', () => {
   // Mock services for ServiceProvider
+  const mockFirestoreService = {
+    saveProductHistory: vi.fn(),
+    getProductHistories: vi.fn(),
+    updateProductHistoryPinned: vi.fn(),
+    deleteProductHistory: vi.fn(),
+    saveAllocationBatch: vi.fn(),
+    getAllocationBatches: vi.fn(),
+    getAllocationBatchesByDateRange: vi.fn(),
+    getAllocationDetails: vi.fn(),
+    deleteAllocationBatch: vi.fn(),
+    saveOrder: vi.fn(),
+    findOrdersByUserId: vi.fn(),
+    findOrdersByUserIdPaginated: vi.fn(),
+    findOrdersByDate: vi.fn(),
+    findOrdersByDateRange: vi.fn(),
+    getOrderById: vi.fn(),
+    updateOrder: vi.fn(),
+    deleteOrder: vi.fn(),
+    updateOrderPinned: vi.fn(),
+  };
+
   const mockTemplateService = {
     generateTemplate: vi.fn(),
   };
@@ -34,7 +55,19 @@ describe('useTemplateGeneration', () => {
   const mockFormData: OrderFormData = {
     deliveryDate: new Date('2024-01-15'),
     suppliers: ['supplier1'],
-    products: [{ name: 'Product A' }] as any,
+    products: [{
+      name: 'Product A',
+      origin: '産地A',
+      specification: '規格A',
+      specificationUnit: 'kg',
+      quantityPerPackage: 10,
+      packageUnit: '個',
+      storeCost: 100,
+      priceExcludingTax: 150,
+      totalDelivery: 360,
+      supplier: 'supplier1',
+      storeAllocations: new Array(36).fill(10),
+    }] as any,
   };
 
   const mockTemplateResponse = {
@@ -56,6 +89,7 @@ describe('useTemplateGeneration', () => {
   // Wrapper with ServiceProvider
   const wrapper = ({ children }: { children: React.ReactNode }) => {
     const services = {
+      firestoreService: mockFirestoreService,
       templateService: mockTemplateService,
       sessionStorageService: mockSessionStorageService,
     };

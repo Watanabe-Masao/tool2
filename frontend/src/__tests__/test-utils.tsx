@@ -62,6 +62,26 @@ export function renderWithProviders(
 ): RenderResult {
   // デフォルトのサービスモック
   const defaultServices = {
+    firestoreService: services.firestoreService || {
+      saveProductHistory: vi.fn(),
+      getProductHistories: vi.fn(),
+      updateProductHistoryPinned: vi.fn(),
+      deleteProductHistory: vi.fn(),
+      saveAllocationBatch: vi.fn(),
+      getAllocationBatches: vi.fn(),
+      getAllocationBatchesByDateRange: vi.fn(),
+      getAllocationDetails: vi.fn(),
+      deleteAllocationBatch: vi.fn(),
+      saveOrder: vi.fn(),
+      findOrdersByUserId: vi.fn(),
+      findOrdersByUserIdPaginated: vi.fn(),
+      findOrdersByDate: vi.fn(),
+      findOrdersByDateRange: vi.fn(),
+      getOrderById: vi.fn(),
+      updateOrder: vi.fn(),
+      deleteOrder: vi.fn(),
+      updateOrderPinned: vi.fn(),
+    },
     templateService: services.templateService || {
       generateTemplate: vi.fn(),
     },

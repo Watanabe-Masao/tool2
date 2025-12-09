@@ -3,6 +3,7 @@ import { PDFPreviewModal } from '@/components/modals/PDFPreviewModal';
 import { DownloadModal } from '@/components/modals/DownloadModal';
 import { AllocationPreviewModal } from '@/components/AllocationPreviewModal';
 import { EmailSendModal } from '@/components/modals/EmailSendModal';
+import type { ProductFormData } from '@/schemas/orderSchema';
 
 /**
  * OrderModals
@@ -65,7 +66,7 @@ interface OrderModalsProps {
   // Form data
   deliveryDate: Date | null;
   suppliers: string[];
-  products: any[];
+  products: ProductFormData[];
 
   // PDFPreviewModal
   showPDFPreview: boolean;

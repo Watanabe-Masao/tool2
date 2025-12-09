@@ -9,7 +9,7 @@ import type {
   UseFieldArrayMove,
   UseFormHandleSubmit,
 } from 'react-hook-form';
-import type { OrderFormData } from '@/schemas/orderSchema';
+import type { OrderFormData, ProductFormData } from '@/schemas/orderSchema';
 import { OrderFormSteps } from '@/components/order/OrderFormSteps';
 import { useOrderFormStore } from '@/stores/orderFormStore';
 
@@ -45,7 +45,7 @@ interface OrderFormWithTabsProps {
 
   // Form data
   suppliers: string[];
-  products: any[];
+  products: ProductFormData[];
   deliveryDate: Date | null;
   generatedFiles: GeneratedFiles | null;
 
