@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -75,8 +75,10 @@ interface ProductFormCardBasicProps {
  *
  * 1つの商品の基本情報を入力するフォームです。
  * 品名、産地、規格、入数を入力します。
+ *
+ * NOTE: React.memoでラップして兄弟要素変更時の不要な再レンダリングを防止
  */
-export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
+export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
   index,
   control,
   errors,
@@ -96,16 +98,22 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
   const firestoreService = useFirestoreService();
   const { presets: supplierPresets } = useSupplierPresets();
 
-  // 現在の値を監視
-  const currentCategoryCode = useWatch({ control, name: `products.${index}.categoryCode` });
-  const currentSupplier = useWatch({ control, name: `products.${index}.supplier` });
-  const currentName = useWatch({ control, name: `products.${index}.name` });
-  const currentOrigin = useWatch({ control, name: `products.${index}.origin` });
-  const currentSpecification = useWatch({ control, name: `products.${index}.specification` });
+  // 現在の値を監視 (統合されたuseWatch - 再レンダリング最適化)
+  // NOTE: 9個の個別useWatchを2個に統合してパフォーマンス向上
+  const currentProduct = useWatch({ control, name: `products.${index}` });
   const allProducts = useWatch({ control, name: 'products' }) || [];
-  const currentQuantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const currentSpecificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
-  const currentPackageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
+
+  // 分割代入で個別のフィールドを取得
+  const {
+    categoryCode: currentCategoryCode,
+    supplier: currentSupplier,
+    name: currentName,
+    origin: currentOrigin,
+    specification: currentSpecification,
+    quantityPerPackage: currentQuantityPerPackage,
+    specificationUnit: currentSpecificationUnit,
+    packageUnit: currentPackageUnit,
+  } = currentProduct || {};
 
   // カテゴリー選択モーダルの状態
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -1418,4 +1426,7 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = ({
       </Menu>
     </>
   );
-};
+});
+
+// displayNameを設定（React DevToolsでの表示用）
+ProductFormCardBasic.displayName = 'ProductFormCardBasic';

@@ -3,6 +3,8 @@
  *
  * @description
  * 商品データ、商品フォーム、商品履歴など、商品ドメインに関連する全ての型を定義
+ *
+ * NOTE: フォーム用の型 (ProductFormData) は @/schemas/orderSchema からインポートしてください
  */
 
 /**
@@ -36,34 +38,10 @@ export interface ProductData {
 }
 
 /**
- * React Hook Form用の商品フォームデータ
+ * ProductFormData型のre-export
  *
- * @deprecated この型は orderSchema.ts から自動生成される型と重複しています
- * 将来的には Zod schema から生成される型を使用してください
+ * @description
+ * 後方互換性のため、ProductFormDataを@/schemas/orderSchemaから再エクスポート
+ * 新規コードでは直接 @/schemas/orderSchema からインポートしてください
  */
-export interface ProductFormData {
-  /** カテゴリーコード */
-  categoryCode?: string;
-  /** 帳合先 */
-  supplier: string;
-  /** 品名 */
-  name: string;
-  /** 産地 */
-  origin: string;
-  /** 規格 */
-  specification: string;
-  /** 1パックの数量 */
-  quantityPerPackage: number | null;
-  /** 入数の単位 (kg, g, 個など) */
-  packageUnit?: string;
-  /** 単位 */
-  specificationUnit: string;
-  /** 店原 - 未入力時null、0円の場合0として区別 */
-  storeCost: number | null;
-  /** 本体価格（税抜） - 未入力時null、0円の場合0として区別 */
-  priceExcludingTax: number | null;
-  /** 総納品数 - 未入力時null、0の場合0として区別 */
-  totalDelivery: number | null;
-  /** 36店舗への配分数 */
-  storeAllocations: number[];
-}
+export type { ProductFormData } from '@/schemas/orderSchema';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import type { Control, FieldErrors } from 'react-hook-form';
 import {
@@ -44,8 +44,10 @@ interface ProductFormCardPricingProps {
  *
  * 1つの商品の価格情報を入力するフォームです。
  * 原価（店原）と売価（本体価格）を入力します。
+ *
+ * NOTE: React.memoでラップして兄弟要素変更時の不要な再レンダリングを防止
  */
-export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
+export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = memo(({
   index,
   control,
   errors,
@@ -74,19 +76,25 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
   const [boxPrice, setBoxPrice] = useState<string>('');
   const isCalcOpen = Boolean(calcAnchorEl);
 
-  // 各フィールドを監視
-  const supplier = useWatch({ control, name: `products.${index}.supplier` });
-  const productName = useWatch({ control, name: `products.${index}.name` });
-  const origin = useWatch({ control, name: `products.${index}.origin` });
-  const specification = useWatch({ control, name: `products.${index}.specification` });
-  const quantityPerPackage = useWatch({ control, name: `products.${index}.quantityPerPackage` });
-  const specificationUnit = useWatch({ control, name: `products.${index}.specificationUnit` });
-  const packageUnit = useWatch({ control, name: `products.${index}.packageUnit` });
-  const centerCost = useWatch({ control, name: `products.${index}.centerCost` });
-  const storeCost = useWatch({ control, name: `products.${index}.storeCost` });
-  const priceExcludingTax = useWatch({ control, name: `products.${index}.priceExcludingTax` });
-  const totalDelivery = useWatch({ control, name: `products.${index}.totalDelivery` });
-  const centerFeeRate = useWatch({ control, name: `products.${index}.centerFeeRate` });
+  // 各フィールドを監視 (統合されたuseWatch - 再レンダリング最適化)
+  // NOTE: 12個の個別useWatchを1個に統合してパフォーマンス向上
+  const currentProduct = useWatch({ control, name: `products.${index}` });
+
+  // 分割代入で個別のフィールドを取得
+  const {
+    supplier,
+    name: productName,
+    origin,
+    specification,
+    quantityPerPackage,
+    specificationUnit,
+    packageUnit,
+    centerCost,
+    storeCost,
+    priceExcludingTax,
+    totalDelivery,
+    centerFeeRate,
+  } = currentProduct || {};
 
   // 最後に自動読み込みした商品の組み合わせを記録（無限ループ防止）
   const lastAutoLoadedKey = useRef<string | null>(null);
@@ -868,4 +876,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = ({
       </Popover>
     </Card>
   );
-};
+});
+
+// displayNameを設定（React DevToolsでの表示用）
+ProductFormCardPricing.displayName = 'ProductFormCardPricing';

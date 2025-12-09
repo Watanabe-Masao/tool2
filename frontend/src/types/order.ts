@@ -3,9 +3,11 @@
  *
  * @description
  * 注文データ、注文フォーム、注文履歴など、注文ドメインに関連する全ての型を定義
+ *
+ * NOTE: フォーム用の型 (OrderFormData) は @/schemas/orderSchema からインポートしてください
  */
 
-import type { ProductData, ProductFormData } from './product';
+import type { ProductData } from './product';
 
 /**
  * 注文データ
@@ -28,19 +30,13 @@ export interface OrderData {
 }
 
 /**
- * React Hook Form用のフォームデータ
+ * OrderFormData型のre-export
  *
- * @deprecated この型は orderSchema.ts から自動生成される型と重複しています
- * 将来的には Zod schema から生成される型を使用してください
+ * @description
+ * 後方互換性のため、OrderFormDataを@/schemas/orderSchemaから再エクスポート
+ * 新規コードでは直接 @/schemas/orderSchema からインポートしてください
  */
-export interface OrderFormData {
-  /** 店着日 */
-  deliveryDate: Date;
-  /** 帳合先リスト */
-  suppliers: string[];
-  /** 商品リスト */
-  products: ProductFormData[];
-}
+export type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
  * カレンダーイベント
