@@ -105,7 +105,7 @@ describe('OrderRepository', () => {
             specification: '規格A',
             quantity_per_package: 10,
             package_unit: '',
-            specificationUnit: '個',
+            specification_unit: '個',
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
@@ -162,7 +162,7 @@ describe('OrderRepository', () => {
             specification: '規格A',
             quantity_per_package: 10,
             package_unit: '',
-            specificationUnit: '個',
+            specification_unit: '個',
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
@@ -214,7 +214,7 @@ describe('OrderRepository', () => {
             origin: '産地A',
             specification: undefined, // missing
             quantity_per_package: 10,
-            specificationUnit: undefined, // missing
+            specification_unit: undefined, // missing
             store_cost: 100,
             price_excluding_tax: 150,
             total_delivery: 360,
