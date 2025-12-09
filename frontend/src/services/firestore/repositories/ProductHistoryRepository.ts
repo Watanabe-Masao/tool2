@@ -272,7 +272,11 @@ export class ProductHistoryRepository extends FirestoreBaseService<
   ): Promise<void> {
     const docRef = this.getDocRef(historyId);
 
-    const updateData: any = {
+    const updateData: {
+      pinned: boolean;
+      updatedAt: Timestamp;
+      pinOrder?: number;
+    } = {
       pinned,
       updatedAt: Timestamp.now(),
     };

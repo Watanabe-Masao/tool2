@@ -29,10 +29,10 @@ export interface UseAllocationTableDataParams {
 /**
  * 型ガード: AllocationDetailWithDate かどうかを判定
  */
-const isAllocationDetailWithDate = (
+export const isAllocationDetailWithDate = (
   detail: AllocationDetail | AllocationDetailWithDate
 ): detail is AllocationDetailWithDate => {
-  return 'deliveryDate' in detail && typeof (detail as any).deliveryDate === 'string';
+  return 'deliveryDate' in detail && typeof (detail as AllocationDetailWithDate).deliveryDate === 'string';
 };
 
 /**

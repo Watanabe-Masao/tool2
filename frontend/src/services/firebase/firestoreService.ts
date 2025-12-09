@@ -89,14 +89,14 @@ export class FirestoreService {
    * Firestore形式から注文データに変換
    */
   private static convertFromFirestoreFormat(
-    firestoreData: any,
+    firestoreData: FirestoreOrderData,
     id: string
   ): OrderData {
     return {
       id,
       deliveryDate: new Date(firestoreData.delivery_date),
       suppliers: firestoreData.suppliers || [],
-      products: firestoreData.products.map((product: any) => ({
+      products: firestoreData.products.map((product) => ({
         supplier: product.supplier || '',
         name: product.name,
         origin: product.origin,
@@ -109,8 +109,10 @@ export class FirestoreService {
         storeAllocations: product.store_allocations,
       })),
       buyerName: firestoreData.buyer_name,
-      timestamp: firestoreData.timestamp?.toDate() || new Date(),
-      userId: firestoreData.userId, // user_id → userId に変更
+      timestamp: firestoreData.timestamp instanceof Date
+        ? firestoreData.timestamp
+        : new Date(),
+      userId: firestoreData.userId,
     };
   }
 
@@ -157,7 +159,7 @@ export class FirestoreService {
 
     snapshot.forEach((doc) => {
       try {
-        const orderData = this.convertFromFirestoreFormat(doc.data(), doc.id);
+        const orderData = this.convertFromFirestoreFormat(doc.data() as FirestoreOrderData, doc.id);
         orders.push(orderData);
       } catch (error) {
         console.error('[Firestore] Error converting document:', doc.id, error);
@@ -194,7 +196,7 @@ export class FirestoreService {
 
     snapshot.forEach((doc) => {
       try {
-        const orderData = this.convertFromFirestoreFormat(doc.data(), doc.id);
+        const orderData = this.convertFromFirestoreFormat(doc.data() as FirestoreOrderData, doc.id);
         orders.push(orderData);
       } catch (error) {
         console.error('[Firestore] Error converting document:', doc.id, error);
@@ -738,7 +740,11 @@ export class FirestoreService {
     const db = getFirebaseFirestore();
     const historyRef = doc(db, 'product_history', historyId);
 
-    const updateData: any = {
+    const updateData: {
+      pinned: boolean;
+      updatedAt: Timestamp;
+      pinOrder?: number | null;
+    } = {
       pinned,
       updatedAt: Timestamp.now(),
     };
@@ -753,8 +759,8 @@ export class FirestoreService {
       );
       const snapshot = await getDocs(q);
       const maxPinOrder =
-        snapshot.docs.reduce((max, doc) => {
-          const order = doc.data().pinOrder ?? 0;
+        snapshot.docs.reduce((max, docSnapshot) => {
+          const order = docSnapshot.data().pinOrder ?? 0;
           return Math.max(max, order);
         }, 0) || 0;
 

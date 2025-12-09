@@ -28,9 +28,10 @@ const createApiClient = (): AxiosInstance => {
       // エラーメッセージの標準化
       if (error.response) {
         // サーバーからのエラーレスポンス
+        const data = error.response.data as { detail?: string; message?: string } | undefined;
         const errorMessage =
-          (error.response.data as any)?.detail ||
-          (error.response.data as any)?.message ||
+          data?.detail ||
+          data?.message ||
           'サーバーエラーが発生しました';
         return Promise.reject(new Error(errorMessage));
       } else if (error.request) {

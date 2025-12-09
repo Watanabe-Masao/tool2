@@ -65,6 +65,8 @@ import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFac
 import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
 import { STORE_DATA } from '@/utils/constants';
 import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
+import type { AllocationDetailWithDate } from '@/features/allocation-history/types';
+import { isAllocationDetailWithDate } from '@/features/allocation-history/hooks/useAllocationTableData';
 import type { StoreCategory } from '@/types/storeCategory';
 import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
 import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
@@ -110,7 +112,7 @@ export const AllocationHistoryPage: React.FC = () => {
   // 詳細モーダル
   const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null);
-  const [details, setDetails] = useState<AllocationDetail[]>([]);
+  const [details, setDetails] = useState<(AllocationDetail | AllocationDetailWithDate)[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   // グループ化モード
@@ -162,9 +164,8 @@ export const AllocationHistoryPage: React.FC = () => {
    */
   const calendarEvents: CalendarEvent[] = useMemo(() => {
     return batches.map((batch) => {
-      // ファイル名がある場合はそれを使用、なければ帳合先名を使用
-      const fileName = (batch as any).fileName;
-      const displayTitle = fileName || batch.suppliers.join(', ');
+      // ブック名がある場合はそれを使用、なければ帳合先名を使用
+      const displayTitle = batch.bookName || batch.suppliers.join(', ');
       const productCount = batch.productCount || 0;
 
       return {
@@ -358,15 +359,16 @@ export const AllocationHistoryPage: React.FC = () => {
       );
 
       // 各バッチの詳細を取得
-      const allDetails: AllocationDetail[] = [];
+      const allDetails: AllocationDetailWithDate[] = [];
       for (const batch of rangeBatches) {
         if (batch.id) {
           const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
           // 各詳細に日付情報を追加
-          batchDetails.forEach(detail => {
-            (detail as any).deliveryDate = batch.deliveryDate;
-          });
-          allDetails.push(...batchDetails);
+          const detailsWithDate = batchDetails.map(detail => ({
+            ...detail,
+            deliveryDate: batch.deliveryDate,
+          }));
+          allDetails.push(...detailsWithDate);
         }
       }
 
@@ -737,9 +739,9 @@ export const AllocationHistoryPage: React.FC = () => {
       // ========================================
       // 日付ごとにグループ化
       // ========================================
-      const dateGroups = new Map<string, AllocationDetail[]>();
+      const dateGroups = new Map<string, (AllocationDetail | AllocationDetailWithDate)[]>();
       details.forEach(detail => {
-        const dateKey = (detail as any).deliveryDate || '';
+        const dateKey = isAllocationDetailWithDate(detail) ? detail.deliveryDate : '';
         if (!dateGroups.has(dateKey)) {
           dateGroups.set(dateKey, []);
         }
@@ -838,7 +840,7 @@ export const AllocationHistoryPage: React.FC = () => {
 
         // 各日付の行を追加
         allDates.forEach(dateStr => {
-          const detailForDate = groupDetails.find(d => (d as any).deliveryDate === dateStr);
+          const detailForDate = groupDetails.find(d => isAllocationDetailWithDate(d) && d.deliveryDate === dateStr);
           if (detailForDate) {
             const row: DetailGridRow = {
               id: `${key}-${dateStr}`,
@@ -896,7 +898,7 @@ export const AllocationHistoryPage: React.FC = () => {
       // 複合グループ化（動的フィールド対応）
       // ========================================
       // 複合キーの値を取得するヘルパー関数
-      const getFieldValue = (detail: AllocationDetail, field: CompositeKeyField): string => {
+      const getFieldValue = (detail: AllocationDetail | AllocationDetailWithDate, field: CompositeKeyField): string => {
         switch (field) {
           case 'productName':
             return detail.productName;
@@ -905,12 +907,12 @@ export const AllocationHistoryPage: React.FC = () => {
           case 'specification':
             return detail.specification;
           case 'deliveryDate':
-            return (detail as any).deliveryDate || '';
+            return isAllocationDetailWithDate(detail) ? detail.deliveryDate : '';
         }
       };
 
       // 第1階層のグループキーを生成
-      const primaryGroups = new Map<string, AllocationDetail[]>();
+      const primaryGroups = new Map<string, (AllocationDetail | AllocationDetailWithDate)[]>();
       details.forEach(detail => {
         const keyParts = compositeKeyFields.map(field => getFieldValue(detail, field));
         const key = keyParts.join('|');
@@ -946,7 +948,7 @@ export const AllocationHistoryPage: React.FC = () => {
             quantityPerPackage: detail.quantityPerPackage,
             packageUnit: detail.packageUnit,
             totalDelivery: detail.totalDelivery,
-            deliveryDate: (detail as any).deliveryDate,
+            deliveryDate: isAllocationDetailWithDate(detail) ? detail.deliveryDate : undefined,
             rowType: 'data',
           };
 
