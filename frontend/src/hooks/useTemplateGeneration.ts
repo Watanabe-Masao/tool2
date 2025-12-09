@@ -6,6 +6,15 @@ import { useTemplateService, useSessionStorageService } from '@/context/ServiceC
 import type { GeneratedFiles } from '@/types/hooks';
 
 /**
+ * FastAPI Pydanticバリデーションエラーの詳細
+ */
+interface PydanticValidationDetail {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
+/**
  * useTemplateGenerationのパラメータ
  */
 interface UseTemplateGenerationParams {
@@ -222,8 +231,8 @@ export const useTemplateGeneration = ({
 
             // FastAPI Pydanticバリデーションエラー
             if (responseData.detail && Array.isArray(responseData.detail)) {
-              const missingFields = responseData.detail
-                .map((detail: any) => {
+              const missingFields = (responseData.detail as PydanticValidationDetail[])
+                .map((detail) => {
                   const fieldName = detail.loc?.slice(-1)[0] || 'unknown';
                   const message = detail.msg || '';
                   return `${fieldName}: ${message}`;
