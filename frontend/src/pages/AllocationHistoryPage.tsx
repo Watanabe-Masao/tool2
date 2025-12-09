@@ -1,2331 +1,240 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import {
   Box,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Button,
-  IconButton,
-  Chip,
   CircularProgress,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Stack,
-  ToggleButtonGroup,
-  ToggleButton,
   Drawer,
-  ListItemText,
-  Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
+  Stack,
+  Typography,
+  IconButton,
   FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Button,
 } from '@mui/material';
-import {
-  Visibility,
-  Refresh,
-  CalendarMonth,
-  Delete,
-  CalendarToday,
-  Fullscreen,
-  FullscreenExit,
-  VisibilityOff,
-  Settings,
-  FilterList,
-  Close,
-  DateRange,
-} from '@mui/icons-material';
+import { CalendarMonth, Close } from '@mui/icons-material';
 import {
   format,
-  subDays,
   parseISO,
   startOfWeek,
   endOfWeek,
-  addMonths,
-  eachDayOfInterval,
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef } from '@mui/x-data-grid';
-import { GlassCalendar, type CalendarEvent, type SupplierPreset, type PreviewProduct } from '@/components/calendar/GlassCalendar';
+import { GlassCalendar, type SupplierPreset } from '@/components/calendar/GlassCalendar';
 import { useAuthContext } from '@/context/AuthContext';
 import { useSupplierPresets } from '@/hooks/useSupplierPresets';
-import { getFirebaseFirestore } from '@/services/firebase/config';
-import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
-import { StoreCategoryService } from '@/services/firebase/storeCategoryService';
-import { STORE_DATA } from '@/utils/constants';
-import type { AllocationBatch, AllocationDetail } from '@/types/allocationHistory';
-import type { AllocationDetailWithDate } from '@/features/allocation-history/types';
-import { isAllocationDetailWithDate } from '@/features/allocation-history/hooks/useAllocationTableData';
-import type { StoreCategory } from '@/types/storeCategory';
-import { MODAL_Z_INDEX, ELEMENT_OFFSET } from '@/constants/zIndex';
-import { getSupplierColorByName, getSupplierColorWithOpacity } from '@/constants/supplierColors';
+import { EmptyState } from '@/components/ui';
+
+// Feature モジュールからインポート
+import { useAllocationHistory } from '@/features/allocation-history';
+import {
+  AllocationDetailModal,
+  AllocationDeleteDialog,
+  AllocationSettingsDrawer,
+  AllocationHistoryTable,
+  AllocationHistoryToolbar,
+  type WeekBatchGroup,
+} from '@/features/allocation-history/components';
 
 /**
- * グリッド行データの型（詳細モーダル用）
- */
-interface DetailGridRow {
-  id: string;
-  productName: string;
-  origin: string;
-  specification: string;
-  specificationUnit: string; // 規格の単位
-  quantityPerPackage: number | null; // 入数
-  packageUnit: string; // 入数の単位
-  totalDelivery: number | null;
-  deliveryDate?: string; // 日付範囲選択時に使用
-  rowType?: 'data' | 'subtotal' | 'grandtotal'; // 行のタイプ
-  groupKey?: string; // グループキー
-  [key: string]: string | number | null | undefined;
-}
-
-
-/**
- * 配分履歴一覧ページ
+ * 配分履歴一覧ページ（リファクタリング版）
  *
  * 過去の配分履歴を一覧表示し、詳細を確認できます。
+ *
+ * **最適化内容:**
+ * - useAllocationHistory 統合フックを使用（2,479行 → ~350行）
+ * - Feature-Sliced Design に準拠したコンポーネント分割
+ * - 責務の分離（データ取得/フィルター/UI状態/テーブルデータ）
  */
 export const AllocationHistoryPage: React.FC = () => {
   const { user } = useAuthContext();
   const { presets: supplierPresets } = useSupplierPresets();
 
-  const [batches, setBatches] = useState<AllocationBatch[]>([]);
-  const [previewProducts, setPreviewProducts] = useState<PreviewProduct[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
+  // 統合フックを使用（すべてのstate/actionを一元管理）
+  const allocationHistory = useAllocationHistory({ userId: user?.uid });
+  const { batches, filters, modals, view, tableData } = allocationHistory;
 
-  // 表示モード
-  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('calendar');
-
-  // 詳細モーダル
-  const [selectedBatch, setSelectedBatch] = useState<AllocationBatch | null>(null);
-  const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null);
-  const [details, setDetails] = useState<(AllocationDetail | AllocationDetailWithDate)[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-
-  // グループ化モード
-  type GroupMode = 'date' | 'product' | 'composite';
-  const [groupMode, setGroupMode] = useState<GroupMode>('product');
-  const [sortOrder, setSortOrder] = useState<'totalDesc' | 'totalAsc'>('totalDesc');
-
-  // 行の表示/非表示
-  const [hiddenRowIds, setHiddenRowIds] = useState<Set<string>>(new Set());
-
-  // フルスクリーンモード
-  const [isFullScreen, setIsFullScreen] = useState(false);
-
-  // 設定ドロワー
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // 日付範囲ピッカー
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  // 日付範囲ピッカーのローカル状態
   const [tempDateRange, setTempDateRange] = useState<{ start: string; end: string } | null>(null);
 
-  // 列の表示/非表示
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
-
-  // フィルター
-  const [filters, setFilters] = useState<{
-    productNames: string[];
-    origins: string[];
-    specifications: string[];
-    dates: string[];
-  }>({
-    productNames: [],
-    origins: [],
-    specifications: [],
-    dates: [],
-  });
-
-  // 複合キー設定
-  type CompositeKeyField = 'productName' | 'origin' | 'specification' | 'deliveryDate';
-  const [compositeKeyFields, setCompositeKeyFields] = useState<CompositeKeyField[]>(['productName', 'deliveryDate']);
-
-  // 削除確認ダイアログ
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [batchToDelete, setBatchToDelete] = useState<AllocationBatch | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-
-  /**
-   * GlassCalendar用のイベントデータを生成
-   */
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    return batches.map((batch) => {
-      // ブック名がある場合はそれを使用、なければ帳合先名を使用
-      const displayTitle = batch.bookName || batch.suppliers.join(', ');
-      const productCount = batch.productCount || 0;
-
-      return {
-        id: batch.id || '',
-        date: batch.deliveryDate,
-        title: `${displayTitle} (${productCount}件)`,
-        suppliers: batch.suppliers, // 帳合先リストを追加
-        data: batch,
-      };
-    });
-  }, [batches]);
-
-  // 帳合先プリセットをカレンダー用に変換
+  // GlassCalendar用の帳合先プリセット変換
   const calendarSupplierPresets: SupplierPreset[] = useMemo(() => {
-    return supplierPresets.map(p => ({
-      supplier: p.supplier,
-      displayOrder: p.displayOrder,
+    return supplierPresets.map((preset) => ({
+      supplier: preset.supplier,
+      displayOrder: preset.displayOrder,
     }));
   }, [supplierPresets]);
 
-  /**
-   * 履歴を取得（過去90日間）
-   */
-  const fetchHistory = useCallback(async () => {
-    if (!user?.uid) return;
+  // 週ごとにバッチをグループ化（テーブル表示用）
+  const sortedWeeks: WeekBatchGroup[] = useMemo(() => {
+    const weekMap = new Map<string, WeekBatchGroup>();
 
-    setLoading(true);
-    setError(null);
+    batches.batches.forEach((batch) => {
+      const deliveryDate = new Date(batch.deliveryDate);
+      const weekStart = startOfWeek(deliveryDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(deliveryDate, { weekStartsOn: 1 });
+      const weekKey = format(weekStart, 'yyyy-MM-dd');
 
-    try {
-      const db = getFirebaseFirestore();
-      const firestoreService = new FirestoreServiceFacade(db);
-
-      const endDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
-      const startDate = format(subDays(new Date(), 90), 'yyyy-MM-dd');
-
-      const fetchedBatches = await firestoreService.getAllocationBatchesByDateRange(
-        user.uid,
-        startDate,
-        endDate
-      );
-
-      setBatches(fetchedBatches);
-    } catch (err) {
-      console.error('Failed to fetch allocation history:', err);
-      setError('履歴の取得に失敗しました');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.uid]);
-
-  /**
-   * バッチの詳細を取得
-   */
-  const fetchBatchDetails = useCallback(async (batch: AllocationBatch) => {
-    if (!batch.id || !user?.uid) return;
-
-    setSelectedBatch(batch);
-    setDetailsLoading(true);
-
-    try {
-      const db = getFirebaseFirestore();
-      const firestoreService = new FirestoreServiceFacade(db);
-
-      const fetchedDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
-      setDetails(fetchedDetails);
-    } catch (err) {
-      console.error('Failed to fetch batch details:', err);
-      setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [user?.uid]);
-
-
-  /**
-   * 店舗カテゴリーを取得
-   */
-  const fetchStoreCategories = useCallback(async () => {
-    if (!user?.uid) return;
-
-    try {
-      const categories = await StoreCategoryService.getAll(user.uid);
-      setStoreCategories(categories);
-    } catch (err) {
-      console.error('Failed to fetch store categories:', err);
-    }
-  }, [user?.uid]);
-
-  /**
-   * 初回読み込み
-   */
-  useEffect(() => {
-    fetchHistory();
-    fetchStoreCategories();
-  }, [fetchHistory, fetchStoreCategories]);
-
-  /**
-   * 詳細モーダルを閉じる
-   */
-  const handleCloseDetails = () => {
-    setSelectedBatch(null);
-    setSelectedDateRange(null);
-    setDetails([]);
-  };
-
-  /**
-   * GlassCalendarのイベントクリックハンドラー
-   */
-  const handleEventClick = useCallback((event: CalendarEvent) => {
-    const batch = event.data as AllocationBatch;
-    if (batch) {
-      fetchBatchDetails(batch);
-    }
-  }, [fetchBatchDetails]);
-
-  /**
-   * 選択日付変更時のプレビューデータ取得（複数日対応）
-   */
-  const handleSelectedDatesChange = useCallback(async (dates: string[]) => {
-    if (!user?.uid) return;
-
-    // 選択解除時はプレビューをクリア
-    if (dates.length === 0) {
-      setPreviewProducts([]);
-      return;
-    }
-
-    // 選択された全日付のバッチを取得
-    const selectedBatches = batches.filter(b => dates.includes(b.deliveryDate));
-    if (selectedBatches.length === 0) {
-      setPreviewProducts([]);
-      return;
-    }
-
-    setPreviewLoading(true);
-    try {
-      const db = getFirebaseFirestore();
-      const firestoreService = new FirestoreServiceFacade(db);
-
-      const allProducts: PreviewProduct[] = [];
-      for (const batch of selectedBatches) {
-        if (batch.id) {
-          const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
-          batchDetails.forEach(detail => {
-            allProducts.push({
-              productName: detail.productName,
-              origin: detail.origin,
-              specification: detail.specification,
-              specificationUnit: detail.specificationUnit || '',
-              quantityPerPackage: detail.quantityPerPackage,
-              packageUnit: detail.packageUnit || '入',
-              totalDelivery: detail.totalDelivery,
-              supplier: detail.supplier || '不明',
-              deliveryDate: batch.deliveryDate,
-            });
-          });
-        }
+      if (!weekMap.has(weekKey)) {
+        weekMap.set(weekKey, {
+          weekStart,
+          weekEnd,
+          batches: [],
+        });
       }
-      setPreviewProducts(allProducts);
-    } catch (err) {
-      console.error('Failed to fetch preview:', err);
-      setPreviewProducts([]);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [user?.uid, batches]);
+      weekMap.get(weekKey)!.batches.push(batch);
+    });
 
-  /**
-   * GlassCalendarの日付範囲選択ハンドラー
-   */
-  const handleDateRangeSelect = useCallback(async (start: Date, end: Date) => {
-    if (!user?.uid) return;
+    // 各週内のバッチを日付順にソート
+    weekMap.forEach((week) => {
+      week.batches.sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
+    });
 
-    const startDate = format(start, 'yyyy-MM-dd');
-    const endDate = format(end, 'yyyy-MM-dd');
+    // 週を降順にソート（最新の週が上）
+    return Array.from(weekMap.values()).sort(
+      (a, b) => b.weekStart.getTime() - a.weekStart.getTime()
+    );
+  }, [batches.batches]);
 
-    setSelectedDateRange({ start: startDate, end: endDate });
-    setSelectedBatch(null); // 単一バッチ選択をクリア
-    setDetailsLoading(true);
-
-    try {
-      const db = getFirebaseFirestore();
-      const firestoreService = new FirestoreServiceFacade(db);
-
-      // 選択範囲のバッチを取得
-      const rangeBatches = await firestoreService.getAllocationBatchesByDateRange(
-        user.uid,
-        startDate,
-        endDate
-      );
-
-      // 各バッチの詳細を取得
-      const allDetails: AllocationDetailWithDate[] = [];
-      for (const batch of rangeBatches) {
-        if (batch.id) {
-          const batchDetails = await firestoreService.getAllocationDetails(user.uid, batch.id);
-          // 各詳細に日付情報を追加
-          const detailsWithDate = batchDetails.map(detail => ({
-            ...detail,
-            deliveryDate: batch.deliveryDate,
-          }));
-          allDetails.push(...detailsWithDate);
-        }
+  // カレンダーのイベントクリック
+  const handleEventClick = useCallback(
+    (event: { data?: unknown }) => {
+      const batchData = event.data as typeof batches.batches[number] | undefined;
+      if (batchData) {
+        batches.fetchBatchDetails(batchData);
       }
-
-      setDetails(allDetails);
-    } catch (err) {
-      console.error('Failed to fetch date range details:', err);
-      setError(`詳細の取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [user?.uid]);
-
-  /**
-   * 削除確認ダイアログを開く
-   */
-  const handleOpenDeleteDialog = (batch: AllocationBatch) => {
-    setBatchToDelete(batch);
-    setDeleteDialogOpen(true);
-  };
-
-  /**
-   * 削除確認ダイアログを閉じる
-   */
-  const handleCloseDeleteDialog = () => {
-    setBatchToDelete(null);
-    setDeleteDialogOpen(false);
-  };
-
-  /**
-   * 配分履歴を削除
-   */
-  const handleDelete = async () => {
-    if (!batchToDelete?.id || !user?.uid) return;
-
-    setDeleting(true);
-
-    try {
-      const db = getFirebaseFirestore();
-      const firestoreService = new FirestoreServiceFacade(db);
-
-      const success = await firestoreService.deleteAllocationBatch(user.uid, batchToDelete.id);
-
-      if (success) {
-        // 一覧から削除
-        setBatches((prev) => prev.filter((b) => b.id !== batchToDelete.id));
-        handleCloseDeleteDialog();
-      } else {
-        setError('削除に失敗しました');
-      }
-    } catch (err) {
-      console.error('Failed to delete batch:', err);
-      setError(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  /**
-   * バッチを週ごとにグループ化
-   */
-  const batchesByWeek = batches.reduce((acc, batch) => {
-    const batchDate = parseISO(batch.deliveryDate);
-    const weekStart = startOfWeek(batchDate, { locale: ja, weekStartsOn: 0 }); // 日曜始まり
-    const weekKey = format(weekStart, 'yyyy-MM-dd');
-
-    if (!acc[weekKey]) {
-      acc[weekKey] = {
-        weekStart,
-        weekEnd: endOfWeek(batchDate, { locale: ja, weekStartsOn: 0 }),
-        batches: [],
-      };
-    }
-    acc[weekKey].batches.push(batch);
-    return acc;
-  }, {} as Record<string, { weekStart: Date; weekEnd: Date; batches: AllocationBatch[] }>);
-
-  // 週を新しい順にソート
-  const sortedWeeks = Object.values(batchesByWeek).sort((a, b) =>
-    b.weekStart.getTime() - a.weekStart.getTime()
+    },
+    [batches]
   );
 
-  /**
-   * フィルター適用関数
-   */
-  const applyFilters = useCallback((rows: DetailGridRow[]) => {
-    return rows.filter(row => {
-      // 合計行は常に表示
-      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return true;
-
-      // 商品名フィルター
-      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) {
-        return false;
-      }
-
-      // 産地フィルター
-      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) {
-        return false;
-      }
-
-      // 規格フィルター
-      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) {
-        return false;
-      }
-
-      // 日付フィルター
-      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [filters]);
-
-  /**
-   * 詳細モーダル用のDataGridカラム定義
-   */
-  const isMobile = window.innerWidth < 600;
-
-  // 日付範囲選択時のカラム定義
-  const dateRangeColumns: GridColDef<DetailGridRow>[] = [
-    {
-      field: 'actions',
-      headerName: '',
-      width: 40,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        // 合計行は非表示ボタンを表示しない
-        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return null;
-
-        return (
-          <IconButton
-            size="small"
-            onClick={() => {
-              const newHidden = new Set(hiddenRowIds);
-              newHidden.add(row.id);
-              setHiddenRowIds(newHidden);
-            }}
-            sx={{ p: 0.5 }}
-          >
-            <VisibilityOff fontSize="small" />
-          </IconButton>
-        );
-      },
+  // カレンダーの日付範囲選択
+  const handleDateRangeSelect = useCallback(
+    (start: Date, end: Date) => {
+      batches.fetchDateRangeDetails(start, end);
     },
-    {
-      field: 'deliveryDate',
-      headerName: '日付',
-      width: isMobile ? 100 : 120,
-      sortable: true,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const dateStr = params.value as string;
-        if (!dateStr) return '-';
-        if (dateStr === '小計' || dateStr === '総合計') {
-          return (
-            <Box sx={{ fontWeight: 700 }}>
-              {dateStr}
-            </Box>
-          );
-        }
-        return format(parseISO(dateStr), 'M月d日(E)', { locale: ja });
-      },
+    [batches]
+  );
+
+  // カレンダーの日付選択変更（プレビュー用）
+  const handleSelectedDatesChange = useCallback(
+    (dates: string[]) => {
+      batches.fetchPreviewProducts(dates);
     },
-    {
-      field: 'productName',
-      headerName: '品名',
-      width: isMobile ? 100 : 150,
-      sortable: true,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'origin',
-      headerName: '産地',
-      width: isMobile ? 80 : 100,
-      sortable: true,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'specification',
-      headerName: '規格',
-      width: isMobile ? 100 : 120,
-      sortable: true,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
-          return row.specification || '';
-        }
-        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
-      },
-    },
-    {
-      field: 'quantityPerPackage',
-      headerName: '入数',
-      width: isMobile ? 80 : 100,
-      sortable: true,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') {
-          return '';
-        }
-        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
-          return '-';
-        }
-        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
-      },
-    },
-    {
-      field: 'totalDelivery',
-      headerName: '合計',
-      width: isMobile ? 60 : 80,
-      sortable: true,
-      disableColumnMenu: true,
-      type: 'number',
-    },
-    // 店舗カラムを追加
-    ...STORE_DATA.map((store) => ({
-      field: `store_${store.code}`,
-      headerName: `${store.code}\n${store.name}`,
-      width: isMobile ? 45 : 55,
-      sortable: false as const,
-      disableColumnMenu: true,
-      type: 'number' as const,
-      renderCell: (params: { value?: number }) => {
-        const value = params.value || 0;
-        return (
-          <Box
-            sx={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: value > 0 ? '600' : 'normal',
-              color: value > 0 ? '#1565c0' : '#bdbdbd',
-              backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
-            }}
-          >
-            {value > 0 ? value : '-'}
-          </Box>
-        );
-      },
-    })),
-  ];
+    [batches]
+  );
 
-  // 単一バッチ選択時のカラム定義（店舗別）
-  const singleBatchColumns: GridColDef<DetailGridRow>[] = [
-    {
-      field: 'actions',
-      headerName: '',
-      width: 40,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        return (
-          <IconButton
-            size="small"
-            onClick={() => {
-              const newHidden = new Set(hiddenRowIds);
-              newHidden.add(row.id);
-              setHiddenRowIds(newHidden);
-            }}
-            sx={{ p: 0.5 }}
-          >
-            <VisibilityOff fontSize="small" />
-          </IconButton>
-        );
-      },
-    },
-    {
-      field: 'productName',
-      headerName: '品名',
-      width: isMobile ? 100 : 150,
-      sortable: false,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'origin',
-      headerName: '産地',
-      width: isMobile ? 80 : 100,
-      sortable: false,
-      disableColumnMenu: true,
-    },
-    {
-      field: 'specification',
-      headerName: '規格',
-      width: isMobile ? 100 : 120,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        return row.specificationUnit ? `${row.specification} ${row.specificationUnit}` : row.specification;
-      },
-    },
-    {
-      field: 'quantityPerPackage',
-      headerName: '入数',
-      width: isMobile ? 80 : 100,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const row = params.row as DetailGridRow;
-        if (row.quantityPerPackage === null || row.quantityPerPackage === undefined) {
-          return '-';
-        }
-        return row.packageUnit ? `${row.quantityPerPackage} ${row.packageUnit}` : row.quantityPerPackage;
-      },
-    },
-    {
-      field: 'totalDelivery',
-      headerName: '合計',
-      width: isMobile ? 60 : 80,
-      sortable: false,
-      disableColumnMenu: true,
-      type: 'number',
-    },
-    // 店舗カラムを追加
-    ...STORE_DATA.map((store) => ({
-      field: `store_${store.code}`,
-      headerName: `${store.code}\n${store.name}`,
-      width: isMobile ? 45 : 55,
-      sortable: false as const,
-      disableColumnMenu: true,
-      type: 'number' as const,
-      renderCell: (params: { value?: number }) => {
-        const value = params.value || 0;
-        return (
-          <Box
-            sx={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: value > 0 ? '600' : 'normal',
-              color: value > 0 ? '#1565c0' : '#bdbdbd',
-              backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
-            }}
-          >
-            {value > 0 ? value : '-'}
-          </Box>
-        );
-      },
-    })),
-  ];
+  // 削除処理
+  const handleDelete = useCallback(async () => {
+    const batchToDelete = modals.deleteDialog.batch;
+    if (!batchToDelete?.id) return;
 
-  /**
-   * 詳細モーダル用のDataGrid行データ作成（動的グループ化対応）
-   */
-  const dateRangeRows: DetailGridRow[] = useMemo(() => {
-    if (!selectedDateRange) return [];
-
-    const rows: DetailGridRow[] = [];
-    const allDates = eachDayOfInterval({
-      start: parseISO(selectedDateRange.start),
-      end: parseISO(selectedDateRange.end),
-    }).map(date => format(date, 'yyyy-MM-dd'));
-
-    // グランドトータル用の集計
-    const grandTotalsByStore: number[] = Array(STORE_DATA.length).fill(0);
-    let grandTotalQuantity = 0;
-
-    if (groupMode === 'date') {
-      // ========================================
-      // 日付ごとにグループ化
-      // ========================================
-      const dateGroups = new Map<string, (AllocationDetail | AllocationDetailWithDate)[]>();
-      details.forEach(detail => {
-        const dateKey = isAllocationDetailWithDate(detail) ? detail.deliveryDate : '';
-        if (!dateGroups.has(dateKey)) {
-          dateGroups.set(dateKey, []);
-        }
-        dateGroups.get(dateKey)!.push(detail);
-      });
-
-      // 日付順にソート
-      const sortedDates = Array.from(dateGroups.keys()).sort();
-
-      sortedDates.forEach(dateStr => {
-        const dateDetails = dateGroups.get(dateStr)!;
-        const subtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
-        let subtotalQuantity = 0;
-
-        // 各商品の行を追加
-        dateDetails.forEach((detail, idx) => {
-          const row: DetailGridRow = {
-            id: `${dateStr}-${idx}`,
-            productName: detail.productName,
-            origin: detail.origin,
-            specification: detail.specification,
-            specificationUnit: detail.specificationUnit,
-            quantityPerPackage: detail.quantityPerPackage,
-            packageUnit: detail.packageUnit,
-            totalDelivery: detail.totalDelivery,
-            deliveryDate: dateStr,
-            rowType: 'data',
-          };
-
-          detail.storeAllocations.forEach((qty, storeIdx) => {
-            if (storeIdx < STORE_DATA.length) {
-              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-              subtotalByStore[storeIdx] += qty;
-              grandTotalsByStore[storeIdx] += qty;
-            }
-          });
-
-          subtotalQuantity += (detail.totalDelivery ?? 0);
-          grandTotalQuantity += (detail.totalDelivery ?? 0);
-          rows.push(row);
-        });
-
-        // 日付ごとの小計行
-        const subtotalRow: DetailGridRow = {
-          id: `subtotal-${dateStr}`,
-          productName: `${format(parseISO(dateStr), 'M月d日(E)', { locale: ja })} 小計`,
-          origin: '',
-          specification: '',
-          specificationUnit: '',
-          quantityPerPackage: null,
-          packageUnit: '',
-          totalDelivery: subtotalQuantity,
-          deliveryDate: dateStr,
-          rowType: 'subtotal',
-          groupKey: dateStr,
-        };
-
-        subtotalByStore.forEach((total, storeIdx) => {
-          if (storeIdx < STORE_DATA.length) {
-            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
-          }
-        });
-
-        rows.push(subtotalRow);
-      });
-
-    } else if (groupMode === 'product') {
-      // ========================================
-      // 商品ごとにグループ化
-      // ========================================
-      const productGroups = new Map<string, AllocationDetail[]>();
-      details.forEach(detail => {
-        const key = `${detail.productName}|${detail.origin}|${detail.specification}`;
-        if (!productGroups.has(key)) {
-          productGroups.set(key, []);
-        }
-        productGroups.get(key)!.push(detail);
-      });
-
-      // 商品グループをソート
-      const groupsWithTotals = Array.from(productGroups.entries()).map(([key, groupDetails]) => {
-        const total = groupDetails.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0);
-        return { key, groupDetails, total };
-      });
-
-      if (sortOrder === 'totalDesc') {
-        groupsWithTotals.sort((a, b) => b.total - a.total);
-      } else if (sortOrder === 'totalAsc') {
-        groupsWithTotals.sort((a, b) => a.total - b.total);
-      }
-
-      groupsWithTotals.forEach(({ key, groupDetails }) => {
-        const [productName, origin, specification] = key.split('|');
-        const subtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
-        let subtotalQuantity = 0;
-
-        // 各日付の行を追加
-        allDates.forEach(dateStr => {
-          const detailForDate = groupDetails.find(d => isAllocationDetailWithDate(d) && d.deliveryDate === dateStr);
-          if (detailForDate) {
-            const row: DetailGridRow = {
-              id: `${key}-${dateStr}`,
-              productName,
-              origin,
-              specification,
-              specificationUnit: detailForDate.specificationUnit,
-              quantityPerPackage: detailForDate.quantityPerPackage,
-              packageUnit: detailForDate.packageUnit,
-              totalDelivery: detailForDate.totalDelivery,
-              deliveryDate: dateStr,
-              rowType: 'data',
-            };
-
-            detailForDate.storeAllocations.forEach((qty, storeIdx) => {
-              if (storeIdx < STORE_DATA.length) {
-                row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-                subtotalByStore[storeIdx] += qty;
-                grandTotalsByStore[storeIdx] += qty;
-              }
-            });
-
-            subtotalQuantity += (detailForDate.totalDelivery ?? 0);
-            grandTotalQuantity += (detailForDate.totalDelivery ?? 0);
-            rows.push(row);
-          }
-        });
-
-        // 商品ごとの小計行
-        const subtotalRow: DetailGridRow = {
-          id: `subtotal-${key}`,
-          productName: `${productName} 小計`,
-          origin,
-          specification,
-          specificationUnit: '',
-          quantityPerPackage: null,
-          packageUnit: '',
-          totalDelivery: subtotalQuantity,
-          deliveryDate: '小計',
-          rowType: 'subtotal',
-          groupKey: key,
-        };
-
-        subtotalByStore.forEach((total, storeIdx) => {
-          if (storeIdx < STORE_DATA.length) {
-            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
-          }
-        });
-
-        rows.push(subtotalRow);
-      });
-
-    } else {
-      // ========================================
-      // 複合グループ化（動的フィールド対応）
-      // ========================================
-      // 複合キーの値を取得するヘルパー関数
-      const getFieldValue = (detail: AllocationDetail | AllocationDetailWithDate, field: CompositeKeyField): string => {
-        switch (field) {
-          case 'productName':
-            return detail.productName;
-          case 'origin':
-            return detail.origin;
-          case 'specification':
-            return detail.specification;
-          case 'deliveryDate':
-            return isAllocationDetailWithDate(detail) ? detail.deliveryDate : '';
-        }
-      };
-
-      // 第1階層のグループキーを生成
-      const primaryGroups = new Map<string, (AllocationDetail | AllocationDetailWithDate)[]>();
-      details.forEach(detail => {
-        const keyParts = compositeKeyFields.map(field => getFieldValue(detail, field));
-        const key = keyParts.join('|');
-        if (!primaryGroups.has(key)) {
-          primaryGroups.set(key, []);
-        }
-        primaryGroups.get(key)!.push(detail);
-      });
-
-      const groupsWithTotals = Array.from(primaryGroups.entries()).map(([key, groupDetails]) => {
-        const total = groupDetails.reduce((sum, d) => sum + (d.totalDelivery ?? 0), 0);
-        return { key, groupDetails, total };
-      });
-
-      if (sortOrder === 'totalDesc') {
-        groupsWithTotals.sort((a, b) => b.total - a.total);
-      } else {
-        groupsWithTotals.sort((a, b) => a.total - b.total);
-      }
-
-      groupsWithTotals.forEach(({ key, groupDetails }) => {
-        const groupSubtotalByStore: number[] = Array(STORE_DATA.length).fill(0);
-        let groupSubtotalQuantity = 0;
-
-        // グループ内の詳細を追加
-        groupDetails.forEach((detail, idx) => {
-          const row: DetailGridRow = {
-            id: `${key}-${idx}`,
-            productName: detail.productName,
-            origin: detail.origin,
-            specification: detail.specification,
-            specificationUnit: detail.specificationUnit,
-            quantityPerPackage: detail.quantityPerPackage,
-            packageUnit: detail.packageUnit,
-            totalDelivery: detail.totalDelivery,
-            deliveryDate: isAllocationDetailWithDate(detail) ? detail.deliveryDate : undefined,
-            rowType: 'data',
-          };
-
-          detail.storeAllocations.forEach((qty, storeIdx) => {
-            if (storeIdx < STORE_DATA.length) {
-              row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-              groupSubtotalByStore[storeIdx] += qty;
-              grandTotalsByStore[storeIdx] += qty;
-            }
-          });
-
-          groupSubtotalQuantity += (detail.totalDelivery ?? 0);
-          grandTotalQuantity += (detail.totalDelivery ?? 0);
-          rows.push(row);
-        });
-
-        // グループごとの小計行（第1フィールドで表示）
-        const firstDetail = groupDetails[0];
-        const subtotalLabel = compositeKeyFields
-          .map((field) => {
-            const value = getFieldValue(firstDetail, field);
-            return field === 'deliveryDate' && value
-              ? format(parseISO(value), 'M月d日(E)', { locale: ja })
-              : value;
-          })
-          .join(' / ') + ' 小計';
-
-        const subtotalRow: DetailGridRow = {
-          id: `subtotal-${key}`,
-          productName: subtotalLabel,
-          origin: '',
-          specification: '',
-          specificationUnit: '',
-          quantityPerPackage: null,
-          packageUnit: '',
-          totalDelivery: groupSubtotalQuantity,
-          deliveryDate: '小計',
-          rowType: 'subtotal',
-          groupKey: key,
-        };
-
-        groupSubtotalByStore.forEach((total, storeIdx) => {
-          if (storeIdx < STORE_DATA.length) {
-            subtotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
-          }
-        });
-
-        rows.push(subtotalRow);
-      });
+    const success = await batches.deleteBatch(batchToDelete.id);
+    if (success) {
+      modals.deleteDialog.closeDialog();
     }
+  }, [batches, modals.deleteDialog]);
 
-    // グランドトータル行を追加
-    const grandTotalRow: DetailGridRow = {
-      id: 'grandtotal',
-      productName: '総合計',
-      origin: '',
-      specification: '',
-      specificationUnit: '',
-      quantityPerPackage: null,
-      packageUnit: '',
-      totalDelivery: grandTotalQuantity,
-      deliveryDate: '総合計',
-      rowType: 'grandtotal',
-    };
-
-    grandTotalsByStore.forEach((total, storeIdx) => {
-      if (storeIdx < STORE_DATA.length) {
-        grandTotalRow[`store_${STORE_DATA[storeIdx].code}`] = total;
-      }
-    });
-
-    rows.push(grandTotalRow);
-
-    return rows;
-  }, [selectedDateRange, details, groupMode, sortOrder, compositeKeyFields]);
-
-  // 単一バッチ選択時の行データ
-  const singleBatchRows: DetailGridRow[] = useMemo(() => {
-    if (selectedDateRange) return [];
-
-    return details.map((detail, idx) => {
-      const row: DetailGridRow = {
-        id: detail.id || `row-${idx}`,
-        productName: detail.productName,
-        origin: detail.origin,
-        specification: detail.specification,
-        specificationUnit: detail.specificationUnit,
-        quantityPerPackage: detail.quantityPerPackage,
-        packageUnit: detail.packageUnit,
-        totalDelivery: detail.totalDelivery,
-      };
-
-      // 各店舗の配分数量を追加
-      detail.storeAllocations.forEach((qty, storeIdx) => {
-        if (storeIdx < STORE_DATA.length) {
-          row[`store_${STORE_DATA[storeIdx].code}`] = qty;
-        }
-      });
-
-      return row;
-    });
-  }, [selectedDateRange, details]);
-
-  /**
-   * アクティブなフィルター値を取得（他のフィルターを考慮）
-   * 各フィルターは、他のフィルター条件を適用した結果で利用可能な値のみを表示
-   */
-  const availableFilterValues = useMemo(() => {
-    // ベースとなる行データ
-    const baseRows = selectedDateRange ? dateRangeRows : singleBatchRows;
-
-    // 商品名: 産地、規格、日付フィルターのみを適用
-    const productNameRows = baseRows.filter(row => {
-      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
-      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
-      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
-      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
-      return true;
-    });
-    const productNames = Array.from(new Set(productNameRows.map(r => r.productName))).sort();
-
-    // 産地: 商品名、規格、日付フィルターのみを適用
-    const originRows = baseRows.filter(row => {
-      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
-      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
-      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
-      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
-      return true;
-    });
-    const origins = Array.from(new Set(originRows.map(r => r.origin))).sort();
-
-    // 規格: 商品名、産地、日付フィルターのみを適用
-    const specRows = baseRows.filter(row => {
-      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
-      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
-      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
-      if (filters.dates.length > 0 && row.deliveryDate && !filters.dates.includes(row.deliveryDate)) return false;
-      return true;
-    });
-    const specifications = Array.from(new Set(specRows.map(r => r.specification))).sort();
-
-    // 日付: 商品名、産地、規格フィルターのみを適用
-    const dateRows = baseRows.filter(row => {
-      if (row.rowType === 'subtotal' || row.rowType === 'grandtotal') return false;
-      if (filters.productNames.length > 0 && !filters.productNames.includes(row.productName)) return false;
-      if (filters.origins.length > 0 && !filters.origins.includes(row.origin)) return false;
-      if (filters.specifications.length > 0 && !filters.specifications.includes(row.specification)) return false;
-      return true;
-    });
-    const dates = Array.from(new Set(dateRows.map(r => r.deliveryDate).filter((d): d is string => !!d))).sort();
-
-    return {
-      productNames,
-      origins,
-      specifications,
-      dates,
-    };
-  }, [selectedDateRange, dateRangeRows, singleBatchRows, filters]);
-
-  // 使用するカラムと行を選択（フィルター適用 + 列の非表示適用）
-  const detailColumns = useMemo(() => {
-    const columns = selectedDateRange ? dateRangeColumns : singleBatchColumns;
-    return columns.filter(col => !hiddenColumns.has(col.field));
-  }, [selectedDateRange, dateRangeColumns, singleBatchColumns, hiddenColumns]);
-
-  const detailRows = useMemo(() => {
-    const rows = selectedDateRange ? dateRangeRows : singleBatchRows;
-    return applyFilters(rows);
-  }, [selectedDateRange, dateRangeRows, singleBatchRows, applyFilters]);
-
-
+  // 日付範囲ピッカーで適用
+  const handleDateRangeApply = useCallback(() => {
+    if (tempDateRange) {
+      handleDateRangeSelect(
+        parseISO(tempDateRange.start),
+        parseISO(tempDateRange.end)
+      );
+      modals.datePicker.closePicker();
+      setTempDateRange(null);
+    }
+  }, [tempDateRange, handleDateRangeSelect, modals.datePicker]);
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* ヘッダー（リスト表示時のみ） - モダンデザイン */}
-      {viewMode === 'table' && (
-        <Box
-          sx={{
-            mb: 1.5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 1,
-            minHeight: 36,
-          }}
-        >
-          {/* 左側: タイトル + ナビ */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography
-              sx={{
-                fontSize: '1rem',
-                fontWeight: 700,
-                color: 'text.primary',
-              }}
-            >
-              配分履歴
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                color: 'grey.500',
-                bgcolor: 'grey.100',
-                px: 0.75,
-                py: 0.25,
-                borderRadius: 1,
-              }}
-            >
-              {batches.length}件
-            </Typography>
-          </Box>
-
-          {/* 右側: コントロール */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <IconButton
-              size="small"
-              onClick={fetchHistory}
-              disabled={loading}
-              sx={{ p: 0.5, color: 'grey.600' }}
-            >
-              {loading ? <CircularProgress size={16} /> : <Refresh sx={{ fontSize: 18 }} />}
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => setViewMode('calendar')}
-              sx={{ p: 0.5, color: 'grey.600' }}
-            >
-              <CalendarToday sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Box>
-        </Box>
+      {/* ヘッダー（テーブル表示時のみ） */}
+      {view.viewMode === 'table' && (
+        <AllocationHistoryToolbar
+          batchCount={batches.batches.length}
+          loading={batches.loading}
+          onRefresh={batches.fetchHistory}
+          onViewModeChange={() => view.setViewMode('calendar')}
+        />
       )}
 
       {/* エラー表示 */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {batches.error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={batches.clearError}>
+          {batches.error}
         </Alert>
       )}
 
-      {/* 読み込み中 */}
-      {loading ? (
+      {/* メインコンテンツ */}
+      {batches.loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
-      ) : batches.length === 0 ? (
-        <Box
-          sx={{
-            py: 6,
-            px: 3,
-            textAlign: 'center',
-            borderRadius: 2,
-            border: '1px dashed',
-            borderColor: 'grey.300',
-            bgcolor: 'grey.50',
-          }}
-        >
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              bgcolor: 'grey.200',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
-              mb: 2,
-            }}
-          >
-            <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
-          </Box>
-          <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'grey.600', mb: 0.5 }}>
-            配分履歴がありません
-          </Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: 'grey.500' }}>
-            配分表を生成して「履歴を保存」すると、ここに表示されます
-          </Typography>
-        </Box>
-      ) : viewMode === 'calendar' ? (
-        /* カレンダー表示 (GlassCalendar) */
+      ) : batches.batches.length === 0 ? (
+        <EmptyState
+          icon={<CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />}
+          title="配分履歴がありません"
+          description="配分表を生成して「履歴を保存」すると、ここに表示されます"
+        />
+      ) : view.viewMode === 'calendar' ? (
+        /* カレンダー表示 */
         <GlassCalendar
-          events={calendarEvents}
+          events={batches.calendarEvents}
           onSelectedDatesChange={handleSelectedDatesChange}
           onEventClick={handleEventClick}
           onDateRangeSelect={handleDateRangeSelect}
-          viewMode={viewMode}
-          onViewModeChange={(mode) => setViewMode(mode)}
-          onRefresh={fetchHistory}
-          loading={loading}
+          viewMode={view.viewMode}
+          onViewModeChange={(mode) => view.setViewMode(mode)}
+          onRefresh={batches.fetchHistory}
+          loading={batches.loading}
           supplierPresets={calendarSupplierPresets}
-          previewProducts={previewProducts}
-          previewLoading={previewLoading}
+          previewProducts={batches.previewProducts}
+          previewLoading={batches.previewLoading}
         />
       ) : (
-        /* テーブル表示（週単位） - モダンデザイン */
-        <Box
-          sx={{
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'grey.200',
-            bgcolor: 'background.paper',
-            overflow: 'hidden',
-          }}
-        >
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow
-                  sx={{
-                    bgcolor: 'grey.50',
-                    borderBottom: '1px solid',
-                    borderColor: 'grey.200',
-                  }}
-                >
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                    }}
-                  >
-                    納品日
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                    }}
-                  >
-                    帳合先
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                    }}
-                  >
-                    商品数
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                    }}
-                  >
-                    合計
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                      display: { xs: 'none', sm: 'table-cell' },
-                    }}
-                  >
-                    保存日時
-                  </TableCell>
-                  <TableCell
-                    align="center"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      color: 'grey.600',
-                      py: 1.5,
-                      borderBottom: 'none',
-                      width: 80,
-                    }}
-                  >
-                    操作
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sortedWeeks.map((week, weekIdx) => (
-                  <React.Fragment key={weekIdx}>
-                    {/* 週ヘッダー */}
-                    <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        sx={{
-                          background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
-                          py: 1,
-                          px: 2,
-                          borderBottom: '1px solid',
-                          borderColor: 'grey.200',
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box
-                            sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              bgcolor: 'primary.main',
-                            }}
-                          />
-                          <Typography
-                            sx={{
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              color: 'grey.700',
-                            }}
-                          >
-                            {format(week.weekStart, 'M/d', { locale: ja })} - {format(week.weekEnd, 'M/d(E)', { locale: ja })}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: '0.65rem',
-                              fontWeight: 600,
-                              color: 'primary.main',
-                              bgcolor: 'primary.50',
-                              px: 0.75,
-                              py: 0.25,
-                              borderRadius: 1,
-                            }}
-                          >
-                            {week.batches.length}件
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                    {/* 週内のバッチ */}
-                    {week.batches.map((batch) => (
-                      <TableRow
-                        key={batch.id}
-                        sx={{
-                          transition: 'background-color 0.15s ease',
-                          '&:hover': {
-                            bgcolor: 'rgba(99, 102, 241, 0.04)',
-                          },
-                          '&:last-child td': {
-                            borderBottom: weekIdx < sortedWeeks.length - 1 ? '1px solid' : 'none',
-                            borderColor: 'grey.100',
-                          },
-                        }}
-                      >
-                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Box
-                              sx={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 1,
-                                bgcolor: 'grey.100',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'grey.700' }}>
-                                {format(new Date(batch.deliveryDate), 'd')}
-                              </Typography>
-                            </Box>
-                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'grey.600' }}>
-                              {format(new Date(batch.deliveryDate), 'E', { locale: ja })}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                            {batch.suppliers.map((supplier, idx) => {
-                              const supplierColor = getSupplierColorByName(supplier, supplierPresets);
-                              return (
-                                <Box
-                                  key={idx}
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 0.5,
-                                    px: 1,
-                                    py: 0.25,
-                                    borderRadius: 1,
-                                    bgcolor: getSupplierColorWithOpacity(supplierColor, 0.1),
-                                    borderLeft: `3px solid ${supplierColor}`,
-                                  }}
-                                >
-                                  <Typography
-                                    sx={{
-                                      fontSize: '0.7rem',
-                                      fontWeight: 600,
-                                      color: supplierColor,
-                                    }}
-                                  >
-                                    {supplier}
-                                  </Typography>
-                                </Box>
-                              );
-                            })}
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
-                          <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'grey.700' }}>
-                            {batch.productCount}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
-                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main' }}>
-                            {batch.totalQuantity.toLocaleString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            py: 1.25,
-                            borderBottom: '1px solid',
-                            borderColor: 'grey.100',
-                            display: { xs: 'none', sm: 'table-cell' },
-                          }}
-                        >
-                          <Typography sx={{ fontSize: '0.7rem', color: 'grey.500' }}>
-                            {batch.createdAt
-                              ? format(batch.createdAt, 'M/d HH:mm')
-                              : '-'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.25, borderBottom: '1px solid', borderColor: 'grey.100' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => fetchBatchDetails(batch)}
-                              sx={{
-                                p: 0.5,
-                                color: 'grey.500',
-                                '&:hover': {
-                                  bgcolor: 'primary.50',
-                                  color: 'primary.main',
-                                },
-                              }}
-                            >
-                              <Visibility sx={{ fontSize: 18 }} />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenDeleteDialog(batch)}
-                              sx={{
-                                p: 0.5,
-                                color: 'grey.400',
-                                '&:hover': {
-                                  bgcolor: 'error.50',
-                                  color: 'error.main',
-                                },
-                              }}
-                            >
-                              <Delete sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+        /* テーブル表示 */
+        <AllocationHistoryTable
+          weeks={sortedWeeks}
+          supplierPresets={calendarSupplierPresets}
+          onViewDetails={batches.fetchBatchDetails}
+          onDelete={modals.deleteDialog.openDialog}
+        />
       )}
 
-      {/* 詳細モーダル - モダンデザイン */}
-      <Dialog
-        open={Boolean(selectedBatch) || Boolean(selectedDateRange)}
-        onClose={handleCloseDetails}
-        maxWidth="xl"
-        fullWidth
-        fullScreen={isFullScreen || window.innerWidth < 600}
-        sx={{
-          zIndex: MODAL_Z_INDEX.NESTED_DIALOG,
-          '& .MuiDialog-paper': {
-            borderRadius: isFullScreen ? 0 : 3,
-            overflow: 'hidden',
-          },
-        }}
-      >
-        {/* ヘッダー */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: { xs: 1.5, sm: 2 },
-            py: 1.25,
-            borderBottom: '1px solid',
-            borderColor: 'grey.200',
-            bgcolor: 'white',
-          }}
-        >
-          {/* 左側: タイトル */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography
-              sx={{
-                fontSize: { xs: '0.9rem', sm: '1rem' },
-                fontWeight: 700,
-                color: 'text.primary',
-              }}
-            >
-              {selectedDateRange ? '配分履歴' : '配分詳細'}
-            </Typography>
-            {selectedBatch && (
-              <Typography
-                sx={{
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  color: 'grey.500',
-                  bgcolor: 'grey.100',
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 1,
-                }}
-              >
-                {format(new Date(selectedBatch.deliveryDate), 'M/d(E)', { locale: ja })}
-              </Typography>
-            )}
-            {selectedDateRange && (
-              <Box
-                onClick={() => setDatePickerOpen(true)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 1,
-                  bgcolor: 'primary.50',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'primary.100' },
-                }}
-              >
-                <DateRange sx={{ fontSize: 14, color: 'primary.main' }} />
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'primary.main' }}>
-                  {format(parseISO(selectedDateRange.start), 'M/d', { locale: ja })} - {format(parseISO(selectedDateRange.end), 'M/d', { locale: ja })}
-                </Typography>
-              </Box>
-            )}
-            {details.length > 0 && (
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  color: 'grey.500',
-                }}
-              >
-                {details.length}品
-              </Typography>
-            )}
-          </Box>
-
-          {/* 右側: コントロール */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            {hiddenRowIds.size > 0 && (
-              <Box
-                onClick={() => setHiddenRowIds(new Set())}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 1,
-                  bgcolor: 'warning.50',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'warning.100' },
-                }}
-              >
-                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'warning.main' }}>
-                  {hiddenRowIds.size}件非表示
-                </Typography>
-                <Visibility sx={{ fontSize: 14, color: 'warning.main' }} />
-              </Box>
-            )}
-            <IconButton
-              size="small"
-              onClick={() => setIsFullScreen(!isFullScreen)}
-              sx={{ p: 0.5, color: 'grey.500' }}
-            >
-              {isFullScreen ? <FullscreenExit sx={{ fontSize: 18 }} /> : <Fullscreen sx={{ fontSize: 18 }} />}
-            </IconButton>
-            {selectedDateRange && (
-              <IconButton
-                size="small"
-                onClick={() => setSettingsOpen(true)}
-                sx={{
-                  p: 0.5,
-                  color: settingsOpen ? 'primary.main' : 'grey.500',
-                }}
-              >
-                <Settings sx={{ fontSize: 18 }} />
-              </IconButton>
-            )}
-            <IconButton
-              size="small"
-              onClick={handleCloseDetails}
-              sx={{ p: 0.5, color: 'grey.500' }}
-            >
-              <Close sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Box>
-        </Box>
-
-        {/* グループ化コントロール */}
-        {selectedDateRange && !settingsOpen && (
-          <Box
-            sx={{
-              px: { xs: 1.5, sm: 2 },
-              py: 0.75,
-              borderBottom: '1px solid',
-              borderColor: 'grey.100',
-              background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'grey.600' }}>
-                グループ:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                {[
-                  { value: 'date', label: '日付' },
-                  { value: 'product', label: '商品' },
-                  { value: 'composite', label: '複合' },
-                ].map((option) => (
-                  <Box
-                    key={option.value}
-                    onClick={() => setGroupMode(option.value as typeof groupMode)}
-                    sx={{
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: 1,
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      bgcolor: groupMode === option.value ? 'primary.main' : 'white',
-                      color: groupMode === option.value ? 'white' : 'grey.600',
-                      border: '1px solid',
-                      borderColor: groupMode === option.value ? 'primary.main' : 'grey.300',
-                      '&:hover': {
-                        bgcolor: groupMode === option.value ? 'primary.dark' : 'grey.50',
-                      },
-                    }}
-                  >
-                    {option.label}
-                  </Box>
-                ))}
-              </Box>
-
-              {(filters.productNames.length > 0 || filters.origins.length > 0 ||
-                filters.specifications.length > 0 || filters.dates.length > 0) && (
-                <Typography
-                  sx={{
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    bgcolor: 'primary.50',
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 1,
-                  }}
-                >
-                  フィルター {filters.productNames.length + filters.origins.length + filters.specifications.length + filters.dates.length}
-                </Typography>
-              )}
-
-              {(hiddenRowIds.size > 0 || hiddenColumns.size > 0) && (
-                <Typography
-                  sx={{
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    color: 'warning.main',
-                    bgcolor: 'warning.50',
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 1,
-                  }}
-                >
-                  非表示 {hiddenRowIds.size + hiddenColumns.size}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        )}
-
-        <DialogContent sx={{ p: 0 }}>
-          {detailsLoading ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : details.length === 0 ? (
-            <Box
-              sx={{
-                py: 6,
-                px: 3,
-                textAlign: 'center',
-              }}
-            >
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  bgcolor: 'grey.100',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mx: 'auto',
-                  mb: 2,
-                }}
-              >
-                <CalendarMonth sx={{ fontSize: 24, color: 'grey.400' }} />
-              </Box>
-              <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'grey.600' }}>
-                詳細データがありません
-              </Typography>
-            </Box>
-          ) : (
-            /* データグリッド表示 - モダンスタイル */
-            <Box sx={{ height: isFullScreen ? 'calc(100vh - 140px)' : { xs: 400, sm: 500, md: 600 }, width: '100%' }}>
-              <DataGrid
-                rows={detailRows.filter(row => !hiddenRowIds.has(row.id))}
-                columns={detailColumns}
-                disableRowSelectionOnClick
-                disableColumnFilter
-                disableColumnSelector
-                disableDensitySelector
-                hideFooter
-                getRowClassName={(params) => {
-                  const row = params.row as DetailGridRow;
-                  if (row.rowType === 'grandtotal') return 'row-grandtotal';
-                  if (row.rowType === 'subtotal') return 'row-subtotal';
-                  return '';
-                }}
-                sx={{
-                  border: 'none',
-                  '& .MuiDataGrid-main': {
-                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                  },
-                  '& .MuiDataGrid-cell': {
-                    borderColor: 'grey.100',
-                    fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                    padding: { xs: '4px 6px', sm: '8px 12px' },
-                    lineHeight: 1.4,
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    bgcolor: 'grey.50',
-                    borderBottom: '1px solid',
-                    borderColor: 'grey.200',
-                    minHeight: { xs: '40px !important', sm: '48px !important' },
-                  },
-                  '& .MuiDataGrid-columnHeader': {
-                    padding: { xs: '4px 6px', sm: '8px 12px' },
-                  },
-                  '& .MuiDataGrid-columnHeaderTitle': {
-                    fontWeight: 700,
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: 1.2,
-                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                    color: 'grey.600',
-                  },
-                  '& .MuiDataGrid-row': {
-                    minHeight: { xs: '36px !important', sm: '44px !important' },
-                    transition: 'background-color 0.15s ease',
-                    '&:hover': {
-                      bgcolor: 'rgba(99, 102, 241, 0.04)',
-                    },
-                  },
-                  '& .MuiDataGrid-virtualScroller': {
-                    overflowX: 'auto',
-                    WebkitOverflowScrolling: 'touch',
-                  },
-                  // 小計行のスタイル - モダン
-                  '& .row-subtotal': {
-                    background: 'linear-gradient(to right, #eff6ff, #dbeafe) !important',
-                    '& .MuiDataGrid-cell': {
-                      color: '#3b82f6',
-                      fontWeight: 600,
-                      borderTop: '1px solid #93c5fd',
-                      borderBottom: '1px solid #93c5fd',
-                      fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                    },
-                  },
-                  // 総合計行のスタイル - モダン
-                  '& .row-grandtotal': {
-                    background: 'linear-gradient(to right, #6366f1, #8b5cf6) !important',
-                    '& .MuiDataGrid-cell': {
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
-                      borderTop: 'none',
-                      borderBottom: 'none',
-                    },
-                  },
-                }}
-              />
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* 詳細モーダル */}
+      <AllocationDetailModal
+        batches={batches}
+        filters={filters}
+        view={view}
+        tableData={tableData}
+        settingsOpen={modals.settings.open}
+        onSettingsOpen={modals.settings.openDrawer}
+        onDatePickerOpen={modals.datePicker.openPicker}
+      />
 
       {/* 削除確認ダイアログ */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-        maxWidth="sm"
-        fullWidth
-        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
-      >
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>
-          配分履歴を削除しますか？
-        </DialogTitle>
+      <AllocationDeleteDialog
+        open={modals.deleteDialog.open}
+        batch={modals.deleteDialog.batch}
+        deleting={batches.deleting}
+        onClose={modals.deleteDialog.closeDialog}
+        onDelete={handleDelete}
+      />
 
-        <DialogContent>
-          {batchToDelete && (
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                以下の配分履歴を削除します。この操作は取り消せません。
-              </Typography>
-              <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
-                <Typography variant="body2">
-                  <strong>納品日:</strong>{' '}
-                  {format(new Date(batchToDelete.deliveryDate), 'yyyy年M月d日(E)', {
-                    locale: ja,
-                  })}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>帳合先:</strong> {batchToDelete.suppliers.join(', ')}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>商品数:</strong> {batchToDelete.productCount}品
-                </Typography>
-                <Typography variant="body2">
-                  <strong>合計数量:</strong> {batchToDelete.totalQuantity.toLocaleString()}個
-                </Typography>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} disabled={deleting} variant="outlined">
-            キャンセル
-          </Button>
-          <Button
-            onClick={handleDelete}
-            variant="contained"
-            color="error"
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <Delete />}
-          >
-            {deleting ? '削除中...' : '削除'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 設定ドロワー（詳細設定） */}
-      <Drawer
-        anchor="bottom"
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }} // 配分履歴モーダルより上に表示
-        PaperProps={{
-          sx: {
-            borderRadius: '16px 16px 0 0',
-            maxHeight: '90vh',
-            overflow: 'auto',
-          },
-        }}
-      >
-        <Box sx={{ p: 2 }}>
-          {/* ヘッダー */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-            <Typography variant="h6" fontWeight={600}>詳細設定</Typography>
-            <IconButton size="small" onClick={() => setSettingsOpen(false)}>
-              <Close />
-            </IconButton>
-          </Stack>
-
-          <Stack spacing={3}>
-            {/* フィルター */}
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FilterList fontSize="small" />
-                フィルター
-              </Typography>
-              <Stack spacing={2}>
-                {/* 商品名フィルター */}
-                <FormControl fullWidth size="small">
-                  <InputLabel>商品名</InputLabel>
-                  <Select
-                    multiple
-                    value={filters.productNames}
-                    onChange={(e) => setFilters({ ...filters, productNames: e.target.value as string[] })}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-                    }}
-                  >
-                    {availableFilterValues.productNames.map((name) => (
-                      <MenuItem key={name} value={name}>
-                        <Checkbox checked={filters.productNames.includes(name)} />
-                        <ListItemText primary={name} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* 産地フィルター */}
-                <FormControl fullWidth size="small">
-                  <InputLabel>産地</InputLabel>
-                  <Select
-                    multiple
-                    value={filters.origins}
-                    onChange={(e) => setFilters({ ...filters, origins: e.target.value as string[] })}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-                    }}
-                  >
-                    {availableFilterValues.origins.map((origin) => (
-                      <MenuItem key={origin} value={origin}>
-                        <Checkbox checked={filters.origins.includes(origin)} />
-                        <ListItemText primary={origin} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* 規格フィルター */}
-                <FormControl fullWidth size="small">
-                  <InputLabel>規格</InputLabel>
-                  <Select
-                    multiple
-                    value={filters.specifications}
-                    onChange={(e) => setFilters({ ...filters, specifications: e.target.value as string[] })}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-                    }}
-                  >
-                    {availableFilterValues.specifications.map((spec) => (
-                      <MenuItem key={spec} value={spec}>
-                        <Checkbox checked={filters.specifications.includes(spec)} />
-                        <ListItemText primary={spec} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* 日付フィルター */}
-                <FormControl fullWidth size="small">
-                  <InputLabel>日付</InputLabel>
-                  <Select
-                    multiple
-                    value={filters.dates}
-                    onChange={(e) => setFilters({ ...filters, dates: e.target.value as string[] })}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={format(parseISO(value), 'M/d(E)', { locale: ja })} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      sx: { zIndex: MODAL_Z_INDEX.NESTED_DIALOG + ELEMENT_OFFSET.SELECT_MENU },
-                    }}
-                  >
-                    {availableFilterValues.dates.map((date) => (
-                      <MenuItem key={date} value={date}>
-                        <Checkbox checked={filters.dates.includes(date)} />
-                        <ListItemText primary={format(parseISO(date), 'M月d日(E)', { locale: ja })} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* フィルタークリアボタン */}
-                {(filters.productNames.length > 0 || filters.origins.length > 0 ||
-                  filters.specifications.length > 0 || filters.dates.length > 0) && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => setFilters({ productNames: [], origins: [], specifications: [], dates: [] })}
-                  >
-                    フィルターをクリア
-                  </Button>
-                )}
-              </Stack>
-            </Box>
-
-            <Divider />
-
-            {/* 列の表示/非表示 */}
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                列の表示/非表示
-              </Typography>
-
-              {/* 基本項目 */}
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 0.5 }}>
-                基本項目
-              </Typography>
-              <FormGroup>
-                {[
-                  { field: 'deliveryDate', label: '日付' },
-                  { field: 'productName', label: '品名' },
-                  { field: 'origin', label: '産地' },
-                  { field: 'specification', label: '規格' },
-                  { field: 'quantityPerPackage', label: '入数' },
-                  { field: 'totalDelivery', label: '合計' },
-                ].map(({ field, label }) => (
-                  <FormControlLabel
-                    key={field}
-                    control={
-                      <Checkbox
-                        checked={!hiddenColumns.has(field)}
-                        onChange={(e) => {
-                          const newHidden = new Set(hiddenColumns);
-                          if (e.target.checked) {
-                            newHidden.delete(field);
-                          } else {
-                            newHidden.add(field);
-                          }
-                          setHiddenColumns(newHidden);
-                        }}
-                      />
-                    }
-                    label={label}
-                  />
-                ))}
-              </FormGroup>
-
-              {/* 店舗カテゴリー選択 */}
-              {storeCategories.length > 0 && (
-                <>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, mb: 1 }}>
-                    店舗カテゴリー（一括選択）
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {storeCategories.map((category) => {
-                      // カテゴリー内の店舗がすべて表示されているかチェック
-                      const categoryStoreFields = category.storeIds.map(id => `store_${id}`);
-                      const allVisible = categoryStoreFields.every(field => !hiddenColumns.has(field));
-                      const someVisible = categoryStoreFields.some(field => !hiddenColumns.has(field));
-
-                      return (
-                        <Chip
-                          key={category.id}
-                          label={`${category.name} (${category.storeIds.length}店舗)`}
-                          size="small"
-                          color={allVisible ? 'secondary' : someVisible ? 'default' : 'default'}
-                          variant={allVisible ? 'filled' : someVisible ? 'outlined' : 'outlined'}
-                          onClick={() => {
-                            const newHidden = new Set(hiddenColumns);
-                            if (allVisible) {
-                              // すべて非表示に
-                              categoryStoreFields.forEach(field => newHidden.add(field));
-                            } else {
-                              // すべて表示に
-                              categoryStoreFields.forEach(field => newHidden.delete(field));
-                            }
-                            setHiddenColumns(newHidden);
-                          }}
-                          sx={{
-                            cursor: 'pointer',
-                            '&:hover': {
-                              opacity: 0.8,
-                            },
-                            opacity: someVisible && !allVisible ? 0.7 : 1,
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                </>
-              )}
-
-              {/* 店舗選択（チップスタイル） */}
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                個別店舗選択
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {STORE_DATA.map((store) => {
-                  const fieldName = `store_${store.code}`;
-                  const isVisible = !hiddenColumns.has(fieldName);
-                  return (
-                    <Chip
-                      key={store.code}
-                      label={`${store.code} ${store.name}`}
-                      size="small"
-                      color={isVisible ? 'primary' : 'default'}
-                      variant={isVisible ? 'filled' : 'outlined'}
-                      onClick={() => {
-                        const newHidden = new Set(hiddenColumns);
-                        if (isVisible) {
-                          newHidden.add(fieldName);
-                        } else {
-                          newHidden.delete(fieldName);
-                        }
-                        setHiddenColumns(newHidden);
-                      }}
-                      sx={{
-                        cursor: 'pointer',
-                        '&:hover': {
-                          opacity: 0.8,
-                        },
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-
-              {hiddenColumns.size > 0 && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  sx={{ mt: 2 }}
-                  onClick={() => setHiddenColumns(new Set())}
-                >
-                  すべて表示
-                </Button>
-              )}
-            </Box>
-
-            <Divider />
-
-            {/* 非表示行の管理 */}
-            {hiddenRowIds.size > 0 && (
-              <Box>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<Visibility />}
-                  onClick={() => setHiddenRowIds(new Set())}
-                >
-                  非表示の行を再表示 ({hiddenRowIds.size}件)
-                </Button>
-              </Box>
-            )}
-
-            {/* ソート順（商品・複合グループの場合） */}
-            {(groupMode === 'product' || groupMode === 'composite') && (
-              <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  並び順
-                </Typography>
-                <ToggleButtonGroup
-                  value={sortOrder}
-                  exclusive
-                  onChange={(_, newOrder) => newOrder && setSortOrder(newOrder)}
-                  size="small"
-                  fullWidth
-                >
-                  <ToggleButton value="totalDesc">
-                    配分量の多い順
-                  </ToggleButton>
-                  <ToggleButton value="totalAsc">
-                    配分量の少ない順
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
-            )}
-
-            {/* 複合キーのカスタマイズ */}
-            {groupMode === 'composite' && (
-              <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  複合キー設定
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  グループ化に使用するフィールドを選択してください（複数選択可）
-                </Typography>
-
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {[
-                    { field: 'productName' as CompositeKeyField, label: '品名' },
-                    { field: 'origin' as CompositeKeyField, label: '産地' },
-                    { field: 'specification' as CompositeKeyField, label: '規格' },
-                    { field: 'deliveryDate' as CompositeKeyField, label: '日付' },
-                  ].map(({ field, label }) => {
-                    const isSelected = compositeKeyFields.includes(field);
-                    const position = compositeKeyFields.indexOf(field) + 1;
-                    return (
-                      <Chip
-                        key={field}
-                        label={isSelected ? `${position}. ${label}` : label}
-                        size="small"
-                        color={isSelected ? 'primary' : 'default'}
-                        variant={isSelected ? 'filled' : 'outlined'}
-                        onClick={() => {
-                          if (isSelected) {
-                            // 削除（最低1つは残す）
-                            if (compositeKeyFields.length > 1) {
-                              setCompositeKeyFields(compositeKeyFields.filter(f => f !== field));
-                            }
-                          } else {
-                            // 追加
-                            setCompositeKeyFields([...compositeKeyFields, field]);
-                          }
-                        }}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:hover': {
-                            opacity: 0.8,
-                          },
-                        }}
-                      />
-                    );
-                  })}
-                </Box>
-
-                <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 1 }}>
-                  選択順がグループ化の階層になります（番号順）
-                </Typography>
-
-                {compositeKeyFields.length > 0 && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    sx={{ mt: 1 }}
-                    onClick={() => setCompositeKeyFields(['productName', 'deliveryDate'])}
-                  >
-                    デフォルトに戻す
-                  </Button>
-                )}
-              </Box>
-            )}
-          </Stack>
-
-          {/* 閉じるボタン */}
-          <Button
-            fullWidth
-            variant="contained"
-            color="primary"
-            sx={{ mt: 3 }}
-            onClick={() => setSettingsOpen(false)}
-          >
-            閉じる
-          </Button>
-        </Box>
-      </Drawer>
+      {/* 設定ドロワー */}
+      <AllocationSettingsDrawer
+        open={modals.settings.open}
+        onClose={modals.settings.closeDrawer}
+        filters={filters}
+        view={view}
+        tableData={tableData}
+      />
 
       {/* 日付範囲選択ドロワー */}
       <Drawer
         anchor="bottom"
-        open={datePickerOpen}
-        onClose={() => setDatePickerOpen(false)}
-        sx={{ zIndex: MODAL_Z_INDEX.NESTED_DIALOG }}
+        open={modals.datePicker.open}
+        onClose={modals.datePicker.closePicker}
         PaperProps={{
           sx: {
             borderRadius: '16px 16px 0 0',
@@ -2338,23 +247,22 @@ export const AllocationHistoryPage: React.FC = () => {
           {/* ヘッダー */}
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
             <Typography variant="h6" fontWeight={600}>期間選択</Typography>
-            <IconButton size="small" onClick={() => setDatePickerOpen(false)}>
+            <IconButton size="small" onClick={modals.datePicker.closePicker}>
               <Close />
             </IconButton>
           </Stack>
 
-          {/* 利用可能な日付リスト（チェックボックス形式） */}
+          {/* 利用可能な日付リスト */}
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
             日付を選択（複数選択可）
           </Typography>
 
           <FormGroup sx={{ maxHeight: '50vh', overflow: 'auto' }}>
-            {batches
+            {batches.batches
               .map(b => b.deliveryDate)
               .filter((date, index, self) => self.indexOf(date) === index)
               .sort()
               .map((date) => {
-                // 範囲内のすべての日付をチェック状態にする
                 const isInRange = tempDateRange &&
                   date >= tempDateRange.start &&
                   date <= tempDateRange.end;
@@ -2367,49 +275,21 @@ export const AllocationHistoryPage: React.FC = () => {
                     control={
                       <Checkbox
                         checked={!!isInRange}
-                        indeterminate={!!(isInRange && !isEdge)} // 中間の日付は indeterminate 状態
+                        indeterminate={!!(isInRange && !isEdge)}
                         onChange={() => {
                           if (!tempDateRange) {
-                            // 初回選択：開始日として設定
                             setTempDateRange({ start: date, end: date });
                           } else {
-                            // 範囲の拡張または縮小
                             const currentStart = tempDateRange.start;
                             const currentEnd = tempDateRange.end;
 
                             if (date < currentStart) {
-                              // 開始日を前に拡張
                               setTempDateRange({ start: date, end: currentEnd });
                             } else if (date > currentEnd) {
-                              // 終了日を後ろに拡張
                               setTempDateRange({ start: currentStart, end: date });
                             } else if (date === currentStart && currentStart === currentEnd) {
-                              // 単一選択をリセット
                               setTempDateRange(null);
-                            } else if (date === currentStart) {
-                              // 開始日を縮小
-                              const sortedDates = batches
-                                .map(b => b.deliveryDate)
-                                .filter((d, i, self) => self.indexOf(d) === i)
-                                .sort();
-                              const currentIndex = sortedDates.indexOf(date);
-                              const nextDate = sortedDates[currentIndex + 1];
-                              if (nextDate && nextDate <= currentEnd) {
-                                setTempDateRange({ start: nextDate, end: currentEnd });
-                              }
-                            } else if (date === currentEnd) {
-                              // 終了日を縮小
-                              const sortedDates = batches
-                                .map(b => b.deliveryDate)
-                                .filter((d, i, self) => self.indexOf(d) === i)
-                                .sort();
-                              const currentIndex = sortedDates.indexOf(date);
-                              const prevDate = sortedDates[currentIndex - 1];
-                              if (prevDate && prevDate >= currentStart) {
-                                setTempDateRange({ start: currentStart, end: prevDate });
-                              }
                             } else {
-                              // 範囲内の日付をクリック：新しい範囲を開始
                               setTempDateRange({ start: date, end: date });
                             }
                           }
@@ -2448,7 +328,7 @@ export const AllocationHistoryPage: React.FC = () => {
               fullWidth
               onClick={() => {
                 setTempDateRange(null);
-                setDatePickerOpen(false);
+                modals.datePicker.closePicker();
               }}
             >
               キャンセル
@@ -2458,16 +338,7 @@ export const AllocationHistoryPage: React.FC = () => {
               color="primary"
               fullWidth
               disabled={!tempDateRange}
-              onClick={() => {
-                if (tempDateRange) {
-                  handleDateRangeSelect(
-                    parseISO(tempDateRange.start),
-                    parseISO(tempDateRange.end)
-                  );
-                  setDatePickerOpen(false);
-                  setTempDateRange(null);
-                }
-              }}
+              onClick={handleDateRangeApply}
             >
               適用
             </Button>
