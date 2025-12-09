@@ -28,9 +28,13 @@ describe('OrderService', () => {
     });
 
     it('should return 0 for invalid inputs', () => {
-      expect(OrderService.calculateProfitMargin(0, 100)).toBe(0);
-      expect(OrderService.calculateProfitMargin(150, 0)).toBe(0);
-      expect(OrderService.calculateProfitMargin(-150, 100)).toBe(0);
+      expect(OrderService.calculateProfitMargin(0, 100)).toBe(0); // 売価0は無効
+      expect(OrderService.calculateProfitMargin(-150, 100)).toBe(0); // 負の売価は無効
+    });
+
+    it('should handle zero store cost (free promotional items)', () => {
+      // storeCost=0は有効（無料プロモーション商品）→ 100%マージン
+      expect(OrderService.calculateProfitMargin(150, 0)).toBe(100);
     });
 
     it('should handle negative margins', () => {
@@ -45,11 +49,17 @@ describe('OrderService', () => {
       expect(OrderService.calculateProfitAmount(150, 100, 8, 12)).toBe(4800);
     });
 
-    it('should return 0 for zero inputs', () => {
-      expect(OrderService.calculateProfitAmount(0, 113, 10, 10)).toBe(0);
-      expect(OrderService.calculateProfitAmount(120, 0, 10, 10)).toBe(0);
+    it('should return 0 when quantity is zero', () => {
+      // 数量が0の場合は結果も0
       expect(OrderService.calculateProfitAmount(120, 113, 0, 10)).toBe(0);
       expect(OrderService.calculateProfitAmount(120, 113, 10, 0)).toBe(0);
+    });
+
+    it('should handle zero cost values (promotional items)', () => {
+      // storeCost=0は有効（無料プロモーション商品）→ 損失が発生
+      expect(OrderService.calculateProfitAmount(0, 113, 10, 10)).toBe(-11300);
+      // centerCostWithFee=0は有効 → 全額利益
+      expect(OrderService.calculateProfitAmount(120, 0, 10, 10)).toBe(12000);
     });
   });
 
@@ -68,11 +78,15 @@ describe('OrderService', () => {
     });
 
     it('should return 0 for invalid inputs', () => {
+      expect(OrderService.estimatePrice(-100, 30)).toBe(0); // 負の原価は無効
+      expect(OrderService.estimatePrice(100, 0)).toBe(0);    // 0%マージンは無効
+      expect(OrderService.estimatePrice(100, 100)).toBe(0);  // 100%マージンは無効（ゼロ除算）
+      expect(OrderService.estimatePrice(100, -10)).toBe(0);  // 負のマージンは無効
+    });
+
+    it('should handle zero store cost (free promotional items)', () => {
+      // storeCost=0は有効（無料プロモーション商品）→ 売価も0
       expect(OrderService.estimatePrice(0, 30)).toBe(0);
-      expect(OrderService.estimatePrice(-100, 30)).toBe(0);
-      expect(OrderService.estimatePrice(100, 0)).toBe(0);
-      expect(OrderService.estimatePrice(100, 100)).toBe(0);
-      expect(OrderService.estimatePrice(100, -10)).toBe(0);
     });
   });
 

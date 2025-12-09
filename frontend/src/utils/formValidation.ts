@@ -1,9 +1,21 @@
-import type { ProductFormData, OrderFormData } from '@/schemas/orderSchema';
+import type { OrderFormData } from '@/schemas/orderSchema';
+
+/**
+ * 価格フィールドのみを含む型（getMissingPricingFieldsの入力用）
+ * ProductFormData全体を要求せず、必要なフィールドのみで呼び出し可能
+ */
+export interface PricingFieldsInput {
+  centerCost: number | null;
+  centerFeeRate: number | null;
+  storeCost: number | null;
+  priceExcludingTax: number | null;
+  totalDelivery: number | null;
+}
 
 /**
  * 価格設定の必須フィールド名とキーのマッピング
  */
-const PRICING_FIELD_LABELS: Record<keyof Pick<ProductFormData, 'centerCost' | 'centerFeeRate' | 'storeCost' | 'priceExcludingTax' | 'totalDelivery'>, string> = {
+const PRICING_FIELD_LABELS: Record<keyof PricingFieldsInput, string> = {
   centerCost: 'センター着原価',
   centerFeeRate: 'センターフィー率',
   storeCost: '店着原価',
@@ -17,18 +29,24 @@ const PRICING_FIELD_LABELS: Record<keyof Pick<ProductFormData, 'centerCost' | 'c
  * ProductFormCardPricingとProductPricingFormで共通の
  * 未入力フィールドチェックロジックを統一
  *
- * @param product - 商品データ
+ * NOTE: PricingFieldsInputを使用することで、ProductFormData全体を
+ * 渡さなくても価格関連フィールドのみで呼び出し可能
+ *
+ * @param product - 商品データ（価格フィールドのみ必須）
  * @returns 未入力フィールド名の配列
  *
  * @example
  * ```typescript
+ * // ProductFormData全体を渡す場合
  * const missingFields = getMissingPricingFields(product);
- * if (missingFields.length > 0) {
- *   console.log('未入力: ' + missingFields.join('、'));
- * }
+ *
+ * // 価格フィールドのみを渡す場合
+ * const missingFields = getMissingPricingFields({
+ *   centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery
+ * });
  * ```
  */
-export function getMissingPricingFields(product: ProductFormData): string[] {
+export function getMissingPricingFields(product: PricingFieldsInput): string[] {
   const missingFields: string[] = [];
 
   if (product.centerCost === null) missingFields.push(PRICING_FIELD_LABELS.centerCost);
@@ -43,10 +61,10 @@ export function getMissingPricingFields(product: ProductFormData): string[] {
 /**
  * 価格設定が完了しているかチェック
  *
- * @param product - 商品データ
+ * @param product - 商品データ（価格フィールドのみ必須）
  * @returns すべての価格フィールドが入力されている場合true
  */
-export function isPricingComplete(product: ProductFormData): boolean {
+export function isPricingComplete(product: PricingFieldsInput): boolean {
   return getMissingPricingFields(product).length === 0;
 }
 

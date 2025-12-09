@@ -2,6 +2,22 @@ import { calculateEffectiveQuantityV2 } from './unitConversion';
 import type { OrderFormData } from '@/schemas/orderSchema';
 
 /**
+ * 商品計算に必要な入力フィールド
+ * ProductFormData全体を要求せず、必要なフィールドのみで呼び出し可能
+ */
+export interface ProductMetricsInput {
+  centerCost: number | null | undefined;
+  centerFeeRate: number | null | undefined;
+  storeCost: number | null | undefined;
+  priceExcludingTax: number | null | undefined;
+  totalDelivery: number | null | undefined;
+  specification: string | undefined;
+  quantityPerPackage: number | null | undefined;
+  packageUnit: string | undefined;
+  specificationUnit: string | undefined;
+}
+
+/**
  * 商品の各種計算結果
  */
 export interface ProductMetrics {
@@ -41,25 +57,29 @@ export interface ProductMetrics {
  * ProductFormCardPricingとProductPricingFormで共通の計算ロジック。
  * 計算結果を統一することで、表示のズレを防止します。
  *
- * @param product - 商品データ
+ * NOTE: ProductMetricsInputを使用することで、ProductFormData全体を
+ * 渡さなくても必要なフィールドのみで呼び出し可能
+ *
+ * @param product - 商品データ（必要なフィールドのみでOK）
  * @returns 計算結果
  */
 export function calculateProductMetrics(
-  product: OrderFormData['products'][number]
+  product: ProductMetricsInput | OrderFormData['products'][number]
 ): ProductMetrics {
-  // 基本値を取得（nullの可能性あり）
-  const centerCost = product.centerCost;
-  const centerFeeRate = product.centerFeeRate;
-  const storeCost = product.storeCost;
-  const sellingPrice = product.priceExcludingTax;
-  const totalDelivery = product.totalDelivery;
+  // 基本値を取得（null/undefinedの可能性あり）
+  const centerCost = product.centerCost ?? null;
+  const centerFeeRate = product.centerFeeRate ?? null;
+  const storeCost = product.storeCost ?? null;
+  const sellingPrice = product.priceExcludingTax ?? null;
+  const totalDelivery = product.totalDelivery ?? null;
 
   // 単位変換を適用して実効数量を計算
   // V2形式のデータを直接V2計算関数に渡す（無駄な変換を避ける）
+  // NOTE: undefinedをnullに変換（ProductMetricsInput対応）
   const conversionResult = calculateEffectiveQuantityV2({
     specification: product.specification || '',
     specificationUnit: product.specificationUnit || '',
-    quantityPerPackage: product.quantityPerPackage,
+    quantityPerPackage: product.quantityPerPackage ?? null,
     packageUnit: product.packageUnit || '',
   });
   const effectiveQuantity = conversionResult.effectiveQuantity;

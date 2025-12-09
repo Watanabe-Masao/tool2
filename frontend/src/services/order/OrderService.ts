@@ -87,8 +87,9 @@ export class OrderService {
    * ```
    */
   static calculateProfitMargin(priceExcludingTax: number, storeCost: number): number {
-    if (!priceExcludingTax || priceExcludingTax <= 0) return 0;
-    if (!storeCost) return 0;
+    // NOTE: 0は有効な値なので、null/undefinedのみをチェック
+    if (priceExcludingTax == null || priceExcludingTax <= 0) return 0;
+    if (storeCost == null) return 0;
 
     const margin = ((priceExcludingTax - storeCost) / priceExcludingTax) * 100;
     return Math.round(margin * 10) / 10; // 小数点第1位まで
@@ -118,7 +119,13 @@ export class OrderService {
     totalDelivery: number,
     quantityPerPackage: number
   ): number {
-    if (!storeCost || !centerCostWithFee || !totalDelivery || !quantityPerPackage) {
+    // NOTE: 0は有効な値（例：プロモーション商品の原価0円）
+    // null/undefinedのみ無効とし、0は計算を許可
+    if (storeCost == null || centerCostWithFee == null) {
+      return 0;
+    }
+    // 数量系は0なら結果も0なので早期リターン
+    if (!totalDelivery || !quantityPerPackage) {
       return 0;
     }
 
@@ -163,7 +170,8 @@ export class OrderService {
    * ```
    */
   static estimatePrice(storeCost: number, targetMargin: number): number {
-    if (!storeCost || storeCost <= 0) return 0;
+    // NOTE: storeCost=0は有効（無料商品の売価計算）、ただし0/0は避ける
+    if (storeCost == null || storeCost < 0) return 0;
     if (targetMargin <= 0 || targetMargin >= 100) return 0;
 
     return Math.round(storeCost / (1 - targetMargin / 100));

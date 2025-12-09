@@ -132,7 +132,12 @@ export const orderFormSchema = z
   .refine(
     (data) => {
       // 各商品の配分合計がその商品の総納品数と一致しているか確認
+      // NOTE: totalDeliveryがnullの場合は配分チェックをスキップ（未入力状態）
       return data.products.every((product) => {
+        // totalDeliveryがnullの場合は検証をスキップ
+        if (product.totalDelivery === null) {
+          return true;
+        }
         const totalAllocation = product.storeAllocations.reduce((sum, val) => sum + val, 0);
         return totalAllocation === product.totalDelivery;
       });

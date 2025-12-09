@@ -163,8 +163,9 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = mem
   }, [productName, specification, quantityPerPackage, findMatchingHistory, centerCost, storeCost, priceExcludingTax, setValue, index]);
 
   // 共通の計算関数を使用（ProductPricingFormと同じロジック）
+  // NOTE: ProductMetricsInput型を使用しているため、as anyは不要
   const metrics = React.useMemo(() => {
-    const product = {
+    return calculateProductMetrics({
       centerCost,
       centerFeeRate,
       storeCost,
@@ -174,8 +175,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = mem
       quantityPerPackage,
       packageUnit,
       specificationUnit,
-    } as any; // OrderFormData['products'][number]型にキャスト
-    return calculateProductMetrics(product);
+    });
   }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery, specification, quantityPerPackage, packageUnit, specificationUnit]);
 
   // 個別の値を取り出す
@@ -199,6 +199,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = mem
     : '-';
 
   // 未入力項目をチェック（共通ヘルパー関数を使用）
+  // NOTE: PricingFieldsInput型を使用しているため、as anyは不要
   const missingFields = React.useMemo(() => {
     return getMissingPricingFields({
       centerCost: centerCost ?? null,
@@ -206,7 +207,7 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = mem
       storeCost: storeCost ?? null,
       priceExcludingTax: priceExcludingTax ?? null,
       totalDelivery: totalDelivery ?? null,
-    } as any);
+    });
   }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery]);
 
   const hasMissingFields = missingFields.length > 0;
