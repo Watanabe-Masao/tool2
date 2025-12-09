@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, ExpandMore } from '@mui/icons-material';
 import { ProductFormCardPricing } from './ProductFormCardPricing';
 import type { OrderFormData } from '@/schemas/orderSchema';
 import { calculateProductsSummary } from '@/utils/productCalculations';
+import { getIncompleteProductsPricing } from '@/utils/formValidation';
 import { PaginationDots } from '@/components/common/PaginationDots';
 
 /**
@@ -108,23 +109,13 @@ export const ProductPricingForm: React.FC<ProductPricingFormProps> = ({
     return calculateProductsSummary(products);
   }, [products]);
 
-  // 未入力項目がある商品をチェック
+  // 未入力項目がある商品をチェック（共通ヘルパー関数を使用）
   const productsWithMissingFields = React.useMemo(() => {
-    return products
-      .map((product, index) => {
-        const missingFields: string[] = [];
-        if (product.centerCost === null) missingFields.push('センター着原価');
-        if (product.centerFeeRate === null) missingFields.push('センターフィー率');
-        if (product.storeCost === null) missingFields.push('店着原価');
-        if (product.priceExcludingTax === null) missingFields.push('本体価格');
-        if (product.totalDelivery === null) missingFields.push('総納品数');
-
-        if (missingFields.length > 0) {
-          return { index: index + 1, fields: missingFields };
-        }
-        return null;
-      })
-      .filter((item): item is { index: number; fields: string[] } => item !== null);
+    // getIncompleteProductsPricingは0-indexedを返すので、表示用に+1する
+    return getIncompleteProductsPricing(products).map((item) => ({
+      index: item.index + 1,
+      fields: item.fields,
+    }));
   }, [products]);
 
   return (

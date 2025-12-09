@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { History, Calculate } from '@mui/icons-material';
 import type { OrderFormData } from '@/schemas/orderSchema';
+import { getMissingPricingFields } from '@/utils/formValidation';
 import { usePricingHistory } from '@/hooks/usePricingHistory';
 import type { PricingHistoryItem } from '@/hooks/usePricingHistory';
 import { PricingHistoryModal } from '@/components/modals/PricingHistoryModal';
@@ -197,13 +198,16 @@ export const ProductFormCardPricing: React.FC<ProductFormCardPricingProps> = mem
     ? ((priceExcludingTax - storeCost) / priceExcludingTax * 100).toFixed(1)
     : '-';
 
-  // 未入力項目をチェック
-  const missingFields: string[] = [];
-  if (centerCost === null) missingFields.push('センター着原価');
-  if (centerFeeRate === null) missingFields.push('センターフィー率');
-  if (storeCost === null) missingFields.push('店着原価');
-  if (priceExcludingTax === null) missingFields.push('本体価格');
-  if (totalDelivery === null) missingFields.push('総納品数');
+  // 未入力項目をチェック（共通ヘルパー関数を使用）
+  const missingFields = React.useMemo(() => {
+    return getMissingPricingFields({
+      centerCost: centerCost ?? null,
+      centerFeeRate: centerFeeRate ?? null,
+      storeCost: storeCost ?? null,
+      priceExcludingTax: priceExcludingTax ?? null,
+      totalDelivery: totalDelivery ?? null,
+    } as any);
+  }, [centerCost, centerFeeRate, storeCost, priceExcludingTax, totalDelivery]);
 
   const hasMissingFields = missingFields.length > 0;
 
