@@ -8,6 +8,7 @@ import { NewOrderPage } from '@/pages/NewOrderPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
+import { LAYOUT } from '@/constants/designTokens';
 
 /**
  * メインレイアウト（認証後）
@@ -30,7 +31,7 @@ export const MainLayout: React.FC = () => {
           flex: 1,
           overflow: 'auto',
           // モバイルではボトムナビゲーション分の余白を確保
-          paddingBottom: isMobile ? '64px' : 0,
+          paddingBottom: isMobile ? LAYOUT.mobileBottomNavHeightPx : 0,
         }}
       >
         <Routes>

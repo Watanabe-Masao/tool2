@@ -68,6 +68,7 @@ module.exports = {
     const options = context.options[0] || {};
     const allowedValues = options.allowedValues || ['auto', 'inherit', 'unset', 'initial', '0', '100%'];
     const maxAllowedPx = options.maxAllowedPx ?? 4; // 4px以下は許可
+    const allowSmallRem = options.allowSmallRem !== false; // 0.5rem以下のrem値を許可（デフォルト: true）
     const allowResponsive = options.allowResponsive !== false;
 
     // スペーシングに関連するプロパティ名
@@ -156,9 +157,12 @@ module.exports = {
           return true;
         }
 
-        // rem/emは基本的に禁止（ただし0は許可）
-        if ((unit === 'rem' || unit === 'em') && numValue === 0) {
-          return true;
+        // rem/emの場合
+        if (unit === 'rem' || unit === 'em') {
+          // 0は許可
+          if (numValue === 0) return true;
+          // 小さいrem値（0.5rem以下 ≒ 8px以下）は許可（ライブラリスタイル調整用）
+          if (allowSmallRem && Math.abs(numValue) <= 0.5) return true;
         }
 
         return false;

@@ -13,6 +13,7 @@ import { CardContextMenu } from './CardContextMenu';
 import { useLongPress } from './hooks/useLongPress';
 import type { FloatingProgressSummaryProps, StepInfo, CardMenuState, AllocationModalState } from './types';
 import { LAYER_Z_INDEX } from '@/constants/zIndex';
+import { LAYOUT } from '@/constants/designTokens';
 
 /**
  * フローティング進捗サマリー
@@ -221,7 +222,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
       elevation={8}
       sx={{
         position: 'fixed',
-        bottom: isMobile ? '64px' : 0,
+        bottom: isMobile ? LAYOUT.mobileBottomNavHeightPx : 0,
         left: 0,
         right: 0,
         zIndex: LAYER_Z_INDEX.FIXED_FLOATING, // フローティング進捗サマリー用
