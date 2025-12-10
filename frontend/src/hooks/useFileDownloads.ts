@@ -67,10 +67,22 @@ export const useFileDownloads = ({
       try {
         showLoading();
 
-        // 相対URLを絶対URLに変換
-        // Firebase Hosting版では環境変数のバックエンドURLを使用
-        const baseUrl = env.getBackendBaseUrl();
-        const absoluteUrl = new URL(config.url, baseUrl).href;
+        // URLを構築
+        // 相対URLの場合はそのまま使用（ブラウザが自動的にベースURLを補完）
+        // 絶対URLの場合はそのまま使用
+        let absoluteUrl: string;
+        if (config.url.startsWith('http://') || config.url.startsWith('https://')) {
+          absoluteUrl = config.url;
+        } else {
+          // 相対URLの場合、環境変数のベースURLがあれば使用
+          const baseUrl = env.getBackendBaseUrl();
+          if (baseUrl && baseUrl !== '') {
+            absoluteUrl = new URL(config.url, baseUrl).href;
+          } else {
+            // ベースURLがない場合は相対URLのまま使用
+            absoluteUrl = config.url;
+          }
+        }
 
         // ファイルを取得
         const response = await fetch(absoluteUrl);
