@@ -419,22 +419,45 @@ export const useAllocationTableData = (params: UseAllocationTableDataParams) => 
     return applyFilters(rows);
   }, [selectedDateRange, dateRangeRows, singleBatchRows, applyFilters]);
 
-  return {
-    // 行データ
-    rows: filteredRows,
-    rawRows: selectedDateRange ? dateRangeRows : singleBatchRows,
+  // rawRows をメモ化
+  const rawRows = useMemo(
+    () => (selectedDateRange ? dateRangeRows : singleBatchRows),
+    [selectedDateRange, dateRangeRows, singleBatchRows]
+  );
 
-    // カラム定義
-    columns: visibleColumns,
-    allColumns: selectedDateRange ? dateRangeColumns : singleBatchColumns,
+  // allColumns をメモ化
+  const allColumns = useMemo(
+    () => (selectedDateRange ? dateRangeColumns : singleBatchColumns),
+    [selectedDateRange, dateRangeColumns, singleBatchColumns]
+  );
 
-    // フィルター用データ
-    availableFilterValues,
+  // 戻り値をメモ化して無限ループを防止
+  return useMemo(
+    () => ({
+      // 行データ
+      rows: filteredRows,
+      rawRows,
 
-    // メタデータ
-    isSingleBatch: !selectedDateRange,
-    isDateRange: !!selectedDateRange,
-  };
+      // カラム定義
+      columns: visibleColumns,
+      allColumns,
+
+      // フィルター用データ
+      availableFilterValues,
+
+      // メタデータ
+      isSingleBatch: !selectedDateRange,
+      isDateRange: !!selectedDateRange,
+    }),
+    [
+      filteredRows,
+      rawRows,
+      visibleColumns,
+      allColumns,
+      availableFilterValues,
+      selectedDateRange,
+    ]
+  );
 };
 
 /**
