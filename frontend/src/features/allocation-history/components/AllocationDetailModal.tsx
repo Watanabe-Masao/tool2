@@ -108,6 +108,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
       fullWidth
       fullScreen={isFullScreen || window.innerWidth < 600}
       sx={{
+        zIndex: 1400, // Headerより上に表示（Header: 1300）
         '& .MuiDialog-paper': {
           borderRadius: isFullScreen ? 0 : 3,
           overflow: 'hidden',
