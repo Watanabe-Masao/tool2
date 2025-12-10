@@ -20,8 +20,8 @@ export const renderStoreCell = (params: { value?: number }) => {
         alignItems: 'center',
         justifyContent: 'center',
         fontWeight: value > 0 ? '600' : 'normal',
-        color: value > 0 ? '#1565c0' : '#bdbdbd',
-        backgroundColor: value > 0 ? '#e3f2fd' : 'transparent',
+        color: value > 0 ? 'primary.dark' : 'grey.400',
+        bgcolor: value > 0 ? 'primary.50' : 'transparent',
       }}
     >
       {value > 0 ? value : '-'}

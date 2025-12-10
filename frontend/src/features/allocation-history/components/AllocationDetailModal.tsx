@@ -218,20 +218,21 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
                 },
                 // 小計行のスタイル - モダン
                 '& .row-subtotal': {
-                  background: 'linear-gradient(to right, #eff6ff, #dbeafe) !important',
+                  bgcolor: 'primary.50',
                   '& .MuiDataGrid-cell': {
-                    color: '#3b82f6',
+                    color: 'primary.main',
                     fontWeight: 600,
-                    borderTop: '1px solid #93c5fd',
-                    borderBottom: '1px solid #93c5fd',
+                    borderTop: '1px solid',
+                    borderBottom: '1px solid',
+                    borderColor: 'primary.200',
                     fontSize: { xs: '0.7rem', sm: '0.8rem' },
                   },
                 },
                 // 総合計行のスタイル - モダン
                 '& .row-grandtotal': {
-                  background: 'linear-gradient(to right, #6366f1, #8b5cf6) !important',
+                  bgcolor: 'primary.main',
                   '& .MuiDataGrid-cell': {
-                    color: '#ffffff',
+                    color: 'common.white',
                     fontWeight: 700,
                     fontSize: { xs: '0.75rem', sm: '0.85rem' },
                     borderTop: 'none',

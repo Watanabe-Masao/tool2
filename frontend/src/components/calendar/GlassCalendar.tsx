@@ -476,7 +476,7 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                 textAlign: 'center',
                 fontSize: '0.65rem',
                 fontWeight: 700,
-                color: idx === 0 ? '#e11d48' : idx === 6 ? '#0284c7' : 'grey.500',
+                color: idx === 0 ? 'error.main' : idx === 6 ? 'primary.main' : 'grey.500',
               }}
             >
               {day}
@@ -530,10 +530,10 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                     borderRadius: borderRadius,
                     opacity: isCurrentMonth ? (canSelect ? 1 : 0.4) : 0.3,
                     transition: 'all 0.1s ease-out',
-                    background: isSelected
-                      ? 'linear-gradient(to bottom, #eff6ff, #dbeafe)'
+                    bgcolor: isSelected
+                      ? 'primary.50'
                       : isHovered
-                        ? '#f8fafc'
+                        ? 'grey.50'
                         : 'transparent',
                   }}
                 >
@@ -572,13 +572,13 @@ export const GlassCalendar: React.FC<GlassCalendarProps> = ({
                         fontWeight: isTodayDate ? 700 : isSelected ? 600 : 500,
                         bgcolor: isTodayDate ? 'grey.800' : 'transparent',
                         color: isTodayDate
-                          ? 'white'
+                          ? 'common.white'
                           : isSelected
                             ? 'primary.700'
                             : dayOfWeek === 0
-                              ? '#e11d48'
+                              ? 'error.main'
                               : dayOfWeek === 6
-                                ? '#0284c7'
+                                ? 'primary.main'
                                 : 'grey.700',
                       }}
                     >

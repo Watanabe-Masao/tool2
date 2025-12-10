@@ -192,9 +192,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       <Backdrop
         open={loading}
         sx={{
-          color: '#fff',
+          color: 'common.white',
           zIndex: (theme) => theme.zIndex.drawer + 1000,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          bgcolor: 'rgba(0, 0, 0, 0.5)',
         }}
       >
         <CircularProgress color="inherit" size={60} />

@@ -66,11 +66,11 @@ export const DeliveryDateForm: React.FC<DeliveryDateFormProps> = ({
                 },
                 // 日曜日を赤色に
                 '& .rdp-day_button[aria-label*="日曜日"]': {
-                  color: '#d32f2f',
+                  color: 'error.main',
                 },
                 // 土曜日を青色に
                 '& .rdp-day_button[aria-label*="土曜日"]': {
-                  color: '#1976d2',
+                  color: 'primary.main',
                 },
               }}
             >

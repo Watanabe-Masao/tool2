@@ -176,14 +176,14 @@ export const OrderFormWithTabs: React.FC<OrderFormWithTabsProps> = ({
               width: '8px',
             },
             '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
+              bgcolor: 'grey.100',
             },
             '&::-webkit-scrollbar-thumb': {
-              background: '#888',
+              bgcolor: 'grey.500',
               borderRadius: '4px',
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              background: '#555',
+              bgcolor: 'grey.700',
             },
           }}
         >

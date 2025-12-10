@@ -229,7 +229,7 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
                 size="small"
                 onClick={() => toggleLock(params.row.storeCode)}
                 sx={{
-                  color: params.row.locked ? '#f57c00' : '#9e9e9e',
+                  color: params.row.locked ? 'warning.dark' : 'grey.500',
                 }}
               >
                 {params.row.locked ? <Lock /> : <LockOpen />}
@@ -274,10 +274,10 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
                     fontWeight: '700',
                     fontSize: '1.1rem',
                     color: params.row.locked
-                      ? '#f57c00'
+                      ? 'warning.dark'
                       : value > 0
-                      ? '#1565c0'
-                      : '#bdbdbd',
+                      ? 'primary.dark'
+                      : 'grey.400',
                   }}
                 >
                   {value > 0 ? value : '-'}
@@ -540,13 +540,13 @@ export const StoreAllocationTable: React.FC<StoreAllocationTableProps> = ({
                       borderRight: 'none',
                     },
                     '& .MuiDataGrid-row:hover': {
-                      backgroundColor: '#f5f5f5',
+                      bgcolor: 'grey.100',
                     },
                     '& .MuiDataGrid-row:nth-of-type(even)': {
-                      backgroundColor: '#ffffff',
+                      bgcolor: 'common.white',
                     },
                     '& .MuiDataGrid-row:nth-of-type(odd)': {
-                      backgroundColor: '#fafafa',
+                      bgcolor: 'grey.50',
                     },
                     '& .MuiDataGrid-cell[data-field="allocation"]': {
                       backgroundColor: (theme) => {

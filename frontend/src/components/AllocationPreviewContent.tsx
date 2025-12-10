@@ -431,8 +431,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: value > 0 ? '600' : 'normal',
-                color: isLocked ? '#f57c00' : value > 0 ? '#1565c0' : '#bdbdbd',
-                backgroundColor: isLocked ? '#fff3e0' : value > 0 ? '#e3f2fd' : 'transparent',
+                color: isLocked ? 'warning.dark' : value > 0 ? 'primary.dark' : 'grey.400',
+                backgroundColor: isLocked ? 'warning.light' : value > 0 ? 'primary.light' : 'transparent',
               }}
             >
               {value > 0 ? value : '-'}
@@ -499,8 +499,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: '700',
-              color: '#f57f17',
-              backgroundColor: '#fff8e1',
+              color: 'warning.main',
+              backgroundColor: 'warning.light',
             }}
           >
             {params.value}
@@ -549,8 +549,8 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '700',
-                color: diff !== 0 ? '#d32f2f' : '#388e3c',
-                backgroundColor: diff !== 0 ? '#ffebee' : '#e8f5e9',
+                color: diff !== 0 ? 'error.main' : 'success.dark',
+                backgroundColor: diff !== 0 ? 'error.light' : 'success.light',
               }}
             >
               {diff}
@@ -885,7 +885,7 @@ export const AllocationPreviewContent: React.FC<AllocationPreviewContentProps> =
                 borderRight: 'none',
               },
               '& .MuiDataGrid-row:hover': {
-                backgroundColor: '#f5f5f5',
+                backgroundColor: 'grey.100',
               },
               // ハイライトされた行のスタイル
               '& .highlighted-row': {

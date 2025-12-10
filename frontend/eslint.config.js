@@ -70,4 +70,12 @@ export default defineConfig([
       }],
     },
   },
+  // テーマ・デザイントークン定義ファイルでは色・フォントルールを無効化
+  {
+    files: ['**/theme.ts', '**/designTokens.ts', '**/constants/supplierColors.ts'],
+    rules: {
+      'custom-rules/no-hardcoded-colors': 'off',
+      'custom-rules/no-hardcoded-fontsize': 'off',
+    },
+  },
 ])

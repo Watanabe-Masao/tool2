@@ -493,7 +493,7 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
           flexDirection: 'column',
           alignItems: 'center',
           overflow: 'auto',
-          bgcolor: '#f5f5f5',
+          bgcolor: 'grey.100',
           p: 2,
         }}
       >

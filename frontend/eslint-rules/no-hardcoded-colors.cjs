@@ -40,6 +40,14 @@ module.exports = {
             type: 'boolean',
             description: 'grey.xxx形式のMUI色を許可（デフォルト: true）',
           },
+          allowLowAlphaRgba: {
+            type: 'boolean',
+            description: '低アルファ値のrgbaを許可（シャドウ、オーバーレイ用、デフォルト: true）',
+          },
+          maxAllowedAlpha: {
+            type: 'number',
+            description: '許可するrgbaの最大アルファ値（デフォルト: 0.5）',
+          },
         },
         additionalProperties: false,
       },
@@ -63,6 +71,8 @@ module.exports = {
       'initial',
     ];
     const allowGrey = options.allowGrey !== false;
+    const allowLowAlphaRgba = options.allowLowAlphaRgba !== false;
+    const maxAllowedAlpha = options.maxAllowedAlpha ?? 0.5;
 
     // 色に関連するプロパティ名
     const colorProperties = new Set([
@@ -99,6 +109,21 @@ module.exports = {
     // grey.xxx パターン（条件付き許可）
     const greyPattern = /^grey\./;
 
+    // rgba のアルファ値を抽出するパターン
+    const rgbaAlphaPattern = /^rgba\s*\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)/i;
+
+    /**
+     * rgba値から透明度を抽出
+     * @returns {number|null} アルファ値、またはrgbaでない場合はnull
+     */
+    function extractRgbaAlpha(value) {
+      const match = value.match(rgbaAlphaPattern);
+      if (match) {
+        return parseFloat(match[1]);
+      }
+      return null;
+    }
+
     /**
      * 値が許可されているかチェック
      */
@@ -119,6 +144,14 @@ module.exports = {
 
       // HEXカラーは禁止
       if (hexColorPattern.test(value)) return false;
+
+      // rgba の低アルファ値は許可（シャドウ、オーバーレイ用）
+      if (allowLowAlphaRgba) {
+        const alpha = extractRgbaAlpha(value);
+        if (alpha !== null && alpha <= maxAllowedAlpha) {
+          return true;
+        }
+      }
 
       // rgb/rgba/hsl/hsla は禁止
       if (functionalColorPattern.test(value)) return false;

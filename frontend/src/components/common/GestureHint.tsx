@@ -70,22 +70,22 @@ export const GestureHint: React.FC<GestureHintProps> = ({
   const getIcon = () => {
     switch (type) {
       case 'swipe-horizontal':
-        return <SwipeLeft sx={{ fontSize: '16px' }} />;
+        return <SwipeLeft sx={{ fontSize: 16 }} />;
       case 'swipe-vertical':
-        return <SwipeUp sx={{ fontSize: '16px' }} />;
+        return <SwipeUp sx={{ fontSize: 16 }} />;
       case 'swipe-left':
-        return <SwipeLeft sx={{ fontSize: '16px' }} />;
+        return <SwipeLeft sx={{ fontSize: 16 }} />;
       case 'swipe-right':
-        return <SwipeRight sx={{ fontSize: '16px' }} />;
+        return <SwipeRight sx={{ fontSize: 16 }} />;
       case 'swipe-up':
-        return <SwipeUp sx={{ fontSize: '16px' }} />;
+        return <SwipeUp sx={{ fontSize: 16 }} />;
       case 'swipe-down':
-        return <SwipeDown sx={{ fontSize: '16px' }} />;
+        return <SwipeDown sx={{ fontSize: 16 }} />;
       case 'long-press':
-        return <TouchApp sx={{ fontSize: '16px' }} />;
+        return <TouchApp sx={{ fontSize: 16 }} />;
       case 'tap':
       default:
-        return <TouchApp sx={{ fontSize: '16px' }} />;
+        return <TouchApp sx={{ fontSize: 16 }} />;
     }
   };
 
@@ -122,8 +122,8 @@ export const GestureHint: React.FC<GestureHintProps> = ({
       <Box
         sx={{
           ...getPositionStyle(),
-          bgcolor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
+          bgcolor: 'grey.900',
+          color: 'common.white',
           px: 1.5,
           py: 0.75,
           borderRadius: 2,

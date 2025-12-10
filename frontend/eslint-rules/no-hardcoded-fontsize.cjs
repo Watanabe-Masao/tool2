@@ -43,6 +43,18 @@ module.exports = {
             type: 'boolean',
             description: 'レスポンシブ対応のオブジェクト形式を許可（デフォルト: true）',
           },
+          allowResponsiveConditional: {
+            type: 'boolean',
+            description: 'isMobile等のレスポンシブ条件式を許可（デフォルト: true）',
+          },
+          allowIconSizes: {
+            type: 'boolean',
+            description: 'アイコン用の数値サイズ（12-72）を許可（デフォルト: true）',
+          },
+          allowSmallRem: {
+            type: 'boolean',
+            description: '小さなrem値（≤1rem）を許可（デフォルト: true）',
+          },
         },
         additionalProperties: false,
       },
@@ -58,8 +70,11 @@ module.exports = {
 
   create(context) {
     const options = context.options[0] || {};
-    const allowedValues = options.allowedValues || ['inherit', 'unset', 'initial'];
+    const allowedValues = options.allowedValues || ['inherit', 'unset', 'initial', '16px', '1rem'];
     const allowResponsive = options.allowResponsive !== false;
+    const allowResponsiveConditional = options.allowResponsiveConditional !== false;
+    const allowIconSizes = options.allowIconSizes !== false;
+    const allowSmallRem = options.allowSmallRem !== false;
 
     // フォントサイズに関連するプロパティ名
     const fontSizeProperties = new Set(['fontSize']);
@@ -75,8 +90,11 @@ module.exports = {
      */
     function isAllowedValue(value) {
       if (typeof value === 'number') {
-        // 数値はハードコード（ただし0は許可）
-        return value === 0;
+        // 0は許可
+        if (value === 0) return true;
+        // アイコンサイズ（12-72）は許可
+        if (allowIconSizes && value >= 12 && value <= 72) return true;
+        return false;
       }
 
       if (typeof value !== 'string') return true;
@@ -86,6 +104,15 @@ module.exports = {
 
       // 明示的に許可されている値
       if (allowedValues.includes(value.toLowerCase())) return true;
+
+      // 小さなrem値（≤1.25rem、body/subtitle相当）は許可
+      if (allowSmallRem) {
+        const remMatch = value.match(/^([\d.]+)\s*rem$/i);
+        if (remMatch) {
+          const remValue = parseFloat(remMatch[1]);
+          if (remValue <= 1.25) return true;
+        }
+      }
 
       // px/rem/em値は禁止
       if (sizeValuePattern.test(value)) return false;
@@ -131,6 +158,38 @@ module.exports = {
     }
 
     /**
+     * レスポンシブ条件式かどうかチェック
+     * 例: isMobile ? '0.7rem' : '0.875rem'
+     */
+    function isResponsiveConditional(node) {
+      if (node.type !== 'ConditionalExpression') return false;
+
+      // 条件部分にレスポンシブ関連の識別子が含まれているかチェック
+      const responsiveIdentifiers = new Set([
+        'isMobile', 'isTablet', 'isDesktop', 'isSm', 'isMd', 'isLg', 'isXl',
+        'mobile', 'tablet', 'desktop', 'smUp', 'mdUp', 'lgUp', 'xlUp',
+        'smDown', 'mdDown', 'lgDown', 'xlDown',
+      ]);
+
+      function containsResponsiveIdentifier(testNode) {
+        if (!testNode) return false;
+
+        if (testNode.type === 'Identifier') {
+          return responsiveIdentifiers.has(testNode.name);
+        }
+        if (testNode.type === 'UnaryExpression') {
+          return containsResponsiveIdentifier(testNode.argument);
+        }
+        if (testNode.type === 'LogicalExpression' || testNode.type === 'BinaryExpression') {
+          return containsResponsiveIdentifier(testNode.left) || containsResponsiveIdentifier(testNode.right);
+        }
+        return false;
+      }
+
+      return containsResponsiveIdentifier(node.test);
+    }
+
+    /**
      * 値をチェックしてエラーを報告
      */
     function checkFontSizeValue(node, value) {
@@ -164,6 +223,10 @@ module.exports = {
           break;
 
         case 'ConditionalExpression':
+          // レスポンシブ条件式（isMobile ? 'small' : 'large'）は許可
+          if (allowResponsiveConditional && isResponsiveConditional(node)) {
+            return;
+          }
           checkValue(node.consequent);
           checkValue(node.alternate);
           break;

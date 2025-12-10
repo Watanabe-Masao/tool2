@@ -1261,10 +1261,10 @@ const StoreAllocationMobileContent: React.FC<StoreAllocationMobileContentProps> 
                     borderRadius: 4,
                   },
                   '&::-webkit-scrollbar-thumb': {
-                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    bgcolor: 'grey.400',
                     borderRadius: 4,
                     '&:hover': {
-                      backgroundColor: 'rgba(0,0,0,0.6)',
+                      bgcolor: 'grey.600',
                     },
                   },
                 }}

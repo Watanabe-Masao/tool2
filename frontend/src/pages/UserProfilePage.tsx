@@ -213,7 +213,7 @@ export const UserProfilePage: React.FC = () => {
                       height: 80,
                       bgcolor: 'primary.main',
                       mb: 2,
-                      fontSize: '2rem',
+                      fontSize: 32,
                     }}
                   >
                     {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
