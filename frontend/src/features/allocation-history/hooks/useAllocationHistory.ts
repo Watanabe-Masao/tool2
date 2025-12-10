@@ -123,14 +123,17 @@ export const useAllocationHistory = (
     )
   );
 
-  // 統合オブジェクトを返す（メモ化不要 - 各hookが既にメモ化）
-  return {
-    batches,
-    filters,
-    modals,
-    view,
-    tableData,
-  };
+  // 統合オブジェクトを返す（各hookがメモ化済みなので、参照の安定性を保証）
+  return useMemo(
+    () => ({
+      batches,
+      filters,
+      modals,
+      view,
+      tableData,
+    }),
+    [batches, filters, modals, view, tableData]
+  );
 };
 
 /**

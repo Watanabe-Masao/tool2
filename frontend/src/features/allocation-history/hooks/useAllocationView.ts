@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 /**
  * ViewMode type
@@ -167,35 +167,58 @@ export const useAllocationView = () => {
     [hiddenRowIds]
   );
 
-  return {
-    // 状態
-    viewMode,
-    isFullScreen,
-    hiddenColumns,
-    hiddenRowIds,
+  // 戻り値をメモ化して無限ループを防止
+  return useMemo(
+    () => ({
+      // 状態
+      viewMode,
+      isFullScreen,
+      hiddenColumns,
+      hiddenRowIds,
 
-    // 表示モード操作
-    setViewMode: switchViewMode,
-    toggleViewMode,
+      // 表示モード操作
+      setViewMode: switchViewMode,
+      toggleViewMode,
 
-    // フルスクリーン操作
-    setFullScreen,
-    toggleFullScreen,
+      // フルスクリーン操作
+      setFullScreen,
+      toggleFullScreen,
 
-    // 列操作
-    toggleColumn,
-    showColumn,
-    hideColumn,
-    showAllColumns,
-    isColumnVisible,
+      // 列操作
+      toggleColumn,
+      showColumn,
+      hideColumn,
+      showAllColumns,
+      isColumnVisible,
 
-    // 行操作
-    toggleRow,
-    showRow,
-    hideRow,
-    showAllRows,
-    isRowVisible,
-  };
+      // 行操作
+      toggleRow,
+      showRow,
+      hideRow,
+      showAllRows,
+      isRowVisible,
+    }),
+    [
+      viewMode,
+      isFullScreen,
+      hiddenColumns,
+      hiddenRowIds,
+      switchViewMode,
+      toggleViewMode,
+      setFullScreen,
+      toggleFullScreen,
+      toggleColumn,
+      showColumn,
+      hideColumn,
+      showAllColumns,
+      isColumnVisible,
+      toggleRow,
+      showRow,
+      hideRow,
+      showAllRows,
+      isRowVisible,
+    ]
+  );
 };
 
 /**

@@ -104,7 +104,7 @@ export const AllocationHistoryPage: React.FC = () => {
         batches.fetchBatchDetails(batchData);
       }
     },
-    [batches]
+    [batches.fetchBatchDetails]
   );
 
   // カレンダーの日付範囲選択
@@ -112,7 +112,7 @@ export const AllocationHistoryPage: React.FC = () => {
     (start: Date, end: Date) => {
       batches.fetchDateRangeDetails(start, end);
     },
-    [batches]
+    [batches.fetchDateRangeDetails]
   );
 
   // カレンダーの日付選択変更（プレビュー用）
@@ -120,7 +120,7 @@ export const AllocationHistoryPage: React.FC = () => {
     (dates: string[]) => {
       batches.fetchPreviewProducts(dates);
     },
-    [batches]
+    [batches.fetchPreviewProducts]
   );
 
   // 削除処理
@@ -132,7 +132,7 @@ export const AllocationHistoryPage: React.FC = () => {
     if (success) {
       modals.deleteDialog.closeDialog();
     }
-  }, [batches, modals.deleteDialog]);
+  }, [batches.deleteBatch, modals.deleteDialog.batch, modals.deleteDialog.closeDialog]);
 
   // 日付範囲ピッカーで適用
   const handleDateRangeApply = useCallback(() => {
@@ -144,7 +144,7 @@ export const AllocationHistoryPage: React.FC = () => {
       modals.datePicker.closePicker();
       setTempDateRange(null);
     }
-  }, [tempDateRange, handleDateRangeSelect, modals.datePicker]);
+  }, [tempDateRange, handleDateRangeSelect, modals.datePicker.closePicker]);
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>

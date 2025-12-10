@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 /**
  * GroupMode type
@@ -172,28 +172,49 @@ export const useAllocationFilters = () => {
     });
   }, []);
 
-  return {
-    // 状態
-    filters,
-    groupMode,
-    sortOrder,
-    compositeKeyFields,
+  // 戻り値をメモ化して無限ループを防止
+  return useMemo(
+    () => ({
+      // 状態
+      filters,
+      groupMode,
+      sortOrder,
+      compositeKeyFields,
 
-    // 操作関数
-    setFilters,
-    updateFilters,
-    toggleProductName,
-    toggleOrigin,
-    toggleSpecification,
-    toggleDate,
-    resetFilters,
-    hasActiveFilters,
+      // 操作関数
+      setFilters,
+      updateFilters,
+      toggleProductName,
+      toggleOrigin,
+      toggleSpecification,
+      toggleDate,
+      resetFilters,
+      hasActiveFilters,
 
-    setGroupMode,
-    setSortOrder,
-    setCompositeKeyFields,
-    toggleCompositeKeyField,
-  };
+      setGroupMode,
+      setSortOrder,
+      setCompositeKeyFields,
+      toggleCompositeKeyField,
+    }),
+    [
+      filters,
+      groupMode,
+      sortOrder,
+      compositeKeyFields,
+      setFilters,
+      updateFilters,
+      toggleProductName,
+      toggleOrigin,
+      toggleSpecification,
+      toggleDate,
+      resetFilters,
+      hasActiveFilters,
+      setGroupMode,
+      setSortOrder,
+      setCompositeKeyFields,
+      toggleCompositeKeyField,
+    ]
+  );
 };
 
 /**

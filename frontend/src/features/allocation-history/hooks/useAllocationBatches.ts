@@ -293,32 +293,56 @@ export const useAllocationBatches = (userId: string | undefined) => {
     fetchStoreCategories();
   }, [fetchHistory, fetchStoreCategories]);
 
-  return {
-    // データ
-    batches,
-    selectedBatch,
-    selectedDateRange,
-    details,
-    calendarEvents,
-    previewProducts,
-    storeCategories,
+  // 戻り値をメモ化して無限ループを防止
+  return useMemo(
+    () => ({
+      // データ
+      batches,
+      selectedBatch,
+      selectedDateRange,
+      details,
+      calendarEvents,
+      previewProducts,
+      storeCategories,
 
-    // 状態
-    loading,
-    detailsLoading,
-    previewLoading,
-    deleting,
-    error,
+      // 状態
+      loading,
+      detailsLoading,
+      previewLoading,
+      deleting,
+      error,
 
-    // 操作関数
-    fetchHistory,
-    fetchBatchDetails,
-    fetchDateRangeDetails,
-    fetchPreviewProducts,
-    deleteBatch,
-    closeDetails,
-    clearError,
-  };
+      // 操作関数
+      fetchHistory,
+      fetchBatchDetails,
+      fetchDateRangeDetails,
+      fetchPreviewProducts,
+      deleteBatch,
+      closeDetails,
+      clearError,
+    }),
+    [
+      batches,
+      selectedBatch,
+      selectedDateRange,
+      details,
+      calendarEvents,
+      previewProducts,
+      storeCategories,
+      loading,
+      detailsLoading,
+      previewLoading,
+      deleting,
+      error,
+      fetchHistory,
+      fetchBatchDetails,
+      fetchDateRangeDetails,
+      fetchPreviewProducts,
+      deleteBatch,
+      closeDetails,
+      clearError,
+    ]
+  );
 };
 
 /**

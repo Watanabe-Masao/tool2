@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { AllocationBatch } from '@/types/allocationHistory';
 
 /**
@@ -94,35 +94,55 @@ export const useAllocationModals = () => {
     closeDatePicker();
   }, []);
 
-  return {
-    // 削除ダイアログ
-    deleteDialog: {
+  // 入れ子オブジェクトをメモ化
+  const deleteDialog = useMemo(
+    () => ({
       open: deleteDialogOpen,
       batch: batchToDelete,
       openDialog: openDeleteDialog,
       closeDialog: closeDeleteDialog,
-    },
+    }),
+    [deleteDialogOpen, batchToDelete, openDeleteDialog, closeDeleteDialog]
+  );
 
-    // 設定ドロワー
-    settings: {
+  const settings = useMemo(
+    () => ({
       open: settingsOpen,
       openDrawer: openSettings,
       closeDrawer: closeSettings,
       toggle: toggleSettings,
-    },
+    }),
+    [settingsOpen, openSettings, closeSettings, toggleSettings]
+  );
 
-    // 日付範囲ピッカー
-    datePicker: {
+  const datePicker = useMemo(
+    () => ({
       open: datePickerOpen,
       tempRange: tempDateRange,
       openPicker: openDatePicker,
       closePicker: closeDatePicker,
       updateTempRange: updateTempDateRange,
-    },
+    }),
+    [datePickerOpen, tempDateRange, openDatePicker, closeDatePicker, updateTempDateRange]
+  );
 
-    // ユーティリティ
-    closeAllModals,
-  };
+  // 戻り値をメモ化して無限ループを防止
+  return useMemo(
+    () => ({
+      // 削除ダイアログ
+      deleteDialog,
+
+      // 設定ドロワー
+      settings,
+
+      // 日付範囲ピッカー
+      datePicker,
+
+      // ユーティリティ
+      closeAllModals,
+    }),
+    [deleteDialog, settings, datePicker, closeAllModals]
+  );
 };
 
 /**
