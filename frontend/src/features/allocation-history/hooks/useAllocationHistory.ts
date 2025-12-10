@@ -96,32 +96,18 @@ export const useAllocationHistory = (
   const view = useAllocationView();
 
   // 5. テーブルデータ生成（自動接続）
-  const tableData = useAllocationTableData(
-    useMemo(
-      () => ({
-        details: batches.details,
-        selectedDateRange: batches.selectedDateRange,
-        groupMode: filters.groupMode,
-        sortOrder: filters.sortOrder,
-        compositeKeyFields: filters.compositeKeyFields,
-        filters: filters.filters,
-        hiddenColumns: view.hiddenColumns,
-        hiddenRowIds: view.hiddenRowIds,
-        onHideRow: view.hideRow,
-      }),
-      [
-        batches.details,
-        batches.selectedDateRange,
-        filters.groupMode,
-        filters.sortOrder,
-        filters.compositeKeyFields,
-        filters.filters,
-        view.hiddenColumns,
-        view.hiddenRowIds,
-        view.hideRow,
-      ]
-    )
-  );
+  // Note: paramsオブジェクトは毎レンダー新規作成（useAllocationTableData内でメモ化済み）
+  const tableData = useAllocationTableData({
+    details: batches.details,
+    selectedDateRange: batches.selectedDateRange,
+    groupMode: filters.groupMode,
+    sortOrder: filters.sortOrder,
+    compositeKeyFields: filters.compositeKeyFields,
+    filters: filters.filters,
+    hiddenColumns: view.hiddenColumns,
+    hiddenRowIds: view.hiddenRowIds,
+    onHideRow: view.hideRow,
+  });
 
   // 統合オブジェクトを返す（各hookがメモ化済みなので、参照の安定性を保証）
   return useMemo(
