@@ -36,6 +36,7 @@ import { APP_NAME } from '@/utils/constants';
 import { BuildInfo } from '@/components/common/BuildInfo';
 import { ShortcutsHelpDialog } from '@/components/common/ShortcutsHelpDialog';
 import { useOrderFormStore } from '@/stores/orderFormStore';
+import { LAYER_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * ヘッダーコンポーネント
@@ -211,7 +212,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <AppBar position="sticky" elevation={1} sx={{ zIndex: 1300 }}>
+      <AppBar position="sticky" elevation={1} sx={{ zIndex: LAYER_Z_INDEX.PAGE_MODAL }}>
         <Toolbar>
           {/* アプリケーション名 */}
           <Typography variant="h6" component="div" sx={{ fontWeight: 600, mr: 1.5 }}>

@@ -8,6 +8,7 @@ import {
   SwipeDown,
 } from '@mui/icons-material';
 import type { GestureType } from '@/types/ui';
+import { LAYER_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * GestureHintのProps
@@ -92,7 +93,7 @@ export const GestureHint: React.FC<GestureHintProps> = ({
   const getPositionStyle = () => {
     const baseStyle = {
       position: 'absolute' as const,
-      zIndex: 1000,
+      zIndex: LAYER_Z_INDEX.FIXED_FLOATING, // ヒント表示用
     };
 
     switch (position) {

@@ -15,7 +15,7 @@ import { useOrderFormStore } from '@/stores/orderFormStore';
 import { AllocationHistoryPage } from '@/pages/AllocationHistoryPage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { StoreCategoryManagementPage } from '@/pages/StoreCategoryManagementPage';
-import { MODAL_Z_INDEX } from '@/constants/zIndex';
+import { MODAL_Z_INDEX, LAYER_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * 新規注文フォームのコンテンツ
@@ -227,7 +227,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="xl"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? LAYER_Z_INDEX.SNACKBAR_OVERLAY : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',
@@ -266,7 +266,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? LAYER_Z_INDEX.SNACKBAR_OVERLAY : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',
@@ -305,7 +305,7 @@ const OrderFormContent: React.FC = () => {
         maxWidth="lg"
         fullWidth
         fullScreen={isMobile}
-        sx={{ zIndex: isMobile ? 1400 : MODAL_Z_INDEX.PAGE_MODAL }}
+        sx={{ zIndex: isMobile ? LAYER_Z_INDEX.SNACKBAR_OVERLAY : MODAL_Z_INDEX.PAGE_MODAL }}
         PaperProps={{
           sx: {
             display: 'flex',

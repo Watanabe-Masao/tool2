@@ -18,6 +18,7 @@ import { haptic } from '@/utils/hapticFeedback';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useNavigationContext } from '@/context/NavigationContext';
 import { useOrderFormStore } from '@/stores/orderFormStore';
+import { LAYER_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * ナビゲーションアイテムの定義
@@ -118,7 +119,7 @@ export const MobileBottomNav: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 1100,
+        zIndex: LAYER_Z_INDEX.FIXED_BOTTOM_NAV, // 固定ボトムナビ用
         boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
       }}
       elevation={3}

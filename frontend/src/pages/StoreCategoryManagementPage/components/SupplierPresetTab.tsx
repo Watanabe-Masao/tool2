@@ -210,7 +210,7 @@ export const SupplierPresetTab: React.FC<SupplierPresetTabProps> = ({
                       transition: showDeleteHint || showEditHint || isDragging ? 'none' : 'background-color 0.2s',
                       borderTop: isDragOver && !isDragging ? '3px solid' : 'none',
                       borderColor: 'primary.main',
-                      zIndex: isDragging ? 1000 : 1,
+                      zIndex: isDragging ? 10 : 1, // ドラッグ中は他の要素より上に表示
                       mb: 0.5,
                     }}
                   >

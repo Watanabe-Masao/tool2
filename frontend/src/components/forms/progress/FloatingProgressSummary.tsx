@@ -12,6 +12,7 @@ import { ProductCardSwiper } from './ProductCardSwiper';
 import { CardContextMenu } from './CardContextMenu';
 import { useLongPress } from './hooks/useLongPress';
 import type { FloatingProgressSummaryProps, StepInfo, CardMenuState, AllocationModalState } from './types';
+import { LAYER_Z_INDEX } from '@/constants/zIndex';
 
 /**
  * フローティング進捗サマリー
@@ -223,7 +224,7 @@ export const FloatingProgressSummary: React.FC<FloatingProgressSummaryProps> = (
         bottom: isMobile ? '64px' : 0,
         left: 0,
         right: 0,
-        zIndex: 1000,
+        zIndex: LAYER_Z_INDEX.FIXED_FLOATING, // フローティング進捗サマリー用
         borderRadius: '16px 16px 0 0',
         maxWidth: 'lg',
         margin: '0 auto',

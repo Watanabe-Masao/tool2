@@ -28,6 +28,7 @@ import { DayPicker, type DateRange as DateRangeType } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import './HistoryAllocationModal.css';
 import { useAuthContext } from '@/context/AuthContext';
+import { LAYER_Z_INDEX } from '@/constants/zIndex';
 import { getFirebaseFirestore } from '@/services/firebase/config';
 import { FirestoreServiceFacade } from '@/services/firestore/FirestoreServiceFacade';
 import { STORE_DATA } from '@/utils/constants';
@@ -312,7 +313,7 @@ export const HistoryAllocationModal: React.FC<HistoryAllocationModalProps> = ({
             slotProps={{
               paper: {
                 sx: {
-                  zIndex: 1400, // Dialogより上に表示
+                  zIndex: LAYER_Z_INDEX.SNACKBAR_OVERLAY, // Dialogより上に表示
                 },
               },
             }}

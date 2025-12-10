@@ -65,33 +65,61 @@ export const ELEMENT_OFFSET = {
  * レイヤー階層のzIndex定義
  *
  * アプリケーション全体の階層構造を定義します。
+ *
+ * ## コンテンツ内の相対的なz-index（0-999）
+ * stacking context内での相対的な順序に使用
+ *
+ * ## 固定要素のz-index（1000以上）
+ * MUIのデフォルトz-indexとの整合性を考慮
+ * - MUI appBar: 1100
+ * - MUI drawer: 1200
+ * - MUI modal: 1300
+ * - MUI snackbar: 1400
+ * - MUI tooltip: 1500
  */
 export const LAYER_Z_INDEX = {
+  // ============================================
+  // コンテンツ内の相対的なz-index（0-999）
+  // ============================================
   /** ページコンテンツ - 0番台 */
   PAGE_CONTENT: 0,
-  /** ヘッダー - 100番台 */
+  /** ヘッダー（相対位置用） - 100番台 */
   HEADER: 100,
-  /** モバイルボトムナビゲーション - 100番台 */
+  /** モバイルボトムナビゲーション（相対位置用） - 100番台 */
   MOBILE_BOTTOM_NAV: 100,
-  /** フローティング進捗サマリー - 150番台 */
+  /** フローティング要素（相対位置用） - 150番台 */
   FLOATING_SUMMARY: 150,
-  /** サイドバー - 200番台 */
+  /** サイドバー（相対位置用） - 200番台 */
   SIDEBAR: 200,
-  /** ページモーダル（第1階層）- 1000番台 */
-  PAGE_MODAL: 1000,
-  /** ネストされたダイアログ（第2階層）- 1500番台 */
+
+  // ============================================
+  // 固定要素のz-index（MUI互換）
+  // ============================================
+  /** フローティング要素（fixed position） - MUI mobileStepper相当 */
+  FIXED_FLOATING: 1000,
+  /** 固定ヘッダー/ナビ - MUI appBar相当 */
+  FIXED_HEADER: 1100,
+  /** 固定ボトムナビ - MUI appBar相当 */
+  FIXED_BOTTOM_NAV: 1100,
+  /** ドロワー - MUI drawer相当 */
+  DRAWER: 1200,
+  /** ページモーダル（第1階層）- MUI modal相当 */
+  PAGE_MODAL: 1300,
+  /** スナックバー（モーダルより上） - MUI snackbar相当 */
+  SNACKBAR_OVERLAY: 1400,
+  /** ネストされたダイアログ（第2階層） */
   NESTED_DIALOG: 1500,
-  /** さらにネストされたダイアログ（第3階層）- 2000番台 */
+  /** さらにネストされたダイアログ（第3階層） */
   NESTED_NESTED_DIALOG: 2000,
-  /** 最深階層のダイアログ（第4階層）- 2500番台 */
+  /** 最深階層のダイアログ（第4階層） */
   DEEP_NESTED_DIALOG: 2500,
-  /** トースト通知 - 3000番台 */
+  /** トースト通知 */
   TOAST: 3000,
-  /** スナックバー - 3000番台 */
+  /** スナックバー */
   SNACKBAR: 3000,
-  /** グローバルエラーメッセージ - 3500番台 */
+  /** グローバルエラーメッセージ */
   GLOBAL_ERROR: 3500,
-  /** ローディングオーバーレイ - 4000番台 */
+  /** ローディングオーバーレイ - 最上層 */
   LOADING_OVERLAY: 4000,
 } as const;
 
@@ -118,13 +146,17 @@ export const MESSAGE_Z_INDEX = {
 } as const;
 
 /**
- * @deprecated 代わりに zIndex() ヘルパー関数を使用してください
+ * @deprecated 代わりに LAYER_Z_INDEX を直接使用してください
  */
 export const APP_Z_INDEX = {
   HEADER: LAYER_Z_INDEX.HEADER,
   MOBILE_BOTTOM_NAV: LAYER_Z_INDEX.MOBILE_BOTTOM_NAV,
   FLOATING_PROGRESS_SUMMARY: LAYER_Z_INDEX.FLOATING_SUMMARY,
   SIDEBAR: LAYER_Z_INDEX.SIDEBAR,
+  // 固定要素用（MUI互換）
+  FIXED_HEADER: LAYER_Z_INDEX.FIXED_HEADER,
+  FIXED_BOTTOM_NAV: LAYER_Z_INDEX.FIXED_BOTTOM_NAV,
+  FIXED_FLOATING: LAYER_Z_INDEX.FIXED_FLOATING,
 } as const;
 
 /**
