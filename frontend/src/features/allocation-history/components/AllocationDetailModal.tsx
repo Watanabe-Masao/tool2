@@ -1,4 +1,5 @@
 import { Box, Dialog, DialogContent, CircularProgress } from '@mui/material';
+import { MODAL_Z_INDEX } from '@/constants/zIndex';
 import { CalendarMonth } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import type {
@@ -108,7 +109,7 @@ export const AllocationDetailModal: React.FC<AllocationDetailModalProps> = ({
       fullWidth
       fullScreen={isFullScreen || window.innerWidth < 600}
       sx={{
-        zIndex: 1400, // Headerより上に表示（Header: 1300）
+        zIndex: MODAL_Z_INDEX.NESTED_DIALOG, // 1500: Headerより上に表示（Header: 1300）
         '& .MuiDialog-paper': {
           borderRadius: isFullScreen ? 0 : 3,
           overflow: 'hidden',
