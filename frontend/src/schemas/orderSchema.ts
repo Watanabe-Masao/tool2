@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { STORE_COUNT, MAX_LENGTH, NUMBER_RANGE } from '@/utils/constants';
 
 /**
+ * 重量単位（100gあたりの商品で使用可能な入数の単位）
+ */
+export const WEIGHT_UNITS = ['kg', 'g'] as const;
+
+/**
  * 商品データのバリデーションスキーマ
  */
 export const productSchema = z.object({
@@ -104,7 +109,19 @@ export const productSchema = z.object({
         .int('整数で入力してください')
     )
     .length(STORE_COUNT, `配分数は${STORE_COUNT}店舗分必要です`),
-});
+}).refine(
+  (data) => {
+    // 規格の単位が「gあたり」の場合、入数の単位は重量単位（kg, g）のみ許可
+    if (data.specificationUnit === 'gあたり') {
+      return WEIGHT_UNITS.includes(data.packageUnit as typeof WEIGHT_UNITS[number]);
+    }
+    return true;
+  },
+  {
+    message: '規格の単位が「gあたり」の場合、入数の単位は「kg」または「g」を選択してください',
+    path: ['packageUnit'],
+  }
+);
 
 /**
  * 注文フォーム全体のバリデーションスキーマ

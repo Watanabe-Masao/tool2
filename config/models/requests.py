@@ -11,7 +11,10 @@
 """
 
 from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+# 重量単位（100gあたりの商品で使用可能な入数の単位）
+WEIGHT_UNITS = ['kg', 'g']
 
 
 class ProductDataRequest(BaseModel):
@@ -47,6 +50,19 @@ class ProductDataRequest(BaseModel):
     total_delivery: Optional[int] = Field(default=None, description="総納品数")
     delivery_dest: Optional[str] = Field(default=None, max_length=30, description="納品先")
     store_quantities: Dict[str, int] = Field(default_factory=dict, description="店舗配分数")
+
+    @model_validator(mode='after')
+    def validate_unit_combination(self):
+        """
+        規格の単位が「gあたり」の場合、入数の単位は重量単位（kg, g）のみ許可
+        """
+        if self.unit == 'gあたり' and self.package_unit:
+            if self.package_unit not in WEIGHT_UNITS:
+                raise ValueError(
+                    f'規格の単位が「gあたり」の場合、入数の単位は「kg」または「g」を選択してください。'
+                    f'現在の入数の単位: {self.package_unit}'
+                )
+        return self
 
 
 class TemplateRequest(BaseModel):

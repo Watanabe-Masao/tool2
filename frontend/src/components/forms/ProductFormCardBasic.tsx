@@ -863,9 +863,12 @@ export const ProductFormCardBasic: React.FC<ProductFormCardBasicProps> = memo(({
                               <Box
                                 onClick={() => {
                                   field.onChange('gあたり');
-                                  // 規格が未入力の場合は「100」を自動設定
-                                  if (!currentSpecification) {
-                                    setValue(`products.${index}.specification`, '100');
+                                  // 「gあたり」選択時は規格を強制的に「100」に設定（100gあたり）
+                                  setValue(`products.${index}.specification`, '100');
+                                  // 入数の単位も重量単位に合わせる（未設定または非重量単位の場合）
+                                  const currentUnit = currentPackageUnit;
+                                  if (!currentUnit || !['kg', 'g'].includes(currentUnit)) {
+                                    setValue(`products.${index}.packageUnit`, 'kg');
                                   }
                                 }}
                                 sx={{
